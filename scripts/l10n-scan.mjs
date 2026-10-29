@@ -65,6 +65,9 @@ export const SCAN_TARGETS = [
   "apps/web/src/app/(pass)",
   "apps/web/src/components/pass",
   "apps/web/src/components/restaurant",
+  // phase-solo G: shop websites (the public renderer and its routes)
+  "apps/web/src/app/(site)",
+  "apps/web/src/components/site/presets",
   // Web UI pieces a customer sees (the rest of components/ui is shared with the shop dashboard)
   "apps/web/src/components/ui/StampCard.tsx",
   "apps/web/src/components/ui/PointsRing.tsx",

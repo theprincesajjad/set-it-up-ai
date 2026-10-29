@@ -26,7 +26,8 @@
     "assets"
   ],
   "scripts": {
-    "build": "tsx src/build-css.ts",
+    "build": "tsx src/build-css.ts && node scripts/icons3d.mjs",
+    "lint:icons3d": "node scripts/icons3d.mjs --lint",
     "build:css": "tsx src/build-css.ts",
     "check:css": "tsx src/build-css.ts --check",
     "typecheck": "tsc -p tsconfig.json",

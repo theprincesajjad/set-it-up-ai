@@ -33,6 +33,7 @@ import { badRequest, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
 import { getMerchantFeatures } from "./features.js";
 import { isOptedOut, sendSms } from "./opt-out.js";
+import { pathOf, sendSoloNudge, soloSetup } from "./onboarding-solo.js";
 
 type Merchant = typeof merchants.$inferSelect;
 const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
@@ -95,7 +96,8 @@ export async function recordVisitMilestones(ctx: AppContext, tx: DbOrTx, merchan
 // Owner view
 // ---------------------------------------------------------------------------
 // The words the owner reads come from the shared catalog (ob.*) in the owner's language (users.locale); English is the default.
-const STEP_KEYS: Record<merchantApi.OnboardingStepKey, MessageKey> = {
+type LegacyStepKey = Exclude<merchantApi.OnboardingStepKey, merchantApi.OnboardingSoloStepKey>;
+const STEP_KEYS: Record<LegacyStepKey, MessageKey> = {
   program: "ob.step.program",
   first_stamp: "ob.step.first_stamp",
   qr_kit: "ob.step.qr_kit",
@@ -107,13 +109,13 @@ const STEP_KEYS: Record<merchantApi.OnboardingStepKey, MessageKey> = {
   // The label is per trade (ob.step.trade.<family>); this is the fallback.
   trade_setup: "ob.step.trade.menu",
 };
-const CORE: merchantApi.OnboardingStepKey[] = ["program", "first_stamp", "qr_kit", "staff", "first_members"];
+const CORE: LegacyStepKey[] = ["program", "first_stamp", "qr_kit", "staff", "first_members"];
 /** A pharmacy's rules come right after the program: points stay off until the pharmacist-owner confirms them. */
-const CORE_PHARMACY: merchantApi.OnboardingStepKey[] = ["program", "pharmacy_rules", "first_stamp", "qr_kit", "staff", "first_members"];
-const LATER: merchantApi.OnboardingStepKey[] = ["profile", "pos"];
+const CORE_PHARMACY: LegacyStepKey[] = ["program", "pharmacy_rules", "first_stamp", "qr_kit", "staff", "first_members"];
+const LATER: LegacyStepKey[] = ["profile", "pos"];
 
 /** Core steps for a shop: its trade's own step comes right after the program (a restaurant's menu comes first of all). */
-function coreFor(vertical: string): merchantApi.OnboardingStepKey[] {
+function coreFor(vertical: string): LegacyStepKey[] {
   if (vertical === "pharmacy") return CORE_PHARMACY;
   const family = tradeSetupFor(vertical);
   if (!family) return CORE;
@@ -168,7 +170,7 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
   const target = plan.target;
   const activated = !!m.activatedAt || members >= target;
   const firstStamp = ms.has("first_stamp") || members >= 1 || !!m.activatedAt;
-  const done: Record<merchantApi.OnboardingStepKey, boolean> = {
+  const done: Record<LegacyStepKey, boolean> = {
     program: (!!program && program.active) || marked.has("program"),
     first_stamp: firstStamp,
     qr_kit: marked.has("qr_kit") || ms.has("qr_printed"),
@@ -179,7 +181,7 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
     pharmacy_rules: !!m.pharmacyConfirmedAt,
     trade_setup: tradeItems > 0 || marked.has("trade_setup"),
   };
-  const detail: Record<merchantApi.OnboardingStepKey, string | null> = {
+  const detail: Record<LegacyStepKey, string | null> = {
     program: program ? `${program.earnType.replace("_", " ")} · ${program.terminology}` : null,
     first_stamp: firstStamp ? null : t(locale, "ob.step.waiting"),
     qr_kit: null,
@@ -191,9 +193,12 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
     trade_setup: null,
   };
   const rx = m.vertical === "pharmacy";
-  const mk = (key: merchantApi.OnboardingStepKey) => ({ key, label: t(locale, rx && key === "first_stamp" ? "ob.step.first_sale" : key === "trade_setup" && family ? (`ob.step.trade.${family}` as MessageKey) : STEP_KEYS[key], { target }), done: done[key], detail: detail[key] });
-  const steps = coreFor(m.vertical).map(mk);
-  const later = LATER.map(mk);
+  const mk = (key: LegacyStepKey) => ({ key, label: t(locale, rx && key === "first_stamp" ? "ob.step.first_sale" : key === "trade_setup" && family ? (`ob.step.trade.${family}` as MessageKey) : STEP_KEYS[key], { target }), done: done[key], detail: detail[key] });
+  // phase-solo B: solo pros and appointment-led storefronts get the six booking-link cards instead.
+  const path = pathOf(m);
+  const solo = path === "storefront" ? null : await soloSetup(ctx, m, locale, marked, ms, (key, data) => recordMilestone(db, merchantId, key, now, data));
+  const steps = solo ? solo.steps : coreFor(m.vertical).map(mk);
+  const later = solo ? solo.later : LATER.map(mk);
   const current = steps.find((s) => !s.done)?.key ?? "done";
   if (m.onboardingStep !== current) await db.update(merchants).set({ onboardingStep: current }).where(eq(merchants.id, merchantId));
 
@@ -260,6 +265,8 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
     playbook: { key: playbook.key, label: playbook.label, tillLine: playbook.tillLine, tactic: playbook.tactic, tips: [...playbook.tips], firstStampHint: playbook.firstStampHint, scriptLanguages: [...playbook.scriptLanguages], tillLineLocal: playbook.tillLineLocal ? { ...playbook.tillLineLocal } : null },
     upsell: upsellRaw,
     nudgesOn: !ms.has("nudges_off"),
+    path,
+    solo: solo?.dto ?? null,
   };
 }
 
@@ -353,6 +360,15 @@ export async function runOnboardingNudges(ctx: AppContext): Promise<{ sent: numb
     if (h < 9 || h >= 20) continue;
     const ms = await milestonesFor(ctx.db, m.id);
     if (ms.has("nudges_off")) continue;
+    // phase-solo B: solo pros get the booking sequence, app push first and text second, with the same stop link.
+    if (pathOf(m) !== "storefront") {
+      const o = await ownerOf(ctx.db, m.id);
+      const [ou] = o ? await ctx.db.select({ id: users.id }).from(users).innerJoin(merchantStaff, eq(merchantStaff.userId, users.id)).where(and(eq(merchantStaff.merchantId, m.id), eq(merchantStaff.role, "owner"))).limit(1) : [];
+      if (!o || !ou) continue;
+      if ((o.phone ?? m.phone) && (await isOptedOut(ctx.db, (o.phone ?? m.phone)!, "sms"))) continue;
+      if (await sendSoloNudge(ctx, m, ms, { userId: ou.id, phone: o.phone, email: o.email, locale: ownerLocale(o.locale) }, nudgeUnsubscribeUrl(ctx, m.id), (key, data) => recordMilestone(ctx.db, m.id, key as NudgeKey, now, data))) sent += 1;
+      continue;
+    }
     const members = await visitedMembers(ctx.db, m.id);
     const firstStamp = ms.has("first_stamp") || members >= 1;
     const sentKeys = new Set([...ms.keys()].filter((k) => k.startsWith("nudge_")));

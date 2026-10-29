@@ -1,7 +1,8 @@
 import { Bell, Check, Clock, Dog, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
-import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import type { Icon3dName } from "@ll/design-tokens";
+import { Icon3d } from "@/components/ui/Icon3d";
 import { cn } from "@/lib/cn";
 import { SAMPLE_SLOTS, type SoloService } from "@/lib/marketing/solo";
 import { moneyShort } from "@/lib/marketing/text";
@@ -10,7 +11,7 @@ import { PhoneFrame } from "./Mocks";
 /**
  * Hero of the solo-pro landing pages: the promise on the left, the pro's own booking page on a phone on the right, on a flat sand
  * stage (no gradient). Every name, service and time on the phone is a sample, and the caption under it says so.
- * TODO(C): swap the two category tiles for the workstream C 3D objects once Icon3d is in the tree.
+ * The two tiles beside the phone are workstream C's 3D objects.
  */
 
 export interface SoloHeroProps {
@@ -27,8 +28,8 @@ export interface SoloHeroProps {
   screen: "booking" | "line" | "pet";
   sampleName: string;
   services: SoloService[];
-  /** Two category illustrations on pastel tiles beside the phone. */
-  arts: [string, string];
+  /** Two 3D objects on pastel tiles beside the phone. */
+  arts: [Icon3dName, Icon3dName];
 }
 
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toLowerCase();
@@ -155,10 +156,10 @@ function PetScreen({ name, services }: { name: string; services: SoloService[] }
   );
 }
 
-function Tile({ art, tone, className }: { art: string; tone: string; className?: string }) {
+function Tile({ art, trade, tone, className }: { art: Icon3dName; trade: string; tone: string; className?: string }) {
   return (
     <div aria-hidden data-theme="light" className={cn("flex aspect-square w-24 items-center justify-center rounded-tile shadow-card", tone, className)}>
-      <CategoryIcon category={art as never} size={56} />
+      <Icon3d name={art} size={64} trade={trade} />
     </div>
   );
 }
@@ -193,8 +194,8 @@ export function SoloHero(p: SoloHeroProps) {
           <div className="flex justify-center rounded-[36px] bg-sidebar px-4 py-8 sm:py-10 md:rounded-[44px]">
             <PhoneFrame height={540}>{phone}</PhoneFrame>
           </div>
-          <Tile art={p.arts[0]} tone="bg-tile-butter" className="absolute -start-2 top-10 hidden sm:flex lg:-start-8" />
-          <Tile art={p.arts[1]} tone="bg-tile-rose" className="absolute -end-2 bottom-20 hidden sm:flex lg:-end-8" />
+          <Tile art={p.arts[0]} trade={p.trade} tone="bg-tile-butter" className="absolute -start-2 top-10 hidden sm:flex lg:-start-8" />
+          <Tile art={p.arts[1]} trade={p.trade} tone="bg-tile-rose" className="absolute -end-2 bottom-20 hidden sm:flex lg:-end-8" />
           <p className="mt-3 text-center text-caption text-muted-foreground">{p.caption}</p>
         </div>
       </div>

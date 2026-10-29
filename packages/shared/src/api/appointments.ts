@@ -21,7 +21,8 @@ export const appointmentStatusSchema = z.enum(APPOINTMENT_STATUSES);
 /** Statuses that hold a chair (the overlap guard only counts these). */
 export const ACTIVE_APPOINTMENT_STATUSES = ["booked", "arrived", "in_service"] as const;
 
-export const APPOINTMENT_SOURCES = ["online", "staff", "walk_in"] as const;
+/** instagram: booked by the shop from an Instagram DM (phase-solo D, "Create booking from message"). */
+export const APPOINTMENT_SOURCES = ["online", "staff", "walk_in", "instagram"] as const;
 export type AppointmentSource = (typeof APPOINTMENT_SOURCES)[number];
 
 export const SERVICE_KINDS = ["appointment", "repair_line"] as const;
@@ -233,6 +234,16 @@ export interface AppointmentDto {
   /** Set while an online booking waits for its deposit or card; the job cancels it when this passes. */
   holdExpiresAt: string | null;
   createdAt: string;
+  // ---- phase-solo: D ----
+  /** What the pro did (written at checkout). Internal only. */
+  visitNote?: string | null;
+  visitPhotoUrl?: string | null;
+  /** The client's answer to the service's intake question. */
+  intakeAnswer?: string | null;
+  /** The inbox thread this booking came from (Instagram DM, text). */
+  conversationId?: string | null;
+  /** The client's last visit note at this shop, to prefill this visit's staff note. */
+  lastVisitNote?: string | null;
 }
 export interface AppointmentsResponse {
   items: AppointmentDto[];
@@ -267,7 +278,9 @@ export const createAppointmentBody = z
     startsAt: isoDateTime.optional(),
     /** Override the computed end (resize). */
     endsAt: isoDateTime.optional(),
-    source: z.enum(["staff", "walk_in"]).default("staff"),
+    source: z.enum(["staff", "walk_in", "instagram"]).default("staff"),
+    /** phase-solo D: booked from this inbox thread ("Create booking from message"). */
+    conversationId: uuidSchema.nullish(),
     notes: z.string().trim().max(1000).nullish(),
     clientNote: z.string().trim().max(1000).nullish(),
     groupId: uuidSchema.nullish(),
@@ -421,6 +434,8 @@ export interface PublicServiceDto {
   taxable: boolean;
   /** Per-person overrides of duration and price (staff_services). */
   staffOverrides: { staffId: string; durationMin: number | null; priceCents: number | null }[];
+  /** phase-solo D: one optional question the shop asks at booking. */
+  intakeQuestion?: string | null;
 }
 export interface PublicStaffDto {
   id: string;
@@ -434,7 +449,11 @@ export interface PublicBookingPolicyDto {
   takesCards: boolean;
 }
 export interface PublicServicesResponse {
-  shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null; vertical?: string; pharmacy?: boolean };
+  /**
+   * `address` is null for a home studio or a mobile pro (addressVisibility area or city): the booking page shows `placeLine`
+   * ("Bloor West area", "Toronto") and says the address comes after booking.
+   */
+  shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null; vertical?: string; pharmacy?: boolean; addressVisibility?: "exact" | "area" | "city"; placeLine?: string | null };
   /** `applies` only when the shop is registered for GST/HST; `name` is what to call it ("HST"). */
   tax: { applies: boolean; name: string };
   policy: PublicBookingPolicyDto;
@@ -455,6 +474,8 @@ export const createMyAppointmentBody = z.object({
   customerName: z.string().trim().min(1).max(60).nullish(),
   /** One of the customer's own pets (pet shops). */
   petId: uuidSchema.nullish(),
+  /** phase-solo D: the answer to the service's intake question (optional). */
+  intakeAnswer: z.string().trim().max(500).nullish(),
 });
 export type CreateMyAppointmentBody = z.input<typeof createMyAppointmentBody>;
 
@@ -463,7 +484,12 @@ export type RescheduleMyAppointmentBody = z.input<typeof rescheduleMyAppointment
 
 export interface MyAppointmentDto {
   id: string;
-  merchant: { id: string; name: string; slug: string; logoUrl: string | null; brandColor: string | null; address: string | null; phone: string | null; timezone: string };
+  /**
+   * `address` for a home studio or mobile pro is released only once the booking is confirmed (after the deposit or card step) and
+   * is null on a pending hold, a cancellation or a no-show. `addressPrivate` says the shop is one of those, so the screens can say
+   * "The address is sent after you book" instead of nothing.
+   */
+  merchant: { id: string; name: string; slug: string; logoUrl: string | null; brandColor: string | null; address: string | null; phone: string | null; timezone: string; addressPrivate?: boolean; placeLine?: string | null };
   staffId: string | null;
   staffName: string | null;
   items: AppointmentItem[];
@@ -525,3 +551,18 @@ export interface MyAppointmentResponse {
   deposit: PaymentRefDto | null;
   setup: SetupRefDto | null;
 }
+
+// ---------------------------------------------------------------------------
+// ---- phase-solo: D ---- Visit note (checkout) and the intake question per service
+// ---------------------------------------------------------------------------
+export const visitNoteBody = z.object({
+  visitNote: z.string().trim().max(2000).nullable(),
+  visitPhotoUrl: z.url().max(2000).nullable().optional(),
+});
+export type VisitNoteBody = z.infer<typeof visitNoteBody>;
+
+export const intakeQuestionBody = z.object({ question: z.string().trim().max(200).nullable() });
+export interface IntakeQuestionsResponse {
+  items: { serviceId: string; name: string; question: string | null }[];
+}
+// ---- end phase-solo: D ----

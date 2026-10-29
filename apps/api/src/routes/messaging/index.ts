@@ -8,6 +8,8 @@ import { parse } from "../../lib/validate.js";
 import * as svc from "../../services/messaging.js";
 import { previewNudgeUnsubscribe, unsubscribeNudgesByToken } from "../../services/onboarding.js";
 import { rejectMalformedIds } from "../merchant/params.js";
+import inboxRoutes from "../inbox/index.js";
+import instagramRoutes from "../instagram/index.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
 
@@ -16,6 +18,9 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
     rejectMalformedIds(app);
     await routes(app, ctx);
   });
+  // phase-solo D: the inbox, people-side profile, promos and Instagram register with messaging (no change to routes/index.ts).
+  await inboxRoutes(parent, ctx);
+  await instagramRoutes(parent, ctx);
 }
 
 async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {

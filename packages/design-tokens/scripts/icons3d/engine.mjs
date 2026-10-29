@@ -120,6 +120,7 @@ export class Scene {
 
   // -- low level --------------------------------------------------------------------------------------------------------------------
   _shape(cmds, cls, extra = {}) {
+    if (cls && typeof cls === "object") cls = cls.lit; // a single-tone material used as a flat mark
     this.items.push({ cmds, cls, ...extra });
   }
   /** A screen-space polygon from world points, rounded. */
@@ -150,6 +151,26 @@ export class Scene {
     seg(k, -1, 1, -k, 1, 0);
     cmds.push(["Z"]);
     this._shape(cmds, cls);
+  }
+  /** A flat ring (annulus) in the plane spanned by u, v: outer radius R, inner radius r. */
+  ring3(c, u, v, R, r, cls) {
+    const before = this.items.length;
+    this.circle3(c, u, v, R, cls);
+    this.circle3(c, u, v, r, cls);
+    const a = this.items.pop();
+    const b = this.items.pop();
+    this.items.length = before;
+    this._shape([...b.cmds, ...a.cmds], cls, { rule: "evenodd" });
+  }
+  /** A polygon with a hole (even-odd). */
+  poly3h(outer3, inner3, cls) {
+    const o = roundedPoly(outer3.map(([x, y, z]) => proj(x, y, z)), 0);
+    const i = roundedPoly(inner3.map(([x, y, z]) => proj(x, y, z)), 0);
+    this._shape([...o, ...i], cls, { rule: "evenodd" });
+  }
+  /** The silhouette (convex hull) of 3D points, rounded: for cones and frusta. */
+  hull3(points3, cls, r = 0) {
+    this._shape(roundedPoly(hull(points3.map(([x, y, z]) => proj(x, y, z))), r), cls);
   }
   /** Circle on the horizontal plane at height z. */
   disc(cx, cy, z, R, cls) {
@@ -306,7 +327,7 @@ export class Scene {
     }
     for (const it of this.items) {
       if (it.stroke) out.push(`<path class="s ${it.cls}" stroke-width="${fmt(it.stroke * k)}" d="${d(it.cmds)}"/>`);
-      else out.push(`<path class="${it.cls}" d="${d(it.cmds)}"/>`);
+      else out.push(`<path class="${it.cls}"${it.rule ? ` fill-rule="${it.rule}"` : ""} d="${d(it.cmds)}"/>`);
     }
     const t = title ? `` : ``;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vbw} ${vbh}" fill="none"><style>${CSS}</style>${t}${out.join("")}</svg>`;
@@ -316,5 +337,70 @@ export class Scene {
 export const CSS = [
   ...Object.keys(FALLBACK).map((k) => `.${k}{fill:var(--i3d-${k},${FALLBACK[k]})}`),
   `.sh ellipse{fill:var(--i3d-sh,#1D1D1F);fill-opacity:var(--i3d-so,.028)}`,
-  `.s{fill:none;stroke-linecap:round;stroke-linejoin:round}.s.ik{stroke:var(--i3d-ik,#1D1D1F)}.s.w{stroke:var(--i3d-w,#FFFFFF)}.s.n3{stroke:var(--i3d-n3,#AEAEB4)}.s.n2{stroke:var(--i3d-n2,#D2D2D7)}.s.a3{stroke:var(--i3d-a3,${FALLBACK.a3})}.s.a2{stroke:var(--i3d-a2,${FALLBACK.a2})}`,
+  `.s{fill:none;stroke-linecap:round;stroke-linejoin:round}`,
+  ...Object.keys(FALLBACK).map((k) => `.s.${k}{stroke:var(--i3d-${k},${FALLBACK[k]})}`),
 ].join("");
+
+
+// --- placement: a Local frame moves, turns and scales an object builder so scenes can compose objects -----------------------------
+
+export function rect2(cx, cy, w, d, deg = 0) {
+  const a = deg * D2R;
+  const c = Math.cos(a), si = Math.sin(a);
+  return [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([x, y]) => [cx + x * c - y * si, cy + x * si + y * c]);
+}
+/** A stadium (capsule) footprint from (x0, y0) to (x1, y1), width w. */
+export function capsule2(x0, y0, x1, y1, w, seg = 6) {
+  const ang = Math.atan2(y1 - y0, x1 - x0);
+  const pts = [];
+  for (let i = 0; i <= seg; i++) { const t = ang - Math.PI / 2 + (Math.PI * i) / seg; pts.push([x1 + (Math.cos(t) * w) / 2, y1 + (Math.sin(t) * w) / 2]); }
+  for (let i = 0; i <= seg; i++) { const t = ang + Math.PI / 2 + (Math.PI * i) / seg; pts.push([x0 + (Math.cos(t) * w) / 2, y0 + (Math.sin(t) * w) / 2]); }
+  return pts;
+}
+export function ngon2(cx, cy, R, n, deg = 0) {
+  return Array.from({ length: n }, (_, i) => { const a = (deg + (360 * i) / n) * D2R; return [cx + Math.cos(a) * R, cy + Math.sin(a) * R]; });
+}
+
+export class Local {
+  constructor(scene, { x = 0, y = 0, z = 0, k = 1, rot = 0 } = {}) {
+    this.s = scene; this.x = x; this.y = y; this.z = z; this.k = k; this.rot = rot * D2R;
+    this.c = Math.cos(this.rot); this.sn = Math.sin(this.rot);
+  }
+  p([a, b, e]) { return [this.x + (a * this.c - b * this.sn) * this.k, this.y + (a * this.sn + b * this.c) * this.k, this.z + e * this.k]; }
+  v([a, b, e]) { return [a * this.c - b * this.sn, a * this.sn + b * this.c, e]; }
+  box(x, y, z, w, d, h, m, r = 1) {
+    if (!this.rot) return this.s.box(...this.p([x, y, z]), w * this.k, d * this.k, h * this.k, m, r * this.k);
+    const foot = [[x, y], [x + w, y], [x + w, y + d], [x, y + d]].map(([a, b]) => this.p([a, b, 0]).slice(0, 2));
+    this.s.prism(foot, this.z + z * this.k, h * this.k, m, r * this.k);
+  }
+  cyl(cx, cy, z, R, h, m, o) { const [a, b, e] = this.p([cx, cy, z]); return this.s.cyl(a, b, e, R * this.k, h * this.k, m, o); }
+  sphere(cx, cy, cz, R, m) { const [a, b, e] = this.p([cx, cy, cz]); this.s.sphere(a, b, e, R * this.k, m); }
+  disc(cx, cy, z, R, cls) { const [a, b, e] = this.p([cx, cy, z]); this.s.disc(a, b, e, R * this.k, cls); }
+  circle3(c, u, v, R, cls) { this.s.circle3(this.p(c), this.v(u), this.v(v), R * this.k, cls); }
+  ring3(c, u, v, R, r, cls) { this.s.ring3(this.p(c), this.v(u), this.v(v), R * this.k, r * this.k, cls); }
+  poly3(pts, cls, r = 0) { this.s.poly3(pts.map((q) => this.p(q)), cls, r * this.k); }
+  poly3h(o, i, cls) { this.s.poly3h(o.map((q) => this.p(q)), i.map((q) => this.p(q)), cls); }
+  hull3(pts, cls, r = 0) { this.s.hull3(pts.map((q) => this.p(q)), cls, r * this.k); }
+  /** Stroked arc on a sphere's surface, only the half facing the camera. c centre, R radius, u and v span the circle's plane. */
+  arcOnSphere(c, R, u, v, cls, w, n = 40) {
+    const vis = (p) => { const q = [(p[0] - c[0]) / R, (p[1] - c[1]) / R, (p[2] - c[2]) / R]; const W = this.v(q); return W[0] * (-syaw * cp) + W[1] * (-cyaw * cp) + W[2] * sp > 0.04; };
+    let run = [];
+    const flush = () => { if (run.length > 1) this.line3(run, cls, w); run = []; };
+    for (let i = 0; i <= n; i++) {
+      const t = (2 * Math.PI * i) / n;
+      const p = [c[0] + (u[0] * Math.cos(t) + v[0] * Math.sin(t)) * R * 0.99, c[1] + (u[1] * Math.cos(t) + v[1] * Math.sin(t)) * R * 0.99, c[2] + (u[2] * Math.cos(t) + v[2] * Math.sin(t)) * R * 0.99];
+      if (vis(p)) run.push(p); else flush();
+    }
+    flush();
+  }
+  line3(pts, cls, w) { this.s.line3(pts.map((q) => this.p(q)), cls, w * this.k); }
+  prism(foot, z, h, m, r = 0.8) { this.s.prism(foot.map(([a, b]) => this.p([a, b, 0]).slice(0, 2)), this.z + z * this.k, h * this.k, m, r * this.k); }
+  shadow(cx, cy, rx, ry) { const [a, b] = this.p([cx, cy, 0]); this.s.shadow(a, b, rx * this.k, ry * this.k); }
+  /** Points on a circle arc in a plane, for thin marks. */
+  arc3(c, u, v, R, a0, a1, cls, w, n = 14) {
+    const pts = [];
+    for (let i = 0; i <= n; i++) { const t = (a0 + ((a1 - a0) * i) / n) * D2R; pts.push([c[0] + (u[0] * Math.cos(t) + v[0] * Math.sin(t)) * R, c[1] + (u[1] * Math.cos(t) + v[1] * Math.sin(t)) * R, c[2] + (u[2] * Math.cos(t) + v[2] * Math.sin(t)) * R]); }
+    this.line3(pts, cls, w);
+  }
+  sub(o) { const [a, b, e] = this.p([o.x ?? 0, o.y ?? 0, o.z ?? 0]); return new Local(this.s, { x: a, y: b, z: e, k: this.k * (o.k ?? 1), rot: (this.rot / D2R) + (o.rot ?? 0) }); }
+}

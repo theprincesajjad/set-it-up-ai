@@ -24,7 +24,7 @@
  */
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { loyaltyPrograms, merchantMembers, merchants, messageDeliveries, notifications, pushTokens, rewards, userNotificationPrefs, users } from "@ll/db";
-import { BRAND, customerApi, normalizeLocale, t as translate, unitLabel, unitWord, type Locale } from "@ll/shared";
+import { BRAND, customerApi, normalizeLocale, rungsFor, t as translate, unitLabel, unitWord, type Locale } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import type { PushTicket } from "../providers/types.js";
@@ -32,6 +32,8 @@ import { enabledFeaturesFor } from "./features.js";
 import { registerBalanceListener, type BalanceChange, type BalanceListener } from "./ledger.js";
 import { addPassMessage, hasWalletPass } from "./wallet.js";
 import { sendSms } from "./opt-out.js";
+import { sendWebPush } from "./web-push.js";
+import { reserveTransactionalText } from "./text-allowance.js";
 
 export type NotificationType = customerApi.NotificationType;
 export type NotificationChannel = customerApi.NotificationChannel;
@@ -306,7 +308,8 @@ export async function sendNotification(ctx: AppContext, args: SendArgs): Promise
     }
 
     // ---- SMS fallback: paid SMS shops only, no app push, not covered by a wallet pass, shop not muted ----
-    if (!res.push && !wallet && prefs[args.type].sms && user.phone && (await paidSms(ctx, merchant)) && !(await mutedShop(ctx, user.id, merchant))) {
+    // phase-solo A: every text counts against the shop's allowance; on Free, once it is used up the email below goes instead.
+    if (!res.push && !wallet && prefs[args.type].sms && user.phone && (await paidSms(ctx, merchant)) && !(await mutedShop(ctx, user.id, merchant)) && (await reserveTransactionalText(ctx.db, merchant!.id))) {
       const body = args.smsBody ?? `${args.title}: ${args.body}${info.kind === "marketing" ? " Reply STOP to opt out." : ""}`;
       try {
         const r = await sendSms(ctx, user.phone, body);
@@ -390,6 +393,11 @@ export interface PreparedTransactional {
   /** Push data with deep link + notificationId. */
   data: Record<string, unknown>;
   channelId: string;
+  /**
+   * phase-solo A: count one text against the shop's allowance (Free 30 a month, transactional only). False on Free once it is
+   * used up: the caller skips the text and the reminder goes another way (email, the in-app inbox row already exists).
+   */
+  reserveText(): Promise<boolean>;
   /** Record what was sent (inbox row channels + receipt tickets). */
   finish(out: { push: number; sms: boolean; tickets?: PushTicket[] }): Promise<void>;
 }
@@ -404,7 +412,8 @@ export async function prepareTransactional(
 ): Promise<PreparedTransactional> {
   const type = commerceType(args.data?.type) ?? "ticket_updated";
   const info = customerApi.notificationInfo(type);
-  const fallback: PreparedTransactional = { push: true, sms: true, data: args.data ?? {}, channelId: info.androidChannel, finish: async () => {} };
+  const reserveText = () => reserveTransactionalText(ctx.db, args.merchantId).catch(() => false);
+  const fallback: PreparedTransactional = { push: true, sms: true, data: args.data ?? {}, channelId: info.androidChannel, reserveText, finish: async () => {} };
   try {
     const now = ctx.now();
     const [merchant] = await ctx.db.select({ id: merchants.id, slug: merchants.slug }).from(merchants).where(eq(merchants.id, args.merchantId)).limit(1);
@@ -421,6 +430,7 @@ export async function prepareTransactional(
       sms: prefs[type].sms,
       data: payload,
       channelId: info.androidChannel,
+      reserveText,
       async finish(out) {
         const channels = [...(out.push ? ["push"] : []), ...(out.sms ? ["sms"] : [])];
         const tickets = (out.tickets ?? []).filter((t) => t.status === "ok" && t.id).map((t) => ({ id: t.id!, token: t.token }));
@@ -678,3 +688,141 @@ export async function onBalanceChange(ctx: AppContext, change: BalanceChange): P
 
 const notificationsBalanceListener: BalanceListener = onBalanceChange;
 registerBalanceListener("notifications", notificationsBalanceListener);
+
+// ---------------------------------------------------------------------------
+// ---- phase-solo: D ---- The channel ladder (docs/business/people-side.md gap 3)
+// ---------------------------------------------------------------------------
+/**
+ * Reminders, confirmations and shop messages go the cheapest way that reaches the person, and stop at the first rung that works:
+ *
+ *   1. app push (Expo tokens)          free
+ *   2. web push (the PWA pass)         free
+ *   3. email                           ~free
+ *   4. text, only inside the shop's monthly text allowance (messaging.reserveSmsCredits; Free has FREE_REMINDER_SMS_PER_MONTH)
+ *
+ * The in-app inbox row is written first, always, so the app and the web pass show it whatever the outcome. The customer's channel
+ * preference at the shop (merchant_members.channel_pref) picks the rungs (shared `rungsFor`); a marketing send never uses a text.
+ * Explicit opt-outs in the customer's notification settings are honoured per rung; a rung the type has no toggle for is allowed.
+ */
+export interface LadderArgs {
+  userId: string;
+  merchantId: string;
+  type: NotificationType;
+  title: string;
+  /** Push, web push and the in-app row. */
+  body: string;
+  /** The one-segment text (STOP line included by the caller). */
+  textBody: string;
+  /** Texts this costs from the allowance (segments). Default 1. */
+  textCredits?: number;
+  /** Email body; defaults to `body` with the shop footer. */
+  emailBody?: string;
+  /** Deep link (appointmentId, conversationId, url ...). */
+  data?: Record<string, unknown>;
+  /** Web push tap target (path on the web app). */
+  url?: string;
+}
+
+export interface LadderResult {
+  notificationId: string | null;
+  /** The rung that reached them; "in_app" = none did, it waits in the app inbox. */
+  rung: customerApi.NotificationChannel | "web_push" | "in_app";
+  channels: string[];
+  /** A text was the next rung but the month's texts are used up. */
+  textCapReached: boolean;
+}
+
+export async function deliverByLadder(ctx: AppContext, args: LadderArgs): Promise<LadderResult> {
+  const out: LadderResult = { notificationId: null, rung: "in_app", channels: [], textCapReached: false };
+  try {
+    // messaging.ts imports this module (quiet hours), so its credit check is loaded lazily.
+    const { reserveSmsCredits } = await import("./messaging.js");
+    const now = ctx.now();
+    const info = customerApi.notificationInfo(args.type);
+    const [user] = await ctx.db.select().from(users).where(eq(users.id, args.userId)).limit(1);
+    if (!user || user.deletedAt) return out;
+    const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, args.merchantId)).limit(1);
+    if (!merchant) return out;
+    const [member] = await ctx.db
+      .select({ pref: merchantMembers.channelPref, muted: merchantMembers.muted })
+      .from(merchantMembers)
+      .where(and(eq(merchantMembers.merchantId, merchant.id), eq(merchantMembers.userId, user.id)))
+      .limit(1);
+    const pref = (member?.pref ?? "best") as Parameters<typeof rungsFor>[0];
+    const prefs = await loadPrefs(ctx, user.id);
+    const allowed = (c: customerApi.NotificationChannel) => (info.channels.includes(c) ? prefs[args.type][c] : true);
+    const data = { ...deepLink(args.type, merchant, args.data), ...(args.data ?? {}) };
+    const [row] = await ctx.db
+      .insert(notifications)
+      .values({ userId: user.id, merchantId: merchant.id, type: args.type, title: args.title, body: args.body, data, createdAt: now, updatedAt: now })
+      .returning();
+    out.notificationId = row!.id;
+    const payload = { ...data, notificationId: row!.id };
+    let tickets: { id: string; token: string }[] | null = null;
+    const log = (channel: "sms" | "email" | "push", to: string, body: string, status: string, providerId?: string | null, error?: string | null) =>
+      ctx.db.insert(messageDeliveries).values({ userId: user.id, merchantId: merchant.id, channel, to, body, kind: info.kind, status, providerId: providerId ?? null, error: error ?? null });
+
+    for (const rung of rungsFor(pref)) {
+      if (rung === "push") {
+        if (!allowed("push")) continue;
+        const tokens = await tokensFor(ctx, user.id);
+        if (!tokens.length) continue;
+        try {
+          const r = await ctx.providers.push.send(tokens.map((token) => ({ token, title: args.title, body: args.body, data: payload, channelId: info.androidChannel, priority: "high" })));
+          tickets = (r.tickets ?? []).filter((t): t is PushTicket & { id: string } => t.status === "ok" && !!t.id).map((t) => ({ id: t.id, token: t.token }));
+          for (const t of tokens) await log("push", t, `${args.title}: ${args.body}`, r.ok ? "sent" : "failed");
+          if (r.ok) {
+            out.rung = "push";
+            break;
+          }
+        } catch (err) {
+          if (ctx.config.env !== "test") console.error("[ladder] push failed", err);
+        }
+      } else if (rung === "web_push") {
+        if (!allowed("push")) continue;
+        const n = await sendWebPush(ctx, user.id, { title: args.title, body: args.body, url: args.url ?? "/me", tag: String(args.data?.appointmentId ?? args.data?.conversationId ?? row!.id) });
+        if (n > 0) {
+          out.rung = "web_push";
+          break;
+        }
+      } else if (rung === "email") {
+        if (!allowed("email") || !user.email) continue;
+        const text = `${args.emailBody ?? args.body}\n\n${merchant.name} · ${BRAND.name}\nManage notifications in the app or reply to ${BRAND.supportEmail}.`;
+        try {
+          const r = await ctx.providers.email.send({ to: user.email, subject: args.title, text });
+          await log("email", user.email, text, "sent", r.id);
+          out.rung = "email";
+          break;
+        } catch (err) {
+          await log("email", user.email, text, "failed", null, (err as Error).message);
+        }
+      } else if (rung === "sms") {
+        if (!allowed("sms") || !user.phone || member?.muted) continue;
+        // The last rung costs money: it comes out of the shop's monthly texts, and stops when they are used up.
+        const [fresh] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchant.id)).limit(1);
+        if (!(await reserveSmsCredits(ctx.db, fresh ?? merchant, Math.max(1, args.textCredits ?? 1)))) {
+          out.textCapReached = true;
+          await log("sms", user.phone, args.textBody, "skipped", null, "text_allowance_used");
+          continue;
+        }
+        try {
+          const r = await sendSms(ctx, user.phone, args.textBody);
+          if (r) {
+            await log("sms", user.phone, args.textBody, "sent", r.id);
+            out.rung = "sms";
+            break;
+          }
+          await log("sms", user.phone, args.textBody, "skipped", null, "opted_out");
+        } catch (err) {
+          await log("sms", user.phone, args.textBody, "failed", null, (err as Error).message);
+        }
+      }
+    }
+    out.channels = out.rung === "in_app" ? [] : [out.rung];
+    await ctx.db.update(notifications).set({ data: payload, channels: out.channels, pushTickets: tickets?.length ? tickets : null }).where(eq(notifications.id, row!.id));
+  } catch (err) {
+    if (ctx.config.env !== "test") console.error("[ladder] failed", err);
+  }
+  return out;
+}
+// ---- end phase-solo: D ----

@@ -225,7 +225,7 @@ export class StripePayments implements PaymentsProvider {
   }
 
   async createSubscriptionCheckout(args: CheckoutArgs) {
-    const metadata = { merchant_id: args.merchantId, plan: args.plan, interval: args.interval, ...(args.restaurantTier ? { restaurant_tier: args.restaurantTier } : {}) };
+    const metadata = { ...args.metadata, merchant_id: args.merchantId, plan: args.plan, interval: args.interval, ...(args.restaurantTier ? { restaurant_tier: args.restaurantTier } : {}) };
     const lineItem = args.priceId
       ? { price: args.priceId, quantity: 1 }
       : {
@@ -423,6 +423,15 @@ export class StripePayments implements PaymentsProvider {
       percent_off: FOUNDING_OFFER.firstYearPct,
       duration: "repeating",
       duration_in_months: 12,
+    });
+  }
+
+  async foundingSoloCouponId(amountOffCents: number): Promise<string> {
+    return this.coupon(`founding_solo_${amountOffCents}`, {
+      name: "Founding pro: first year",
+      amount_off: amountOffCents,
+      currency: "cad",
+      duration: "once",
     });
   }
 

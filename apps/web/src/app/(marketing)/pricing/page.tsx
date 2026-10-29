@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
-import { FEES, campaignsApi, isPlanAvailable, type PlanId } from "@ll/shared";
+import { FEES, PLANS, campaignsApi, foundingSoloConfig, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
 import { ArtTiles } from "@/components/marketing/HeroArt";
 import { ChipLink } from "@/components/marketing/ChipLink";
 import { Faq } from "@/components/marketing/Faq";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
 import { publicServerApi } from "@/lib/api/server";
 import { fill, moneyShort } from "@/lib/marketing/text";
-import { CompareTable, FreeCard, PLUS_TARGET, PaidCard } from "./PlanCards";
+import { AnnualCard, CompareStrip, CompareTable, FreeCard, PLUS_TARGET, PaidCard, ServiceLine, SoloTable } from "./PlanCards";
 import { TradeRows } from "./TradeRows";
 import { RestaurantPricing } from "./RestaurantPricing";
 
@@ -18,7 +18,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Free forever for your loyalty program and its reports, with no subscription and no fee on loyalty. Flat monthly prices for marketing, automations, payments and repair tools, and for restaurants with no commission on online orders.",
+  description: "Free for one bookable calendar with deposits, and free forever for your loyalty program. Café & Retail at $39 a month or $390 a year with your own website. Prices in CAD.",
   alternates: { canonical: "/pricing" },
 };
 
@@ -36,6 +36,17 @@ async function publicPlans(): Promise<{ available: Record<PlanId, boolean>; acti
   }
 }
 
+/** The founding solo price with the live spot count; the config alone (no count) when the API is down. Null when the offer is off. */
+async function foundingSolo(): Promise<billingApi.FoundingSoloDto | null> {
+  try {
+    const f = await publicServerApi().public.foundingSolo();
+    return f.enabled ? f : null;
+  } catch {
+    const cfg = foundingSoloConfig(process.env);
+    return cfg.enabled ? { enabled: true, priceCents: cfg.priceCents, renewsAtCents: PLANS.plus.annualPriceCents, slots: cfg.slots, spotsLeft: cfg.slots, eligible: false, taken: false } : null;
+  }
+}
+
 const pct = (bps: number) => `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -45,7 +56,7 @@ export default async function PricingPage({ searchParams }: Props) {
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k][0] : sp[k]);
   const audience = one("for") === "restaurant" || one("for") === "bia" ? (one("for") as "restaurant" | "bia") : "shop";
   const compareOpen = one("compare") === "1";
-  const { available, activeShops } = await publicPlans();
+  const [{ available, activeShops }, founding] = await Promise.all([publicPlans(), foundingSolo()]);
   const bia = campaignsApi.CAMPAIGN_PACKAGES;
   return (
     <>
@@ -67,10 +78,23 @@ export default async function PricingPage({ searchParams }: Props) {
       </section>
 
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
+        <p className="mx-auto mb-4 max-w-[1200px] px-4 text-meta-strong text-muted-foreground md:px-8">{copy.soloPricing.pricesNote}</p>
         <div className="mx-auto grid max-w-[1200px] items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3">
           <FreeCard />
           <PaidCard id="plus" />
-          <PaidCard id="pro" />
+          <AnnualCard founding={founding} />
+        </div>
+        <div className="mx-auto mt-4 max-w-[1200px] px-4 md:px-8">
+          <ServiceLine />
+        </div>
+        <div className="mx-auto mt-10 max-w-[1200px] px-4 md:px-8">
+          <h2 className="display text-mkt-md">{copy.soloPricing.table.title}</h2>
+          <div className="mt-4 rounded-card bg-card px-5 pb-2 shadow-card md:px-7">
+            <SoloTable />
+          </div>
+        </div>
+        <div className="mx-auto mt-12 max-w-[1200px] px-4 md:px-8">
+          <CompareStrip />
         </div>
         <p className="mx-auto mt-6 max-w-[1200px] px-4 text-meta text-muted-foreground md:px-8">
           {fill(P.openNote, { target: String(PLUS_TARGET) })}{activeShops !== null ? ` ${activeShops} shops have joined so far.` : ""} Your loyalty program never moves to a paid plan.

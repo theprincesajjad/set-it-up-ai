@@ -6,7 +6,12 @@ import { HttpError, featureLocked, notFound } from "../lib/errors.js";
 import { rowsOf } from "../lib/sql.js";
 
 
-type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn"> & { restaurantTier?: (typeof merchants.$inferSelect)["restaurantTier"]; vertical?: string | null };
+type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn"> & {
+  restaurantTier?: (typeof merchants.$inferSelect)["restaurantTier"];
+  vertical?: string | null;
+  /** phase-solo A: on an annual subscription (site.builder needs it). Missing = not entitled. */
+  annualSiteEntitled?: boolean;
+};
 
 /** Active add-on ids per merchant (merchant_add_ons.status = active). */
 export async function activeAddOns(db: DbOrTx, merchantIds: string[]): Promise<Map<string, string[]>> {
@@ -72,7 +77,7 @@ export async function getMerchantFeatures(db: DbOrTx, merchant: Merchant): Promi
   const out = {} as Record<FeatureKey, FeatureState>;
   for (const key of FEATURE_KEYS) {
     const stage = stageOf(inputs, key);
-    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, vertical: merchant.vertical, addOns: inputs.addOns.get(merchant.id), stage, betaOptIn: merchant.betaOptIn, override: inputs.overrides.get(`${merchant.id}:${key}`) ?? null });
+    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, vertical: merchant.vertical, addOns: inputs.addOns.get(merchant.id), annualSiteEntitled: merchant.annualSiteEntitled, stage, betaOptIn: merchant.betaOptIn, override: inputs.overrides.get(`${merchant.id}:${key}`) ?? null });
     const lockedReason = enabled ? null : stage === "hidden" || (stage === "beta" && !merchant.betaOptIn) ? "rollout" : "plan";
     out[key] = { key, enabled, stage, minPlan: FEATURES[key].minPlan, lockedReason };
   }
@@ -127,7 +132,7 @@ export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: rea
   for (const m of list) {
     const on = new Set<FeatureKey>();
     for (const key of keys) {
-      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, vertical: m.vertical, addOns: inputs.addOns.get(m.id), stage: stageOf(inputs, key), betaOptIn: m.betaOptIn, override: inputs.overrides.get(`${m.id}:${key}`) ?? null })) on.add(key);
+      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, vertical: m.vertical, addOns: inputs.addOns.get(m.id), annualSiteEntitled: m.annualSiteEntitled, stage: stageOf(inputs, key), betaOptIn: m.betaOptIn, override: inputs.overrides.get(`${m.id}:${key}`) ?? null })) on.add(key);
     }
     out.set(m.id, on);
   }
@@ -137,7 +142,7 @@ export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: rea
 /** Same as enabledFeaturesFor, when only merchant ids are at hand. */
 export async function enabledFeaturesByMerchantId(db: DbOrTx, ids: string[], keys: readonly FeatureKey[]): Promise<Map<string, Set<FeatureKey>>> {
   if (!ids.length) return new Map();
-  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn, restaurantTier: merchants.restaurantTier, vertical: merchants.vertical }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
+  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn, restaurantTier: merchants.restaurantTier, vertical: merchants.vertical, annualSiteEntitled: merchants.annualSiteEntitled }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
   return enabledFeaturesFor(db, rows, keys);
 }
 

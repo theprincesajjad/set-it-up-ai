@@ -185,3 +185,67 @@ export interface UnsubscribeResponse {
   ok: true;
   merchantName: string;
 }
+
+// ---------------------------------------------------------------------------
+// ---- phase-solo: D ---- Promos to regulars: seasonal templates per trade and the counted allowance (plans.ts promoAllowance)
+// ---------------------------------------------------------------------------
+/** A promo goes by app push (or web push) when the customer has it, otherwise email. Never a text. */
+export const PROMO_CHANNELS = ["push", "email"] as const;
+
+export interface PromoTemplateDto {
+  key: string;
+  season: string;
+  /** In the shop owner's language (falls back to English). `{shop}` already filled. */
+  title: string;
+  body: string;
+  start: string;
+  end: string;
+  inSeason: boolean;
+  daysAway: number;
+}
+
+export interface PromoAllowanceDto {
+  limit: number;
+  used: number;
+  remaining: number;
+  period: "month" | "year" | null;
+  periodStart: string;
+}
+
+/** GET /merchants/:id/promo-templates */
+export interface PromoTemplatesResponse {
+  items: PromoTemplateDto[];
+  allowance: PromoAllowanceDto;
+  /** Regulars who would get it (opted in, not muted, reachable by app or email). */
+  audience: { regulars: number; byPush: number; byEmail: number };
+  /** Free shops: the plan that includes promos. */
+  offer: { plan: "plus"; name: string; priceCents: number } | null;
+  last: PromoResult | null;
+}
+
+export const sendPromoBody = z.object({
+  templateKey: z.string().max(80).nullable().optional(),
+  title: z.string().trim().min(1).max(80),
+  body: z.string().trim().min(1).max(PUSH_MAX_BODY),
+  /** Regulars by default; the owner may widen to everyone who opted in. */
+  segment: z.enum(["regulars", "all"]).default("regulars"),
+});
+export type SendPromoBody = z.infer<typeof sendPromoBody>;
+
+export interface PromoResult {
+  messageId: string;
+  templateKey: string | null;
+  title: string;
+  sentAt: string;
+  recipients: number;
+  byPush: number;
+  byEmail: number;
+  /** Bookings by recipients in the 14 days after the send. */
+  booked: number;
+}
+
+export interface SendPromoResponse {
+  result: PromoResult;
+  allowance: PromoAllowanceDto;
+}
+// ---- end phase-solo: D ----

@@ -10,17 +10,34 @@
  *  - Restaurant pack subscriptions (subscriptions.restaurantTier set) live in
  *    billing-restaurant.ts and never feed merchants.plan.
  */
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
-import { auditLogs, merchants, subscriptions } from "@ll/db";
-import { PLANS, PLAN_IDS, PLAN_RANK, PLATFORM_PAYMENT_FEE_BPS, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { auditLogs, merchants, staffHours, staffServices, subscriptions } from "@ll/db";
+import {
+  PLANS,
+  PLAN_IDS,
+  PLAN_RANK,
+  PLATFORM_PAYMENT_FEE_BPS,
+  SMS_OVERAGE_CENTS,
+  bookableCalendarLimit,
+  foundingSoloConfig,
+  foundingSoloSpotsLeft,
+  isFoundingSoloEligible,
+  isPlanAvailable,
+  promoAllowance,
+  type BillingInterval,
+  type PlanId,
+  type PromoAllowance,
+  type billingApi,
+} from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
-import { conflict } from "../lib/errors.js";
+import { HttpError, conflict } from "../lib/errors.js";
 import { featureLocked } from "../lib/errors.js";
 import { getPayments } from "../providers/payments.js";
 import { subscriptionPeriodEnd } from "../providers/paymentsStripe.js";
 import { iso } from "./commerceShared.js";
 import { getRolloutStages } from "./features.js";
+import { smsAllowance, smsOverage } from "./text-allowance.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type Subscription = typeof subscriptions.$inferSelect;
@@ -53,7 +70,10 @@ export async function currentSubscription(ctx: AppContext, merchantId: string): 
 export async function billingOverview(ctx: AppContext, merchant: Merchant): Promise<billingApi.BillingOverviewResponse> {
   const stages = await getRolloutStages(ctx.db);
   const sub = await currentSubscription(ctx, merchant.id);
+  const [usage, foundingSolo] = await Promise.all([planUsage(ctx, merchant, sub), foundingSoloFor(ctx, merchant)]);
   return {
+    usage,
+    foundingSolo,
     plan: merchant.plan,
     restaurantTier: merchant.restaurantTier ?? null,
     subscription: sub ? subscriptionDto(sub) : null,
@@ -107,11 +127,17 @@ export async function startCheckout(ctx: AppContext, merchant: Merchant, body: z
   if (live && !live.cancelAtPeriodEnd) throw conflict(`You're already on ${PLANS[live.plan].name}. Use Manage billing to change plans.`);
   const customerId = await ensureCustomer(ctx, merchant);
   const p = PLANS[body.plan];
+  // Founding solo price: an annual Café & Retail checkout for a beauty pro or barbershop while spots last. The coupon takes the
+  // first annual invoice down to the founding price; it renews at the list price.
+  const founding = body.plan === "plus" && body.interval === "year" ? await foundingSoloFor(ctx, merchant) : null;
+  const foundingOn = !!founding?.eligible && p.annualPriceCents > founding.priceCents;
+  const couponId = foundingOn ? await getPayments(ctx).foundingSoloCouponId(p.annualPriceCents - founding!.priceCents) : undefined;
   const s = await getPayments(ctx).createSubscriptionCheckout({
     customerId,
     merchantId: merchant.id,
     plan: body.plan,
     interval: body.interval,
+    ...(foundingOn ? { couponId, metadata: { founding_solo: "1" } } : {}),
     priceId: priceIdFor(ctx, body.plan, body.interval),
     unitAmountCents: body.interval === "year" ? p.annualPriceCents : p.priceCents,
     productName: `${p.name} plan`,
@@ -171,10 +197,13 @@ export async function downgradeToFree(ctx: AppContext, merchant: Merchant, immed
 export async function recomputePlan(ctx: AppContext, merchantId: string): Promise<PlanId> {
   const live = await ctx.db.select().from(subscriptions).where(and(eq(subscriptions.merchantId, merchantId), isNull(subscriptions.restaurantTier), inArray(subscriptions.status, LIVE_STATUSES)));
   const plan = live.reduce<PlanId>((best, s) => (PLAN_RANK[s.plan] > PLAN_RANK[best] ? s.plan : best), "free");
-  const [before] = await ctx.db.select({ plan: merchants.plan }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
-  if (before && before.plan !== plan) {
-    await ctx.db.update(merchants).set({ plan, updatedAt: ctx.now() }).where(eq(merchants.id, merchantId));
-    await audit(ctx, merchantId, "billing.plan_changed", { from: before.plan, to: plan });
+  // ANNUAL_INCLUDES_WEBSITE: a live paid subscription billed yearly entitles the shop to the website builder (site.builder).
+  const annualSiteEntitled = live.some((s) => s.interval === "year" && PLAN_RANK[s.plan] >= PLAN_RANK.plus);
+  const [before] = await ctx.db.select({ plan: merchants.plan, annualSiteEntitled: merchants.annualSiteEntitled }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (before && (before.plan !== plan || before.annualSiteEntitled !== annualSiteEntitled)) {
+    await ctx.db.update(merchants).set({ plan, annualSiteEntitled, updatedAt: ctx.now() }).where(eq(merchants.id, merchantId));
+    if (before.plan !== plan) await audit(ctx, merchantId, "billing.plan_changed", { from: before.plan, to: plan });
+    if (before.annualSiteEntitled !== annualSiteEntitled) await audit(ctx, merchantId, "billing.annual_site_entitlement", { entitled: annualSiteEntitled });
   }
   return plan;
 }
@@ -230,6 +259,11 @@ export async function onCheckoutCompleted(ctx: AppContext, session: Obj): Promis
   if (customerId && merchant.stripeCustomerId !== customerId) {
     await ctx.db.update(merchants).set({ stripeCustomerId: customerId }).where(eq(merchants.id, merchant.id));
   }
+  // The founding solo price took a spot (counted by merchants.founding_solo).
+  if (session.metadata?.founding_solo === "1" && !merchant.foundingSolo) {
+    await ctx.db.update(merchants).set({ foundingSolo: true }).where(eq(merchants.id, merchant.id));
+    await audit(ctx, merchant.id, "billing.founding_solo", { subscriptionId: subId });
+  }
   await ctx.db
     .insert(subscriptions)
     .values({ merchantId: merchant.id, plan, status: "active", interval, stripeSubscriptionId: subId })
@@ -267,3 +301,114 @@ export async function onBillingInvoiceFailed(ctx: AppContext, invoice: Obj): Pro
   // past_due keeps the plan during Stripe's retry window; deleted/canceled drops to Free.
   if (row) await recomputePlan(ctx, row.merchantId);
 }
+
+// ---- phase-solo: A: plan usage, promo allowance, founding solo price ----
+const addInterval = (d: Date, interval: BillingInterval, n: number) => {
+  const out = new Date(d);
+  if (interval === "year") out.setUTCFullYear(out.getUTCFullYear() + n);
+  else out.setUTCMonth(out.getUTCMonth() + n);
+  return out;
+};
+
+/** Start of the current billing period: one interval before the paid period's end, or the calendar month on Free. */
+export function billingPeriodStart(now: Date, sub: Pick<Subscription, "interval" | "currentPeriodEnd"> | null): Date {
+  const interval: BillingInterval = sub?.interval === "year" ? "year" : "month";
+  if (sub?.currentPeriodEnd) {
+    let start = addInterval(sub.currentPeriodEnd, interval, -1);
+    // A stale period end (webhook late): step forward so the window still contains now.
+    while (addInterval(start, interval, 1).getTime() <= now.getTime()) start = addInterval(start, interval, 1);
+    return start;
+  }
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+}
+
+/** The shop's promo allowance this billing period (4 a month on Café & Retail, 48 a year on annual, none on Free). */
+export async function promoAllowanceFor(ctx: AppContext, merchant: Merchant, sub?: Subscription | null): Promise<PromoAllowance> {
+  const live = sub === undefined ? await currentSubscription(ctx, merchant.id) : sub;
+  return promoAllowance({
+    plan: merchant.plan,
+    restaurantTier: merchant.restaurantTier,
+    interval: live ? (live.interval === "year" ? "year" : "month") : null,
+    sentCount: merchant.promosSentCount,
+    sentPeriodStart: merchant.promosSentPeriodStart,
+    periodStart: billingPeriodStart(ctx.now(), live),
+  });
+}
+
+export const promoAllowanceUsed = (a: PromoAllowance) =>
+  new HttpError(
+    402,
+    a.limit === 0 ? "feature_locked" : "promo_allowance_used",
+    a.limit === 0 ? `Promos to your regulars come with ${PLANS.plus.name}.` : `You've sent all ${a.limit} promos for this ${a.period}. More come with the next one.`,
+    { allowance: a, offer: a.limit === 0 ? { kind: "plan", plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents } : null },
+  );
+
+/**
+ * Count one promo against the allowance, atomically (two sends racing for the last promo: one wins). Throws 402 when the shop
+ * has none left (Free: feature_locked with the plan offer). Returns the allowance after the send. Workstream D calls this
+ * from the promo send path.
+ */
+export async function consumePromo(ctx: AppContext, merchant: Merchant): Promise<PromoAllowance> {
+  const before = await promoAllowanceFor(ctx, merchant);
+  if (before.remaining <= 0) throw promoAllowanceUsed(before);
+  const start = new Date(before.periodStart);
+  const fresh = sql`(${merchants.promosSentPeriodStart} is null or ${merchants.promosSentPeriodStart} < ${start})`;
+  const rows = await ctx.db
+    .update(merchants)
+    .set({
+      promosSentCount: sql`case when ${fresh} then 1 else ${merchants.promosSentCount} + 1 end`,
+      promosSentPeriodStart: sql`case when ${fresh} then ${start} else ${merchants.promosSentPeriodStart} end`,
+    })
+    .where(and(eq(merchants.id, merchant.id), sql`(${fresh} or ${merchants.promosSentCount} < ${before.limit})`))
+    .returning({ promosSentCount: merchants.promosSentCount, promosSentPeriodStart: merchants.promosSentPeriodStart });
+  if (!rows.length) throw promoAllowanceUsed({ ...before, used: before.limit, remaining: 0 });
+  return { ...before, used: rows[0]!.promosSentCount, remaining: Math.max(0, before.limit - rows[0]!.promosSentCount) };
+}
+
+/** Give a promo back (the send failed before anyone got it). Never below zero. */
+export async function refundPromo(ctx: AppContext, merchantId: string): Promise<void> {
+  await ctx.db.update(merchants).set({ promosSentCount: sql`greatest(${merchants.promosSentCount} - 1, 0)` }).where(eq(merchants.id, merchantId));
+}
+
+/** What the plan allows and what is used: calendars, texts, promos, the annual website. */
+export async function planUsage(ctx: AppContext, merchant: Merchant, sub?: Subscription | null): Promise<billingApi.PlanUsageDto> {
+  const live = sub === undefined ? await currentSubscription(ctx, merchant.id) : sub;
+  const [hrs, svc] = await Promise.all([
+    ctx.db.selectDistinct({ userId: staffHours.userId }).from(staffHours).where(eq(staffHours.merchantId, merchant.id)),
+    ctx.db.selectDistinct({ userId: staffServices.userId }).from(staffServices).where(eq(staffServices.merchantId, merchant.id)),
+  ]);
+  const limit = bookableCalendarLimit(merchant.plan, merchant.restaurantTier);
+  const calendars = new Set([...hrs, ...svc].map((r) => r.userId)).size;
+  const included = smsAllowance(merchant);
+  const over = smsOverage(merchant);
+  return {
+    plan: merchant.plan,
+    interval: live ? (live.interval === "year" ? "year" : "month") : null,
+    calendars: { limit, used: limit == null ? calendars : Math.min(calendars, limit) },
+    texts: { includedPerMonth: included, used: merchant.smsCreditsUsed, remaining: Math.max(0, included - merchant.smsCreditsUsed), overageTexts: over.texts, overageCents: over.cents, overageCentsEach: SMS_OVERAGE_CENTS },
+    promos: await promoAllowanceFor(ctx, merchant, live),
+    annualSiteEntitled: merchant.annualSiteEntitled,
+  };
+}
+
+/** Shops that took the founding solo price. */
+export async function foundingSoloTaken(ctx: AppContext): Promise<number> {
+  const [r] = await ctx.db.select({ n: sql<number>`count(*)::int` }).from(merchants).where(eq(merchants.foundingSolo, true));
+  return Number(r?.n ?? 0);
+}
+
+/** The founding solo price, for one shop or (merchant null) for the public pricing page. Config: FOUNDING_SOLO_* env. */
+export async function foundingSoloFor(ctx: AppContext, merchant: Pick<Merchant, "vertical" | "foundingSolo"> | null): Promise<billingApi.FoundingSoloDto> {
+  const cfg = foundingSoloConfig(process.env);
+  const taken = cfg.enabled ? await foundingSoloTaken(ctx) : 0;
+  return {
+    enabled: cfg.enabled,
+    priceCents: cfg.priceCents,
+    renewsAtCents: PLANS.plus.annualPriceCents,
+    slots: cfg.slots,
+    spotsLeft: foundingSoloSpotsLeft(taken, cfg),
+    eligible: merchant ? isFoundingSoloEligible(merchant, taken, cfg) : false,
+    taken: !!merchant?.foundingSolo,
+  };
+}
+// ---- end phase-solo: A ----

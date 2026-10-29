@@ -26,6 +26,9 @@ export * from "./pets.js";
 export * from "./service-starters.js";
 export * from "./auto.js";
 export * from "./theme.js";
+export * from "./inbox.js";
+export * from "./promo-templates.js";
 // ---- phase-solo: G ----
 export * from "./site-presets.js";
 export * from "./site-copy-schema.js";
+export * from "./address-privacy.js";

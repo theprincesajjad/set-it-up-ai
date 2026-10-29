@@ -5,7 +5,7 @@
  * areas are welcome to import from here.
  */
 import type { authApi, customerApi, networkApi } from "@ll/shared";
-import { maskPhone, themeStyleOf } from "@ll/shared";
+import { addressVisibilityOf, maskPhone, publicPin, publicPlaceLine, themeStyleOf } from "@ll/shared";
 import type {
   discountCards,
   ledgerTransactions,
@@ -204,15 +204,26 @@ export function isOpenNow(hours: Record<string, [string, string][]> | null | und
   return false;
 }
 
+/**
+ * The public location. For a home studio or a travelling pro (address_visibility area or city) the street address, postal code
+ * and real pin never leave the API: `address` is the safe line ("Bloor West area", "Toronto") and the pin is the offset one
+ * (solo-pro-launch.md §2.3; phase-solo B). Every public response builds its location here.
+ */
 export function locationDto(l: Location, timeZone: string, at: Date): networkApi.LocationDto {
+  const visibility = addressVisibilityOf(l.addressVisibility);
+  const pin = publicPin(l);
+  const exact = visibility === "exact";
   return {
     id: l.id,
+    // A home studio's location name is the shop name; never a house name or number.
     name: l.name,
-    address: l.address,
+    address: publicPlaceLine(l),
+    addressVisibility: visibility,
+    areaLabel: visibility === "area" ? (l.areaLabel ?? null) : null,
     city: l.city,
-    postalCode: l.postalCode ?? null,
-    lat: l.lat ?? null,
-    lng: l.lng ?? null,
+    postalCode: exact ? (l.postalCode ?? null) : null,
+    lat: pin.lat,
+    lng: pin.lng,
     phone: l.phone ?? null,
     hours: l.hours ?? null,
     openNow: isOpenNow(l.hours, timeZone, at),

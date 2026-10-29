@@ -8,6 +8,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, REFRESH_COOKIE, accessTokenStale, clearedSessionCookies, sessionCookies } from "@/lib/auth/cookies";
 import { refreshSession } from "@/lib/auth/refresh";
 import { normalizeLocale } from "@ll/shared";
+// ---- phase-solo: G ----
+import { SITE_HOST_HEADER, isCustomSiteHost } from "@/lib/siteHost";
+// ---- end phase-solo: G ----
 
 const LANG_HEADER = "x-ll-lang";
 
@@ -21,6 +24,16 @@ function forwarded(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
+  // ---- phase-solo: G ---- a shop's own domain: its home page is the built-in website (app/(site)/[domain]).
+  const siteHost = isCustomSiteHost(request.headers.get("host"), { siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000", appHosts: process.env.SITE_APP_HOSTS, enabled: process.env.SITE_CUSTOM_HOSTS });
+  if (siteHost && request.nextUrl.pathname === "/") {
+    const headers = new Headers(request.headers);
+    headers.set(SITE_HOST_HEADER, siteHost);
+    const url = request.nextUrl.clone();
+    url.pathname = `/${siteHost}`;
+    return NextResponse.rewrite(url, { request: { headers } });
+  }
+  // ---- end phase-solo: G ----
   const rt = request.cookies.get(REFRESH_COOKIE)?.value;
   if (!rt || !accessTokenStale(request.cookies.get(ACCESS_COOKIE)?.value)) return NextResponse.next(forwarded(request));
 

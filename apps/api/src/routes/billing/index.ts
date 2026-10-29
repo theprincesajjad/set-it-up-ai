@@ -23,6 +23,13 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.get<P>("/merchants/:merchantId/billing", async (req) => billing.billingOverview(ctx, await owner(req, req.params.merchantId)));
 
+  // ---- phase-solo: A ----
+  /** Calendars, texts, promos and the annual website: managers see it too (the promo counter lives on Messages). */
+  app.get<P>("/merchants/:merchantId/billing/usage", async (req) => billing.planUsage(ctx, (await requireStaff(ctx, req, req.params.merchantId, "manager")).merchant));
+  /** Public: the founding solo price and the spots left, for the pricing and landing pages. */
+  app.get("/billing/founding-solo", async () => billing.foundingSoloFor(ctx, null));
+  // ---- end phase-solo: A ----
+
   app.get<P>("/merchants/:merchantId/billing/plans", async (req) => {
     const overview = await billing.billingOverview(ctx, await owner(req, req.params.merchantId));
     return { items: overview.plans, nextCursor: null };

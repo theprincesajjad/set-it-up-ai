@@ -25,10 +25,14 @@ export const ACTIVATION = {
 // ---------------------------------------------------------------------------
 // Milestones (merchant_milestones.key)
 // ---------------------------------------------------------------------------
-export const MILESTONE_KEYS = ["signed_up", "first_stamp", "members_10", "activated", "qr_printed", "staff_added", "pos_connected", "upsell_seen", "upsell_dismissed", "nudges_off", "needs_call"] as const;
+export const MILESTONE_KEYS = [
+  "signed_up", "first_stamp", "members_10", "activated", "qr_printed", "staff_added", "pos_connected", "upsell_seen", "upsell_dismissed", "nudges_off", "needs_call",
+  // Solo pros (onboarding-v1.md §4): the booking link takes bookings, it was shared, the first online booking by someone else, 5 and 10 of them.
+  "booking_link_live", "first_share", "first_online_booking", "five_bookings", "ten_bookings", "first_promo_sent", "site_published", "instagram_connected",
+] as const;
 export type MilestoneKey = (typeof MILESTONE_KEYS)[number];
 /** Nudges are stored as milestones too, one per (shop, nudge), so each is sent once. */
-export const NUDGE_KEYS = ["nudge_d1", "nudge_d3", "nudge_d7", "nudge_d14", "nudge_d25"] as const;
+export const NUDGE_KEYS = ["nudge_d1", "nudge_d3", "nudge_d7", "nudge_d14", "nudge_d25", "solo_d1", "solo_d3", "solo_d7", "solo_d14", "solo_d25"] as const;
 export type NudgeKey = (typeof NUDGE_KEYS)[number];
 
 // ---------------------------------------------------------------------------
@@ -222,6 +226,9 @@ const PLAYBOOK_BY_VERTICAL: Partial<Record<Vertical, PlaybookKey>> = {
   pharmacy: "pharmacy",
   salon: "salon",
   barber: "salon",
+  nails: "salon",
+  brows_lashes: "salon",
+  makeup: "salon",
   spa: "salon",
   repair_electronics: "repair",
   repair_auto: "repair",
@@ -259,7 +266,7 @@ export function activationFor(vertical: string | null | undefined, baseTarget: n
 export type TradeSetupFamily = "menu" | "services" | "classes" | "catalog";
 const TRADE_SETUP: Partial<Record<string, TradeSetupFamily>> = {
   restaurant: "menu", restaurant_south_asian: "menu", tiffin: "menu", caterer: "menu", banquet_hall: "menu", bar: "menu",
-  salon: "services", barber: "services", spa: "services", pet: "services", repair_electronics: "services", repair_auto: "services", car_wash: "services", alterations: "services", dry_cleaning: "services", print_shop: "services",
+  salon: "services", barber: "services", nails: "services", brows_lashes: "services", makeup: "services", spa: "services", pet: "services", repair_electronics: "services", repair_auto: "services", car_wash: "services", alterations: "services", dry_cleaning: "services", print_shop: "services",
   fitness: "classes",
   grocery: "catalog",
 };
@@ -335,7 +342,7 @@ export function upsellMoment(i: UpsellInput): Upsell {
 // Nudges
 // ---------------------------------------------------------------------------
 export interface NudgeRule {
-  key: NudgeKey;
+  key: Exclude<NudgeKey, SoloNudgeKey>;
   /** Hours after signup before this nudge may send. */
   afterHours: number;
   /** Only while this holds. */
@@ -351,7 +358,7 @@ export const NUDGE_RULES: readonly NudgeRule[] = [
 ];
 
 /** The nudge due now, if any: the latest rule whose time has passed and whose condition holds and that was not sent. */
-export function dueNudge(args: { hoursSinceSignup: number; members: number; firstStamp: boolean; sent: ReadonlySet<string> }): NudgeKey | null {
+export function dueNudge(args: { hoursSinceSignup: number; members: number; firstStamp: boolean; sent: ReadonlySet<string> }): Exclude<NudgeKey, SoloNudgeKey> | null {
   const due = NUDGE_RULES.filter((r) => args.hoursSinceSignup >= r.afterHours && !args.sent.has(r.key) && r.when(args));
   return due.length ? due[due.length - 1]!.key : null;
 }
@@ -360,7 +367,7 @@ export function dueNudge(args: { hoursSinceSignup: number; members: number; firs
  * The setup reminder in the owner's language (`users.locale`; English when it is missing or not one of ours).
  * The shop name, the till line (what the owner says to customers) and the link stay as they are.
  */
-export function nudgeText(key: NudgeKey, args: { shopName: string; members: number; daysLeft: number; target: number; tillLine: string; url: string; windowDays?: number; leadingMembers?: number; leadingByDay?: number }, locale: Locale = "en"): { subject: string; body: string } {
+export function nudgeText(key: Exclude<NudgeKey, SoloNudgeKey>, args: { shopName: string; members: number; daysLeft: number; target: number; tillLine: string; url: string; windowDays?: number; leadingMembers?: number; leadingByDay?: number }, locale: Locale = "en"): { subject: string; body: string } {
   const n = args.members;
   const left = Math.max(0, args.target - n);
   const v = { shop: args.shopName, n, left, days: args.daysLeft, target: args.target, till: args.tillLine, url: args.url, lead: args.leadingMembers ?? ACTIVATION.leadingMembers, day: args.leadingByDay ?? ACTIVATION.leadingByDay, window: args.windowDays ?? ACTIVATION.windowDays };
@@ -377,3 +384,103 @@ export function nudgeText(key: NudgeKey, args: { shopName: string; members: numb
       return { subject: t(locale, "ob.nudge.d25.subject", v), body: t(locale, "ob.nudge.d25.body", v) };
   }
 }
+
+// ---- phase-solo: B ----
+// ---------------------------------------------------------------------------
+// Solo pros: the path, the six setup cards, bookings activation and the nudges (docs/design/onboarding-v1.md §3, §4)
+// ---------------------------------------------------------------------------
+/** Trades that are almost always one person with a chair or a table: always the solo path. */
+export const SOLO_ONLY_VERTICALS: readonly string[] = ["nails", "brows_lashes", "makeup"];
+/** Appointment trades that go solo when the owner works from home or travels, and appointment-led storefront from a shop. */
+export const APPOINTMENT_VERTICALS: readonly string[] = ["salon", "barber", "spa", "pet", "nails", "brows_lashes", "makeup"];
+
+export type OnboardingPath = "solo" | "appointment" | "storefront";
+
+/**
+ * Which setup a shop gets. A nail, brow, lash or makeup pro is solo wherever they work. A hairstylist, barber, spa or groomer is solo
+ * at home or on the road, and an appointment-led storefront when they picked "A shop or salon". Shops that signed up before the
+ * question existed (workSetting null) keep the setup they had.
+ */
+export function onboardingPath(vertical: string | null | undefined, workSetting: string | null | undefined): OnboardingPath {
+  const v = vertical ?? "";
+  if (SOLO_ONLY_VERTICALS.includes(v)) return "solo";
+  if (!APPOINTMENT_VERTICALS.includes(v) || !workSetting) return "storefront";
+  return workSetting === "home" || workSetting === "mobile" ? "solo" : "appointment";
+}
+
+/** The six cards, in order, and the "Later" group (never blocks the link). */
+export const SOLO_STEPS = ["your_link", "services", "hours", "privacy", "share", "invite"] as const;
+/** Appointment-led storefront: the same, with "Who takes bookings?" after services and no privacy card (the address is public). */
+export const APPOINTMENT_STEPS = ["your_link", "services", "staff", "hours", "share", "invite"] as const;
+export const SOLO_LATER_STEPS = ["profile", "loyalty", "instagram_connect", "site", "promos"] as const;
+export const APPOINTMENT_LATER_STEPS = ["profile", "loyalty", "instagram_connect", "site", "promos", "pos"] as const;
+export type SoloStepKey = (typeof SOLO_STEPS)[number] | (typeof APPOINTMENT_STEPS)[number] | (typeof APPOINTMENT_LATER_STEPS)[number];
+
+/** Seconds each card should take (the rail shows "20 s"). The six add to under three minutes. */
+export const SOLO_STEP_SECONDS: Readonly<Record<string, number>> = { your_link: 20, services: 60, hours: 30, privacy: 15, share: 30, invite: 30, staff: 30 };
+
+/** The booking link is live once it can take a booking: a slug, at least one service and someone with hours. */
+export function bookingLinkLive(s: { services: number; staffWithHours: number }): boolean {
+  return s.services > 0 && s.staffWithHours > 0;
+}
+
+/** A booking link slug: 3 to 40 lowercase letters, digits and single dashes. */
+export const SLUG_RE = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){2,39}$/;
+/** Slugs that would shadow our own pages. */
+export const RESERVED_SLUGS: readonly string[] = ["admin", "api", "app", "book", "dashboard", "help", "login", "logout", "m", "map", "me", "new", "pricing", "s", "settings", "shop", "shops", "signup", "support", "www"];
+export function slugProblem(slug: string): "format" | "reserved" | null {
+  if (!SLUG_RE.test(slug)) return "format";
+  if (RESERVED_SLUGS.includes(slug)) return "reserved";
+  return null;
+}
+
+/** An Instagram handle from "@nails.by.mo", "nails.by.mo" or an instagram.com link; null when it is not one. */
+export function instagramHandle(raw: string | null | undefined): string | null {
+  const s = (raw ?? "").trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/[/?#].*$/, "");
+  return /^[A-Za-z0-9._]{1,30}$/.test(s) ? s.toLowerCase() : null;
+}
+
+/** A handle as a slug candidate ("nails.by.mo" gives "nails-by-mo"). */
+export const handleToSlug = (h: string): string => h.toLowerCase().replace(/[._]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+
+/** "Your first 10 bookings": the target and the straight-line pace (3 by day 7, onboarding-v1.md §4). */
+export const BOOKINGS_ACTIVATION = { target: 10, windowDays: 30, paceBookings: 3, paceByDay: 7 } as const;
+
+export type SoloNextMove = "share" | "invite" | "deposit" | "story";
+/** One next move for the Bookings card: share the link, then invite regulars, then a deposit, then a story post. */
+export function soloNextMove(s: { shared: boolean; invited: boolean; bookings: number; depositOn: boolean }): SoloNextMove {
+  if (!s.shared) return "share";
+  if (!s.invited && s.bookings < 3) return "invite";
+  if (!s.depositOn) return "deposit";
+  return "story";
+}
+
+export type SoloNudgeKey = "solo_d1" | "solo_d3" | "solo_d7" | "solo_d14" | "solo_d25";
+export interface SoloNudgeState {
+  shared: boolean;
+  /** Online bookings made by someone other than the owner. */
+  bookings: number;
+  paying: boolean;
+  annual: boolean;
+}
+export const SOLO_NUDGE_RULES: readonly { key: SoloNudgeKey; afterHours: number; when: (s: SoloNudgeState) => boolean }[] = [
+  { key: "solo_d1", afterHours: 24, when: (s) => !s.shared },
+  { key: "solo_d3", afterHours: 72, when: (s) => s.bookings === 0 },
+  { key: "solo_d7", afterHours: 24 * 7, when: (s) => s.bookings < 3 },
+  { key: "solo_d14", afterHours: 24 * 14, when: (s) => s.bookings >= 5 && !s.paying },
+  { key: "solo_d25", afterHours: 24 * 25, when: (s) => !s.annual },
+];
+
+/** The solo nudge due now: the latest rule whose time has passed, whose condition holds and that was not sent. */
+export function dueSoloNudge(args: SoloNudgeState & { hoursSinceSignup: number; sent: ReadonlySet<string> }): SoloNudgeKey | null {
+  const due = SOLO_NUDGE_RULES.filter((r) => args.hoursSinceSignup >= r.afterHours && !args.sent.has(r.key) && r.when(args));
+  return due.length ? due[due.length - 1]!.key : null;
+}
+
+/** The solo nudge in the owner's language: a push title and body (app first) and the text body (second). */
+export function soloNudgeText(key: SoloNudgeKey, args: { shopName: string; link: string; url: string; season?: string }, locale: Locale = "en"): { title: string; body: string } {
+  const v = { shop: args.shopName, link: args.link, url: args.url, season: args.season ?? "" };
+  return { title: t(locale, `ob.solo.nudge.${key.slice(5)}.title` as MessageKeyOf, v), body: t(locale, `ob.solo.nudge.${key.slice(5)}.body` as MessageKeyOf, v) };
+}
+type MessageKeyOf = Parameters<typeof t>[1];
+// ---- end phase-solo: B ----

@@ -3381,7 +3381,7 @@ export const instagramConnections = pgTable(
 
 // ---- phase-solo: G (website builder) ----
 /** Shape of @ll/shared SiteContent (kept structural: @ll/db does not depend on @ll/shared). */
-type SiteContentJson = { preset: string; order: string[]; hidden: string[]; copy: Record<string, Record<string, string>> };
+type SiteContentJson = { preset: string; order: string[]; hidden: string[]; copy: object };
 /**
  * One built-in website per shop (docs/engineering/site-builder.md). `content` is the builder's working draft and
  * `published_content` what the public page shows; both are { preset, order, hidden, copy } (@ll/shared SiteContent). Prices,

@@ -27,6 +27,7 @@ export const TEASER_COPY: Partial<Record<FeatureKey, string>> = {
   "customers.csv_import": "Bring your members over from another loyalty app.",
   "ads.sponsored_promo": "Show your offer to people near your street. Always labelled Sponsored.",
   "reports.advanced": "Retention cohorts and which shops your customers also visit.",
+  "site.builder": "Your own website, built from your bookings, services and prices, on a .ca domain. Included with the annual plan.",
 };
 
 let networkShops: Promise<number> | null = null;
@@ -120,7 +121,9 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
           : "Coming soon"
         : state === "beta"
           ? "In beta"
-          : offer.kind === "plan" || offer.kind === "restaurant"
+          : offer.kind === "plan" && offer.interval === "year"
+            ? `With ${offer.name} paid yearly · $${offer.priceCents / 100} a year`
+            : offer.kind === "plan" || offer.kind === "restaurant"
             ? `On ${offer.name} · $${offer.priceCents / 100} a month`
             : "Not on your plan";
   return (

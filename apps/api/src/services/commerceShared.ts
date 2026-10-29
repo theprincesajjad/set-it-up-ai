@@ -66,7 +66,8 @@ export async function notifyCustomer(ctx: AppContext, args: NotifyArgs): Promise
         }
       }
     }
-    if (args.sms !== false && n.sms && user.phone) {
+    // phase-solo A: the text counts against the shop's allowance (Free: 30 a month, then none; see notifications.reserveText).
+    if (args.sms !== false && n.sms && user.phone && (await n.reserveText())) {
       const body = args.smsBody ?? args.body;
       try {
         const r = await sendSms(ctx, user.phone, body);

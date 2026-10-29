@@ -399,6 +399,8 @@ export const NOTIFICATION_TYPES = [
   "tiffin_menu",
   "catering_update",
   "hall_update",
+  // phase-solo D: a shop wrote to you in your thread (inbox)
+  "shop_message",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -458,6 +460,8 @@ export const NOTIFICATION_CATALOG: readonly NotificationTypeInfo[] = [
   t("tiffin_menu", "transactional", "orders", "Tomorrow's tiffin menu", "What's cooking for tomorrow, sent the evening before. Off unless you turn it on.", { push: false }),
   t("catering_update", "transactional", "orders", "Catering and events", "Tasting times, your catering quote, deposit receipts and changes to your event.", { push: true, sms: true }),
   t("hall_update", "transactional", "orders", "Hall bookings", "Your hall hold, deposit and booking confirmation.", { push: true }),
+  // phase-solo D: 1:1 messages from a shop (the inbox). Transactional: a reply to you, never an offer.
+  t("shop_message", "transactional", "orders", "Messages from shops", "When a shop you visit writes to you.", { push: true, sms: true, email: true }),
   t("promo_nearby", "marketing", "offers", "Offers nearby", "Offers from shops you've joined, when you're close (at most one a day, never 9pm-8am).", { push: true }),
 ];
 

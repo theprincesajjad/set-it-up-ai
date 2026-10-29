@@ -1,4 +1,5 @@
 import { Check, Lock, MapPin } from "lucide-react";
+import { Icon3d } from "@/components/ui/Icon3d";
 import { MHeading, MSection } from "./Section";
 
 /** Nail-tech page only: the address rules for a home studio, with the before and after a client sees. Samples, labelled. */
@@ -20,6 +21,7 @@ export function PrivacyBand({ eyebrow, title, sub, points, before, beforeLine, a
           </ul>
         </div>
         <div aria-hidden inert data-theme="light" className="flex flex-col gap-4 text-foreground">
+          <Icon3d name="home_studio" size={200} trade="salon" className="self-center" />
           <div className="rounded-sheet bg-card p-6 shadow-card">
             <p className="flex items-center gap-2 text-meta-strong text-muted-foreground">
               <MapPin className="size-4" />

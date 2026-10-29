@@ -7,6 +7,7 @@ import type { FeatureKey, PlanId, RolloutStage } from "../plans.js";
 import { VERTICALS, type Vertical } from "../verticals.js";
 import { THEME_STYLES, type ThemeStyle } from "../theme.js";
 import { LOCALE_CODES } from "../i18n/locales.js";
+import { ADDRESS_VISIBILITIES, SERVICE_RADII_KM, WORK_SETTINGS, type AddressVisibility, type WorkSetting } from "../address-privacy.js";
 import { centsSchema, phoneSchema, uuidSchema } from "./common.js";
 import { translationsSchema } from "./restaurant.js";
 
@@ -33,8 +34,15 @@ const nullableText = (max: number) => z.string().trim().max(max).nullable();
 export const createMerchantBody = z.object({
   name: z.string().trim().min(2).max(120),
   vertical: verticalSchema,
-  /** Street address of the first location. */
-  address: z.string().trim().min(3).max(300),
+  /**
+   * Street address of the first location. Required for a shop or salon; a pro who works from home gives a postal code only
+   * (the address comes later, privately), and one who travels gives nothing (onboarding-v1.md §3.2).
+   */
+  address: z.string().trim().min(3).max(300).optional(),
+  /** "Where do you work?": home (my place), shop (a shop or salon), mobile (I travel to clients). Omitted = shop. */
+  workSetting: z.enum(WORK_SETTINGS).optional(),
+  /** Mobile pros: how far they go. */
+  serviceRadiusKm: z.union([z.literal(SERVICE_RADII_KM[0]), z.literal(SERVICE_RADII_KM[1]), z.literal(SERVICE_RADII_KM[2])]).optional(),
   city: z.string().trim().max(80).optional(),
   postalCode: z.string().trim().max(10).optional(),
   phone: phoneSchema,
@@ -47,7 +55,7 @@ export const createMerchantBody = z.object({
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   hours: hoursSchema.optional(),
-});
+}).refine((b) => (b.workSetting ?? "shop") !== "shop" || !!b.address, { message: "Street address is required.", path: ["address"] });
 export type CreateMerchantBody = z.infer<typeof createMerchantBody>;
 
 /** POST /v1/merchants/:id/street: the owner names their street or business area when no live street covers the shop. */
@@ -104,6 +112,13 @@ export interface Location {
   lng: number | null;
   phone: string | null;
   hours: Hours | null;
+  /** Who sees the street address before a booking (address-privacy.ts). */
+  addressVisibility: AddressVisibility;
+  /** "Bloor West" for an area location. */
+  areaLabel: string | null;
+  /** The public pin (the offset pin for area, the city centre for city). */
+  mapLat: number | null;
+  mapLng: number | null;
   qrCode: string;
   /** `${PUBLIC_WEB_URL}/j/<qrCode>` — what the counter QR encodes. */
   joinUrl: string;
@@ -140,6 +155,10 @@ export interface MerchantProfile {
   /** Clear's opt-in graphite dark (owner screens). */
   themeDark: boolean;
   hasApiKey: boolean;
+  /** Where the owner works (null = not asked: an older shop, treated as a shop). */
+  workSetting: WorkSetting | null;
+  /** Mobile pros: how far they travel. */
+  serviceRadiusKm: number | null;
   /** Primary location hours (same as locations[0].hours). */
   hours: Hours | null;
   createdAt: string;
@@ -176,7 +195,10 @@ export const ONBOARDING_LATER_STEPS = ["profile", "pos"] as const;
 export const ONBOARDING_PHARMACY_STEP = "pharmacy_rules" as const;
 /** The trade's own first step (menu, services and hours, classes, price list): see tradeSetupFor in onboarding.ts. Not every shop has one. */
 export const ONBOARDING_TRADE_STEP = "trade_setup" as const;
-export type OnboardingStepKey = (typeof ONBOARDING_STEPS)[number] | (typeof ONBOARDING_LATER_STEPS)[number] | typeof ONBOARDING_PHARMACY_STEP | typeof ONBOARDING_TRADE_STEP;
+/** Solo-pro and appointment-led cards (onboarding-v1.md §3.3, §3.5): see SOLO_STEPS in onboarding.ts. */
+export const ONBOARDING_SOLO_STEPS = ["your_link", "services", "hours", "privacy", "share", "invite", "loyalty", "instagram_connect", "site", "promos"] as const;
+export type OnboardingSoloStepKey = (typeof ONBOARDING_SOLO_STEPS)[number];
+export type OnboardingStepKey = (typeof ONBOARDING_STEPS)[number] | (typeof ONBOARDING_LATER_STEPS)[number] | typeof ONBOARDING_PHARMACY_STEP | typeof ONBOARDING_TRADE_STEP | OnboardingSoloStepKey;
 /** Steps a merchant can tick manually (e.g. solo owner skips "staff"). "rewards" is accepted for older clients and ignored. */
 export const completeStepBody = z.object({ step: z.enum(["profile", "program", "rewards", "staff", "qr_kit", "pos"]) });
 
@@ -189,7 +211,7 @@ export interface OnboardingStep {
 }
 export type OnboardingPace = "activated" | "ahead" | "on_track" | "behind" | "late";
 export interface OnboardingMilestone {
-  key: "signed_up" | "first_stamp" | "members_10" | "activated";
+  key: "signed_up" | "first_stamp" | "members_10" | "activated" | "booking_link_live" | "first_share" | "first_online_booking" | "ten_bookings";
   label: string;
   /** ISO time reached, or null. */
   at: string | null;
@@ -253,7 +275,94 @@ export interface OnboardingChecklist {
   upsell: OnboardingUpsell;
   /** False when the owner turned the setup texts off. */
   nudgesOn: boolean;
+  /** Which setup this shop gets (onboardingPath). Older clients ignore it. */
+  path?: "solo" | "appointment" | "storefront";
+  /** The solo and appointment-led setup's own data; null on the storefront path. */
+  solo?: SoloSetupDto | null;
 }
+
+// ---- phase-solo: B ----
+/** What the six solo cards and the live preview need, in one read (GET /onboarding). */
+export interface SoloSetupDto {
+  slug: string;
+  /** `${PUBLIC_WEB_URL}/shops/<slug>/book`: the link that goes in the bio. */
+  bookingUrl: string;
+  /** The short form shown on the card: localloyalty.ca/<slug>. */
+  displayLink: string;
+  instagram: string | null;
+  workSetting: WorkSetting;
+  addressVisibility: AddressVisibility;
+  areaLabel: string | null;
+  city: string;
+  postalCode: string | null;
+  /** True once the private street address is on file (it is never echoed to the setup page). */
+  hasStreetAddress: boolean;
+  serviceRadiusKm: number | null;
+  /** The usual list for the trade, to tick (onboarding-v1.md §3.4). */
+  starters: { name: string; durationMin: number; priceCents: number; depositCents: number }[];
+  services: { id: string; name: string; durationMin: number; priceCents: number; depositCents: number }[];
+  /** The owner's weekly hours (weekday 0 = Sunday). */
+  hours: { weekday: number; startsLocal: string; endsLocal: string }[];
+  ownerUserId: string | null;
+  live: boolean;
+  liveAt: string | null;
+  /** Seconds from signup to the link going live, null until it is. */
+  secondsToLive: number | null;
+  bookings: SoloBookingsDto;
+}
+
+/** "Your first 10 bookings" (Home, solo pro, first 30 days). */
+export interface SoloBookingsDto {
+  /** Online bookings by someone other than the owner. */
+  count: number;
+  target: number;
+  day: number;
+  windowDays: number;
+  paceBookings: number;
+  paceByDay: number;
+  onTrack: boolean;
+  milestones: { key: "booking_link_live" | "first_share" | "first_online_booking" | "ten_bookings"; at: string | null }[];
+  nextMove: "share" | "invite" | "deposit" | "story";
+  /** Where the bookings came from (appointments.source and the share channel). */
+  sources: { source: "instagram" | "text" | "qr" | "map" | "powered_by" | "other"; count: number }[];
+  depositOn: boolean;
+}
+
+const slugField = z.string().trim().toLowerCase().min(3).max(40);
+/** POST /merchants/:id/onboarding/solo/link */
+export const soloLinkBody = z.object({ slug: slugField, instagram: z.string().trim().max(200).nullish() });
+/** POST /merchants/:id/onboarding/solo/services: the ticked rows (new names are created, known names updated). */
+export const soloServicesBody = z.object({
+  items: z
+    .array(z.object({ name: z.string().trim().min(1).max(120), durationMin: z.number().int().min(5).max(720), priceCents: centsSchema, depositCents: centsSchema.default(0) }).refine((x) => x.depositCents <= x.priceCents || x.priceCents === 0, { message: "The deposit can't be more than the price", path: ["depositCents"] }))
+    .max(40),
+});
+/** POST /merchants/:id/onboarding/solo/hours: the owner's week (weekday 0 = Sunday). Empty = the defaults (Tue to Sat, 10 to 6). */
+export const soloHoursBody = z.object({ days: z.array(z.object({ weekday: z.number().int().min(0).max(6), startsLocal: hhmm, endsLocal: hhmm })).max(14) });
+/** POST /merchants/:id/onboarding/solo/privacy */
+export const soloPrivacyBody = z.object({
+  visibility: z.enum(ADDRESS_VISIBILITIES),
+  /** The private street address (home studio): only ever sent to a confirmed booking. */
+  address: z.string().trim().min(3).max(300).nullish(),
+  postalCode: z.string().trim().max(10).nullish(),
+  serviceRadiusKm: z.union([z.literal(5), z.literal(10), z.literal(20)]).nullish(),
+});
+/** POST /merchants/:id/onboarding/solo/share */
+export const soloShareBody = z.object({ channel: z.enum(["instagram", "text", "qr", "copy"]) });
+/** POST /merchants/:id/onboarding/solo/invite: optional numbers to create client records (we send nothing). */
+export const soloInviteBody = z.object({ people: z.array(z.object({ name: z.string().trim().max(80).nullish(), phone: z.string().trim().min(7).max(20) })).max(200).default([]) });
+/** POST /merchants/:id/onboarding/solo/complete: tick a card by hand ("I'll do this later" keeps it open). */
+export const soloCompleteBody = z.object({ step: z.enum(ONBOARDING_SOLO_STEPS) });
+
+/** POST /merchants/:id/onboarding/import-link: a public Linktree, Beacons, Fresha or Booksy page. */
+export const importLinkBody = z.object({ url: z.string().trim().min(4).max(500) });
+export interface ImportLinkResponse {
+  host: "linktr.ee" | "beacons.ai" | "fresha.com" | "booksy.com";
+  links: { title: string; url: string }[];
+  /** Fresha and Booksy pages: the services and prices we could read, to tick and add. */
+  services: { name: string; priceCents: number | null; durationMin: number | null }[];
+}
+// ---- end phase-solo: B ----
 export const setNudgesBody = z.object({ enabled: z.boolean() });
 
 export interface MerchantFeature {

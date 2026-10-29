@@ -65,6 +65,12 @@ export interface Providers {
   whatsapp?: import("./whatsapp.js").WhatsAppProvider;
   /** The sales assistant's model client. Optional: undefined = Anthropic when ANTHROPIC_API_KEY is set; null = none (tests). Use llmFor(ctx) from services/sales-agent/agent.ts. */
   salesAgentLlm?: import("../services/sales-agent/llm.js").LlmClient | null;
+  // ---- phase-solo: G ----
+  /** Website builder model client. Optional: undefined = Anthropic when ANTHROPIC_API_KEY is set; null = none. Tests inject a scripted one. Use siteAiFor(ctx). */
+  siteAi?: import("../services/site-ai.js").SiteAiClient | null;
+  /** Domain registrar + custom hostnames. Optional: use domainsFor(ctx) from services/site-domains.ts. */
+  siteDomains?: import("../services/site-domains.js").DomainProvider;
+  // ---- end phase-solo: G ----
   /** Object storage for uploads (ticket photos). Optional: use getStorage(ctx) from ./storage.js, which falls back to memory (tests) or disk. */
   storage?: import("./storage.js").StorageProvider;
   /** Address to map pin at signup. Optional: use geocoderFor(ctx) from services/geocode.ts, which builds it from config.geocoder. */

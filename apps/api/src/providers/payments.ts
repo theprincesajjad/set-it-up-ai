@@ -170,6 +170,8 @@ export interface CheckoutArgs {
   restaurantTier?: RestaurantTier;
   /** Stripe coupon id applied at checkout (founding offer year one). */
   couponId?: string;
+  /** Extra session and subscription metadata (phase-solo A: founding_solo = "1"). */
+  metadata?: Record<string, string>;
   interval: BillingInterval;
   /** Configured Stripe Price id; when absent an inline CAD price is used. */
   priceId?: string;
@@ -249,6 +251,8 @@ export interface PaymentsProvider {
   scheduleFoundingOffer(subscriptionId: string): Promise<void>;
   /** Stripe coupon id for the first phase of the founding offer (created on demand). */
   foundingCouponId(): Promise<string>;
+  /** Founding solo price (phase-solo A): a once-only amount-off coupon that brings the first annual invoice down to the founding price. */
+  foundingSoloCouponId(amountOffCents: number): Promise<string>;
   listInvoices(customerId: string, limit?: number): Promise<ProviderInvoice[]>;
   // Webhooks
   /** Verify the signature header against the raw body. Throws on mismatch. */

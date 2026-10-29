@@ -92,6 +92,8 @@ export function llApi(c: ApiClient) {
       campaign: (id: string) => c.get<campaignsApi.PublicCampaign>(`/v1/public/campaigns/${enc(id)}`, { anonymous: true }),
       liveCampaigns: () => c.get<{ items: campaignsApi.PublicCampaign[] }>("/v1/public/live-campaigns", { anonymous: true }),
       plans: () => c.get<networkApi.PublicPlansResponse>("/v1/public/plans", { anonymous: true, next: { revalidate: 300 } }),
+      // phase-solo A: the founding solo price and the spots left (pricing and landing pages).
+      foundingSolo: () => c.get<billingApi.FoundingSoloDto>("/v1/billing/founding-solo", { anonymous: true, next: { revalidate: 300 } }),
       /** Founding offer spots per corridor (restaurants page and pricing). */
       foundingRestaurants: () => c.get<networkApi.FoundingResponse>("/v1/public/restaurants/founding", { anonymous: true, next: { revalidate: 300 } }),
       lead: (body: repApi.PublicLeadBody) => c.post<repApi.PublicLeadResponse>("/v1/public/leads", body, { anonymous: true }),
@@ -440,6 +442,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     // Billing + Stripe Connect
     billing: {
       overview: () => c.get<billingApi.BillingOverviewResponse>(`${b}/billing`),
+      // phase-solo A: calendars, texts, promos and the annual website (manager+).
+      usage: () => c.get<billingApi.PlanUsageDto>(`${b}/billing/usage`),
       checkout: (body: billingApi.CheckoutBody) => c.post<billingApi.CheckoutResponse>(`${b}/billing/checkout`, body),
       portal: (returnUrl?: string) => c.post<billingApi.UrlResponse>(`${b}/billing/portal`, returnUrl ? { returnUrl } : {}),
       cancel: () => c.post<{ subscription: billingApi.SubscriptionDto }>(`${b}/billing/cancel`, {}),

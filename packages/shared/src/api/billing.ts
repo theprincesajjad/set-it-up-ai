@@ -8,7 +8,7 @@
  * free feature. Paid plans can't be bought until their features are rolled out.
  */
 import { z } from "zod";
-import { ADD_ON_IDS, RESTAURANT_TIERS, type AddOnId, type PlanId, type RestaurantTier } from "../plans.js";
+import { ADD_ON_IDS, RESTAURANT_TIERS, type AddOnId, type BillingInterval, type PlanId, type PromoAllowance, type RestaurantTier } from "../plans.js";
 
 export const checkoutBody = z.object({
   plan: z.enum(["plus", "pro"]),
@@ -64,7 +64,40 @@ export interface BillingOverviewResponse {
   plans: PlanOptionDto[];
   /** Has a Stripe customer (the portal link works). */
   hasBillingAccount: boolean;
+  /** phase-solo A: calendars, texts, promos, the annual website and the founding price for this shop. */
+  usage?: PlanUsageDto;
+  foundingSolo?: FoundingSoloDto;
 }
+
+// ---- phase-solo: A ----
+/** GET /v1/merchants/:merchantId/billing/usage (manager+): what the plan allows and what is used this period. */
+export interface PlanUsageDto {
+  plan: PlanId;
+  interval: BillingInterval | null;
+  /** Bookable calendars: limit null = unlimited. */
+  calendars: { limit: number | null; used: number };
+  /** Texts this month: Free stops at includedPerMonth (then email); paid plans go over at overageCentsEach. */
+  texts: { includedPerMonth: number; used: number; remaining: number; overageTexts: number; overageCents: number; overageCentsEach: number };
+  /** Promos to regulars this billing period (PROMOS_PER_MONTH_PLUS / PROMOS_PER_YEAR_ANNUAL). */
+  promos: PromoAllowance;
+  /** On the annual plan: the website builder is included (site.builder). */
+  annualSiteEntitled: boolean;
+}
+
+/** The founding solo price (FOUNDING_SOLO) as this shop sees it. GET /v1/billing/founding-solo returns the public part. */
+export interface FoundingSoloDto {
+  enabled: boolean;
+  priceCents: number;
+  /** The annual price it renews at. */
+  renewsAtCents: number;
+  slots: number;
+  spotsLeft: number;
+  /** This shop's trade qualifies, a spot is left and it has not used it (always false on the public endpoint). */
+  eligible: boolean;
+  /** This shop already took it. */
+  taken: boolean;
+}
+// ---- end phase-solo: A ----
 
 export interface CheckoutResponse {
   sessionId: string;

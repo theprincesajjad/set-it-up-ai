@@ -5,6 +5,11 @@
  */
 import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import {
+  appointments as appointmentsT,
+  conversations,
+  pushTokens,
+  services as servicesT,
+  webPushSubscriptions,
   ledgerTransactions,
   merchants,
   merchantMembers,
@@ -15,7 +20,7 @@ import {
   visits,
   type DbOrTx,
 } from "@ll/db";
-import { maskPhone, toMonthDay, type merchantApi } from "@ll/shared";
+import { inboxApi, maskPhone, toMonthDay, type merchantApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import { isPharmacy } from "./pharmacy-guard.js";
@@ -565,3 +570,197 @@ export async function importCustomersCsv(ctx: AppContext, merchantId: string, ac
   }
   return result;
 }
+
+// ---------------------------------------------------------------------------
+// ---- phase-solo: D ---- The appointment-led profile and list (docs/business/people-side.md gaps 1, 5, 7, 8, 12, 13)
+// ---------------------------------------------------------------------------
+const YEAR_MS = 365 * 86_400_000;
+/** Due for a visit when the last service has no rebook interval of its own. */
+const DEFAULT_REBOOK_DAYS = 42;
+const servicesLine = (items: { name: string }[]) => items.map((i) => i.name).join(", ");
+
+type ApptRow = typeof appointmentsT.$inferSelect;
+
+async function staffNameMap(db: DbOrTx, ids: (string | null)[]): Promise<Map<string, string>> {
+  const u = [...new Set(ids.filter((x): x is string => !!x))];
+  if (!u.length) return new Map();
+  const rows = await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, u));
+  return new Map(rows.map((r) => [r.id, r.name?.trim() || "Staff"]));
+}
+
+/** GET /merchants/:id/customers/:memberId/people: next visit, the visits timeline, book again, channel and language. */
+export async function getClientProfile(ctx: AppContext, merchant: { id: string; slug: string }, memberId: string): Promise<inboxApi.ClientProfileResponse> {
+  const now = ctx.now();
+  const [m] = await ctx.db.select().from(merchantMembers).where(and(eq(merchantMembers.id, memberId), eq(merchantMembers.merchantId, merchant.id))).limit(1);
+  if (!m) throw notFound("Customer");
+  const [appts, txs, reds, u, push, web, conv] = await Promise.all([
+    ctx.db.select().from(appointmentsT).where(and(eq(appointmentsT.merchantId, merchant.id), eq(appointmentsT.userId, m.userId))).orderBy(desc(appointmentsT.startsAt)).limit(100),
+    ctx.db
+      .select()
+      .from(ledgerTransactions)
+      .where(and(eq(ledgerTransactions.merchantId, merchant.id), eq(ledgerTransactions.memberId, m.id), gte(ledgerTransactions.points, 1)))
+      .orderBy(desc(ledgerTransactions.createdAt))
+      .limit(50),
+    ctx.db
+      .select({ id: redemptions.id, at: redemptions.createdAt, status: redemptions.status, name: rewards.name })
+      .from(redemptions)
+      .leftJoin(rewards, eq(rewards.id, redemptions.rewardId))
+      .where(and(eq(redemptions.merchantId, merchant.id), eq(redemptions.memberId, m.id)))
+      .orderBy(desc(redemptions.createdAt))
+      .limit(50),
+    ctx.db.select({ email: users.email, phone: users.phone }).from(users).where(eq(users.id, m.userId)).limit(1),
+    ctx.db.select({ id: pushTokens.id }).from(pushTokens).where(eq(pushTokens.userId, m.userId)).limit(1),
+    ctx.db.select({ id: webPushSubscriptions.id }).from(webPushSubscriptions).where(eq(webPushSubscriptions.userId, m.userId)).limit(1),
+    ctx.db.select({ id: conversations.id, unread: conversations.unread }).from(conversations).where(and(eq(conversations.merchantId, merchant.id), eq(conversations.userId, m.userId), sql`${conversations.channel} <> 'instagram'`)).limit(1),
+  ]);
+  const names = await staffNameMap(ctx.db, appts.map((a) => a.staffId));
+  const apptItem = (a: ApptRow): inboxApi.TimelineItem => ({
+    kind: "appointment",
+    id: a.id,
+    at: a.startsAt.toISOString(),
+    title: servicesLine(a.items) || "Appointment",
+    staffName: a.staffId ? (names.get(a.staffId) ?? null) : null,
+    priceCents: a.items.reduce((n, i) => n + i.priceCents, 0),
+    depositCents: a.depositCents || null,
+    status: a.status,
+    visitNote: a.visitNote,
+    visitPhotoUrl: a.visitPhotoUrl,
+    intakeAnswer: a.intakeAnswer,
+    clientNote: a.clientNote,
+  });
+  const live = appts.filter((a) => !(a.status === "booked" && a.holdExpiresAt && a.holdExpiresAt <= now));
+  const next = [...live].filter((a) => a.status === "booked" && a.startsAt > now).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0] ?? null;
+  const past = live.filter((a) => a !== next && !(a.status === "booked" && a.startsAt > now));
+  const timeline: inboxApi.TimelineItem[] = [
+    ...past.map(apptItem),
+    ...txs.filter((t) => t.type !== "redeem").map((t): inboxApi.TimelineItem => ({ kind: "stamp", id: t.id, at: t.createdAt.toISOString(), title: `+${t.points}`, staffName: null, priceCents: t.amountCents, depositCents: null, status: null, visitNote: null, visitPhotoUrl: null, intakeAnswer: null, clientNote: null })),
+    ...reds.map((r): inboxApi.TimelineItem => ({ kind: "redemption", id: r.id, at: r.at.toISOString(), title: r.name ?? "Reward", staffName: null, priceCents: null, depositCents: null, status: r.status, visitNote: null, visitPhotoUrl: null, intakeAnswer: null, clientNote: null })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
+  const lastDone = past.find((a) => a.status === "completed") ?? null;
+  const serviceIds = lastDone ? lastDone.items.map((i) => i.serviceId).filter((x): x is string => !!x) : [];
+  const q = new URLSearchParams();
+  if (serviceIds[0]) q.set("service", serviceIds[0]);
+  if (lastDone?.staffId) q.set("staff", lastDone.staffId);
+  const yearAgo = new Date(now.getTime() - YEAR_MS);
+  return {
+    memberId: m.id,
+    userId: m.userId,
+    nextVisit: next ? { ...apptItem(next), endsAt: next.endsAt.toISOString() } : null,
+    timeline,
+    bookAgain: lastDone && serviceIds.length ? { serviceIds, staffId: lastDone.staffId, label: servicesLine(lastDone.items), link: `${ctx.config.publicWebUrl}/shops/${merchant.slug}/book?${q}` } : null,
+    channelPref: (m.channelPref as inboxApi.ChannelPref) ?? "best",
+    locale: m.locale,
+    reachable: { push: push.length > 0, webPush: web.length > 0, email: !!u[0]?.email, text: !!u[0]?.phone && !m.muted },
+    conversationId: conv[0]?.id ?? null,
+    unread: conv[0]?.unread ?? 0,
+    visits12m: past.filter((a) => a.status === "completed" && a.startsAt >= yearAgo).length,
+    noShows12m: past.filter((a) => a.status === "no_show" && a.startsAt >= yearAgo).length,
+  };
+}
+
+export async function updateClientPreferences(ctx: AppContext, merchantId: string, actorUserId: string, memberId: string, body: inboxApi.UpdateClientPreferencesBody): Promise<{ channelPref: inboxApi.ChannelPref; locale: string | null }> {
+  const set: Partial<typeof merchantMembers.$inferInsert> = {};
+  if (body.channelPref !== undefined) set.channelPref = body.channelPref;
+  if (body.locale !== undefined) set.locale = body.locale;
+  const [r] = await ctx.db.update(merchantMembers).set(set).where(and(eq(merchantMembers.id, memberId), eq(merchantMembers.merchantId, merchantId))).returning({ channelPref: merchantMembers.channelPref, locale: merchantMembers.locale });
+  if (!r) throw notFound("Customer");
+  await writeAudit(ctx.db, { actorUserId, merchantId, action: "customer.preferences_updated", entity: "member", entityId: memberId, data: set });
+  return { channelPref: r.channelPref as inboxApi.ChannelPref, locale: r.locale };
+}
+
+/** The customer's own choice, for every shop they belong to (PUT /me/channel-pref). */
+export async function setMyChannelPref(ctx: AppContext, userId: string, pref: inboxApi.ChannelPref): Promise<inboxApi.MyChannelPrefResponse> {
+  await ctx.db.update(merchantMembers).set({ channelPref: pref }).where(eq(merchantMembers.userId, userId));
+  return { channelPref: pref };
+}
+
+export async function getMyChannelPref(ctx: AppContext, userId: string): Promise<inboxApi.MyChannelPrefResponse> {
+  const rows = await ctx.db.select({ pref: merchantMembers.channelPref }).from(merchantMembers).where(eq(merchantMembers.userId, userId)).limit(50);
+  const prefs = new Set(rows.map((r) => r.pref));
+  return { channelPref: (prefs.size === 1 ? [...prefs][0] : "best") as inboxApi.ChannelPref };
+}
+
+/**
+ * GET /merchants/:id/clients: the Customers list for an appointment-led shop. Columns: last visit (service, with whom), next visit,
+ * visits in 12 months, stamps. Segments: booked, due for a visit (the service's rebook interval, else 6 weeks), no-show twice, new.
+ * `staffId` keeps clients who saw or are booked with that person; `forcedStaffId` is a renter's own id (they see only theirs).
+ */
+export async function listClients(ctx: AppContext, merchantId: string, q: inboxApi.ListClientsQuery, forcedStaffId: string | null = null): Promise<inboxApi.ListClientsResponse> {
+  const now = ctx.now();
+  const yearAgo = new Date(now.getTime() - YEAR_MS);
+  const monthAgo = new Date(now.getTime() - 30 * 86_400_000);
+  const staffId = forcedStaffId ?? q.staffId ?? null;
+  const [members, appts] = await Promise.all([
+    ctx.db
+      .select({ id: merchantMembers.id, userId: merchantMembers.userId, balance: merchantMembers.balance, createdAt: merchantMembers.createdAt, name: users.name, phone: users.phone, email: users.email })
+      .from(merchantMembers)
+      .innerJoin(users, eq(users.id, merchantMembers.userId))
+      .where(and(eq(merchantMembers.merchantId, merchantId), isNull(users.deletedAt)))
+      .limit(5000),
+    ctx.db
+      .select({ userId: appointmentsT.userId, staffId: appointmentsT.staffId, startsAt: appointmentsT.startsAt, status: appointmentsT.status, items: appointmentsT.items, holdExpiresAt: appointmentsT.holdExpiresAt })
+      .from(appointmentsT)
+      .where(and(eq(appointmentsT.merchantId, merchantId), isNotNull(appointmentsT.userId), gte(appointmentsT.startsAt, yearAgo)))
+      .limit(20000),
+  ]);
+  const svcIds = [...new Set(appts.flatMap((a) => a.items.map((i) => i.serviceId)).filter((x): x is string => !!x))];
+  const rebook = new Map((svcIds.length ? await ctx.db.select({ id: servicesT.id, days: servicesT.rebookAfterDays }).from(servicesT).where(inArray(servicesT.id, svcIds)) : []).map((s) => [s.id, s.days] as const));
+  const names = await staffNameMap(ctx.db, appts.map((a) => a.staffId));
+  const byUser = new Map<string, typeof appts>();
+  for (const a of appts) {
+    if (a.status === "booked" && a.holdExpiresAt && a.holdExpiresAt <= now) continue;
+    byUser.set(a.userId!, [...(byUser.get(a.userId!) ?? []), a]);
+  }
+  const visitOf = (a: (typeof appts)[number] | undefined) => (a ? { at: a.startsAt.toISOString(), services: servicesLine(a.items), staffName: a.staffId ? (names.get(a.staffId) ?? null) : null } : null);
+  let rows = members.map((m) => {
+    const list = byUser.get(m.userId) ?? [];
+    const done = list.filter((a) => a.status === "completed").sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime());
+    const next = list.filter((a) => a.status === "booked" && a.startsAt > now).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
+    const last = done[0];
+    const days = last ? Math.max(...last.items.map((i) => (i.serviceId ? (rebook.get(i.serviceId) ?? 0) : 0)), 0) || DEFAULT_REBOOK_DAYS : null;
+    const due = !!last && !next && days !== null && last.startsAt.getTime() + days * 86_400_000 <= now.getTime();
+    const row: inboxApi.ClientRow = {
+      memberId: m.id,
+      userId: m.userId,
+      name: m.name,
+      phone: m.phone ? maskPhone(m.phone) : null,
+      lastVisit: visitOf(last),
+      nextVisit: visitOf(next),
+      visits12m: done.length,
+      balance: m.balance,
+      noShows12m: list.filter((a) => a.status === "no_show").length,
+      dueForVisit: due,
+    };
+    return { row, joined: m.createdAt, staffIds: new Set(list.map((a) => a.staffId)), hay: `${m.name ?? ""} ${m.email ?? ""} ${(m.phone ?? "").replace(/\D/g, "")}`.toLowerCase() };
+  });
+  if (staffId) rows = rows.filter((r) => r.staffIds.has(staffId));
+  if (q.q) {
+    const needle = q.q.toLowerCase();
+    const digits = q.q.replace(/\D/g, "");
+    rows = rows.filter((r) => r.hay.includes(needle) || (digits.length >= 3 && r.hay.includes(digits)));
+  }
+  const inSeg: Record<inboxApi.ClientSegment, (r: (typeof rows)[number]) => boolean> = {
+    all: () => true,
+    upcoming: (r) => !!r.row.nextVisit,
+    due: (r) => r.row.dueForVisit,
+    no_show_twice: (r) => r.row.noShows12m >= 2,
+    new: (r) => r.joined >= monthAgo,
+  };
+  const counts = Object.fromEntries(inboxApi.CLIENT_SEGMENTS.map((s) => [s, rows.filter(inSeg[s]).length])) as Record<inboxApi.ClientSegment, number>;
+  const filtered = rows.filter(inSeg[q.segment]);
+  // Next visit first, then the most recent visit, then name.
+  filtered.sort((a, b) => {
+    const an = a.row.nextVisit?.at ?? "";
+    const bn = b.row.nextVisit?.at ?? "";
+    if (an && bn) return an.localeCompare(bn);
+    if (an || bn) return an ? -1 : 1;
+    const al = a.row.lastVisit?.at ?? "";
+    const bl = b.row.lastVisit?.at ?? "";
+    if (al !== bl) return bl.localeCompare(al);
+    return (a.row.name ?? "").localeCompare(b.row.name ?? "");
+  });
+  const offset = decodeCursor(q.cursor);
+  const page = filtered.slice(offset, offset + q.limit);
+  return { items: page.map((r) => r.row), nextCursor: offset + q.limit < filtered.length ? encodeCursor(offset + q.limit) : null, total: filtered.length, counts, staffId, staffLocked: !!forcedStaffId };
+}
+// ---- end phase-solo: D ----

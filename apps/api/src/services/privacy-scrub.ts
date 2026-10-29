@@ -206,6 +206,7 @@ export async function scrubCustomerData(tx: DbOrTx, userId: string, phone: strin
   // Consents and preferences: marketing consent text lives on merchant_members (cleared by deleteAccount); here the
   // per-type notification choices, the inbox, wallet device registrations and the member tags/notes.
   count("notificationPrefs", await tx.delete(userNotificationPrefs).where(eq(userNotificationPrefs.userId, userId)).returning({ id: userNotificationPrefs.id }));
+  // This also removes the home studio addresses a confirmation or reminder carried (phase-solo B): they were the customer's to read, no one else's.
   count("notifications", await tx.delete(notifications).where(eq(notifications.userId, userId)).returning({ id: notifications.id }));
   const passes = await tx.select({ id: walletPasses.id }).from(walletPasses).where(eq(walletPasses.userId, userId));
   if (passes.length) await tx.delete(walletDeviceRegistrations).where(inArray(walletDeviceRegistrations.passId, passes.map((p) => p.id)));

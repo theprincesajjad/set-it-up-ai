@@ -27,6 +27,7 @@ import registerExports from "./exports.js";
 import registerProgram from "./program.js";
 import { rejectMalformedIds } from "./params.js";
 import registerTeam from "./team.js";
+import registerOnboardingSolo from "./onboarding-solo.js";
 
 /** Max merchants one user can create self-serve (abuse guard; reps/admins are unlimited). */
 const MAX_SELF_SERVE_MERCHANTS = 10;
@@ -52,7 +53,8 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     // New shops used to start "Closed" all week, which blanks the open-now line and filter. Start with 9 to 5:30, Monday to Saturday, and ask in setup.
     if (!body.hours) body.hours = { mon: [["09:00", "17:30"]], tue: [["09:00", "17:30"]], wed: [["09:00", "17:30"]], thu: [["09:00", "17:30"]], fri: [["09:00", "17:30"]], sat: [["09:00", "17:30"]] };
     // A pin from the address and the street it is on (nearest open neighbourhood), unless the caller already gave them.
-    if (body.lat === undefined && body.lng === undefined) {
+    // A home studio or a travelling pro is placed by postal code or city only (createMerchantWithTemplate): never geocode a private address here.
+    if (body.lat === undefined && body.lng === undefined && (body.workSetting ?? "shop") === "shop" && body.address) {
       const found = await locateNewShop(ctx, { address: body.address, city: body.city, postalCode: body.postalCode });
       if (found.lat !== null && found.lng !== null) {
         body.lat = found.lat;
@@ -174,6 +176,7 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   });
 
   await registerTeam(app, ctx);
+  await registerOnboardingSolo(app, ctx);
   await registerProgram(app, ctx);
   await registerCustomers(app, ctx);
   await registerExports(app, ctx);

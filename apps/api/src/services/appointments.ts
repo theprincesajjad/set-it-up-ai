@@ -668,6 +668,11 @@ export async function appointmentDtos(db: DbOrTx, rows: Appointment[]): Promise<
       invoiceId: r.invoiceId,
       holdExpiresAt: iso(r.holdExpiresAt),
       createdAt: r.createdAt.toISOString(),
+      // phase-solo D: visit note, intake answer and the inbox thread
+      visitNote: r.visitNote,
+      visitPhotoUrl: r.visitPhotoUrl,
+      intakeAnswer: r.intakeAnswer,
+      conversationId: r.conversationId,
     };
   });
 }
@@ -797,6 +802,7 @@ export async function createAppointment(ctx: AppContext, staff: StaffContext, bo
         staffId: body.staffId ?? null,
         requestedStaff: body.requestedStaff,
         source: body.source,
+        conversationId: body.conversationId ?? null, // phase-solo D: "Create booking from message"
         items,
         startsAt,
         endsAt,

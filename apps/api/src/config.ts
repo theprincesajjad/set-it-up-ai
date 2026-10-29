@@ -57,6 +57,26 @@ export interface Config {
    * SALES_AGENT_ENABLED=0 hides the widget and ignores the platform number. SALES_AGENT_MODEL / _EFFORT tune the model.
    */
   salesAgent: { enabled: boolean; apiKey?: string; model: string; effort: "low" | "medium" | "high"; fallbacks: boolean; whatsappNumber?: string; whatsappPhoneNumberId?: string; adminEmail?: string };
+  // ---- phase-solo: G ----
+  /**
+   * Website builder (services/site*.ts). AI copy needs ANTHROPIC_API_KEY; without it the builder runs on presets and template
+   * copy. SITE_AI_MODEL (drafts, default claude-opus-5-5), SITE_AI_EDIT_MODEL (one-line rewrites, default claude-haiku-5-5),
+   * SITE_AI_EFFORT (low | medium | high, default low), SITE_AI_FALLBACKS=0 turns off server-side refusal fallbacks.
+   * SITE_DOMAINS_ENABLED=1 turns on .ca registration and custom-hostname routing through Cloudflare (CLOUDFLARE_API_TOKEN,
+   * CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ZONE_ID, SITE_CNAME_TARGET); off, domains are requested by hand and set up by an admin.
+   */
+  site: {
+    apiKey?: string;
+    model: string;
+    editModel: string;
+    effort: "low" | "medium" | "high";
+    fallbacks: boolean;
+    domainsEnabled: boolean;
+    cloudflare: { apiToken?: string; accountId?: string; zoneId?: string };
+    cnameTarget: string;
+    domainPriceCents: number;
+  };
+  // ---- end phase-solo: G ----
   /** Phone ordering webhook (Twilio-style). The signature is checked with `authToken` (falls back to TWILIO_AUTH_TOKEN). */
   phone: { authToken?: string };
   /** TIFFIN_PAD=1 lets tiffin subscribers pay by pre-authorized debit (Stripe acss_debit). */
@@ -159,6 +179,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       whatsappPhoneNumberId: env.SALES_AGENT_WHATSAPP_PHONE_NUMBER_ID || undefined,
       adminEmail: env.SALES_AGENT_ADMIN_EMAIL || undefined,
     },
+    // ---- phase-solo: G ----
+    site: {
+      apiKey: env.ANTHROPIC_API_KEY || undefined,
+      model: env.SITE_AI_MODEL || "claude-opus-5-5",
+      editModel: env.SITE_AI_EDIT_MODEL || "claude-haiku-5-5",
+      effort: env.SITE_AI_EFFORT === "medium" || env.SITE_AI_EFFORT === "high" ? env.SITE_AI_EFFORT : "low",
+      fallbacks: env.SITE_AI_FALLBACKS !== "0",
+      domainsEnabled: env.SITE_DOMAINS_ENABLED === "1" || env.SITE_DOMAINS_ENABLED === "true",
+      cloudflare: { apiToken: env.CLOUDFLARE_API_TOKEN || undefined, accountId: env.CLOUDFLARE_ACCOUNT_ID || undefined, zoneId: env.CLOUDFLARE_ZONE_ID || undefined },
+      cnameTarget: env.SITE_CNAME_TARGET || "sites.localloyalty.ca",
+      domainPriceCents: Number(env.SITE_DOMAIN_PRICE_CENTS) > 0 ? Number(env.SITE_DOMAIN_PRICE_CENTS) : 1500,
+    },
+    // ---- end phase-solo: G ----
     phone: { authToken: env.PHONE_WEBHOOK_AUTH_TOKEN ?? env.TWILIO_AUTH_TOKEN },
     tiffin: { padEnabled: env.TIFFIN_PAD === "1" },
     geocoder: {

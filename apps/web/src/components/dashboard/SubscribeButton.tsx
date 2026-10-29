@@ -11,6 +11,8 @@ export function SubscribeButton({ offer, size = "sm", variant = "primary", label
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const price = `$${offer.priceCents / 100}`;
+  // site.builder and anything else that needs the annual plan: check out yearly (featureOffer sets interval "year").
+  const interval = offer.kind === "plan" && offer.interval === "year" ? "year" : "month";
   async function go() {
     setBusy(true);
     setError(null);
@@ -29,7 +31,7 @@ export function SubscribeButton({ offer, size = "sm", variant = "primary", label
         window.location.assign((await api.billing.restaurantCheckout({ tier: offer.tier, interval: "month", ...urls })).url);
         return;
       }
-      window.location.assign((await api.billing.checkout({ plan: offer.plan, interval: "month", ...urls })).url);
+      window.location.assign((await api.billing.checkout({ plan: offer.plan, interval, ...urls })).url);
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
@@ -38,7 +40,7 @@ export function SubscribeButton({ offer, size = "sm", variant = "primary", label
   return (
     <span className="inline-flex flex-col items-start gap-1">
       <Button size={size} variant={variant} loading={busy} onClick={() => void go()}>
-        {label ?? `Subscribe to ${offer.name}, ${price}/mo`}
+        {label ?? (interval === "year" ? `Subscribe to ${offer.name} yearly, ${price}/year` : `Subscribe to ${offer.name}, ${price}/mo`)}
       </Button>
       {error ? <span role="alert" className="text-meta text-negative">{error}</span> : null}
     </span>

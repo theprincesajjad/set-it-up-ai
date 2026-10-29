@@ -6,6 +6,41 @@ Oct 22, 2026 · Founder decision · Prices in CAD
 
 The source of truth is `packages/shared/src/plans.ts` (`FEATURES`, `FREE_FOREVER`). The server enforces it with `requireFeature`. The financial effect is in `docs/finance/unit-economics.md` §0.
 
+> **Updated Oct 29, 2026 for the solo pro launch** (`docs/business/solo-pro-launch.md` §3). Two changes against v2: (1) appointments are **free for one bookable calendar**; (2) promos on Café & Retail are a **counted allowance** (4 a month, 48 a year on annual) and the **annual plan includes a website**. The new section "Solo pro packaging" below has the numbers and the code names. Everything else in this document stands.
+
+## Solo pro packaging (Oct 29, 2026)
+
+Three plans on the pricing page: **Free**, **Café & Retail $39/mo**, **Annual $390/yr** (Café & Retail paid yearly, plus the website). Service ($99) stays for repair, auto, alterations and print shops and is shown as one line under the three. Prices in CAD, before HST.
+
+| Rule | Free | Café & Retail monthly | Annual | Code |
+| --- | --- | --- | --- | --- |
+| Bookable calendars (staff with booking hours or a service list) | 1 | Unlimited, no per-chair charge | Unlimited | `FREE_BOOKABLE_CALENDARS = 1`, `bookableCalendarLimit()` |
+| Reminder texts (only to clients with no app, pass or email) | 30 a month, then email | 500 a month, then $0.04 each | 500 a month | `PLANS.free.smsPerMonth = 30`, `PLANS.plus.smsPerMonth = 500`, `SMS_OVERAGE_CENTS = 4` |
+| Promos to regulars (app push and email, no texts) | None | 4 a month, no roll-over | 48 a year | `PROMOS_PER_MONTH_PLUS`, `PROMOS_PER_YEAR_ANNUAL`, `promoAllowance()` |
+| Website builder, one `.ca` domain | No | No | Yes | `site.builder` (`requiresAnnual`), `ANNUAL_INCLUDES_WEBSITE`, `merchants.annual_site_entitled` |
+| Website AI | | | 10 drafts and 40 line edits a month | `SITE_AI_GENERATIONS_PER_MONTH`, `SITE_AI_EDITS_PER_MONTH` |
+| Deposits and no-show fees | Yes, 1%, on direct charges only | Yes, 1% | Yes, 1% | `appointmentPaymentsReady()` |
+
+How it is enforced:
+
+- **Calendar cap.** A second person getting booking hours or a service list on Free is refused with `402 plan_limit` and the Café & Retail offer (`apps/api/src/services/appointments.ts`). After a downgrade, the first calendar (by join order) stays bookable; online availability ignores the rest. Unlimited staff logins stay free: only *bookable* calendars are capped.
+- **Texts.** Every text counts against `merchants.sms_credits_used` (reset on the 1st). On Free the 31st transactional text is not sent and the reminder goes by email; campaign texts need `marketing.sms` as before. Paid plans keep sending past 500 and the extra texts show on the billing page as overage at 4¢ each. Charging the overage through Stripe usage records is a follow-up; until then it is shown, not billed.
+- **Promos.** `merchants.promos_sent_count` and `promos_sent_period_start` count promos in the current billing period (a monthly period on Café & Retail, the subscription year on annual). `consumePromo()` in `apps/api/src/services/billing.ts` is the atomic gate the promo send path calls; Free gets `402 feature_locked` with the plan offer, a used-up allowance gets `402 promo_allowance_used`.
+- **Annual entitlement.** Every subscription webhook runs `recomputePlan()`, which sets `merchants.annual_site_entitled` when a live Café & Retail or Service subscription bills yearly, and clears it when that ends. What the site does when the flag clears (30 days up with a banner, then the custom domain stops routing) is in `docs/engineering/site-builder.md`.
+- **Usage.** `GET /v1/merchants/:id/billing/usage` returns calendars, texts, promos and the website flag; the billing page shows it.
+
+### Founding solo price (proposal, not yet confirmed)
+
+The first 200 beauty pros and barbershops (`nails`, `brows_lashes`, `makeup`, `salon`, `barber`) on the annual plan pay **$290 for the first year**, then $390. Not lifetime. It is a founder proposal (solo-pro-launch.md §8.3), so it is a config value, on by default:
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `FOUNDING_SOLO_ENABLED` | on | `false` or `0` hides the strip on the pricing page and stops the coupon |
+| `FOUNDING_SOLO_PRICE_CENTS` | `29000` | First-year price |
+| `FOUNDING_SOLO_SLOTS` | `200` | Spots |
+
+In code: `FOUNDING_SOLO` and `foundingSoloConfig(process.env)` in `plans.ts`. An eligible annual checkout gets a once-only amount-off coupon (`founding_solo_<cents>`, $100 off by default) and `founding_solo = "1"` in the session metadata; the webhook sets `merchants.founding_solo`, which is what the "N spots left" counter counts (`GET /v1/billing/founding-solo`). Two shops racing for the last spot can both get it; at 200 spots that is acceptable.
+
 ## Free, forever ($0, no transaction fee)
 
 | Feature | Why it is free |
@@ -30,7 +65,8 @@ The invariant still holds: a free-forever feature can never be gated. Admins can
 - **Integrations:** POS auto-award (Square, Clover, Shopify, Lightspeed, Toast), Mailchimp, outgoing webhooks, Zapier/Make and the merchant REST API.
 - **Reports:** advanced reports (retention cohorts, network overlap, promo results).
 - **Commerce:** order-ahead, pickup status, pickup slots, in-app payments (Stripe fee at cost; 0% platform fee on orders, 1% on deposits and invoices).
-- **Appointments:** the staff-column calendar, services and prices, staff hours and time off, online booking with a deposit or a card on file, walk-ins, reminders and no-show protection, and checkout with a tip for the stylist (`booking.appointments`). Founder default until told otherwise: salons, barbers, threading, henna and bridal artists buy Café & Retail at $39, with no per-chair charge.
+- **Appointments, every calendar:** the staff-column calendar, services and prices, staff hours and time off, online booking with a deposit or a card on file, walk-ins, reminders and no-show protection, and checkout with a tip for the stylist (`booking.appointments`). Since Oct 29 the feature itself is **free for one bookable calendar**; Café & Retail lifts the cap, with no per-chair charge (see "Solo pro packaging").
+- **Promos to your regulars:** 4 a month by app push and email (48 a year on annual), with seasonal templates per trade.
 - **Walk-in line and barber payouts** (`booking.walkin_queue`, `staff.payouts`): a live line for barbershops and threading bars (join from a phone or the tablet at the door, a wait estimate, a text when next, the barber picks who is next, a no-show rule), "my barber" and family members under one card for kids' cuts, and a payouts report with chair rent and commission per barber (a report, no money moves) where a renter sees only their own clients. Founder default until told otherwise: barbershops and threading bars buy Café & Retail at $39, with no per-chair charge. Beauty supply stores use the existing points per dollar, categories and discount cards on the same plan; texts, promos and rewards from a beauty supply shop are checked for treatment claims. Research: `docs/research/barbers-beauty.md`.
 - **Classes and memberships** (`booking.classes`, `memberships.recurring`): class schedule with capacity and a waitlist that fills itself, drop-ins, class packs and intro offers, recurring memberships billed to the card on file with freezes, renewal notices and the Ontario 10-day cooling-off refund, late-cancel fees, and door check-in with the member card. Founder decision (keep today's plan structure): yoga, pilates, boxing, dance, bhangra, women-only and small-gym studios buy Café & Retail at $39, with no per-room or per-member charge and no add-on. Online class money carries the 1% fee below; money taken by hand at the desk carries none. See `docs/research/fitness-studios.md` section 4.
 
@@ -94,13 +130,15 @@ Card processing (Stripe's standard rate) is passed through at cost on every paym
 
 Payments you record by hand carry no platform fee: the 1% stays on card and bank debit taken in the app, where we do the work. A tiffin kitchen, caterer or hall that takes e-transfer or cash can sign customers up without a Stripe account. The fee on a taxed tiffin charge is a share of the price before tax. One function computes all of these: `computeFees()` in `apps/api/src/services/fees.ts`. Delivery apps commonly keep 15 to 30% of an order; a Growth restaurant doing $5,000 a month in online orders pays $199 flat instead of roughly $750 to $1,500 in commission. The pricing page and the billing screen both show this table.
 
-Appointments: checkout taken through the calendar, at the counter or by the pay link texted from it, carries no platform fee (`FEES.appointmentCheckoutBps = 0`, kind `appointment_checkout`; card processing at cost). On a $60 service with a tip, 1% plus Stripe would sit above Square's 2.5% in person, so only the online deposit at booking (and a no-show fee charged to a saved card) pays the 1%. Check Stripe Canada's current rate before publishing any comparison. Source: `docs/research/service-businesses.md` section 4.4 (founder default: appointments inside Café & Retail, 0% on in-person checkout).
+Appointments: checkout taken through the calendar, at the counter or by the pay link texted from it, carries no platform fee (`FEES.appointmentCheckoutBps = 0`, kind `appointment_checkout`; card processing at cost). On a $60 service with a tip, 1% plus Stripe would sit above Square's 2.5% in person, so only the online deposit at booking (and a no-show fee charged to a saved card) pays the 1%. Check Stripe Canada's current rate before publishing any comparison. Source: `docs/research/service-businesses.md` section 4.4 (0% on in-person checkout). The same rates apply on Free since appointments became free for one calendar.
 
 Note: every payment path now uses `computeFees()`. Café & Retail and Service shops pay 0% on online orders (was 0.75%) and 1% on quote deposits and invoices (was 0.75%).
 
 ### Charge mode
 
-`merchants.chargeMode` is `destination` (default: the payment is created on our Stripe account and the funds are transferred to the merchant, with `application_fee_amount`) or `direct` (the charge is created on the merchant's connected account, the merchant is the merchant of record, and the application fee is still taken). Direct charges are behind `STRIPE_DIRECT_CHARGES` (default off); while it is off every merchant uses destination charges. An admin switches a merchant with `PUT /v1/admin/merchants/:merchantId/charge-mode`. A direct-charge merchant needs a connected Stripe account.
+`merchants.chargeMode` is `destination` (the payment is created on our Stripe account and the funds are transferred to the merchant, with `application_fee_amount`) or `direct` (the charge is created on the merchant's connected account, the merchant is the merchant of record, and the application fee is still taken). Since Oct 29 (migration `0032_solo_a`) **new shops default to `direct`** and `STRIPE_DIRECT_CHARGES` **defaults on** (set it to `0` to force destination for everyone). Shops created before keep `destination`. A Free shop that connects Stripe for the first time is set to `direct`. An admin switches a merchant with `PUT /v1/admin/merchants/:merchantId/charge-mode`. A direct-charge merchant needs a connected Stripe account.
+
+**Deposits on Free require direct charges.** Under destination charges Stripe bills us about C$2 a month per active Connect account, which turns a free shop that takes deposits into a loss (solo-pro-launch.md §4.1). So a Free shop takes online deposits, cards on file and no-show fees only when its effective charge mode is direct (`appointmentPaymentsReady()` in `apps/api/src/services/payments.ts`); with the flag off, a Free shop's booking page books without a deposit. Paid shops take deposits in either mode.
 
 ## Not plan features
 
@@ -113,7 +151,7 @@ Note: every payment path now uses `computeFees()`. Café & Retail and Service sh
 
 Only **network-wide extras** wait for the gate, because they are worth nothing without a big network: sponsored promos, sponsored listings, map pins as ads, BIA neighbourhood campaigns, and nearby push promos. They ship **hidden** and an admin moves them hidden → beta → GA once the network has 100 active shops (`NETWORK_GATE_SHOPS`; 300 for ads). Until then a shop sees "Opens when the network reaches N shops" and a "Notify me" button.
 
-How it is built: `FeatureDef.networkGated` in `packages/shared/src/plans.ts`. It is set for every phase 3 feature and by hand with `network(...)`. Every other feature, including ones added later, is a trade tool and ships GA (`settle()` sets `defaultStage` and `unlockAtMerchants`; a new `f(...)` needs no extra flag). A feature can also set `freeForVerticals`: pharmacist appointments (`booking.appointments`) are **free for pharmacy shops** (docs/audits/pharmacies.md P1); every other shop needs Café & Retail. Trade features that are tied to one vertical (`vertical`: pets, grocery, auto) switch on with the plan for shops of that vertical: pet shops' four pet features are on with Café & Retail (docs/audits/pet-care.md P1).
+How it is built: `FeatureDef.networkGated` in `packages/shared/src/plans.ts`. It is set for every phase 3 feature and by hand with `network(...)`. Every other feature, including ones added later, is a trade tool and ships GA (`settle()` sets `defaultStage` and `unlockAtMerchants`; a new `f(...)` needs no extra flag). A feature can also set `freeForVerticals`: pharmacist appointments (`booking.appointments`) are **free for pharmacy shops** (docs/audits/pharmacies.md P1); since Oct 29 appointments are free for every shop for one bookable calendar, and pharmacies keep theirs free too. Trade features that are tied to one vertical (`vertical`: pets, grocery, auto) switch on with the plan for shops of that vertical: pet shops' four pet features are on with Café & Retail (docs/audits/pet-care.md P1).
 
 - **Admin overrides still work** (Admin → Rollout → Overrides) and still win, for example to give a pilot shop a network extra early or to switch a trade tool off for one shop.
 - **Existing data stays** when a shop doesn't have a feature: promos, VIP levels, discount cards, webhooks and POS connections are kept but stop applying. Merchants can still read and delete their data.

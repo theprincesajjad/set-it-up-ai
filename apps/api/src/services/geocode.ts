@@ -10,7 +10,7 @@
  */
 import { and, asc, count, eq, ilike, inArray, isNotNull } from "drizzle-orm";
 import { locations, merchants, neighbourhoods, type DbOrTx } from "@ll/db";
-import { distanceMetres, type merchantApi } from "@ll/shared";
+import { cityCentroid, distanceMetres, normalizePostal, offsetPin, postalFsa, type AddressVisibility, type merchantApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { geocoderFromConfig, type Geocoder } from "../providers/geocoder.js";
@@ -133,3 +133,54 @@ export async function requestStreet(ctx: AppContext, merchantId: string, actorUs
   });
   return streetStatus(ctx.db, merchantId);
 }
+
+// ---- phase-solo: B ----
+export interface PrivatePlace {
+  /** The public pin: the area centroid plus the merchant's fixed offset (area), or the city centre (city). */
+  mapLat: number;
+  mapLng: number;
+  /** "Bloor West" (the neighbourhood), "Toronto M6S" (the postal area) or null (city). */
+  areaLabel: string | null;
+  neighbourhoodId: string | null;
+  /** Where the centroid came from. */
+  source: "neighbourhood" | "fsa" | "city";
+}
+
+/**
+ * Where a home studio or a travelling pro shows on the map (solo-pro-launch.md §2.3). Only the postal code is looked up, never a
+ * street address. `area`: the neighbourhood whose radius covers the postal code's point (its centre and name), else the postal
+ * area (the FSA's own point, "Toronto M6S"), else the city centre; then a fixed offset of at most 400 m per merchant. `city`: the
+ * city centre, no offset, no label.
+ */
+export async function placePrivateShop(ctx: AppContext, a: { merchantId: string; visibility: Exclude<AddressVisibility, "exact">; postalCode?: string | null; city?: string | null }, db: DbOrTx = ctx.db): Promise<PrivatePlace> {
+  const city = (a.city ?? "Toronto").trim() || "Toronto";
+  const centre = cityCentroid(city);
+  if (a.visibility === "city") return { mapLat: centre.lat, mapLng: centre.lng, areaLabel: null, neighbourhoodId: null, source: "city" };
+  const postal = normalizePostal(a.postalCode);
+  const fsa = postalFsa(a.postalCode);
+  const geo = geocoderFor(ctx);
+  const look = async (q: string | null) => {
+    if (!q) return null;
+    try {
+      return await geo.geocode({ address: q, city, postalCode: null });
+    } catch {
+      return null;
+    }
+  };
+  const point = await look(postal);
+  if (point) {
+    const hood = await nearestNeighbourhood(db, point);
+    if (hood) {
+      const pin = offsetPin(a.merchantId, { lat: hood.centerLat!, lng: hood.centerLng! });
+      return { mapLat: pin.lat, mapLng: pin.lng, areaLabel: hood.name, neighbourhoodId: hood.id, source: "neighbourhood" };
+    }
+  }
+  const fsaPoint = (await look(fsa)) ?? null;
+  if (fsaPoint && fsa) {
+    const pin = offsetPin(a.merchantId, fsaPoint);
+    return { mapLat: pin.lat, mapLng: pin.lng, areaLabel: `${city} ${fsa}`, neighbourhoodId: null, source: "fsa" };
+  }
+  const pin = offsetPin(a.merchantId, centre);
+  return { mapLat: pin.lat, mapLng: pin.lng, areaLabel: fsa ? `${city} ${fsa}` : null, neighbourhoodId: null, source: "city" };
+}
+// ---- end phase-solo: B ----

@@ -9,7 +9,7 @@
  */
 import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { appointments, locations, merchants, pets, services, staffHours, staffServices, users } from "@ll/db";
-import { LOCALES, appointmentsApi, normalizeLocale, salesTaxCopy, translator, type Locale } from "@ll/shared";
+import { LOCALES, smsSegments, addressVisibilityOf, appointmentsApi, bookingMaySeeAddress, isAddressPrivate, normalizeLocale, publicPlaceLine, salesTaxCopy, translator, type Locale } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -30,6 +30,7 @@ import {
   type Merchant,
 } from "./appointments.js";
 import { iso, loadMerchant, money, notifyCustomer } from "./commerceShared.js";
+import { deliverByLadder } from "./notifications.js";
 import { requireFeature } from "./features.js";
 import { platformFeeFor } from "./fees.js";
 import { merchantProvince } from "./tax.js";
@@ -68,7 +69,8 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
     .sort((a, b) => a.name.localeCompare(b.name));
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   return {
-    shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc?.address ?? null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null, vertical: merchant.vertical, ...(isPharmacy(merchant) ? { pharmacy: true } : {}) },
+    // A home studio or a travelling pro: no street address before booking, only the public line (phase-solo B, §2.3).
+    shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc && !isAddressPrivate(loc.addressVisibility) ? loc.address : null, addressVisibility: addressVisibilityOf(loc?.addressVisibility), placeLine: loc ? publicPlaceLine(loc) : null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null, vertical: merchant.vertical, ...(isPharmacy(merchant) ? { pharmacy: true } : {}) },
     tax: salesTaxCopy({ province: await merchantProvince(ctx.db, merchant), taxRegistered: merchant.taxRegistered }),
     policy: { cancelWindowHours: merchant.cancelWindowHours, noShowFeeCents: isPharmacy(merchant) ? 0 : merchant.noShowFeeCents, takesCards: isPharmacy(merchant) ? false : cardsOk },
     services: rows.map((s) => ({
@@ -84,6 +86,7 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
       taxable: s.taxable,
       staffIds: assigned.filter((a) => a.serviceId === s.id).map((a) => a.userId),
       staffOverrides: assigned.filter((a) => a.serviceId === s.id && (a.durationMin !== null || a.priceCents !== null)).map((a) => ({ staffId: a.userId, durationMin: a.durationMin, priceCents: a.priceCents })),
+      intakeQuestion: isPharmacy(merchant) ? null : s.intakeQuestion, // phase-solo D
     })),
     staff,
   };
@@ -114,7 +117,7 @@ export async function myDtos(ctx: AppContext, rows: Appointment[]): Promise<appo
     const l = ls.find((x) => x.id === r.locationId);
     return {
       id: r.id,
-      merchant: { id: m.id, name: m.name, slug: m.slug, logoUrl: m.logoUrl, brandColor: m.brandColor, address: l?.address ?? null, phone: m.phone ?? l?.phone ?? null, timezone: m.timezone },
+      merchant: { id: m.id, name: m.name, slug: m.slug, logoUrl: m.logoUrl, brandColor: m.brandColor, address: releasedAddress(l, r), phone: m.phone ?? l?.phone ?? null, timezone: m.timezone, addressPrivate: !!l && isAddressPrivate(l.addressVisibility), placeLine: l ? publicPlaceLine(l) : null },
       staffId: r.staffId,
       staffName: staff.find((s) => s.id === r.staffId)?.name?.trim() ?? null,
       items: r.items,
@@ -136,6 +139,16 @@ export async function myDtos(ctx: AppContext, rows: Appointment[]): Promise<appo
       ...(isPharmacy(m) && r.userId ? { reminderText: pharmacyReminderText(ctx, m, r, rxLocale.get(r.userId) ?? "en").sms } : {}),
     };
   });
+}
+
+/**
+ * The street address a booking may see: always for a storefront; for a home studio or a travelling pro only once the booking is
+ * confirmed (no unpaid hold) and not cancelled or a no-show (solo-pro-launch.md §2.3). A pro who travels has none to give.
+ */
+export function releasedAddress(l: { address: string; addressVisibility: string } | undefined | null, a: Pick<Appointment, "status" | "holdExpiresAt">): string | null {
+  if (!l || !l.address.trim()) return null;
+  if (!isAddressPrivate(l.addressVisibility)) return l.address;
+  return bookingMaySeeAddress(a) ? l.address : null;
 }
 
 async function getMine(ctx: AppContext, userId: string, id: string): Promise<Appointment> {
@@ -254,6 +267,14 @@ export function pharmacyReminderText(ctx: AppContext, m: Pick<Merchant, "name" |
 
 const manageLink = (ctx: AppContext, m: Pick<Merchant, "slug">, a: Pick<Appointment, "id">) => `${ctx.config.publicWebUrl}/shops/${m.slug}/book/${a.id}`;
 
+/** The confirmation: a home studio's confirmation is where the client first gets the street address (phase-solo B, §2.3 rule 2). */
+async function confirmedText(ctx: AppContext, merchant: Merchant, a: Appointment, t: ReturnType<typeof translator>, locale: Locale): Promise<string> {
+  const vars = { shop: merchant.name, when: whenText(a.startsAt, merchant.timezone, locale), link: manageLink(ctx, merchant, a) };
+  const [loc] = await ctx.db.select({ address: locations.address, addressVisibility: locations.addressVisibility }).from(locations).where(eq(locations.id, a.locationId)).limit(1);
+  const address = loc && isAddressPrivate(loc.addressVisibility) ? releasedAddress(loc, a) : null;
+  return address ? t("bk.msg.confirmedAddress", { ...vars, address }) : t("bk.msg.confirmed", vars);
+}
+
 async function notifyConfirmed(ctx: AppContext, merchant: Merchant, a: Appointment) {
   if (!a.userId) return;
   const locale = await localeOf(ctx, a.userId);
@@ -262,8 +283,10 @@ async function notifyConfirmed(ctx: AppContext, merchant: Merchant, a: Appointme
   const rx = isPharmacy(merchant);
   const body = rx
     ? t("rx.appt.confirmed", { when: whenText(a.startsAt, merchant.timezone, locale), link: manageLink(ctx, merchant, a) })
-    : t("bk.msg.confirmed", { shop: merchant.name, when: whenText(a.startsAt, merchant.timezone, locale), link: manageLink(ctx, merchant, a) });
-  await notifyCustomer(ctx, { userId: a.userId, merchantId: merchant.id, title: rx ? t("rx.appt.titleBooked") : t("bk.msg.confirmedTitle", { shop: merchant.name }), body, smsBody: `${body} ${t("bk.msg.stop")}`, data: { type: "appointment_confirmed", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
+    : await confirmedText(ctx, merchant, a, t, locale);
+  // phase-solo D: the ladder (app, web push, email, then a one-segment text inside the plan's texts).
+  const textBody = rx ? `${body} ${t("bk.msg.stop")}` : await oneSegmentText(ctx, t, "bk.msg.textBooked", { shop: merchant.name, when: whenText(a.startsAt, merchant.timezone, locale), address: await textAddress(ctx, a), link: shortManageLink(ctx) });
+  await deliverAppointmentMessage(ctx, { a, merchant, title: rx ? t("rx.appt.titleBooked") : t("bk.msg.confirmedTitle", { shop: merchant.name }), body, textBody, kind: "appointment_confirmed" });
 }
 
 // ---------------------------------------------------------------------------
@@ -328,6 +351,7 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
         status: "booked",
         groupId: body.groupId ?? null,
         clientNote: body.notes ?? null,
+        intakeAnswer: rx ? null : (body.intakeAnswer ?? null), // phase-solo D
         depositCents: deposit,
         noShowFeeCents: fee > 0 ? fee : null,
         holdExpiresAt: hold ? new Date(now.getTime() + HOLD_MINUTES * MIN) : null,
@@ -629,9 +653,63 @@ export async function sendReminders(ctx: AppContext): Promise<number> {
     const vars = { service: isPharmacy(m) ? t("rx.appt.word") : a.items.map((i) => i.name).join(", ") || "-", shop: m.name, when: near ? timeText(a.startsAt, m.timezone, locale) : whenText(a.startsAt, m.timezone, locale), address: loc?.address ?? "", link: manageLink(ctx, m, a) };
     const fixed = isPharmacy(m) ? pharmacyReminderText(ctx, m, a, locale) : null;
     const body = fixed?.body ?? t(near ? "bk.msg.remind2" : "bk.msg.remind24", vars);
-    await notifyCustomer(ctx, { userId: a.userId!, merchantId: m.id, title: isPharmacy(m) ? t("rx.appt.titleReminder") : t(near ? "bk.msg.remind2Title" : "bk.msg.remind24Title", { shop: m.name }), body, smsBody: fixed?.sms ?? `${body} ${t("bk.msg.stop")}`, data: { type: near ? "appointment_reminder_2h" : "appointment_reminder_24h", appointmentId: a.id, startsAt: a.startsAt.toISOString() } });
+    // phase-solo D: the ladder; the text (last rung) is one segment: shop, service, time, the address when it fits, a short link, STOP.
+    const textBody = fixed?.sms ?? (await oneSegmentText(ctx, t, near ? "bk.msg.text2" : "bk.msg.text24", { shop: m.name, service: vars.service, when: vars.when, address: vars.address, link: shortManageLink(ctx) }));
+    await deliverAppointmentMessage(ctx, { a, merchant: m, title: isPharmacy(m) ? t("rx.appt.titleReminder") : t(near ? "bk.msg.remind2Title" : "bk.msg.remind24Title", { shop: m.name }), body, textBody, kind: near ? "appointment_reminder_2h" : "appointment_reminder_24h" });
     sent++;
   }
   return sent;
 }
 
+// ---------------------------------------------------------------------------
+// ---- phase-solo: D ---- Appointment messages through the channel ladder, one-segment reminder texts
+// ---------------------------------------------------------------------------
+/** The link in a text: the customer's own page (it lists the visit with Change and Cancel), without the scheme, to fit one segment. */
+export const shortManageLink = (ctx: AppContext) => `${ctx.config.publicWebUrl.replace(/^https?:\/\//, "")}/me`;
+
+async function textAddress(ctx: AppContext, a: Appointment): Promise<string> {
+  const [loc] = await ctx.db.select({ address: locations.address, addressVisibility: locations.addressVisibility }).from(locations).where(eq(locations.id, a.locationId)).limit(1);
+  return releasedAddress(loc, a) ?? "";
+}
+
+/**
+ * A reminder text in one segment (160 GSM-7 characters; 70 for a text in Urdu, Hindi or Punjabi script, where it is as short as we
+ * can make it). Drops the address, then the service, then shortens the shop name, until it fits. The STOP line always stays.
+ */
+export async function oneSegmentText(
+  _ctx: AppContext,
+  t: ReturnType<typeof translator>,
+  key: "bk.msg.text24" | "bk.msg.text2" | "bk.msg.textBooked",
+  v: { shop: string; service?: string; when: string; address?: string; link: string },
+): Promise<string> {
+  const stop = t("bk.msg.textStop");
+  const build = (o: { shop: string; service?: string; address?: string }) => {
+    const at = o.address?.trim() ? t("bk.msg.textAt", { address: o.address.trim() }) : "";
+    const body = t(key, { shop: o.shop, service: o.service ?? "", when: v.when, at, link: v.link }).replace(/:\s*,\s*/, ": ").replace(/\s{2,}/g, " ");
+    return `${body} ${stop}`;
+  };
+  const shortShop = v.shop.length > 20 ? `${v.shop.slice(0, 19).trimEnd()}.` : v.shop;
+  const tries = [
+    build({ shop: v.shop, service: v.service, address: v.address }),
+    build({ shop: v.shop, service: v.service }),
+    build({ shop: v.shop, service: key === "bk.msg.text24" ? "" : v.service }),
+    build({ shop: shortShop }),
+  ];
+  return tries.find((x) => smsSegments(x) <= 1) ?? tries.at(-1)!;
+}
+
+/** One appointment message: the in-app row, then the first rung that reaches the client (services/notifications.ts deliverByLadder). */
+async function deliverAppointmentMessage(ctx: AppContext, m: { a: Appointment; merchant: Merchant; title: string; body: string; textBody: string; kind: string }) {
+  if (!m.a.userId) return;
+  await deliverByLadder(ctx, {
+    userId: m.a.userId,
+    merchantId: m.merchant.id,
+    type: "booking_reminder",
+    title: m.title,
+    body: m.body,
+    textBody: m.textBody,
+    data: { type: m.kind, appointmentId: m.a.id, startsAt: m.a.startsAt.toISOString() },
+    url: `/shops/${m.merchant.slug}/book/${m.a.id}`,
+  });
+}
+// ---- end phase-solo: D ----

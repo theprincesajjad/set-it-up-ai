@@ -24,7 +24,11 @@ import {
   FEATURES,
   PLAN_IDS,
   VERTICAL_TEMPLATES,
+  addressVisibilityOf,
+  defaultVisibility,
   isPlanAvailable,
+  normalizePostal,
+  workSettingOf,
   normalizePhone,
   themeStyleOf,
   type PlanId,
@@ -35,6 +39,7 @@ import type { AppContext } from "../context.js";
 import { randomCode, randomToken, sha256 } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { assertBeautyClaims } from "./beauty-guard.js";
+import { placePrivateShop } from "./geocode.js";
 import { ensureLockedCategories } from "./pharmacy-guard.js";
 import { getMerchantFeatures, getRolloutStages } from "./features.js";
 import { writeAudit } from "./admin-audit.js";
@@ -106,6 +111,10 @@ export function serializeLocation(ctx: AppContext, l: LocationRow): merchantApi.
     lng: l.lng,
     phone: l.phone,
     hours: (l.hours as merchantApi.Hours | null) ?? null,
+    addressVisibility: addressVisibilityOf(l.addressVisibility),
+    areaLabel: l.areaLabel ?? null,
+    mapLat: l.mapLat ?? null,
+    mapLng: l.mapLng ?? null,
     qrCode: l.qrCode,
     joinUrl: joinUrl(ctx, l.qrCode),
     active: l.active,
@@ -171,6 +180,8 @@ export function serializeMerchant(m: Merchant, primary: LocationRow | null): mer
     themeStyle: themeStyleOf(m.themeStyle),
     themeDark: m.themeDark,
     hasApiKey: !!m.apiKeyHash,
+    workSetting: m.workSetting ? workSettingOf(m.workSetting) : null,
+    serviceRadiusKm: m.serviceRadiusKm ?? null,
     hours: (primary?.hours as merchantApi.Hours | null) ?? null,
     createdAt: m.createdAt.toISOString(),
   };
@@ -317,6 +328,11 @@ export async function resolveNeighbourhoodId(db: DbOrTx, id?: string | null, slu
 export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMerchantArgs) {
   const b = args.body;
   const phone = requirePhone(b.phone);
+  // Where do you work? A home studio shows its area and a travelling pro the city; the street address stays private (§2.3).
+  const work = b.workSetting ?? null;
+  const visibility = defaultVisibility(work ?? "shop");
+  if (visibility === "exact" && !b.address?.trim()) throw badRequest("Street address is required.");
+  const postal = b.postalCode ? (normalizePostal(b.postalCode) ?? b.postalCode.trim()) : null;
   return ctx.db.transaction(async (tx) => {
     const neighbourhoodId = await resolveNeighbourhoodId(tx, b.neighbourhoodId, b.neighbourhoodSlug);
     const slug = await uniqueMerchantSlug(tx, b.name);
@@ -334,6 +350,8 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
         plan: "free",
         repUserId: args.repUserId ?? null,
         onboardingStep: "profile",
+        workSetting: work,
+        serviceRadiusKm: work === "mobile" ? (b.serviceRadiusKm ?? 10) : null,
         createdAt: ctx.now(),
         updatedAt: ctx.now(),
       })
@@ -344,17 +362,28 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
       .values({
         merchantId: m!.id,
         name: b.name,
-        address: b.address,
+        // A home studio's street address comes later, privately (setup's privacy card); a travelling pro has none.
+        address: visibility === "exact" ? b.address!.trim() : (b.address?.trim() ?? ""),
         city: b.city ?? "Toronto",
-        postalCode: b.postalCode ?? null,
+        postalCode: postal,
         lat: b.lat ?? null,
         lng: b.lng ?? null,
+        addressVisibility: visibility,
         phone,
         hours: b.hours ?? null,
         qrCode: await uniqueQrCode(tx),
         createdAt: ctx.now(),
       })
       .returning();
+    if (visibility !== "exact") {
+      const place = await placePrivateShop(ctx, { merchantId: m!.id, visibility, postalCode: postal, city: b.city ?? "Toronto" }, tx);
+      await tx.update(locations).set({ mapLat: place.mapLat, mapLng: place.mapLng, areaLabel: place.areaLabel }).where(eq(locations.id, loc!.id));
+      Object.assign(loc!, { mapLat: place.mapLat, mapLng: place.mapLng, areaLabel: place.areaLabel });
+      if (!neighbourhoodId && place.neighbourhoodId) {
+        await tx.update(merchants).set({ neighbourhoodId: place.neighbourhoodId }).where(eq(merchants.id, m!.id));
+        m!.neighbourhoodId = place.neighbourhoodId;
+      }
+    }
     const template = await applyVerticalTemplate(tx, m!.id, b.vertical);
     await recordMilestone(tx, m!.id, "signed_up", ctx.now());
     await writeAudit(tx, {

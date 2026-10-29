@@ -120,7 +120,15 @@ export interface NeighbourhoodDetailResponse {
 export interface LocationDto {
   id: string;
   name: string;
+  /**
+   * The street address for a storefront. For a home studio or a pro who travels (addressVisibility area or city) it is the safe
+   * public line instead ("Bloor West area", "Toronto"): the street address is never in a public response (solo-pro-launch.md §2.3).
+   */
   address: string;
+  /** exact = a storefront; area = shown by neighbourhood with an offset pin; city = shown by city. Older APIs omit it (exact). */
+  addressVisibility?: "exact" | "area" | "city";
+  /** The neighbourhood for an area location ("Bloor West"), else null. */
+  areaLabel?: string | null;
   city: string;
   postalCode: string | null;
   lat: number | null;

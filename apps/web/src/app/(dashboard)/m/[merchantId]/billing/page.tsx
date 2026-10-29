@@ -12,7 +12,41 @@ import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
 import { RestaurantBilling } from "./RestaurantBilling";
 import { formatDateYear, formatMoney } from "@/lib/format";
+import { fill } from "@/lib/marketing/text";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+
+const B = copy.billingSolo;
+
+/** phase-solo A: calendars, texts, promos and the website against the plan (solo-pro-launch.md §3.2). */
+function UsagePanel({ usage }: { usage: billingApi.PlanUsageDto }) {
+  const period = usage.promos.period === "year" ? B.periodYear : B.periodMonth;
+  const rows: { label: string; value: string; note?: string }[] = [
+    {
+      label: B.calendars,
+      value: usage.calendars.limit == null ? fill(B.calendarsUnlimited, { used: usage.calendars.used }) : fill(B.calendarsValue, { used: usage.calendars.used, limit: usage.calendars.limit }),
+    },
+    {
+      label: B.texts,
+      value: fill(B.textsValue, { used: Math.min(usage.texts.used, usage.texts.includedPerMonth), included: usage.texts.includedPerMonth }),
+      note: usage.texts.overageTexts > 0 ? fill(B.textsOver, { n: usage.texts.overageTexts, amount: formatMoney(usage.texts.overageCents) }) : usage.plan === "free" ? fill(B.textsFree, { included: usage.texts.includedPerMonth }) : undefined,
+    },
+    { label: B.promos, value: usage.promos.limit > 0 ? fill(B.promosValue, { used: usage.promos.used, limit: usage.promos.limit, period }) : B.promosNone },
+    { label: B.site, value: usage.annualSiteEntitled ? B.siteOn : B.siteOff },
+  ];
+  return (
+    <Panel title={B.usageTitle}>
+      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2" data-testid="plan-usage">
+        {rows.map((r) => (
+          <div key={r.label} className="flex flex-col gap-0.5">
+            <dt className="text-meta text-fg-muted">{r.label}</dt>
+            <dd className="text-body tabular-nums text-fg">{r.value}</dd>
+            {r.note ? <dd className="text-meta text-fg-muted">{r.note}</dd> : null}
+          </div>
+        ))}
+      </dl>
+    </Panel>
+  );
+}
 
 /** Shops that sell food on a restaurant tier see that ladder first (verticals set at signup). */
 const RESTAURANT_VERTICALS = ["restaurant", "restaurant_south_asian", "tiffin", "caterer", "banquet_hall", "bakery"];
@@ -38,7 +72,7 @@ export default function BillingPage() {
 function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload: () => Promise<void> }) {
   const { api, base, enabled, merchantId, detail } = useMerchant();
   const params = useSearchParams();
-  const [period, setPeriod] = useState<"month" | "year">("month");
+  const [period, setPeriod] = useState<"month" | "year">(params.get("interval") === "year" ? "year" : "month");
   const [cancel, setCancel] = useState(false);
   const act = useAction();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -47,8 +81,8 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
   const subscribe = params.get("subscribe");
   const autoRan = useRef(false);
 
-  async function checkout(plan: "plus" | "pro") {
-    const r = await act.run(() => api.billing.checkout({ plan, interval: period, successUrl: `${origin}${base}/billing?checkout=success`, cancelUrl: `${origin}${base}/billing?checkout=cancelled` }));
+  async function checkout(plan: "plus" | "pro", interval: "month" | "year" = period) {
+    const r = await act.run(() => api.billing.checkout({ plan, interval, successUrl: `${origin}${base}/billing?checkout=success`, cancelUrl: `${origin}${base}/billing?checkout=cancelled` }));
     if (r) {
       try {
         sessionStorage.setItem("ll.checkout.return", `${base}/billing?checkout=success`);
@@ -63,7 +97,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
   useEffect(() => {
     if (autoRan.current || sub || (subscribe !== "plus" && subscribe !== "pro")) return;
     autoRan.current = true;
-    void checkout(subscribe);
+    void checkout(subscribe, params.get("interval") === "year" ? "year" : "month");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribe, sub]);
 
@@ -126,15 +160,28 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
         )}
       </Panel>
 
+      {b.usage ? <UsagePanel usage={b.usage} /> : null}
+
       {restaurantFirst ? restaurant : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-body-strong text-fg">{restaurantFirst ? "Other plans" : "Plans"}</h2>
-        {b.plans.some((p) => p.id !== "free" && p.available) ? <Segmented label="Billing period" value={period} onChange={setPeriod} options={[{ value: "month", label: "Monthly" }, { value: "year", label: "Pay yearly: 2 months free" }]} /> : null}
+        {b.plans.some((p) => p.id !== "free" && p.available) ? <Segmented label="Billing period" value={period} onChange={setPeriod} options={[{ value: "month", label: B.monthly }, { value: "year", label: B.yearly }]} /> : null}
       </div>
+      {period === "year" ? (
+        <div className="-mt-3 flex flex-col gap-1">
+          <p className="text-meta text-fg">{B.annualIncludes}</p>
+          {b.foundingSolo?.eligible ? (
+            <p className="text-meta-strong text-fg" data-testid="billing-founding">
+              {fill(B.foundingLine, { price: formatMoney(b.foundingSolo.priceCents).replace(".00", ""), renews: formatMoney(b.foundingSolo.renewsAtCents).replace(".00", ""), n: b.foundingSolo.spotsLeft })}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <ul className="-mt-3 grid gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-3">
         {b.plans.map((p) => {
-          const feats = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === p.id && FEATURES[k].phase === 2 && !FEATURES[k].pack);
+          // The website (requiresAnnual) leads the list on yearly billing and is left off monthly.
+          const feats = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === p.id && FEATURES[k].phase === 2 && !FEATURES[k].pack && (period === "year" || !FEATURES[k].requiresAnnual)).sort((a, z) => Number(!!FEATURES[z].requiresAnnual) - Number(!!FEATURES[a].requiresAnnual));
           const price = period === "year" ? p.annualPriceCents : p.priceCents;
           return (
             <li key={p.id}>
@@ -150,7 +197,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
                 <p className="text-meta text-fg">{p.blurb}</p>
                 <p className="text-caption font-normal text-fg-muted">Best for {p.bestFor.join(", ").toLowerCase()}</p>
                 <ul className="flex flex-col gap-1.5 border-t border-line pt-3 text-meta text-fg">
-                  {(p.id === "free" ? ["Points, stamps and visits", "Rewards and welcome bonus", "Network listing and wallet pass", "Customer directory and reports"] : feats.map((k) => FEATURES[k].name)).slice(0, 8).map((f) => (
+                  {(p.id === "free" ? copy.soloPricing.free.lines : feats.map((k) => FEATURES[k].name)).slice(0, 8).map((f) => (
                     <li key={f} className="flex items-start gap-2">
                       <Check aria-hidden className="mt-0.5 size-3.5 shrink-0 text-fg-muted" />
                       {f}

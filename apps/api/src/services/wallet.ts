@@ -95,7 +95,8 @@ export async function passLocations(ctx: AppContext, userId: string, max = 10, l
     .from(merchantMembers)
     .innerJoin(merchants, eq(merchants.id, merchantMembers.merchantId))
     .innerJoin(locations, eq(locations.merchantId, merchants.id))
-    .where(and(eq(merchantMembers.userId, userId), ne(merchants.status, "closed"), eq(locations.active, true), isNotNull(locations.lat), isNotNull(locations.lng)))
+    .where(and(eq(merchantMembers.userId, userId), ne(merchants.status, "closed"), eq(locations.active, true), eq(locations.addressVisibility, "exact"), isNotNull(locations.lat), isNotNull(locations.lng)))
+    // Home studios and travelling pros (address_visibility area or city) are never on the pass: their pin is private (phase-solo B).
     .orderBy(desc(merchantMembers.lastVisitAt), asc(locations.createdAt))
     .limit(200);
   if (!rows.length) return [];

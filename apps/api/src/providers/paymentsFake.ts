@@ -368,7 +368,7 @@ export class FakePayments implements PaymentsProvider {
     };
     this.subscriptions.set(subId, sub);
     this.addInvoice(sub, sub.baseAmountCents, `${s.productName}`, now);
-    const metadata = { merchant_id: s.merchantId, plan: s.plan, interval: s.interval, ...(s.restaurantTier ? { restaurant_tier: s.restaurantTier } : {}) };
+    const metadata = { ...s.metadata, merchant_id: s.merchantId, plan: s.plan, interval: s.interval, ...(s.restaurantTier ? { restaurant_tier: s.restaurantTier } : {}) };
     return [
       this.event("checkout.session.completed", {
         id: s.id,
@@ -469,6 +469,10 @@ export class FakePayments implements PaymentsProvider {
 
   async foundingCouponId() {
     return this.foundingCoupon;
+  }
+
+  async foundingSoloCouponId(amountOffCents: number) {
+    return `founding_solo_${amountOffCents}`;
   }
 
   async scheduleFoundingOffer(subscriptionId: string) {

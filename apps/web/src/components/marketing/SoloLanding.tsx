@@ -25,7 +25,7 @@ const HERO = {
 const CTA = { nail: "mkt.solo.nail.cta", barber: "mkt.solo.barber.cta", groom: "mkt.solo.groom.cta" } as const;
 const JOBS_TITLE = { nail: "mkt.solo.jobs.nailTitle", barber: "mkt.solo.jobs.barberTitle", groom: "mkt.solo.jobs.groomTitle" } as const;
 const SCREEN = { nail: "booking", barber: "line", groom: "pet" } as const;
-const ARTS = { nail: ["beauty", "shops"], barber: ["beauty", "coffee"], groom: ["services", "bakery"] } as const;
+const ARTS = { nail: ["nails", "brows_lashes"], barber: ["barber", "stamp_card"], groom: ["groomer", "calendar_week"] } as const;
 
 /**
  * One landing page from the eight blocks of solo-pro-launch.md 5.3: hero, three jobs, regulars, privacy (nail page only), plans,

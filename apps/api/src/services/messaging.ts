@@ -22,7 +22,7 @@ import {
   visits,
   type DbOrTx,
 } from "@ll/db";
-import { FEATURES, PLANS, isStopKeyword, messagingApi, normalizeReplyWord } from "@ll/shared";
+import { PLANS, isStopKeyword, messagingApi, normalizeReplyWord } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { hmacSha256, safeEqual } from "../lib/crypto.js";
@@ -39,8 +39,9 @@ import { decodeCursor, encodeCursor } from "./merchant-customers.js";
 import { isSuppressed, optedOutSet, sendSms } from "./opt-out.js";
 import { assertBeautyClaims } from "./beauty-guard.js";
 import { assertPharmacyText, isPharmacy } from "./pharmacy-guard.js";
-import { checkPharmacyText } from "@ll/shared";
+import { checkPharmacyText, publicPlaceLine } from "@ll/shared";
 import { recordPhoneOptOut } from "./opt-out.js";
+import { attachInboundSms } from "./inbox.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type MessageRow = typeof messages.$inferSelect;
@@ -55,10 +56,10 @@ export function localDate(at: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
 }
 
-/** Monthly SMS allowance: the plan's, but never below the feature's minimum plan (pilot overrides). */
-export function smsAllowance(m: Pick<Merchant, "plan">): number {
-  return Math.max(PLANS[m.plan].smsPerMonth, PLANS[FEATURES["marketing.sms"].minPlan].smsPerMonth);
-}
+// ---- phase-solo: A: the text allowance lives in text-allowance.ts (a leaf module notifications.ts can import) ----
+export { reserveTransactionalText, smsAllowance, smsOverage } from "./text-allowance.js";
+import { smsAllowance } from "./text-allowance.js";
+// ---- end phase-solo: A ----
 
 export function unsubscribeToken(ctx: AppContext, memberId: string): string {
   return hmacSha256(ctx.config.jwtSecret, `unsub:${memberId}`).slice(0, 32);
@@ -73,15 +74,18 @@ export function unsubscribeUrl(ctx: AppContext, memberId: string): string {
   return `${ctx.config.publicApiUrl.replace(/\/$/, "")}/v1/public/messaging/unsubscribe?m=${memberId}&t=${unsubscribeToken(ctx, memberId)}`;
 }
 
-/** The shop's street address (first active location), printed in every promotional text. */
+/**
+ * The shop's street address (first active location), printed in every promotional text. A home studio or a travelling pro
+ * gives its public line instead ("Bloor West area", "Toronto"): a promo goes to people who have not booked (phase-solo B, §2.3).
+ */
 export async function merchantAddress(db: DbOrTx, merchantId: string): Promise<string | null> {
   const [l] = await db
-    .select({ address: locations.address })
+    .select({ address: locations.address, addressVisibility: locations.addressVisibility, areaLabel: locations.areaLabel, city: locations.city })
     .from(locations)
     .where(and(eq(locations.merchantId, merchantId), eq(locations.active, true)))
     .orderBy(locations.createdAt)
     .limit(1);
-  return l?.address ?? null;
+  return l ? publicPlaceLine(l) || null : null;
 }
 
 /** Footer required by CASL: identifies the sender and gives a working opt-out. */
@@ -964,7 +968,11 @@ export async function handleInboundSms(ctx: AppContext, fromPhone: string, body:
   if (word === "HELP" || word === "INFO" || word === "AIDE") {
     return { action: "help", merchantsAffected: 0, reply: "Local Loyalty: shop rewards messages. Reply STOP to opt out of all shops. Help: hello@localloyalty.example" };
   }
-  if (!isStopKeyword(body)) return { action: "none", merchantsAffected: 0, reply: null };
+  if (!isStopKeyword(body)) {
+    // phase-solo D: anything else (not START, which integrations-sms handles) is a reply: it lands in the sender's inbox thread.
+    if (!/^(START|UNSTOP|YES|SUBSCRIBE)$/.test(word)) await attachInboundSms(ctx, fromPhone, body).catch(() => null);
+    return { action: "none", merchantsAffected: 0, reply: null };
+  }
   // The number goes on the do-not-contact list first, whoever it belongs to (a shopper, a shop owner, a wait-list guest).
   await recordPhoneOptOut(ctx, fromPhone, "sms", word, "sms_reply");
   const [user] = await ctx.db.select({ id: users.id }).from(users).where(eq(users.phone, fromPhone)).limit(1);
@@ -1005,3 +1013,179 @@ export async function unsubscribeByToken(ctx: AppContext, memberId: string, toke
   return { ok: true, merchantName: merchant?.name ?? "this shop" };
 }
 
+
+// ---------------------------------------------------------------------------
+// ---- phase-solo: D ---- Promos to regulars: seasonal templates per trade, the allowance, app push and email only
+// ---------------------------------------------------------------------------
+/** Bookings by promo recipients within this many days after the send count as "booked from this". */
+export const PROMO_RESULT_DAYS = 14;
+const PROMO_AUTOMATION = (key: string | null | undefined) => `promo:${key ?? "custom"}`;
+
+function promoAllowanceDto(a: { limit: number; used: number; remaining: number; period: "month" | "year" | null; periodStart: string }): messagingApi.PromoAllowanceDto {
+  return { limit: a.limit, used: a.used, remaining: a.remaining, period: a.period, periodStart: a.periodStart };
+}
+
+/**
+ * Regulars for a promo: the shop's rhythm regulars (3+ visits in 30 days) and, for an appointment shop, anyone with two or more
+ * completed appointments in the last year. Then CASL: consent, not muted, not deleted. Each person gets it once, by the first of
+ * app push, web push or email they have. Never a text.
+ */
+export async function promoAudience(ctx: AppContext, merchant: Merchant, segment: "regulars" | "all") {
+  const { appointments, webPushSubscriptions } = await import("@ll/db");
+  let where = eq(merchantMembers.merchantId, merchant.id) as SQL;
+  if (segment === "regulars") {
+    const rhythm = await segmentCondition(ctx.db, merchant.id, { kind: "regulars" }, ctx.now());
+    const yearAgo = new Date(ctx.now().getTime() - 365 * 86_400_000);
+    const booked = await ctx.db
+      .select({ userId: appointments.userId })
+      .from(appointments)
+      .where(and(eq(appointments.merchantId, merchant.id), eq(appointments.status, "completed"), gte(appointments.startsAt, yearAgo), isNotNull(appointments.userId)))
+      .groupBy(appointments.userId)
+      .having(sql`count(*) >= 2`);
+    const ids = booked.map((b) => b.userId!).filter(Boolean);
+    where = ids.length ? (or(rhythm, and(eq(merchantMembers.merchantId, merchant.id), inArray(merchantMembers.userId, ids)))! as SQL) : rhythm;
+  }
+  const rows = await ctx.db
+    .select({ memberId: merchantMembers.id, userId: merchantMembers.userId, name: users.name, email: users.email, balance: merchantMembers.balance })
+    .from(merchantMembers)
+    .innerJoin(users, eq(users.id, merchantMembers.userId))
+    .where(and(where, caslConsented));
+  const userIds = rows.map((r) => r.userId);
+  const [tokens, webs] = userIds.length
+    ? await Promise.all([
+        ctx.db.select({ userId: pushTokens.userId, token: pushTokens.token }).from(pushTokens).where(inArray(pushTokens.userId, userIds)),
+        ctx.db.select({ userId: webPushSubscriptions.userId }).from(webPushSubscriptions).where(inArray(webPushSubscriptions.userId, userIds)),
+      ])
+    : [[], []];
+  const tokenMap = tokens.reduce((m, r) => m.set(r.userId, [...(m.get(r.userId) ?? []), r.token]), new Map<string, string[]>());
+  const webSet = new Set(webs.map((w) => w.userId));
+  type PromoRecipient = (typeof rows)[number] & { via: "push" | "web_push" | "email"; to: string[] };
+  const recipients: PromoRecipient[] = [];
+  for (const r of rows) {
+    const push = tokenMap.get(r.userId);
+    if (push?.length) recipients.push({ ...r, via: "push", to: push });
+    else if (webSet.has(r.userId)) recipients.push({ ...r, via: "web_push", to: [] });
+    else if (r.email) recipients.push({ ...r, via: "email", to: [r.email] });
+  }
+  return { recipients, byPush: recipients.filter((r) => r.via !== "email").length, byEmail: recipients.filter((r) => r.via === "email").length };
+}
+
+async function promoResult(ctx: AppContext, m: MessageRow): Promise<messagingApi.PromoResult> {
+  const { appointments } = await import("@ll/db");
+  const sentAt = m.sentAt ?? m.createdAt;
+  const deliveries = await ctx.db.select({ userId: messageDeliveries.userId, channel: messageDeliveries.channel }).from(messageDeliveries).where(and(eq(messageDeliveries.messageId, m.id), eq(messageDeliveries.status, "sent")));
+  const people = [...new Set(deliveries.map((d) => d.userId))];
+  const [booked] = people.length
+    ? await ctx.db
+        .select({ n: sql<number>`count(distinct ${appointments.userId})::int` })
+        .from(appointments)
+        .where(and(eq(appointments.merchantId, m.merchantId), inArray(appointments.userId, people), gte(appointments.createdAt, sentAt), lte(appointments.createdAt, new Date(sentAt.getTime() + PROMO_RESULT_DAYS * 86_400_000)), sql`${appointments.status} <> 'cancelled'`))
+    : [{ n: 0 }];
+  const byUser = new Map(deliveries.map((d) => [d.userId, d.channel]));
+  return {
+    messageId: m.id,
+    templateKey: m.automation?.startsWith("promo:") && m.automation !== "promo:custom" ? m.automation.slice(6) : null,
+    title: m.subject ?? "",
+    sentAt: sentAt.toISOString(),
+    recipients: people.length,
+    byPush: [...byUser.values()].filter((c) => c === "push").length,
+    byEmail: [...byUser.values()].filter((c) => c === "email").length,
+    booked: Number(booked?.n ?? 0),
+  };
+}
+
+export async function lastPromoResult(ctx: AppContext, merchantId: string): Promise<messagingApi.PromoResult | null> {
+  const [m] = await ctx.db
+    .select()
+    .from(messages)
+    .where(and(eq(messages.merchantId, merchantId), sql`${messages.automation} like 'promo:%'`, eq(messages.status, "sent")))
+    .orderBy(desc(messages.sentAt))
+    .limit(1);
+  return m ? promoResult(ctx, m) : null;
+}
+
+/** GET /merchants/:id/promo-templates: the trade's seasonal templates (in season first), the allowance, the audience. */
+export async function listPromoTemplates(ctx: AppContext, merchant: Merchant, locale: import("@ll/shared").Locale = "en"): Promise<messagingApi.PromoTemplatesResponse> {
+  const { promoAllowanceFor } = await import("./billing.js");
+  const { seasonalPromoTemplates, translator, promoTradeFor } = await import("@ll/shared");
+  const { promoTemplates } = await import("@ll/db");
+  const today = localDate(ctx.now(), merchant.timezone || "America/Toronto");
+  const t = translator(locale);
+  const fill = (s: string) => s.replaceAll("{shop}", merchant.name);
+  const builtIn = seasonalPromoTemplates(merchant.vertical, today).map((x) => ({ key: x.key, season: x.season, title: fill(t(x.titleKey as never)), body: fill(t(x.bodyKey as never)), start: x.start, end: x.end, inSeason: x.inSeason, daysAway: x.daysAway }));
+  // Templates an admin added (promo_templates), when their key is not a built-in one.
+  const extra = await ctx.db.select().from(promoTemplates).where(and(eq(promoTemplates.trade, promoTradeFor(merchant.vertical)), eq(promoTemplates.active, true)));
+  const { promoWindow } = await import("@ll/shared");
+  const added = extra
+    .filter((e) => !builtIn.some((b) => b.key === e.key))
+    .flatMap((e) => {
+      const w = promoWindow({ window: e.window }, today);
+      if (!w) return [];
+      const inSeason = w.start <= today && today <= w.end;
+      return [{ key: e.key, season: e.season, title: fill(e.title), body: fill(e.body), start: w.start, end: w.end, inSeason, daysAway: inSeason ? 0 : Math.round((Date.parse(w.start) - Date.parse(today)) / 86_400_000) }];
+    });
+  const items = [...builtIn, ...added].sort((a, b) => Number(b.inSeason) - Number(a.inSeason) || a.daysAway - b.daysAway);
+  const allowance = await promoAllowanceFor(ctx, merchant);
+  const audience = await promoAudience(ctx, merchant, "regulars");
+  return {
+    items,
+    allowance: promoAllowanceDto(allowance),
+    audience: { regulars: audience.recipients.length, byPush: audience.byPush, byEmail: audience.byEmail },
+    offer: allowance.limit === 0 ? { plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents } : null,
+    last: await lastPromoResult(ctx, merchant.id),
+  };
+}
+
+/**
+ * POST /merchants/:id/promo-sends: count one promo against the allowance (Free: 402 with the plan offer), then send it to the
+ * regulars by app push, web push or email, with the CASL footer. If nobody can receive it the promo is given back.
+ */
+export async function sendPromo(ctx: AppContext, merchant: Merchant, actorUserId: string, body: messagingApi.SendPromoBody): Promise<messagingApi.SendPromoResponse> {
+  const { consumePromo, refundPromo } = await import("./billing.js");
+  const { sendWebPush } = await import("./web-push.js");
+  assertPharmacyContent(merchant, body.title, body.body);
+  assertBeautyClaims(merchant, `${body.title} ${body.body}`, "This promo");
+  const audience = await promoAudience(ctx, merchant, body.segment);
+  if (!audience.recipients.length) throw new HttpError(409, "no_recipients", "None of your regulars can get a promo yet. Customers opt in when they join.");
+  const allowance = await consumePromo(ctx, merchant);
+  const now = ctx.now();
+  const [msg] = await ctx.db
+    .insert(messages)
+    .values({ merchantId: merchant.id, channel: "push", subject: body.title, body: body.body, segment: { kind: body.segment }, automation: PROMO_AUTOMATION(body.templateKey), status: "sending", createdAt: now })
+    .returning();
+  const terminology = await programTerminology(ctx.db, merchant.id);
+  let sent = 0;
+  for (const r of audience.recipients) {
+    const text = personalize(body.body, r, merchant.name, terminology);
+    let status = "sent";
+    let providerId: string | null = null;
+    let error: string | null = null;
+    const channel: Channel = r.via === "email" ? "email" : "push";
+    const to = r.via === "web_push" ? "web_push" : r.to[0]!;
+    try {
+      if (r.via === "push") {
+        const res = await ctx.providers.push.send(r.to.map((token) => ({ token, title: body.title, body: withFooter(ctx, "push", merchant.name, text, r.memberId), data: { type: "promo", merchantId: merchant.id, messageId: msg!.id, slug: merchant.slug }, channelId: "offers" })));
+        if (!res.ok) status = "failed";
+      } else if (r.via === "web_push") {
+        const n = await sendWebPush(ctx, r.userId, { title: body.title, body: withFooter(ctx, "push", merchant.name, text, r.memberId), url: `/shops/${merchant.slug}`, tag: `promo_${msg!.id}` });
+        if (!n) status = "failed";
+      } else {
+        providerId = (await ctx.providers.email.send({ to, subject: body.title, text: withFooter(ctx, "email", merchant.name, text, r.memberId), headers: unsubscribeHeaders(ctx, r.memberId) })).id;
+      }
+    } catch (err) {
+      status = "failed";
+      error = err instanceof Error ? err.message.slice(0, 500) : "send failed";
+    }
+    if (status === "sent") sent++;
+    await ctx.db.insert(messageDeliveries).values({ messageId: msg!.id, userId: r.userId, merchantId: merchant.id, channel, to, body: text, kind: "marketing", status, providerId, error, createdAt: now });
+  }
+  if (!sent) {
+    await refundPromo(ctx, merchant.id);
+    await ctx.db.update(messages).set({ status: "failed" }).where(eq(messages.id, msg!.id));
+    throw new HttpError(502, "send_failed", "The promo couldn't be delivered. It wasn't counted. Try again.");
+  }
+  const [done] = await ctx.db.update(messages).set({ status: "sent", sentAt: now, recipientCount: sent }).where(eq(messages.id, msg!.id)).returning();
+  await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "promo.sent", entity: "message", entityId: msg!.id, data: { templateKey: body.templateKey ?? null, recipients: sent } });
+  return { result: await promoResult(ctx, done!), allowance: promoAllowanceDto(allowance) };
+}
+// ---- end phase-solo: D ----

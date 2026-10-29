@@ -26,7 +26,7 @@ import {
   rewards,
   type DbOrTx,
 } from "@ll/db";
-import { FEATURE_KEYS, FEATURES, FOUNDING_OFFER, PLAN_IDS, PLANS, distanceMetres, isPlanAvailable, networkApi as networkContract, type adsApi, type networkApi } from "@ll/shared";
+import { FEATURE_KEYS, FEATURES, FOUNDING_OFFER, PLAN_IDS, PLANS, distanceMetres, publicPin, isPlanAvailable, networkApi as networkContract, type adsApi, type networkApi } from "@ll/shared";
 import { customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
@@ -72,8 +72,10 @@ function nearest(locs: Location[], point: Point | null): { location: Location | 
   let best: Location | null = null;
   let bestD = Infinity;
   for (const l of locs) {
-    if (l.lat == null || l.lng == null) continue;
-    const d = distanceMetres(point, { lat: l.lat, lng: l.lng });
+    // The public pin: a home studio's distance is measured to its offset pin, so a distance never narrows down the real address.
+    const pin = publicPin(l);
+    if (pin.lat == null || pin.lng == null) continue;
+    const d = distanceMetres(point, { lat: pin.lat, lng: pin.lng });
     if (d < bestD) {
       bestD = d;
       best = l;
