@@ -11,12 +11,11 @@ import { Faq } from "@/components/marketing/Faq";
 import { LiveProof } from "@/components/marketing/LiveProof";
 import { JoinScreen, PhoneFrame } from "@/components/marketing/Mocks";
 import { HeroArt } from "@/components/marketing/HeroArt";
-import { Showcase, TradeColours } from "@/components/marketing/Showcase";
+import { Showcase } from "@/components/marketing/Showcase";
 import { TradeChips } from "@/components/marketing/TradeChips";
 import { WARM } from "@/components/marketing/warm-copy";
 import { RestaurantBand } from "@/components/marketing/RestaurantBand";
 import { MHeading, MSection } from "@/components/marketing/Section";
-import { TradeStories } from "@/components/marketing/TradeStories";
 import { VerticalTemplates } from "@/components/marketing/VerticalTemplates";
 import { Button } from "@/components/ui/Button";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
@@ -61,12 +60,13 @@ export default function Home() {
               {heroTail ? <span className="text-primary-text">{heroTail}</span> : null}
             </h1>
             <p className="[--i:2] mkt-rise mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-muted-foreground">{L.heroSub}</p>
+            <p className="[--i:2] mkt-rise mt-2 max-w-[34rem] text-body text-muted-foreground">{L.heroLine}</p>
             <div className="[--i:3] mkt-rise mt-9 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" href="/signup" iconStart={ArrowRight}>
                 Get started free
               </Button>
               <Button size="lg" variant="secondary" href="#book">
-                Prefer a hand? Book a visit
+                Book a visit
               </Button>
             </div>
             <ul className="[--i:4] mkt-rise mt-6 flex flex-wrap gap-x-5 gap-y-2 text-meta text-muted-foreground">
@@ -158,10 +158,6 @@ export default function Home() {
         <MHeading eyebrow={L.verticals.eyebrow} title={L.verticals.title} sub={L.verticals.sub} />
         <VerticalTemplates />
       </MSection>
-
-      <TradeColours />
-
-      <TradeStories />
 
       {/* 7. Restaurant band: the paying wedge. */}
       <RestaurantBand />

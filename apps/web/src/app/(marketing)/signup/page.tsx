@@ -21,7 +21,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
     <AuthLayout>
       <p className="text-meta-strong text-primary-text">{copy.misc.freeForever}</p>
       <h1 className="display mt-4 text-mkt-sm text-balance md:text-mkt-md">get your shop on the street&apos;s card.</h1>
-      <p className="mt-3 mb-10 text-body text-muted-foreground">About a minute. Prefer a hand? <Link href="/#book" className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">Book a free 20-minute visit</Link>.</p>
+      <p className="mt-3 mb-10 text-body text-muted-foreground">About a minute. Or <Link href="/#book" className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">book a free visit</Link>.</p>
       <LocaleScope locale={locale}>
         <SignupWizard prefill={prefill} signedInName={me ? me.user.name ?? me.user.email ?? "there" : null} />
       </LocaleScope>

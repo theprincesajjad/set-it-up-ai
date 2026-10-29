@@ -107,7 +107,7 @@ test("marketing pages render with live data", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Your regulars already walk this street." })).toBeVisible();
   await page.screenshot({ path: shot("12-home"), fullPage: false });
   await page.goto("/pricing");
-  await expect(page.getByRole("heading", { level: 1, name: "free forever for your loyalty program. flat prices for the rest." })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "free loyalty. flat prices for the rest." })).toBeVisible();
   await page.screenshot({ path: shot("13-pricing"), fullPage: false });
   await page.goto("/neighbourhoods/roncesvalles");
   await expect(page.getByRole("heading", { name: /Welcome to Roncesvalles/ })).toBeVisible();
