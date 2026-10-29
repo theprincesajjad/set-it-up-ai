@@ -41,7 +41,11 @@ describe("price block", () => {
     expect(v.price.plans.map((p) => p.price)).toEqual([moneyShort(0), moneyShort(PLANS.plus.priceCents), moneyShort(PLANS.plus.annualPriceCents)]);
     expect(v.price.plans[1]!.what).toContain(`${PROMOS_PER_MONTH_PLUS} promos a month`);
     expect(v.price.plans[1]!.what).toContain(PLANS.plus.smsPerMonth.toLocaleString("en-CA"));
-    expect(v.price.note).toContain(`${FEES.depositInvoiceBps / 100}% plus card processing`);
+    expect(v.price.note).toContain("No cut of your clients");
+    expect(v.week.stats.map((x) => x.n)).toEqual([31, 38, 18, 4]);
+    expect(v.week.upNext.who).toBe("Priya");
+    expect(v.bookings.done).toBe("Booked · Sat 11:30 am");
+    expect(v.promos.allowance).toBe(`${PROMOS_PER_MONTH_PLUS} a month on ${PLANS.plus.name}`);
     expect(v.price.plans.map((p) => p.name)).toEqual(["Free", "Pro", "Pro, yearly"]);
     expect(PLANS.plus.name).toBe("Pro");
     expect(v.hero.price).toBe(`${moneyShort(0)} to start, then ${moneyShort(PLANS.plus.priceCents)} a month`);
@@ -54,7 +58,7 @@ describe("landing v2", () => {
   it("renders the seven blocks, one h1, and the start form leading to the sign-up with the page's trade", () => {
     const page = html("nail");
     expect(page.match(/<h1/g)).toHaveLength(1);
-    for (const id of ['id="jobs"', 'id="plans"', 'id="start"', 'aria-label="The deal"', "This DM becomes this booking.", "They came back."]) expect(page).toContain(id);
+    for (const id of ['id="week"', 'id="bookings"', 'id="promos"', 'id="regulars"', 'id="jobs"', 'id="plans"', 'id="start"', 'aria-label="The deal"', "Your week, at a glance.", "Every booking, one calendar.", "A promo in one tap.", "They come back."]) expect(page).toContain(id);
     expect(page).toContain('action="/signup" method="get"');
     expect(page).toContain(`name="trade" checked="" value="nails"`);
     expect(page).toContain('href="/signup?vertical=nails&amp;src=nail-techs"');
@@ -79,6 +83,7 @@ describe("landing v2", () => {
     }
     const barber = html("barber");
     expect(barber).toContain("One link for");
+    expect(renderToStaticMarkup(<SoloLanding id="nail" />)).toContain("Your whole hustle.");
     expect(barber).toContain('data-trade="barber"');
     expect(barber).toContain("/marketing/barber-hero-900.avif");
     const groom = html("groom");
@@ -114,10 +119,10 @@ describe("deposits are optional, not the lead", () => {
     // Deposits live in one optional sentence of the "No-shows, handled your way" card, off by default.
     const noshow = soloView("nail").jobs.find((j) => j.id === "noshow")!;
     expect(noshow.title).toBe("No-shows, handled your way.");
-    expect(noshow.body).toContain("$20 deposit for the slots that matter? Turn it on per service. Don't? Leave it off.");
+    expect(noshow.body).toBe("Reminders on. $20 deposit only if you want.");
     const page = renderToStaticMarkup(<SoloLanding id="nail" />);
     expect(page).toContain("Deposits are optional");
-    expect(page).toContain("Optional deposits, if you want them.");
+    expect(page).toContain("Deposits optional, off by default.");
   });
 });
 
@@ -150,7 +155,7 @@ describe("A/B variants", () => {
     expect(variantIds("groom")).toEqual(["control", "yours"]);
     const privacy = renderToStaticMarkup(<SoloLanding id="nail" variant="privacy" />);
     expect(privacy).toContain("Address: sent after you book");
-    expect(privacy).toContain("Clients see your area,");
+    expect(privacy).toContain("Your area,");
   });
 });
 
@@ -195,5 +200,25 @@ describe("copy rules", () => {
   it("has no banned words in the solo copy", () => {
     const text = JSON.stringify(C);
     expect(text).not.toMatch(/Upgrade|licen[cs]|inspection|\bmerchant\b|\bSMS\b/i);
+  });
+  const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+  it("keeps the landing v3 word budget: hooks of 2 to 6 words, ledes of 12 at most, job lines of 8 at most, no paragraphs", () => {
+    for (const k of ["nails", "brows", "lashes", "makeup", "barber", "groom"] as const) {
+      for (const id of variantIds(k)) {
+        const v = landingVariant(k, id);
+        const hook = words(v.hook.join(" "));
+        expect(hook, `${k}/${id} hook`).toBeGreaterThanOrEqual(2);
+        expect(hook, `${k}/${id} hook`).toBeLessThanOrEqual(6);
+        expect(words(v.lede), `${k}/${id} lede`).toBeLessThanOrEqual(12);
+      }
+      for (const [j, card] of Object.entries(C.trades[k].jobs)) {
+        expect(words(card.title), `${k} ${j} title`).toBeLessThanOrEqual(6);
+        expect(words(card.body), `${k} ${j} body`).toBeLessThanOrEqual(8);
+      }
+    }
+    for (const [name, s] of [["week", C.week.sub], ["bookings", C.bookings.sub], ["promos", C.promos.sub], ["regulars", C.regulars.sub]]) expect(words(s!), `${name} sub`).toBeLessThanOrEqual(12);
+    for (const t of [C.week.title, C.bookings.title, C.promos.title, C.regulars.title, C.jobs.title, C.start.title]) expect(words(t)).toBeLessThanOrEqual(6);
+    for (const p of [C.price.free.what, C.price.monthly.what, C.price.yearly.what]) expect(words(p)).toBeLessThanOrEqual(8);
+    for (const x of C.facts.items) expect(words(x.line)).toBeLessThanOrEqual(8);
   });
 });

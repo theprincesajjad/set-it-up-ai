@@ -51,6 +51,7 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
   const goal = STAMP_GOAL[key];
   const facts = C.facts.items.map((x) => ({ value: f(x.value), line: f(x.line) }));
   if (id === "barber") facts[3] = { ...C.facts.barberLast };
+  const upNext = { who: T.people[0]!, what: booked.name, when: C.hero.picked };
   return {
     id,
     key,
@@ -77,6 +78,10 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
       bookedCardLine: f(C.hero.bookedCardLine),
     },
     facts,
+    /** The owner's week: sample counts, the comparison with last week, the bars per day and the next client. */
+    week: { ...C.week, upNext: { label: C.week.upNext, ...upNext } },
+    bookings: { ...C.bookings, done: fill(C.bookings.done, { when: C.hero.bookedWhen }) },
+    promos: { ...C.promos, allowance: f(C.promos.allowance) },
     /** The three job cards in the variant's order. */
     jobs: V.jobs.map((j) => {
       const card = (T.jobs as Partial<Record<JobId, { title: string; body: string }>>)[j];
@@ -84,9 +89,7 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
       return { id: j, title: f(card.title), body: f(card.body) };
     }),
     notes: T.notes.map(f),
-    dmAfter: f(C.dm.after),
     card: fill(C.regulars.card, { client: T.client, have: goal - 1, goal }),
-    promoSub: f(C.regulars.promoSub),
     price: {
       title: f(C.price.title),
       plans: [

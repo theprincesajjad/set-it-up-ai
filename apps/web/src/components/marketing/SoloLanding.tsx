@@ -1,16 +1,17 @@
 import { preload } from "react-dom";
 import { photoSrcSet, type NailTrade, type SoloPageId } from "@/lib/marketing/solo";
 import { soloView } from "@/lib/marketing/solo-view";
-import { DmToBooking, Facts, Jobs, PriceBlock, Regulars } from "./solo/Blocks";
+import { Bookings, Facts, Jobs, PriceBlock, Promos, Regulars, Week } from "./solo/Blocks";
 import { Hero, WORK_SIZES } from "./solo/Hero";
 import { SoloNav } from "./solo/Nav";
 import { Start } from "./solo/Start";
 import "./solo/solo.css";
 
 /**
- * One solo-pro landing page, direction B (product-led; docs/marketing/landing-pages.md): seven blocks, hook and phone, facts, three
- * live jobs, the DM that becomes a booking, regulars, price, and the three-field start. Server-rendered and static: English copy
- * from copy.solo, the trade's photos from public/marketing, and no script except the start form's source field.
+ * One solo-pro landing page, v3 (product-led, few words; docs/marketing/landing-pages.md): the hook and the phone, four facts, the
+ * owner's week, every booking on one calendar, a promo in one tap, regulars, the variant's three jobs, three prices, and the
+ * three-field start. Server-rendered and static: English copy from copy.solo, the trade's photos from public/marketing, CSS-only
+ * motion, and no script except the start form's source field.
  * `trade` only applies to the nail page (`?trade=brows|lashes|makeup`, served by the static /for-nail-techs/[trade] route).
  */
 export function SoloLanding({ id, trade = "nails", variant }: { id: SoloPageId; trade?: NailTrade; /** A LANDING_VARIANTS id (copy/en-CA.ts) for an A/B test; control by default. */ variant?: string }) {
@@ -24,9 +25,11 @@ export function SoloLanding({ id, trade = "nails", variant }: { id: SoloPageId; 
       <main id="main">
         <Hero v={v} />
         <Facts v={v} />
-        <Jobs v={v} />
-        <DmToBooking v={v} />
+        <Week v={v} />
+        <Bookings v={v} />
+        <Promos v={v} />
         <Regulars v={v} />
+        <Jobs v={v} />
         <PriceBlock v={v} />
         <Start v={v} />
       </main>

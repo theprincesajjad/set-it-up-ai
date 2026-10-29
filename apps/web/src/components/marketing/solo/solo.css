@@ -1,5 +1,5 @@
 /*
- * Solo landing v2, direction B (product-led): /for-nail-techs (+ ?trade=), /for-barbers, /for-groomers.
+ * Solo landing v3 (product-led, few words): /for-nail-techs (+ ?trade=), /for-barbers, /for-groomers.
  * Ported from the design lead's mock B onto the Clear tokens: every colour is a var(--role) from @ll/design-tokens, shadows are the
  * Clear elevation roles, glass is the glass-* utilities (set in the markup). No gradients and no decorative shapes.
  * Logical properties only, so the page mirrors under dir="rtl".
@@ -32,6 +32,8 @@
 .sl-eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--trade); }
 .sl-head { display: grid; gap: 14px; margin-bottom: clamp(28px, 3.5vw, 48px); max-width: 52rem; }
 .sl-sec { padding-block: clamp(56px, 7vw, 104px); }
+/* Below the fold: the browser skips styling, laying out and painting a section (and its animations) until it is near the viewport. */
+.sl-sec { content-visibility: auto; contain-intrinsic-size: auto 100% auto 800px; }
 .sl-sec-white { background: var(--card); }
 
 /* Buttons: the Clear black primary, 56 tall. */
@@ -66,7 +68,6 @@
 .sl-price-link u { text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 3px; }
 .sl-price-link:hover u { text-decoration-color: var(--foreground); }
 .sl-proof { font-size: 13px; color: var(--muted-foreground); margin-top: -18px; }
-.sl-demo-h { font-size: 12px; font-weight: 650; color: var(--muted-foreground); padding-inline: 4px; }
 .sl-trust { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; font-weight: 550; color: var(--muted-foreground); padding: 0; margin: 0; list-style: none; }
 .sl-trust li { display: inline-flex; align-items: center; gap: 7px; }
 .sl-trust svg, .sl-ready svg { width: 16px; height: 16px; color: var(--success); flex: none; }
@@ -154,89 +155,125 @@
 .sl-done p { color: var(--muted-foreground); font-size: 0.93em; }
 .sl-wallet { margin-top: calc(6px * var(--ph)); height: calc(48px * var(--ph)); border-radius: 999px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-weight: 650; font-size: 0.93em; }
 
-/* ---------- 2. Facts ---------- */
-.sl-facts { padding-block: clamp(32px, 4vw, 56px); }
+/* ---------- 2. Facts: one quiet strip of four numbers ---------- */
+.sl-facts { padding-block: clamp(8px, 2vw, 24px) clamp(24px, 4vw, 48px); }
 .sl-facts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
 @media (min-width: 820px) { .sl-facts ul { grid-template-columns: repeat(4, 1fr); } }
-.sl-facts li { border-radius: 20px; padding: 18px 20px; }
-.sl-facts b { display: block; font-size: clamp(28px, 2.6vw, 40px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
-.sl-facts span { display: block; margin-top: 6px; font-size: 14px; color: var(--muted-foreground); line-height: 1.35; }
+.sl-facts li { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+.sl-facts b { font-size: clamp(24px, 2.2vw, 32px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
+.sl-facts span { font-size: 14px; font-weight: 550; color: var(--muted-foreground); line-height: 1.2; }
 
-/* ---------- 3. Three jobs, as three live UI cards ---------- */
-.sl-jobs { display: grid; gap: 14px; }
-@media (min-width: 900px) { .sl-jobs { grid-template-columns: repeat(3, 1fr); } }
-.sl-job { border-radius: var(--sl-r-card); padding: 22px 22px 0; display: grid; grid-template-rows: auto 1fr; gap: 18px; min-height: 480px; overflow: hidden; }
-.sl-job h3, .sl-promo h3 { font-size: clamp(26px, 2.2vw, 32px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; text-wrap: balance; }
-.sl-job p, .sl-promo p { color: var(--muted-foreground); font-size: 15px; margin-top: 8px; }
-.sl-demo { position: relative; align-self: end; margin: 0 -6px; padding-bottom: 22px; }
+/* Shared: centred section heads, two-column sections, chips, rows, sums. */
+.sl-head.sl-center { margin-inline: auto; text-align: center; justify-items: center; }
+.sl-two { display: grid; gap: 28px; align-items: center; }
+@media (min-width: 900px) { .sl-two { grid-template-columns: 0.9fr 1.1fr; gap: 48px; } .sl-two .sl-head { margin-bottom: 0; } }
 .sl-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 8px; font-size: 12px; font-weight: 600; background: var(--background); white-space: nowrap; }
 .sl-chip.up { background: var(--success-soft); color: var(--success-text); }
 .sl-chip.info { background: var(--info-soft); color: var(--info-text); }
 .sl-chip.trade { background: var(--trade-tint); color: var(--sl-trade-ink); }
-/* 1: a week with slots filling */
-.sl-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.sl-week > div:not(.sl-weeknote) { display: grid; gap: 6px; }
-.sl-day { font-size: 11px; font-weight: 650; color: var(--muted-foreground); text-align: center; }
-.sl-day b { display: block; font-size: 15px; color: var(--foreground); }
-.sl-week i { position: relative; display: block; height: 26px; border-radius: 8px; background: var(--background); }
-.sl-week i.b::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--trade); }
-.sl-weeknote { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 12px; border-radius: 14px; background: var(--background); font-size: 13px; font-weight: 600; }
-.sl-weeknote img { width: 28px; height: 28px; flex: none; }
-.sl-weeknote small { display: block; color: var(--muted-foreground); font-weight: 500; }
-/* 2: deposits landing */
+.sl-note { font-size: 12px; color: var(--muted-foreground); }
+.sl-demo-h { font-size: 12px; font-weight: 650; color: var(--muted-foreground); padding-inline: 4px; }
 .sl-deps { display: grid; gap: 8px; }
 .sl-sum { padding: 16px 16px 14px; border-radius: 18px; background: var(--primary); color: var(--primary-foreground); }
 .sl-sum small { opacity: 0.75; font-size: 12px; font-weight: 600; }
 .sl-sum b { display: block; font-size: 34px; font-weight: 800; letter-spacing: -0.035em; line-height: 1.05; margin-top: 2px; }
 .sl-dr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--background); font-size: 13px; }
+.sl-dr.on { box-shadow: inset 0 0 0 2px var(--foreground); background: var(--card); }
 .sl-dr b { font-weight: 650; display: block; }
 .sl-dr small { color: var(--muted-foreground); display: block; }
 .sl-dr .sl-chip { margin-inline-start: auto; }
+.sl-dr > div { min-width: 0; flex: 1; }
 .sl-switch { margin-inline-start: auto; display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 650; background: var(--muted); color: var(--muted-foreground); }
 .sl-switch.on { background: var(--success-soft); color: var(--success-text); }
 .sl-deps .sl-dr img { width: 28px; height: 28px; flex: none; }
 .sl-deps .sl-note { margin-top: 2px; }
-/* 3: reminders as lock-screen notifications, on a flat trade tint (no gradient) */
-.sl-lock { padding: 18px 12px 22px; border-radius: 24px; background: var(--trade-tint); display: grid; gap: 8px; align-content: start; }
-.sl-job .sl-lock { margin-bottom: -22px; border-end-start-radius: 0; border-end-end-radius: 0; padding-bottom: 30px; }
-.sl-clock { font-size: 44px; font-weight: 300; letter-spacing: -0.03em; text-align: center; line-height: 1; margin: 4px 0 10px; }
-.sl-clock small { display: block; font-size: 13px; font-weight: 600; letter-spacing: 0; margin-bottom: 4px; }
-.sl-notif { display: flex; gap: 10px; padding: 10px 12px; border-radius: 18px; background: var(--lg-fill-strong); box-shadow: inset 0 0 0 1px var(--lg-edge), var(--ll-shadow-card); font-size: 13px; }
-.sl-notif b { font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
-.sl-notif b small { font-weight: 500; color: var(--muted-foreground); }
-.sl-notif span { display: block; line-height: 1.3; }
-.sl-mark { width: 34px; height: 34px; border-radius: 9px; background: var(--foreground); display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 8px; flex: none; }
-.sl-mark i { border-radius: 50%; background: var(--card); display: block; }
 
-/* ---------- 4. The DM moment: the inbox next to the prefilled booking ---------- */
-.sl-inbox { display: grid; gap: 16px; }
-@media (min-width: 900px) { .sl-inbox { grid-template-columns: 1.1fr 0.9fr; gap: 20px; align-items: stretch; } }
-.sl-pane { border-radius: var(--sl-r-card); background: var(--background); padding: 18px; display: grid; gap: 10px; align-content: start; box-shadow: inset 0 0 0 1px var(--border); }
-.sl-pane-h { display: flex; align-items: center; justify-content: space-between; font-weight: 650; font-size: 14px; padding: 0 4px 8px; }
-.sl-msg { display: flex; gap: 12px; padding: 12px 14px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 14px; }
-.sl-msg.sel { box-shadow: inset 0 0 0 2px var(--foreground); }
+/* ---------- 3. Your week: the owner's dashboard, big ---------- */
+.sl-dash { margin: 0 auto; width: min(100%, 980px); border-radius: var(--sl-r-card); padding: clamp(18px, 2.6vw, 32px); display: grid; gap: clamp(14px, 2vw, 22px); }
+.sl-dash-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 650; }
+.sl-stats { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+@media (min-width: 720px) { .sl-stats { grid-template-columns: repeat(4, 1fr); gap: 12px; } }
+.sl-stat { position: relative; padding: 16px 18px 14px; border-radius: 18px; background: var(--background); display: grid; gap: 4px; align-content: start; }
+.sl-stat > b { font-size: clamp(34px, 3.4vw, 48px); font-weight: 800; letter-spacing: -0.045em; line-height: 1; }
+.sl-stat > span { font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
+.sl-stat > .sl-chip { position: absolute; inset-inline-end: 12px; top: 12px; height: 22px; padding-inline: 7px; }
+.sl-dash-grid { display: grid; gap: 12px; }
+@media (min-width: 720px) { .sl-dash-grid { grid-template-columns: 1.3fr 1fr; } }
+.sl-chart { padding: 18px 18px 14px; border-radius: 18px; background: var(--background); display: grid; gap: 12px; }
+.sl-bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: clamp(6px, 1.2vw, 12px); height: 150px; align-items: end; }
+.sl-bars > span { display: grid; grid-template-rows: 1fr auto; gap: 8px; height: 100%; }
+.sl-bars i { position: relative; display: block; align-self: end; height: calc(var(--h) * 100%); min-height: 6px; border-radius: 8px 8px 4px 4px; background: var(--border-strong); transform-origin: bottom; }
+.sl-bars .best i { background: var(--trade); }
+.sl-bars small { text-align: center; font-size: 12px; font-weight: 650; color: var(--muted-foreground); }
+.sl-bars .best small { color: var(--foreground); }
+.sl-best { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 14px; }
+.sl-best small { font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.sl-best b { font-weight: 650; color: var(--sl-trade-ink); }
+.sl-next { padding: 14px 12px 12px; border-radius: 18px; background: var(--background); display: grid; gap: 8px; align-content: start; }
+.sl-next > small { font-size: 12px; font-weight: 650; color: var(--muted-foreground); padding-inline: 6px; }
+.sl-next .sl-dr { background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+.sl-dash > .sl-note { text-align: center; }
+
+/* Count-up numbers: the text is the real value; with motion the pseudo-element counts up to it (@property, below) and the text hides. */
+.sl-n { position: relative; display: inline-block; }
+
+/* ---------- 4. Every booking, one calendar ---------- */
+.sl-sources { display: grid; gap: 8px; padding: 0; margin: 6px 0 0; list-style: none; font-size: 15px; font-weight: 600; }
+.sl-sources li { display: flex; align-items: center; gap: 10px; }
+.sl-sources i { width: 14px; height: 14px; border-radius: 5px; background: var(--trade); flex: none; }
+.sl-sources .s1 i { background: var(--info); }
+.sl-sources .s2 i { background: var(--foreground); }
+.sl-cal-stack { display: grid; gap: 12px; }
+.sl-cal { border-radius: var(--sl-r-card); padding: 18px; display: grid; gap: 12px; }
+.sl-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.sl-week > div { display: grid; gap: 6px; }
+.sl-day { font-size: 11px; font-weight: 650; color: var(--muted-foreground); text-align: center; }
+.sl-day b { display: block; font-size: 15px; color: var(--foreground); }
+.sl-week i { position: relative; display: block; height: 30px; border-radius: 8px; background: var(--background); }
+.sl-week i.b::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--trade); }
+.sl-week i.b.s1::after { background: var(--info); }
+.sl-week i.b.s2::after { background: var(--foreground); }
+.sl-weeknote { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--background); font-size: 13px; font-weight: 600; }
+.sl-weeknote img { width: 28px; height: 28px; flex: none; }
+.sl-weeknote small { display: block; color: var(--muted-foreground); font-weight: 500; }
+.sl-dm-card { border-radius: var(--sl-r-card); padding: 14px; display: grid; gap: 10px; }
+.sl-msg { display: flex; gap: 12px; padding: 10px 12px; border-radius: 16px; background: var(--background); font-size: 14px; }
 .sl-msg > div { flex: 1; min-width: 0; }
 .sl-ig { width: 36px; height: 36px; border-radius: 50%; background: var(--muted); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; position: relative; }
 .sl-ig img { position: absolute; inset-inline-end: -4px; bottom: -4px; width: 18px; height: 18px; }
 .sl-msg b { font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
 .sl-msg b small { font-weight: 500; color: var(--muted-foreground); }
 .sl-msg > div > span { display: block; margin-top: 2px; overflow-wrap: anywhere; }
-.sl-msg > div > .sl-act { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font-size: 13px; font-weight: 650; }
+.sl-dm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.sl-act { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font-size: 13px; font-weight: 650; white-space: nowrap; }
 .sl-act svg { width: 14px; height: 14px; }
-.sl-sheet { border-radius: var(--sl-r-card); background: var(--card); box-shadow: inset 0 0 0 1px var(--border), var(--lg-shadow-lg); padding: 20px; display: grid; gap: 10px; align-content: start; }
-.sl-sheet h4 { font-size: 20px; font-weight: 750; letter-spacing: -0.02em; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.sl-field { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
-.sl-field > div { min-height: 44px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--input); display: flex; align-items: center; padding: 8px 12px; font-size: 14px; font-weight: 550; color: var(--foreground); gap: 8px; background: var(--card); }
-.sl-field > div .sl-chip { margin-inline-start: auto; }
-.sl-field .sl-avatar { width: 26px; height: 26px; font-size: 11px; }
-.sl-field .quote { font-weight: 500; color: var(--muted-foreground); }
-.sl-save { height: 48px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-weight: 650; font-size: 15px; margin-top: 6px; }
-.sl-note { font-size: 12px; color: var(--muted-foreground); }
+.sl-dm-done { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.sl-dm-done > svg { width: 22px; height: 22px; padding: 4px; border-radius: 50%; background: var(--success-soft); color: var(--success-text); flex: none; }
+.sl-dm-done b { font-weight: 650; display: block; }
+.sl-dm-done small { display: block; color: var(--muted-foreground); }
 
-/* ---------- 5. Regulars: the pass over a photo of the work, and the promo composer ---------- */
+/* ---------- 5. A promo in one tap: three steps ---------- */
+.sl-flow { margin: 0; display: grid; gap: 12px; }
+@media (min-width: 820px) { .sl-flow { grid-template-columns: 1.2fr 1fr 0.8fr; gap: 14px; } }
+.sl-step { border-radius: var(--sl-r-card); padding: 18px; display: grid; gap: 14px; align-content: start; }
+.sl-stepn { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; color: var(--muted-foreground); }
+.sl-stepn b { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--foreground); color: var(--background); font-size: 12px; }
+.sl-tpl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sl-tpl div { padding: 12px; border-radius: 14px; background: var(--background); font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
+.sl-tpl img { width: 30px; height: 30px; flex: none; }
+.sl-tpl div.on { box-shadow: inset 0 0 0 2px var(--foreground); background: var(--card); }
+.sl-send { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; padding-inline-start: 16px; border-radius: 16px; background: var(--primary); color: var(--primary-foreground); font-size: 14px; font-weight: 600; }
+.sl-send small { display: block; opacity: 0.75; font-weight: 500; }
+.sl-send > span:last-child { display: inline-grid; place-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--card); color: var(--foreground); flex: none; }
+.sl-step-result { background: var(--trade-tint); box-shadow: none; }
+.sl-step-result .sl-stepn { color: var(--sl-trade-ink); }
+.sl-result { display: grid; gap: 2px; font-size: 15px; font-weight: 600; color: var(--sl-trade-ink); align-self: center; padding-block: 8px; }
+.sl-result > b { font-size: clamp(56px, 6vw, 84px); font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--trade); }
+
+/* ---------- 6. Regulars: the pass over a photo, and who came back ---------- */
 .sl-reg { display: grid; gap: 16px; }
-@media (min-width: 900px) { .sl-reg { grid-template-columns: 1fr 1fr; gap: 20px; } }
-.sl-pass-wrap { position: relative; border-radius: var(--sl-r-card); overflow: hidden; min-height: 420px; display: grid; place-items: center; padding: 28px; background: var(--muted); }
+@media (min-width: 900px) { .sl-reg { grid-template-columns: 1.2fr 0.8fr; gap: 20px; } }
+.sl-pass-wrap { position: relative; border-radius: var(--sl-r-card); overflow: hidden; min-height: 400px; display: grid; place-items: center; padding: 28px; background: var(--muted); }
 .sl-pass-wrap picture { position: absolute; inset: 0; }
 .sl-pass { width: min(100%, 360px); border-radius: 26px; padding: 20px; display: grid; gap: 14px; }
 .sl-pass .t { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -254,18 +291,29 @@
 .sl-pass .next span { color: var(--muted-foreground); font-weight: 500; text-align: end; }
 .sl-pass .big { font-size: 15px; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--trade-tint); color: var(--sl-trade-ink); font-weight: 650; }
 .sl-pass .big img { width: 28px; height: 28px; flex: none; }
-.sl-promo { border-radius: var(--sl-r-card); padding: 22px; display: grid; gap: 14px; align-content: start; }
-.sl-tpl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.sl-tpl div { padding: 12px; border-radius: 14px; background: var(--background); font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
-.sl-tpl img { width: 30px; height: 30px; flex: none; }
-.sl-tpl div.on { box-shadow: inset 0 0 0 2px var(--foreground); background: var(--card); }
-.sl-send { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; padding-inline-start: 16px; border-radius: 16px; background: var(--primary); color: var(--primary-foreground); font-size: 14px; font-weight: 600; }
-.sl-send small { display: block; opacity: 0.75; font-weight: 500; }
-.sl-send > span:last-child { display: inline-grid; place-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--card); color: var(--foreground); flex: none; }
-.sl-result { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
-.sl-result b { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; color: var(--trade); }
+.sl-back { border-radius: var(--sl-r-card); padding: 18px; display: grid; gap: 8px; align-content: start; }
 
-/* ---------- 6. Price: three numbers, the middle one inverted ---------- */
+/* ---------- 7. The variant's three jobs, compact ---------- */
+.sl-jobs { display: grid; gap: 14px; }
+@media (min-width: 900px) { .sl-jobs { grid-template-columns: repeat(3, 1fr); } }
+.sl-job { border-radius: var(--sl-r-card); padding: 22px 22px 0; display: grid; grid-template-rows: auto 1fr; gap: 18px; min-height: 400px; overflow: hidden; }
+.sl-job h3 { font-size: clamp(24px, 2vw, 28px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; text-wrap: balance; }
+.sl-job p { color: var(--muted-foreground); font-size: 15px; margin-top: 6px; }
+.sl-demo { position: relative; align-self: end; margin: 0 -6px; padding-bottom: 22px; }
+.sl-save { height: 48px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-weight: 650; font-size: 15px; margin-top: 6px; }
+/* reminders as lock-screen notifications, on a flat trade tint (no gradient) */
+.sl-lock { padding: 18px 12px 22px; border-radius: 24px; background: var(--trade-tint); display: grid; gap: 8px; align-content: start; }
+.sl-job .sl-lock { margin-bottom: -22px; border-end-start-radius: 0; border-end-end-radius: 0; padding-bottom: 30px; }
+.sl-clock { font-size: 44px; font-weight: 300; letter-spacing: -0.03em; text-align: center; line-height: 1; margin: 4px 0 10px; }
+.sl-clock small { display: block; font-size: 13px; font-weight: 600; letter-spacing: 0; margin-bottom: 4px; }
+.sl-notif { display: flex; gap: 10px; padding: 10px 12px; border-radius: 18px; background: var(--lg-fill-strong); box-shadow: inset 0 0 0 1px var(--lg-edge), var(--ll-shadow-card); font-size: 13px; }
+.sl-notif b { font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
+.sl-notif b small { font-weight: 500; color: var(--muted-foreground); }
+.sl-notif span { display: block; line-height: 1.3; }
+.sl-mark { width: 34px; height: 34px; border-radius: 9px; background: var(--foreground); display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 8px; flex: none; }
+.sl-mark i { border-radius: 50%; background: var(--card); display: block; }
+
+/* ---------- 8. Price: three numbers, the middle one inverted ---------- */
 .sl-plans { display: grid; gap: 12px; }
 @media (min-width: 820px) { .sl-plans { grid-template-columns: repeat(3, 1fr); } }
 .sl-plan { padding: 26px 26px 24px; border-radius: 24px; display: grid; gap: 8px; align-content: start; }
@@ -275,10 +323,10 @@
 .sl-plan .what { font-size: 15px; line-height: 1.45; }
 .sl-plan.featured { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--lg-shadow-lg); }
 .sl-plan.featured .name, .sl-plan.featured .price small { color: inherit; opacity: 0.72; }
-.sl-plans-note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 14px; font-size: 14px; color: var(--muted-foreground); }
+.sl-plans-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 16px; margin-top: 14px; font-size: 14px; color: var(--muted-foreground); }
 .sl-plans-note a { display: inline-flex; align-items: center; min-height: 44px; color: var(--foreground); font-weight: 550; text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 3px; }
 
-/* ---------- 7. Start: name, trade, email or mobile ---------- */
+/* ---------- 9. Start: name, trade, email or mobile ---------- */
 .sl-start-grid { display: grid; gap: 28px; }
 @media (min-width: 900px) { .sl-start-grid { grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; } }
 .sl-ready { display: grid; gap: 10px; font-size: 15px; color: var(--muted-foreground); padding: 0; margin: 0; list-style: none; }
@@ -305,6 +353,9 @@
 .sl-n0 { --n: 0; } .sl-n1 { --n: 1; } .sl-n2 { --n: 2; } .sl-n3 { --n: 3; } .sl-n4 { --n: 4; } .sl-n5 { --n: 5; }
 .sl-n6 { --n: 6; } .sl-n7 { --n: 7; } .sl-n8 { --n: 8; } .sl-n9 { --n: 9; } .sl-n10 { --n: 10; }
 .sl-i1 { --i: 1; } .sl-i2 { --i: 2; } .sl-i3 { --i: 3; } .sl-i4 { --i: 4; } .sl-i5 { --i: 5; }
+
+/* A typed custom property so the dashboard numbers can count (interpolate) in CSS. */
+@property --sl-count { syntax: "<integer>"; inherits: false; initial-value: 0; }
 
 /* ---------- Motion ---------- */
 @media (prefers-reduced-motion: no-preference) {
@@ -333,10 +384,30 @@
   .sl-dep { animation-delay: 1.4s; }
   .sl-rem { animation-delay: 1.9s; }
 
-  /* Jobs: the week's slots fill one by one, deposits rise in, notifications drop in 2.2 s apart. */
+  /*
+   * Your week: the numbers count up from 0 and the bars grow from the baseline as the dashboard scrolls into view (scroll-driven where
+   * the browser has it, on load elsewhere). The text value hides while the pseudo-element counts, so nothing is read twice by sight.
+   */
+  .sl-n { --sl-count: var(--to); counter-reset: sl var(--sl-count); animation: sl-count 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--n, 0) * 120ms + 200ms); }
+  .sl-n span { visibility: hidden; position: absolute; }
+  .sl-n::after { content: counter(sl); }
+  @keyframes sl-count { from { --sl-count: 0; } }
+  .sl-bars i { animation: sl-grow 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--n) * 90ms + 300ms); }
+  @keyframes sl-grow { from { transform: scaleY(0); } }
+  .sl-stat, .sl-chart, .sl-next { animation: sl-rise 0.7s both; animation-delay: calc(var(--n, 2) * 100ms); }
+  @supports (animation-timeline: view()) {
+    .sl-dash .sl-n, .sl-bars i, .sl-stat, .sl-chart, .sl-next { animation-timeline: view(); animation-range: entry 10% entry 60%; animation-delay: 0s; animation-duration: auto; }
+    .sl-dash .sl-n { animation-range: entry 15% entry 70%; }
+    .sl-bars i { animation-range: entry 20% entry 75%; }
+  }
+
+  /* Calendar: the week's slots fill one by one; the DM becomes a booking; the promo's three steps rise in turn. */
   .sl-week i.b::after { animation: sl-fill 9s ease-in-out infinite; animation-delay: calc(var(--n) * 0.5s); }
   @keyframes sl-fill { 0%, 8% { opacity: 0; } 12%, 100% { opacity: 1; } }
   .sl-dr { animation: sl-rise 0.6s both; animation-delay: calc(var(--n) * 0.25s + 0.3s); }
+  .sl-dm-done { animation: sl-rise 0.6s 1.2s both; }
+  .sl-step { animation: sl-rise 0.7s both; animation-delay: calc(var(--n) * 0.35s + 0.2s); }
+  .sl-result .sl-n { animation-delay: 1.3s; }
   .sl-notif { animation: sl-notif 8s ease-in-out infinite; animation-delay: calc(var(--n) * 2.2s); }
   @keyframes sl-notif { 0%, 4% { opacity: 0; transform: translateY(-14px) scale(0.98); } 10%, 100% { opacity: 1; transform: none; } }
 
@@ -345,6 +416,4 @@
   .sl-stamps i.fresh svg { animation: sl-stamp-tick 6s ease-in-out infinite; }
   @keyframes sl-stamp { 0%, 20% { opacity: 0; transform: scale(0.6); } 28%, 100% { opacity: 1; transform: none; } }
   @keyframes sl-stamp-tick { 0%, 24% { opacity: 0; transform: scale(0.4); } 32%, 100% { opacity: 1; transform: none; } }
-  .sl-result { animation: sl-rise 0.6s 1.2s both; }
-  .sl-sheet { animation: sl-rise 0.8s 0.6s both; }
 }

@@ -53,7 +53,7 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
   const res = await page.goto("/for-nail-techs");
   // Prerendered: served from the static output, never rendered per request.
   expect(res!.headers()["cache-control"] ?? "").not.toMatch(/no-store|private/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Stop booking in your DMs.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your whole hustle. One link.");
   await expect(page.locator("[data-solo-trade=nails][data-trade=nails]")).toHaveCount(1);
   await expect(page.getByRole("img", { name: "The booking flow, as a client sees it" })).toBeVisible();
   // The awning is Warm-only; the solo pages have none, and no gradient on any block.
@@ -73,11 +73,17 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
   // Deposits are optional, never the lead: not in the hero copy or the trust row; the booking flow says so on its details step.
   await expect(page.locator(".sl-copy")).not.toContainText(/deposit/i);
   await expect(page.locator(".sl-app").nth(2)).toContainText("Deposits are optional");
-  await expect(page.locator("#plans [data-plan=free]")).toContainText("Optional deposits, if you want them.");
+  await expect(page.locator("#plans")).toContainText("Deposits optional.");
   await expect(page.locator("#plans [data-plan=monthly]")).toContainText("Pro");
   // The three jobs, in the control order.
   expect(await page.locator("[data-job]").evaluateAll((els) => els.map((e) => e.getAttribute("data-job")))).toEqual(["book", "remind", "noshow"]);
-  await expect(page.locator("[data-job=noshow]")).toContainText("Don't? Leave it off.");
+  await expect(page.locator("[data-job=noshow]")).toContainText("$20 deposit only if you want.");
+  // The owner's week: the dashboard numbers are real text (they count up in CSS only), the best day is Saturday.
+  await expect(page.locator("#week .sl-stat").first()).toContainText("31");
+  await expect(page.locator("#week .sl-dash")).toContainText("+23% vs last week");
+  await expect(page.locator("#week .sl-bars .best")).toContainText("S");
+  await expect(page.locator("#bookings")).toContainText("11 booked this week");
+  await expect(page.locator("#promos")).toContainText("Sent to 112 regulars");
   // The comparison table, the FAQ and the twelve-field wizard are off the page.
   await expect(page.locator("table")).toHaveCount(0);
   await expect(page.locator("input[type=password]")).toHaveCount(0);
@@ -88,8 +94,8 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
 
 test("the other looks of the nail page swap the words, the photos and the sign-up preset", async ({ page }) => {
   for (const [trade, hook, chip, vertical, photo, nav] of [
-    ["brows", "Stop booking in your DMs.", "Brows", "brows_lashes", "brows-", "Brow techs"],
-    ["lashes", "Stop booking in your DMs.", "Lashes", "brows_lashes", "lashes-", "Lash techs"],
+    ["brows", "Your whole hustle. One link.", "Brows", "brows_lashes", "brows-", "Brow techs"],
+    ["lashes", "Your whole hustle. One link.", "Lashes", "brows_lashes", "lashes-", "Lash techs"],
     ["makeup", "Your dates, booked for you.", "Makeup", "makeup", "lashes-", null],
   ] as const) {
     await page.goto(`/for-nail-techs?trade=${trade}`);
@@ -141,7 +147,7 @@ test("groomer page and home chips", async ({ page }) => {
 test("an ad URL's ?v= renders the researched challengers (no test running: any variant of the look), and an unknown id falls back", async ({ page }) => {
   for (const [url, variant, hook, jobs] of [
     ["/for-nail-techs?v=yours", "yours", "Your clients stay yours.", ["book", "yours", "noshow"]],
-    ["/for-nail-techs?trade=brows&v=privacy", "privacy", "Clients see your area, not your door.", ["private", "book", "noshow"]],
+    ["/for-nail-techs?trade=brows&v=privacy", "privacy", "Your area, not your door.", ["private", "book", "noshow"]],
     ["/for-barbers?v=price", "price", "No per-chair charge. Ever.", ["book", "yours", "line"]],
     ["/for-groomers?v=yours", "yours", "Your clients stay yours.", ["book", "yours", "noshow"]],
   ] as const) {
