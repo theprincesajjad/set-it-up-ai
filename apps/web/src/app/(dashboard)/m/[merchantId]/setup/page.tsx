@@ -16,6 +16,9 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { QrCode } from "@/components/ui/QrCode";
 import { SubscribeButton } from "@/components/dashboard/SubscribeButton";
 import { TRADE_COPY, TradeSetup } from "@/components/dashboard/onboarding/TradeSetup";
+import { SoloSetup } from "@/components/dashboard/onboarding/SoloSetup";
+import { PageTitle } from "@/components/ui/ClearKit";
+import { useLocale } from "@/lib/i18n/client";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -29,12 +32,21 @@ import { PLANS, tradeSetupFor, type merchantApi } from "@ll/shared";
 export default function SetupPage() {
   const { api, base } = useMerchant();
   const state = useApi(() => api.onboarding(), [api], { pollMs: 8000 });
+  // phase-solo B: solo pros and appointment-led storefronts get the six booking-link cards (components/dashboard/onboarding/SoloSetup).
+  const solo = !!state.data?.solo && state.data.path !== "storefront";
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Set up your shop" description="A few steps to live on the street. Each saves as you go." />
-      <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(c) => <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />}</Async>
+      {solo ? <SoloHeader /> : <PageHeader flush title="Set up your shop" description="A few steps to live on the street. Each saves as you go." />}
+      <Async state={state} skeleton={<SkeletonRows rows={5} />}>
+        {(c) => (c.solo && c.path !== "storefront" ? <SoloSetup checklist={c} onChange={(n) => state.setData(n)} footer={<NudgeToggle checklist={c} onChange={(n) => state.setData(n)} />} /> : <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />)}
+      </Async>
     </div>
   );
+}
+
+function SoloHeader() {
+  const { t } = useLocale();
+  return <PageTitle title={t("ob.solo.pageTitle")} subtitle={t("ob.solo.pageSub")} />;
 }
 
 function Wizard({ checklist, onChange, base }: { checklist: merchantApi.OnboardingChecklist; onChange: (c: merchantApi.OnboardingChecklist) => void; base: string }) {

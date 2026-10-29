@@ -34,7 +34,7 @@ export function soloApi(merchantId: string) {
     privacy: (body: merchantApi.SoloPrivacyBody) => browserClient.post<Checklist>(`${b}/solo/privacy`, body),
     share: (channel: "instagram" | "text" | "qr" | "copy") => browserClient.post<Checklist>(`${b}/solo/share`, { channel }),
     invite: (body: merchantApi.SoloInviteBody) => browserClient.post<Checklist & { invite: { created: number; errors: number } }>(`${b}/solo/invite`, body),
-    complete: (step: merchantApi.OnboardingSoloStepKey) => browserClient.post<Checklist>(`${b}/solo/complete`, { step }),
+    complete: (step: merchantApi.SoloCompleteStep) => browserClient.post<Checklist>(`${b}/solo/complete`, { step }),
     importLink: (url: string) => browserClient.post<merchantApi.ImportLinkResponse>(`${b}/import-link`, { url }),
   };
 }

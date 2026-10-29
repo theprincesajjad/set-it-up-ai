@@ -354,7 +354,8 @@ export const soloShareBody = z.object({ channel: z.enum(["instagram", "text", "q
 /** POST /merchants/:id/onboarding/solo/invite: optional numbers to create client records (we send nothing). */
 export const soloInviteBody = z.object({ people: z.array(z.object({ name: z.string().trim().max(80).nullish(), phone: z.string().trim().min(7).max(20) })).max(200).default([]) });
 /** POST /merchants/:id/onboarding/solo/complete: tick a card by hand ("I'll do this later" keeps it open). */
-export const soloCompleteBody = z.object({ step: z.enum(ONBOARDING_SOLO_STEPS) });
+export const soloCompleteBody = z.object({ step: z.enum([...ONBOARDING_SOLO_STEPS, "staff", "profile", "pos"]) });
+export type SoloCompleteStep = z.infer<typeof soloCompleteBody>["step"];
 
 export type SoloLinkBody = z.input<typeof soloLinkBody>;
 export type SoloServicesBody = z.input<typeof soloServicesBody>;
