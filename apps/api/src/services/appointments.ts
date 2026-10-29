@@ -27,10 +27,11 @@ import {
   type AppointmentItemRow,
   type DbOrTx,
 } from "@ll/db";
-import { appointmentsApi, PLANS, SERVICE_STARTERS, bookableCalendarLimit, defaultGroomWeeks, normalizeLocale, salesTaxCopy, tipsEnabledFor, vaccineStatus } from "@ll/shared";
+import { appointmentsApi, PLANS, SERVICE_STARTERS, defaultGroomWeeks, normalizeLocale, salesTaxCopy, tipsEnabledFor, vaccineStatus } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
+import { calendarLimitFor } from "./features.js";
 import { merchantProvince } from "./tax.js";
 import { HttpError, badRequest, conflict, forbidden, notFound } from "../lib/errors.js";
 import { addDays, zonedToUtc } from "./bookings.js";
@@ -268,17 +269,16 @@ export const calendarLimitReached = (max: number) =>
     offer: { kind: "plan", plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents },
   });
 
-/** The people who count as calendars, in join order, trimmed to the plan's cap (the first N stay bookable after a downgrade). */
-function capCalendars<T extends { userId: string }>(merchant: Pick<Merchant, "plan" | "restaurantTier">, inOrder: T[]): T[] {
-  const max = bookableCalendarLimit(merchant.plan, merchant.restaurantTier);
+/** The people who count as calendars, in join order, trimmed to the shop's cap (the first N stay bookable after a downgrade). */
+function capCalendars<T extends { userId: string }>(max: number | null, inOrder: T[]): T[] {
   return max == null ? inOrder : inOrder.slice(0, max);
 }
 
 /** Refuse to make anyone a new calendar (hours or a service list) past the plan's cap. People already bookable pass. */
 async function assertCalendarCap(db: DbOrTx, merchantId: string, userIds: string[]): Promise<void> {
   if (!userIds.length) return;
-  const [m] = await db.select({ plan: merchants.plan, restaurantTier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
-  const max = m ? bookableCalendarLimit(m.plan, m.restaurantTier) : null;
+  const [m] = await db.select({ id: merchants.id, plan: merchants.plan, restaurantTier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  const max = m ? await calendarLimitFor(db, m) : null;
   if (max == null) return;
   const [hrs, svc] = await Promise.all([
     db.selectDistinct({ userId: staffHours.userId }).from(staffHours).where(eq(staffHours.merchantId, merchantId)),
@@ -302,7 +302,7 @@ export async function listBookableStaff(db: DbOrTx, merchant: Merchant, now: Dat
     db.select().from(locations).where(and(eq(locations.merchantId, merchant.id), eq(locations.active, true))).orderBy(asc(locations.createdAt), asc(locations.id)),
     db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(services).where(and(eq(services.merchantId, merchant.id), eq(services.kind, "appointment"), eq(services.active, true))),
   ]);
-  const bookable = capCalendars(merchant, people.filter((p) => hours.some((h) => h.userId === p.userId) || svcs.some((s) => s.userId === p.userId)));
+  const bookable = capCalendars(await calendarLimitFor(db, merchant), people.filter((p) => hours.some((h) => h.userId === p.userId) || svcs.some((s) => s.userId === p.userId)));
   const items = bookable.map(
     (p): appointmentsApi.BookableStaffDto => ({
       userId: p.userId,
@@ -501,7 +501,7 @@ export async function computeAvailability(
   ]);
   const hours = allHours.filter((h) => h.locationId === loc.id);
   // Only calendars inside the plan's cap take online bookings (Free: the first bookable person, across locations).
-  const staffIds = new Set(capCalendars(merchant, people.filter((p) => allHours.some((h) => h.userId === p.userId) || assignments.some((a) => a.userId === p.userId))).map((p) => p.userId));
+  const staffIds = new Set(capCalendars(await calendarLimitFor(ctx.db, merchant), people.filter((p) => allHours.some((h) => h.userId === p.userId) || assignments.some((a) => a.userId === p.userId))).map((p) => p.userId));
   // Who can do all the chosen services: if a service has a staff list, they must be on it.
   const eligible = [...new Set(hours.map((h) => h.userId))].filter((u) => {
     if (!staffIds.has(u)) return false;

@@ -36,7 +36,7 @@ import { featureLocked } from "../lib/errors.js";
 import { getPayments } from "../providers/payments.js";
 import { subscriptionPeriodEnd } from "../providers/paymentsStripe.js";
 import { iso } from "./commerceShared.js";
-import { getRolloutStages } from "./features.js";
+import { calendarLimitFor, getRolloutStages } from "./features.js";
 import { smsAllowance, smsOverage } from "./text-allowance.js";
 
 type Merchant = typeof merchants.$inferSelect;
@@ -377,7 +377,7 @@ export async function planUsage(ctx: AppContext, merchant: Merchant, sub?: Subsc
     ctx.db.selectDistinct({ userId: staffHours.userId }).from(staffHours).where(eq(staffHours.merchantId, merchant.id)),
     ctx.db.selectDistinct({ userId: staffServices.userId }).from(staffServices).where(eq(staffServices.merchantId, merchant.id)),
   ]);
-  const limit = bookableCalendarLimit(merchant.plan, merchant.restaurantTier);
+  const limit = await calendarLimitFor(ctx.db, merchant);
   const calendars = new Set([...hrs, ...svc].map((r) => r.userId)).size;
   const included = smsAllowance(merchant);
   const over = smsOverage(merchant);

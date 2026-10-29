@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { featureInterest, featureOverrides, featureRollouts, merchantAddOns, merchants, services } from "@ll/db";
-import { FEATURE_KEYS, FEATURES, isFeatureEnabled, type FeatureKey, type PlanId, type RolloutStage } from "@ll/shared";
+import { FEATURE_KEYS, FEATURES, bookableCalendarLimit, isFeatureEnabled, type FeatureKey, type PlanId, type RestaurantTier, type RolloutStage } from "@ll/shared";
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
 import { rowsOf } from "../lib/sql.js";
@@ -239,4 +239,19 @@ export async function requireAnyFeature(db: DbOrTx, merchant: Merchant, keys: re
 export async function isAnyFeatureOn(db: DbOrTx, merchant: Merchant, keys: readonly FeatureKey[]): Promise<boolean> {
   const on = (await enabledFeaturesFor(db, [merchant], keys)).get(merchant.id);
   return !!on && on.size > 0;
+}
+
+/**
+ * The bookable-calendar cap for a shop (phase solo: FREE_BOOKABLE_CALENDARS on Free, none on paid plans). An admin override that turns
+ * booking.appointments on for a Free shop is a pilot of the full calendar (the seeded salons, early pilots): no cap. null = no cap.
+ */
+export async function calendarLimitFor(db: DbOrTx, m: { id: string; plan: PlanId; restaurantTier?: RestaurantTier | null }): Promise<number | null> {
+  const max = bookableCalendarLimit(m.plan, m.restaurantTier);
+  if (max == null) return null;
+  const [pilot] = await db
+    .select({ enabled: featureOverrides.enabled })
+    .from(featureOverrides)
+    .where(and(eq(featureOverrides.merchantId, m.id), eq(featureOverrides.key, "booking.appointments"), eq(featureOverrides.enabled, true)))
+    .limit(1);
+  return pilot ? null : max;
 }

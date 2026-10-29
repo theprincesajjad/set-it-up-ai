@@ -61,6 +61,21 @@ describe("one free bookable calendar with deposits", () => {
     expect(usage.body.calendars).toEqual({ limit: null, used: 2 });
   });
 
+  it("an admin override of booking.appointments on a Free shop is a pilot of the full calendar: no cap (final audit: the seeded salons)", async () => {
+    const m = await paidMerchant(env, { plan: "free", vertical: "salon" });
+    const base = `/v1/merchants/${m.merchant.id}`;
+    const { featureOverrides } = await import("@ll/db");
+    const a = await staffMember(env, m.merchant.id, "staff");
+    const b = await staffMember(env, m.merchant.id, "staff");
+    expect((await call(env, m.ownerToken, "PUT", `${base}/staff/${a.user.id}/hours`, { days: MON_SAT })).status).toBe(200);
+    expect((await call(env, m.ownerToken, "PUT", `${base}/staff/${b.user.id}/hours`, { days: MON_SAT })).status).toBe(402);
+    await env.db.insert(featureOverrides).values({ merchantId: m.merchant.id, key: "booking.appointments", enabled: true });
+    expect((await call(env, m.ownerToken, "PUT", `${base}/staff/${b.user.id}/hours`, { days: MON_SAT })).status).toBe(200);
+    const staff = await call(env, m.ownerToken, "GET", `${base}/appointments/staff`);
+    expect(staff.body.items.map((x: { userId: string }) => x.userId)).toEqual(expect.arrayContaining([a.user.id, b.user.id]));
+    expect((await call(env, m.ownerToken, "GET", `${base}/billing/usage`)).body.calendars).toEqual({ limit: null, used: 2 });
+  });
+
   it("a Free shop on destination charges books without a deposit (deposits on Free need direct charges)", async () => {
     const m = await paidMerchant(env, { plan: "free" });
     await env.db.update(merchants).set({ chargeMode: "destination" }).where(eq(merchants.id, m.merchant.id));
