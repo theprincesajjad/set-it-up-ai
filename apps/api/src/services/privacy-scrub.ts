@@ -18,6 +18,7 @@ import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
 import {
   appointments,
   classBookings,
+  conversations,
   familyMembers,
   petVaccines,
   petVisits,
@@ -56,6 +57,7 @@ import {
   userNotificationPrefs,
   walletDeviceRegistrations,
   walletPasses,
+  webPushSubscriptions,
   whatsappMessages,
   whatsappSessions,
   type DbOrTx,
@@ -93,8 +95,9 @@ export async function scrubCustomerData(tx: DbOrTx, userId: string, phone: strin
   const report: ScrubReport = {};
   const count = (k: string, rows: unknown[]) => void (report[k] = rows.length);
 
-  // Appointments: names and notes cleared; future ones cancelled; saved-card references dropped.
-  count("appointments", await tx.update(appointments).set({ customerName: null, notes: null, clientNote: null, stripeCustomerId: null, cardSetupIntentId: null, paymentMethodId: null, holdExpiresAt: null, updatedAt: now }).where(eq(appointments.userId, userId)).returning({ id: appointments.id }));
+  // Appointments: names and notes cleared (the intake answer and the pro's visit note and photo too); future ones cancelled; saved-card references dropped.
+  const visitPhotos = await tx.select({ u: appointments.visitPhotoUrl }).from(appointments).where(and(eq(appointments.userId, userId), sql`${appointments.visitPhotoUrl} is not null`));
+  count("appointments", await tx.update(appointments).set({ customerName: null, notes: null, clientNote: null, intakeAnswer: null, visitNote: null, visitPhotoUrl: null, stripeCustomerId: null, cardSetupIntentId: null, paymentMethodId: null, holdExpiresAt: null, updatedAt: now }).where(eq(appointments.userId, userId)).returning({ id: appointments.id }));
   await tx
     .update(appointments)
     .set({ status: "cancelled", cancelledAt: now, cancelReason: "account_deleted" })
@@ -162,7 +165,7 @@ export async function scrubCustomerData(tx: DbOrTx, userId: string, phone: strin
   // Repair tickets: item details, description, notes, photos (files are deleted after commit), shelf, status link, timeline notes.
   const tickets = await tx.select({ id: serviceTickets.id, photos: serviceTickets.photos }).from(serviceTickets).where(eq(serviceTickets.userId, userId));
   report.serviceTickets = tickets.length;
-  const photoUrls = tickets.flatMap((t) => t.photos ?? []);
+  const photoUrls = [...tickets.flatMap((t) => t.photos ?? []), ...visitPhotos.map((v) => v.u).filter((u): u is string => !!u)];
   // Pet care: pets, vaccine proof photos, visits and report cards, food cards and daycare packs go with the account (the proof and report photos are deleted from storage).
   const myPets = await tx.select({ id: pets.id }).from(pets).where(eq(pets.userId, userId));
   if (myPets.length) {
@@ -211,6 +214,10 @@ export async function scrubCustomerData(tx: DbOrTx, userId: string, phone: strin
   const passes = await tx.select({ id: walletPasses.id }).from(walletPasses).where(eq(walletPasses.userId, userId));
   if (passes.length) await tx.delete(walletDeviceRegistrations).where(inArray(walletDeviceRegistrations.passId, passes.map((p) => p.id)));
   await tx.update(merchantMembers).set({ tags: [] }).where(eq(merchantMembers.userId, userId));
+  // Inbox (phase solo): the customer's threads with shops (by account, or by number for texts) go with their messages (cascade);
+  // browsers subscribed to web push stop getting anything.
+  count("conversations", await tx.delete(conversations).where(phone ? or(eq(conversations.userId, userId), and(eq(conversations.channel, "sms"), eq(conversations.externalId, phone))) : eq(conversations.userId, userId)).returning({ id: conversations.id }));
+  count("webPushSubscriptions", await tx.delete(webPushSubscriptions).where(eq(webPushSubscriptions.userId, userId)).returning({ id: webPushSubscriptions.id }));
 
   return { report, photoUrls };
 }

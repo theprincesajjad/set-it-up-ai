@@ -244,12 +244,16 @@ type StaffUser = { userId: string; name: string; role: "owner" | "manager" | "st
 
 async function merchantStaffUsers(db: DbOrTx, merchantId: string): Promise<StaffUser[]> {
   const rows = await db
-    .select({ userId: merchantStaff.userId, role: merchantStaff.role, name: users.name, email: users.email, phone: users.phone })
+    .select({ userId: merchantStaff.userId, role: merchantStaff.role, name: users.name, email: users.email, shopName: merchants.name })
     .from(merchantStaff)
     .innerJoin(users, eq(users.id, merchantStaff.userId))
+    .innerJoin(merchants, eq(merchants.id, merchantStaff.merchantId))
     .where(eq(merchantStaff.merchantId, merchantId))
     .orderBy(asc(merchantStaff.createdAt), asc(merchantStaff.userId));
-  return rows.map((r) => ({ userId: r.userId, role: r.role, name: r.name?.trim() || r.email?.split("@")[0] || r.phone || "Staff" }));
+  // These names reach the public booking page: a person with no name shows as the shop, never as part of an email address or a
+  // phone number. Signup stores the part of the email before the @ as a placeholder name until the owner sets one (SignupWizard).
+  const placeholder = (r: (typeof rows)[number]) => !!r.email && r.name?.trim().toLowerCase() === r.email.split("@")[0]!.slice(0, 60).toLowerCase();
+  return rows.map((r) => ({ userId: r.userId, role: r.role, name: (!placeholder(r) && r.name?.trim()) || r.shopName }));
 }
 
 const hoursDto = (h: typeof staffHours.$inferSelect): appointmentsApi.StaffHoursDto => ({ id: h.id, locationId: h.locationId, userId: h.userId, weekday: h.weekday, startsLocal: h.startsLocal.slice(0, 5), endsLocal: h.endsLocal.slice(0, 5) });

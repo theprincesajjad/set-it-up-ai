@@ -364,6 +364,10 @@ export interface DataExportModules {
   notifications: unknown[];
   walletPasses: unknown[];
   doNotContact: unknown[];
+  /** Message threads with shops (phase solo: the inbox), each with its messages. */
+  conversations: unknown[];
+  /** Browsers that get web push reminders (device description and dates; the push keys are not exported). */
+  webPushSubscriptions: unknown[];
 }
 
 /** GET /v1/me/export: everything we hold about the signed-in customer, every module (PIPEDA access request, Law 25 portability). */

@@ -17,7 +17,7 @@
  */
 import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { classBookings, classCharges, classMemberships, classPasses, classProducts, classSessions, classSettings, classTypes, locations, loyaltyPrograms, merchantMembers, merchantStaff, merchants, rewards, users, type DbOrTx } from "@ll/db";
-import { classesApi, normalizeLocale, normalizePhone, salesTaxBps, salesTaxCopy, translator, type Locale, LOCALES } from "@ll/shared";
+import { classesApi, publicPlaceLine, normalizeLocale, normalizePhone, salesTaxBps, salesTaxCopy, translator, type Locale, LOCALES } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -804,6 +804,12 @@ export async function chargeLateFee(ctx: AppContext, merchant: Merchant, b: Book
 // ---------------------------------------------------------------------------
 // DTOs for the customer
 // ---------------------------------------------------------------------------
+/** A home studio's street address goes only to a confirmed booking; the schedule and a held or wait-listed spot get the area line (address-privacy.ts). */
+function classAddress(l: typeof locations.$inferSelect | undefined, booked: boolean): string | null {
+  if (!l) return null;
+  return booked ? l.address : publicPlaceLine(l);
+}
+
 export async function myBookingDtos(ctx: AppContext, rows: Booking[]): Promise<classesApi.MyBookingDto[]> {
   if (!rows.length) return [];
   const sessions = await ctx.db.select().from(classSessions).where(inArray(classSessions.id, [...new Set(rows.map((r) => r.sessionId))]));
@@ -824,7 +830,7 @@ export async function myBookingDtos(ctx: AppContext, rows: Booking[]): Promise<c
       freeCancelUntil: freeCancelUntil(s, st.cancelWindowHours).toISOString(),
       lateFeeCents: st.lateFeeCents,
       session: dto,
-      merchant: { id: m.id, name: m.name, slug: m.slug, address: locs.find((l) => l.id === s.locationId)?.address ?? null, timezone: m.timezone },
+      merchant: { id: m.id, name: m.name, slug: m.slug, address: classAddress(locs.find((l) => l.id === s.locationId), b.status === "booked"), timezone: m.timezone },
     });
   }
   return out;
@@ -855,7 +861,7 @@ export async function publicClasses(ctx: AppContext, merchant: Merchant, q: z.ou
   const intro = userId ? await introEligible(ctx, userId, merchant.id) : true;
   const products = await Promise.all(prods.filter((p) => (p.kind !== "membership" || memberships) && (!p.introOnly || intro)).map((p) => productDto(p)));
   return {
-    shop: { id: merchant.id, name: merchant.name, slug: merchant.slug, address: loc?.address ?? null, phone: merchant.phone ?? loc?.phone ?? null, timezone: merchant.timezone, brandColor: merchant.brandColor, logoUrl: merchant.logoUrl },
+    shop: { id: merchant.id, name: merchant.name, slug: merchant.slug, address: classAddress(loc, false), phone: merchant.phone ?? loc?.phone ?? null, timezone: merchant.timezone, brandColor: merchant.brandColor, logoUrl: merchant.logoUrl },
     policy: { cancelWindowHours: st.cancelWindowHours, lateFeeCents: st.lateFeeCents, waitlistCutoffMinutes: st.waitlistCutoffMinutes, termsNote: st.termsNote },
     sessions,
     products,

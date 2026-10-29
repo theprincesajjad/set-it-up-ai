@@ -1,7 +1,7 @@
 /** Catalog (menu) for order-ahead. Every query is scoped by merchant_id. */
 import { and, asc, eq } from "drizzle-orm";
 import { catalogItems, locations, merchantCategories, merchants, type DbOrTx } from "@ll/db";
-import { defaultSectionName, portionPriceCents, restaurantApi, restaurantWebApi, type commerceApi, type FeatureKey } from "@ll/shared";
+import { defaultSectionName, publicPlaceLine, portionPriceCents, restaurantApi, restaurantWebApi, type commerceApi, type FeatureKey } from "@ll/shared";
 import type { z } from "zod";
 import { HttpError, badRequest, notFound } from "../lib/errors.js";
 import type { AppContext } from "../context.js";
@@ -258,7 +258,7 @@ export async function publicMenu(
   const tax = taxLabel(province);
   return {
     merchant: { id: merchant.id, slug: merchant.slug, name: merchant.name, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, timezone: merchant.timezone },
-    locations: locs.map((l) => ({ id: l.id, name: l.name, address: l.address, hours: l.hours ?? null })),
+    locations: locs.map((l) => ({ id: l.id, name: l.name, address: publicPlaceLine(l), hours: l.hours ?? null })), // a home kitchen shows its area, never the street (address-privacy.ts)
     categories: catalog.categories
       .map(({ translations, ...c }) => {
         const name = lang !== "en" ? translations?.[lang]?.name?.trim() || defaultSectionName(c.name, lang) || undefined : undefined;

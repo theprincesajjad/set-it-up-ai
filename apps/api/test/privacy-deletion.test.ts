@@ -5,6 +5,8 @@ import {
   auditLogs,
   cateringEvents,
   commOptOuts,
+  conversationMessages,
+  conversations,
   hallBookings,
   halls,
   invoices,
@@ -31,6 +33,7 @@ import {
   users,
   walletDeviceRegistrations,
   walletPasses,
+  webPushSubscriptions,
   whatsappMessages,
   whatsappSessions,
 } from "@ll/db";
@@ -183,5 +186,29 @@ describe("account deletion reaches every module", () => {
     const s = await seedEverything();
     const text = JSON.stringify(await exportData(env.ctx, s.user.id));
     for (const needle of ["SECRET 5 Elm St", "SECRET appt note", "SECRET Hall", "SECRET hello I am Sam", "SECRET transcript", "SECRET rude waiter", "SECRET cracked screen", "SECRET shellfish", "SECRET reason"]) expect(text, needle).toContain(needle);
+  });
+
+  it("exports, then deletes, the customer's inbox threads and web push subscriptions (phase solo), and clears the visit note and intake answer", async () => {
+    const s = await seedEverything();
+    const [thread] = await env.db.insert(conversations).values({ merchantId: s.merchant.id, userId: s.user.id, channel: "in_app", displayName: "Sam" }).returning();
+    await env.db.insert(conversationMessages).values({ conversationId: thread!.id, direction: "in", body: "SECRET running late", kind: "text", channel: "in_app" });
+    const phone = (await env.db.select().from(users).where(eq(users.id, s.user.id)))[0]!.phone!;
+    const [sms] = await env.db.insert(conversations).values({ merchantId: s.merchant.id, channel: "sms", externalId: phone }).returning();
+    await env.db.insert(conversationMessages).values({ conversationId: sms!.id, direction: "in", body: "SECRET by text", kind: "text", channel: "sms" });
+    const [bystander] = await env.db.insert(conversations).values({ merchantId: s.merchant.id, userId: s.ids.other.id, channel: "in_app" }).returning();
+    await env.db.insert(webPushSubscriptions).values({ userId: s.user.id, endpoint: "https://push.example.com/sam", keys: { p256dh: "x".repeat(20), auth: "y".repeat(10) }, userAgent: "SECRET browser" });
+    await env.db.update(appointments).set({ intakeAnswer: "SECRET sensitive skin", visitNote: "SECRET lash map" }).where(eq(appointments.id, s.ids.appt.id));
+
+    const text = JSON.stringify(await exportData(env.ctx, s.user.id));
+    for (const needle of ["SECRET running late", "SECRET by text", "SECRET browser", "SECRET sensitive skin"]) expect(text, needle).toContain(needle);
+    expect(text).not.toContain("push.example.com");
+
+    await deleteAccount(env.ctx, s.user.id);
+    expect(await env.db.select().from(conversations).where(inArray(conversations.id, [thread!.id, sms!.id]))).toHaveLength(0);
+    expect(await env.db.select().from(conversationMessages).where(inArray(conversationMessages.conversationId, [thread!.id, sms!.id]))).toHaveLength(0);
+    expect(await env.db.select().from(conversations).where(eq(conversations.id, bystander!.id))).toHaveLength(1);
+    expect(await env.db.select().from(webPushSubscriptions).where(eq(webPushSubscriptions.userId, s.user.id))).toHaveLength(0);
+    const [a] = await env.db.select().from(appointments).where(eq(appointments.id, s.ids.appt.id));
+    expect(a).toMatchObject({ intakeAnswer: null, visitNote: null, visitPhotoUrl: null });
   });
 });

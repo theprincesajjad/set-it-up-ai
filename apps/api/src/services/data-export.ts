@@ -9,6 +9,8 @@
 import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import {
   appointments,
+  conversationMessages,
+  conversations,
   classBookings,
   familyMembers,
   foodCards,
@@ -46,6 +48,7 @@ import {
   tiffinSubscriptions,
   userNotificationPrefs,
   walletPasses,
+  webPushSubscriptions,
   whatsappMessages,
   whatsappSessions,
 } from "@ll/db";
@@ -128,6 +131,10 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
   const inbox = await db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(500);
   const passes = await db.select().from(walletPasses).where(eq(walletPasses.userId, userId));
   const optOuts = phone ? await db.select().from(commOptOuts).where(eq(commOptOuts.phone, phone)) : none;
+  // Inbox threads (phase solo): the customer's own threads, by account or, for texts, by number.
+  const threads = await db.select().from(conversations).where(phone ? or(eq(conversations.userId, userId), and(eq(conversations.channel, "sms"), eq(conversations.externalId, phone))) : eq(conversations.userId, userId)).orderBy(asc(conversations.createdAt));
+  const threadMsgs = threads.length ? await db.select().from(conversationMessages).where(inArray(conversationMessages.conversationId, threads.map((c) => c.id))).orderBy(asc(conversationMessages.createdAt)) : none;
+  const pushSubs = await db.select().from(webPushSubscriptions).where(eq(webPushSubscriptions.userId, userId));
 
   return {
     orders: ords.map((o) => ({ ...clean(o), merchantName: shop.get(o.merchantId) ?? null, items: items.filter((i) => i.orderId === o.id).map(clean), splits: splits.filter((s) => s.orderId === o.id).map(clean) })),
@@ -173,5 +180,13 @@ export async function moduleExport(ctx: AppContext, userId: string, phone: strin
     notifications: cleanAll(inbox),
     walletPasses: passes.map((p) => ({ platform: p.platform, serialNumber: p.serialNumber, createdAt: p.createdAt, lastUpdatedAt: p.lastUpdatedAt })),
     doNotContact: optOuts.map((o) => ({ channel: o.channel, optedOutAt: o.optedOutAt, resubscribedAt: o.resubscribedAt, source: o.source })),
+    conversations: threads.map((c) => ({
+      merchantName: shop.get(c.merchantId) ?? null,
+      channel: c.channel,
+      handle: c.handle,
+      createdAt: c.createdAt,
+      messages: threadMsgs.filter((m) => m.conversationId === c.id).map((m) => ({ direction: m.direction, body: m.body, kind: m.kind, channel: m.channel, createdAt: m.createdAt, readAt: m.readAt })),
+    })),
+    webPushSubscriptions: pushSubs.map((w) => ({ userAgent: w.userAgent, createdAt: w.createdAt, lastSuccessAt: w.lastSuccessAt })),
   };
 }

@@ -65,6 +65,17 @@ describe("before booking, the address is nowhere", () => {
     const book = await call(env, null, "GET", `/v1/public/shops/${s.slug}/services`);
     expect(leaks(book.body)).toBe(false);
     expect(book.body.shop).toMatchObject({ address: null, addressVisibility: "area", placeLine: "Bloor West area" });
+
+    // Final audit: the order-ahead menu and the class schedule carried the raw street before; both show the area line now.
+    const { featureOverrides } = await import("@ll/db");
+    await env.db.insert(featureOverrides).values([{ merchantId: s.id, key: "orders.order_ahead", enabled: true }, { merchantId: s.id, key: "booking.classes", enabled: true }]);
+    const menu = await call(env, null, "GET", `/v1/public/shops/${s.slug}/menu`);
+    expect(menu.status).toBe(200);
+    expect(leaks(menu.body)).toBe(false);
+    expect(menu.body.locations[0].address).toBe("Bloor West area");
+    const classes = await call(env, null, "GET", `/v1/public/shops/${s.slug}/classes`);
+    expect(classes.status).toBe(200);
+    expect(leaks(classes.body)).toBe(false);
   });
 
   it("is not on the wallet pass and not in a promo footer", async () => {
