@@ -29,12 +29,12 @@ import {
   type Appointment,
   type Merchant,
 } from "./appointments.js";
-import { iso, loadMerchant, money, notifyCustomer, paymentsReady } from "./commerceShared.js";
+import { iso, loadMerchant, money, notifyCustomer } from "./commerceShared.js";
 import { requireFeature } from "./features.js";
 import { platformFeeFor } from "./fees.js";
 import { merchantProvince } from "./tax.js";
 import { assertNoPharmacyNotes, isPharmacy } from "./pharmacy-guard.js";
-import { chargeConnectSavedMethod, createConnectPayment, refundConnectPayment, retrieveConnectPayment, savedMethodScope, chargeModeFor } from "./payments.js";
+import { appointmentPaymentsReady, chargeConnectSavedMethod, createConnectPayment, refundConnectPayment, retrieveConnectPayment, savedMethodScope, chargeModeFor } from "./payments.js";
 import { getPayments } from "../providers/payments.js";
 
 const { ACTIVE_APPOINTMENT_STATUSES, HOLD_MINUTES } = appointmentsApi;
@@ -56,7 +56,7 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
     loc ? ctx.db.select({ userId: staffHours.userId }).from(staffHours).where(and(eq(staffHours.merchantId, merchant.id), eq(staffHours.locationId, loc.id))) : Promise.resolve([]),
     ctx.db.select().from(staffServices).where(eq(staffServices.merchantId, merchant.id)),
     ctx.db.query.merchantCategories.findMany({ where: (c, { eq: e }) => e(c.merchantId, merchant.id) }),
-    paymentsReady(ctx.db, merchant),
+    appointmentPaymentsReady(ctx, merchant), // phase-solo A: deposits on the free calendar (direct charges); keep when editing
   ]);
   const staffIds = [...new Set(hours.map((h) => h.userId))];
   const people = staffIds.length ? await ctx.db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, staffIds)) : [];
@@ -306,7 +306,7 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
     if (!pet) throw badRequest("Pick one of your own pets");
     petId = pet.id;
   }
-  const cardsOk = await paymentsReady(ctx.db, merchant);
+  const cardsOk = await appointmentPaymentsReady(ctx, merchant); // phase-solo A: deposits on the free calendar (direct charges); keep when editing
   const deposit = cardsOk && r.depositCents >= MIN_CHARGE_CENTS ? r.depositCents : 0;
   const fee = rx ? 0 : merchant.noShowFeeCents;
   const hold = deposit > 0 || (cardsOk && fee > 0);

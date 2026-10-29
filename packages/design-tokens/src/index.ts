@@ -71,3 +71,4 @@ export const tokens = {
 } as const;
 
 export type Tokens = typeof tokens;
+export * from "./icons3d.js";

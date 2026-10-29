@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { translator } from "@ll/shared";
 import { BookFlow } from "@/components/pass/BookFlow";
+import { PoweredBy } from "@/components/pass/PoweredBy";
 import { PageFrame } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
@@ -65,6 +66,8 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
   return (
     <PageFrame locale={locale} trade={shop.vertical}>
       <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service), staff: one(sp.staff), pet: one(sp.pet) }} meName={me?.user.name ?? null} />
+      {/* slot: PoweredBy (phase-solo E): on every step of the booking flow, including the confirmation. */}
+      <PoweredBy locale={locale} vertical={shop.vertical} />
     </PageFrame>
   );
 }

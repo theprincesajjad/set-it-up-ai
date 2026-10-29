@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { translator } from "@ll/shared";
 import { ManageAppointment } from "@/components/pass/ManageAppointment";
+import { PoweredBy } from "@/components/pass/PoweredBy";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { loadShopBrief } from "@/lib/restaurant/server";
 import { PageFrame } from "@/components/restaurant/PageFrame";
@@ -51,6 +52,8 @@ export default async function ManageAppointmentPage({ params, searchParams }: Pr
   return (
     <PageFrame locale={locale} trade={shop?.vertical}>
       <ManageAppointment initial={appointment} slug={slug} pay={pay} />
+      {/* slot: PoweredBy (phase-solo E): the confirmation and manage page. */}
+      <PoweredBy locale={locale} vertical={shop?.vertical} />
     </PageFrame>
   );
 }

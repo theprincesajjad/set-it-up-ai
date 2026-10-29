@@ -48,7 +48,6 @@ describe("plans", () => {
       "orders.pickup_status",
       "payments.in_app",
       "booking.pickup_slots",
-      "booking.appointments",
     ];
     for (const k of plus) {
       expect(FEATURES[k].minPlan, k).toBe("plus");
@@ -67,7 +66,8 @@ describe("plans", () => {
     // Every paid trade tool ships live (founder decision 2026-10-27); only network-wide extras ship hidden. Outside PAID_FEATURES: FREE_FOREVER + the platform perks lever + phase 3 are outside PAID_FEATURES.
     for (const k of PAID_FEATURES) expect(FEATURES[k].defaultStage).toBe(FEATURES[k].networkGated ? "hidden" : "ga");
     expect(FEATURE_KEYS.filter((k) => !FREE_FOREVER.includes(k) && !PAID_FEATURES.includes(k) && !RESTAURANT_FEATURES.includes(k)).sort()).toEqual(
-      ["ads.map_pin", "ads.sponsored_listing", "ads.sponsored_promo", "campaigns.neighbourhood", "network.perks"].sort(),
+      // booking.appointments is free (one calendar) but not free forever: it is phase 2, gated only by the calendar cap.
+      ["ads.map_pin", "ads.sponsored_listing", "ads.sponsored_promo", "booking.appointments", "campaigns.neighbourhood", "network.perks"].sort(),
     );
     expect(PLANS.plus.priceCents).toBe(3900);
     expect(PLANS.pro.priceCents).toBe(9900);
@@ -93,14 +93,17 @@ describe("plans", () => {
 });
 
 describe("appointments pricing", () => {
-  it("puts appointments on Café & Retail (plus), hidden at launch, never free", () => {
+  it("puts appointments on Free for one bookable calendar, not free forever (solo-pro-launch.md §3.1)", () => {
     expect(PLANS.plus.name).toBe("Café & Retail");
-    expect(FEATURES["booking.appointments"].minPlan).toBe("plus");
+    expect(FEATURES["booking.appointments"].minPlan).toBe("free");
+    expect(FEATURES["booking.appointments"].defaultStage).toBe("ga");
     expect(FREE_FOREVER).not.toContain("booking.appointments");
-    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga" })).toBe(false);
+    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga" })).toBe(true);
     expect(isFeatureEnabled("booking.appointments", { plan: "plus", stage: "ga" })).toBe(true);
     expect(isFeatureEnabled("booking.appointments", { plan: "pro", stage: "ga" })).toBe(true);
+    // Not free forever, so an admin can still hide it; the one plan gate is the calendar cap.
     expect(isFeatureEnabled("booking.appointments", { plan: "plus", stage: "hidden" })).toBe(false);
+    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "hidden" })).toBe(false);
     expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "hidden", override: true })).toBe(true);
   });
   it("takes no platform fee on in-person checkout through the calendar", () => {
@@ -183,16 +186,19 @@ describe("trade tools self-serve (founder decision 2026-10-27)", () => {
     expect(on("ads.sponsored_promo", { plan: "pro" })).toBe(false);
     expect(on("campaigns.neighbourhood", { plan: "pro" })).toBe(false);
   });
-  it("pharmacist appointments are free for pharmacies, paid for everyone else", () => {
+  it("appointments are free for every trade now, pharmacies included; classes stay paid", () => {
     expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga", vertical: "pharmacy" })).toBe(true);
-    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga", vertical: "salon" })).toBe(false);
+    expect(isFeatureEnabled("booking.appointments", { plan: "free", stage: "ga", vertical: "salon" })).toBe(true);
     expect(isFeatureEnabled("booking.classes", { plan: "free", stage: "ga", vertical: "pharmacy" })).toBe(false);
   });
 });
 
 describe("featureOffer: the plan, price and checkout a locked feature points at", () => {
   it("names the real plan for each kind of feature", () => {
-    expect(featureOffer("booking.appointments")).toMatchObject({ kind: "plan", plan: "plus", name: "Café & Retail", priceCents: 3900 });
+    expect(featureOffer("booking.appointments")).toEqual({ kind: "free" });
+    expect(featureOffer("promos.basic")).toMatchObject({ kind: "plan", plan: "plus", name: "Café & Retail", priceCents: 3900 });
+    expect(featureOffer("promos.basic")).not.toHaveProperty("interval");
+    expect(featureOffer("site.builder")).toEqual({ kind: "plan", plan: "plus", name: "Café & Retail", priceCents: 39000, interval: "year" });
     expect(featureOffer("service.tickets")).toMatchObject({ kind: "plan", plan: "pro", name: "Service", priceCents: 9900 });
     // Tiffin and catering are Growth ($199), not Starter ($99); banquet is Pro ($349).
     expect(featureOffer("restaurant.tiffin")).toMatchObject({ kind: "restaurant", tier: "growth", priceCents: 19900 });

@@ -32,6 +32,7 @@ import { howYouEarn } from "@/lib/program";
 import { Awning } from "@/components/ui/Awning";
 import { ThemeStyle } from "@/components/ui/ThemeStyle";
 import { PassTopBar } from "@/components/pass/PassChrome";
+import { POWERED_BY_TRADES, PoweredBy } from "@/components/pass/PoweredBy";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { LOCALES, formatCurrency, translator, type commerceApi, type restaurantWebApi } from "@ll/shared";
@@ -360,6 +361,9 @@ export default async function ShopPage({ params, searchParams }: Props) {
           ))}
         </ListGroup>
       ) : null}
+
+      {/* slot: PoweredBy (phase-solo E) */}
+      {POWERED_BY_TRADES.includes(m.vertical) ? <PoweredBy locale={locale} vertical={m.vertical} className={!membership && joinInfo ? "pb-16" : undefined} /> : null}
 
       {!membership && joinInfo && !rest ? (
         <StickyJoin label={t("auth.join.joinShop", { shop: LOCALES[locale].dir === "rtl" ? `\u2068${m.name}\u2069` : m.name })} />

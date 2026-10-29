@@ -435,6 +435,18 @@
   --ll-vertical-barber-on-accent: #FBF6EE;
   --ll-vertical-barber-tint: #F6EEE2;
   --ll-vertical-barber-ink: #2A1E14;
+  --ll-vertical-nails-accent: #2A1E14;
+  --ll-vertical-nails-on-accent: #FBF6EE;
+  --ll-vertical-nails-tint: #F6EEE2;
+  --ll-vertical-nails-ink: #2A1E14;
+  --ll-vertical-brows-lashes-accent: #2A1E14;
+  --ll-vertical-brows-lashes-on-accent: #FBF6EE;
+  --ll-vertical-brows-lashes-tint: #F6EEE2;
+  --ll-vertical-brows-lashes-ink: #2A1E14;
+  --ll-vertical-makeup-accent: #2A1E14;
+  --ll-vertical-makeup-on-accent: #FBF6EE;
+  --ll-vertical-makeup-tint: #F6EEE2;
+  --ll-vertical-makeup-ink: #2A1E14;
   --ll-vertical-spa-accent: #2A1E14;
   --ll-vertical-spa-on-accent: #FBF6EE;
   --ll-vertical-spa-tint: #F6EEE2;
@@ -741,6 +753,18 @@
     --ll-vertical-barber-on-accent: #1A1410;
     --ll-vertical-barber-tint: #2B221B;
     --ll-vertical-barber-ink: #F7EEE3;
+    --ll-vertical-nails-accent: #F7EEE3;
+    --ll-vertical-nails-on-accent: #1A1410;
+    --ll-vertical-nails-tint: #2B221B;
+    --ll-vertical-nails-ink: #F7EEE3;
+    --ll-vertical-brows-lashes-accent: #F7EEE3;
+    --ll-vertical-brows-lashes-on-accent: #1A1410;
+    --ll-vertical-brows-lashes-tint: #2B221B;
+    --ll-vertical-brows-lashes-ink: #F7EEE3;
+    --ll-vertical-makeup-accent: #F7EEE3;
+    --ll-vertical-makeup-on-accent: #1A1410;
+    --ll-vertical-makeup-tint: #2B221B;
+    --ll-vertical-makeup-ink: #F7EEE3;
     --ll-vertical-spa-accent: #F7EEE3;
     --ll-vertical-spa-on-accent: #1A1410;
     --ll-vertical-spa-tint: #2B221B;
@@ -1045,6 +1069,18 @@
   --ll-vertical-barber-on-accent: #1A1410;
   --ll-vertical-barber-tint: #2B221B;
   --ll-vertical-barber-ink: #F7EEE3;
+  --ll-vertical-nails-accent: #F7EEE3;
+  --ll-vertical-nails-on-accent: #1A1410;
+  --ll-vertical-nails-tint: #2B221B;
+  --ll-vertical-nails-ink: #F7EEE3;
+  --ll-vertical-brows-lashes-accent: #F7EEE3;
+  --ll-vertical-brows-lashes-on-accent: #1A1410;
+  --ll-vertical-brows-lashes-tint: #2B221B;
+  --ll-vertical-brows-lashes-ink: #F7EEE3;
+  --ll-vertical-makeup-accent: #F7EEE3;
+  --ll-vertical-makeup-on-accent: #1A1410;
+  --ll-vertical-makeup-tint: #2B221B;
+  --ll-vertical-makeup-ink: #F7EEE3;
   --ll-vertical-spa-accent: #F7EEE3;
   --ll-vertical-spa-on-accent: #1A1410;
   --ll-vertical-spa-tint: #2B221B;
@@ -1171,6 +1207,9 @@
   --trade-nav: #FFFFFF;
 }
 [data-trade="salon"],
+[data-trade="nails"],
+[data-trade="brows_lashes"],
+[data-trade="makeup"],
 [data-trade="spa"],
 [data-trade="beauty_supply"] {
   --trade: #B83A64;
@@ -1356,6 +1395,12 @@
   }
   :root:not([data-theme="light"]) [data-trade="salon"],
   :root:not([data-theme="light"])[data-trade="salon"],
+  :root:not([data-theme="light"]) [data-trade="nails"],
+  :root:not([data-theme="light"])[data-trade="nails"],
+  :root:not([data-theme="light"]) [data-trade="brows_lashes"],
+  :root:not([data-theme="light"])[data-trade="brows_lashes"],
+  :root:not([data-theme="light"]) [data-trade="makeup"],
+  :root:not([data-theme="light"])[data-trade="makeup"],
   :root:not([data-theme="light"]) [data-trade="spa"],
   :root:not([data-theme="light"])[data-trade="spa"],
   :root:not([data-theme="light"]) [data-trade="beauty_supply"],
@@ -1565,6 +1610,12 @@
 }
 :root [data-theme="light"] [data-trade="salon"],
 :root [data-theme="light"][data-trade="salon"],
+:root [data-theme="light"] [data-trade="nails"],
+:root [data-theme="light"][data-trade="nails"],
+:root [data-theme="light"] [data-trade="brows_lashes"],
+:root [data-theme="light"][data-trade="brows_lashes"],
+:root [data-theme="light"] [data-trade="makeup"],
+:root [data-theme="light"][data-trade="makeup"],
 :root [data-theme="light"] [data-trade="spa"],
 :root [data-theme="light"][data-trade="spa"],
 :root [data-theme="light"] [data-trade="beauty_supply"],
@@ -1772,6 +1823,12 @@
 }
 [data-theme="dark"] [data-trade="salon"],
 [data-theme="dark"][data-trade="salon"],
+[data-theme="dark"] [data-trade="nails"],
+[data-theme="dark"][data-trade="nails"],
+[data-theme="dark"] [data-trade="brows_lashes"],
+[data-theme="dark"][data-trade="brows_lashes"],
+[data-theme="dark"] [data-trade="makeup"],
+[data-theme="dark"][data-trade="makeup"],
 [data-theme="dark"] [data-trade="spa"],
 [data-theme="dark"][data-trade="spa"],
 [data-theme="dark"] [data-trade="beauty_supply"],
@@ -2344,6 +2401,12 @@
 }
 :root[data-theme-style="clear"] [data-trade="salon"],
 :root[data-theme-style="clear"][data-trade="salon"],
+:root[data-theme-style="clear"] [data-trade="nails"],
+:root[data-theme-style="clear"][data-trade="nails"],
+:root[data-theme-style="clear"] [data-trade="brows_lashes"],
+:root[data-theme-style="clear"][data-trade="brows_lashes"],
+:root[data-theme-style="clear"] [data-trade="makeup"],
+:root[data-theme-style="clear"][data-trade="makeup"],
 :root[data-theme-style="clear"] [data-trade="spa"],
 :root[data-theme-style="clear"][data-trade="spa"],
 :root[data-theme-style="clear"] [data-trade="beauty_supply"],
@@ -2564,6 +2627,12 @@
 }
 :root[data-theme-style="clear"][data-theme="dark"] [data-trade="salon"],
 :root[data-theme-style="clear"][data-theme="dark"][data-trade="salon"],
+:root[data-theme-style="clear"][data-theme="dark"] [data-trade="nails"],
+:root[data-theme-style="clear"][data-theme="dark"][data-trade="nails"],
+:root[data-theme-style="clear"][data-theme="dark"] [data-trade="brows_lashes"],
+:root[data-theme-style="clear"][data-theme="dark"][data-trade="brows_lashes"],
+:root[data-theme-style="clear"][data-theme="dark"] [data-trade="makeup"],
+:root[data-theme-style="clear"][data-theme="dark"][data-trade="makeup"],
 :root[data-theme-style="clear"][data-theme="dark"] [data-trade="spa"],
 :root[data-theme-style="clear"][data-theme="dark"][data-trade="spa"],
 :root[data-theme-style="clear"][data-theme="dark"] [data-trade="beauty_supply"],

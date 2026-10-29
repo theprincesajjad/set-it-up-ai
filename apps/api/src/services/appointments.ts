@@ -1,5 +1,5 @@
 /**
- * Appointments (Café & Retail: booking.appointments): the price list, staff hours and time off, computed
+ * Appointments (booking.appointments: free for one bookable calendar, unlimited on Café & Retail): the price list, staff hours and time off, computed
  * availability, and the staff side of the calendar (create, move, resize, status, walk-ins).
  * Customer booking, payments and jobs live in appointments-booking.ts; checkout in appointments-checkout.ts.
  *
@@ -27,7 +27,7 @@ import {
   type AppointmentItemRow,
   type DbOrTx,
 } from "@ll/db";
-import { appointmentsApi, SERVICE_STARTERS, defaultGroomWeeks, normalizeLocale, salesTaxCopy, tipsEnabledFor, vaccineStatus } from "@ll/shared";
+import { appointmentsApi, PLANS, SERVICE_STARTERS, bookableCalendarLimit, defaultGroomWeeks, normalizeLocale, salesTaxCopy, tipsEnabledFor, vaccineStatus } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -166,6 +166,7 @@ async function assertBookableStaff(db: DbOrTx, merchantId: string, userIds: stri
 
 async function setServiceStaff(db: DbOrTx, merchantId: string, serviceId: string, staffIds: string[]) {
   await assertBookableStaff(db, merchantId, staffIds);
+  await assertCalendarCap(db, merchantId, staffIds);
   const existing = await db.select().from(staffServices).where(eq(staffServices.serviceId, serviceId));
   const keep = new Set(staffIds);
   const drop = existing.filter((e) => !keep.has(e.userId)).map((e) => e.userId);
@@ -254,7 +255,38 @@ async function merchantStaffUsers(db: DbOrTx, merchantId: string): Promise<Staff
 const hoursDto = (h: typeof staffHours.$inferSelect): appointmentsApi.StaffHoursDto => ({ id: h.id, locationId: h.locationId, userId: h.userId, weekday: h.weekday, startsLocal: h.startsLocal.slice(0, 5), endsLocal: h.endsLocal.slice(0, 5) });
 const timeOffDto = (t: typeof staffTimeOff.$inferSelect): appointmentsApi.TimeOffDto => ({ id: t.id, userId: t.userId, startsAt: t.startsAt.toISOString(), endsAt: t.endsAt.toISOString(), reason: t.reason });
 
-/** Everyone who takes appointments (has weekly hours or a service list), with hours, time off and services. */
+// ---- phase-solo: A: the bookable calendar cap (FREE_BOOKABLE_CALENDARS) ----
+/** 402 plan_limit: a second bookable calendar on Free. The details carry the plan offer the gate card shows. */
+export const calendarLimitReached = (max: number) =>
+  new HttpError(402, "plan_limit", `Free includes ${max} bookable calendar. ${PLANS.plus.name} has as many as you need.`, {
+    limit: "bookable_calendars",
+    max,
+    offer: { kind: "plan", plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents },
+  });
+
+/** The people who count as calendars, in join order, trimmed to the plan's cap (the first N stay bookable after a downgrade). */
+function capCalendars<T extends { userId: string }>(merchant: Pick<Merchant, "plan" | "restaurantTier">, inOrder: T[]): T[] {
+  const max = bookableCalendarLimit(merchant.plan, merchant.restaurantTier);
+  return max == null ? inOrder : inOrder.slice(0, max);
+}
+
+/** Refuse to make anyone a new calendar (hours or a service list) past the plan's cap. People already bookable pass. */
+async function assertCalendarCap(db: DbOrTx, merchantId: string, userIds: string[]): Promise<void> {
+  if (!userIds.length) return;
+  const [m] = await db.select({ plan: merchants.plan, restaurantTier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  const max = m ? bookableCalendarLimit(m.plan, m.restaurantTier) : null;
+  if (max == null) return;
+  const [hrs, svc] = await Promise.all([
+    db.selectDistinct({ userId: staffHours.userId }).from(staffHours).where(eq(staffHours.merchantId, merchantId)),
+    db.selectDistinct({ userId: staffServices.userId }).from(staffServices).where(eq(staffServices.merchantId, merchantId)),
+  ]);
+  const current = new Set([...hrs, ...svc].map((r) => r.userId));
+  const next = new Set([...current, ...userIds]);
+  if (next.size > max && userIds.some((u) => !current.has(u))) throw calendarLimitReached(max);
+}
+// ---- end phase-solo: A ----
+
+/** Everyone who takes appointments (has weekly hours or a service list), with hours, time off and services. Capped at the plan's bookable calendars. */
 export async function listBookableStaff(db: DbOrTx, merchant: Merchant, now: Date, q: { from?: Date; to?: Date } = {}): Promise<appointmentsApi.CalendarStaffResponse> {
   const from = q.from ?? new Date(now.getTime() - 24 * 60 * MIN);
   const to = q.to ?? new Date(now.getTime() + 90 * 24 * 60 * MIN);
@@ -266,7 +298,7 @@ export async function listBookableStaff(db: DbOrTx, merchant: Merchant, now: Dat
     db.select().from(locations).where(and(eq(locations.merchantId, merchant.id), eq(locations.active, true))).orderBy(asc(locations.createdAt), asc(locations.id)),
     db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(services).where(and(eq(services.merchantId, merchant.id), eq(services.kind, "appointment"), eq(services.active, true))),
   ]);
-  const bookable = people.filter((p) => hours.some((h) => h.userId === p.userId) || svcs.some((s) => s.userId === p.userId));
+  const bookable = capCalendars(merchant, people.filter((p) => hours.some((h) => h.userId === p.userId) || svcs.some((s) => s.userId === p.userId)));
   const items = bookable.map(
     (p): appointmentsApi.BookableStaffDto => ({
       userId: p.userId,
@@ -278,7 +310,7 @@ export async function listBookableStaff(db: DbOrTx, merchant: Merchant, now: Dat
       services: svcs.filter((s) => s.userId === p.userId).map((s) => ({ serviceId: s.serviceId, durationMin: s.durationMin, priceCents: s.priceCents })),
     }),
   );
-  const withHours = new Set(hours.map((h) => h.userId)).size;
+  const withHours = new Set(hours.map((h) => h.userId).filter((u) => bookable.some((b) => b.userId === u))).size;
   const serviceCount = activeServices[0]?.n ?? 0;
   return {
     items,
@@ -290,6 +322,7 @@ export async function listBookableStaff(db: DbOrTx, merchant: Merchant, now: Dat
 
 export async function putStaffHours(db: DbOrTx, merchant: Merchant, userId: string, body: z.output<typeof appointmentsApi.putStaffHoursBody>): Promise<appointmentsApi.StaffHoursDto[]> {
   await assertBookableStaff(db, merchant.id, [userId]);
+  if (body.days.length) await assertCalendarCap(db, merchant.id, [userId]);
   const loc = await resolveLocation(db, merchant.id, body.locationId);
   // Shifts on one day must not overlap each other.
   const byDay = new Map<number, [number, number][]>();
@@ -323,6 +356,7 @@ export async function deleteTimeOff(db: DbOrTx, merchantId: string, timeOffId: s
 
 export async function putStaffServices(db: DbOrTx, merchantId: string, userId: string, body: z.output<typeof appointmentsApi.putStaffServicesBody>): Promise<appointmentsApi.StaffServiceDto[]> {
   await assertBookableStaff(db, merchantId, [userId]);
+  if (body.services.length) await assertCalendarCap(db, merchantId, [userId]);
   if (isPharmacy(await verticalOf(db, merchantId)) && body.services.some((s) => s.priceCents)) throw badRequest("Pharmacy appointments have no price");
   const ids = [...new Set(body.services.map((s) => s.serviceId))];
   if (ids.length) {
@@ -456,12 +490,14 @@ export async function computeAvailability(
   for (let d = q.from; d <= q.to && days.length <= MAX_DAYS; d = addDays(d, 1)) days.push(d);
   if (!days.length || days.length > MAX_DAYS) throw badRequest(`Ask for between 1 and ${MAX_DAYS} days`);
 
-  const [hours, assignments, people] = await Promise.all([
-    ctx.db.select().from(staffHours).where(and(eq(staffHours.merchantId, merchant.id), eq(staffHours.locationId, loc.id))),
+  const [allHours, assignments, people] = await Promise.all([
+    ctx.db.select().from(staffHours).where(eq(staffHours.merchantId, merchant.id)),
     ctx.db.select().from(staffServices).where(eq(staffServices.merchantId, merchant.id)),
     merchantStaffUsers(ctx.db, merchant.id),
   ]);
-  const staffIds = new Set(people.map((p) => p.userId));
+  const hours = allHours.filter((h) => h.locationId === loc.id);
+  // Only calendars inside the plan's cap take online bookings (Free: the first bookable person, across locations).
+  const staffIds = new Set(capCalendars(merchant, people.filter((p) => allHours.some((h) => h.userId === p.userId) || assignments.some((a) => a.userId === p.userId))).map((p) => p.userId));
   // Who can do all the chosen services: if a service has a staff list, they must be on it.
   const eligible = [...new Set(hours.map((h) => h.userId))].filter((u) => {
     if (!staffIds.has(u)) return false;

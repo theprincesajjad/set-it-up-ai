@@ -4,7 +4,10 @@ import { env } from "@/lib/env";
 
 export const revalidate = 3600;
 
-const STATIC = ["/", "/for-shoppers", "/for-restaurants", "/for-bias", "/pricing", "/neighbourhoods", "/signup", "/login", "/map", "/accessibility"];
+// phase-solo E: landing pages (routes only; the address logic below belongs to B)
+const SOLO_PAGES = ["/for-nail-techs", "/for-barbers", "/for-groomers"];
+
+const STATIC = ["/", "/for-shoppers", "/for-restaurants", "/for-bias", "/pricing", "/neighbourhoods", "/signup", "/login", "/map", "/accessibility", ...SOLO_PAGES];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();

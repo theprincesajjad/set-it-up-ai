@@ -29,3 +29,5 @@ export * as pharmacyApi from "./pharmacy.js";
 export * as barberApi from "./barber.js";
 export * as petApi from "./pets.js";
 export * as autoApi from "./auto.js";
+// ---- phase-solo: G ----
+export * as siteApi from "./site.js";

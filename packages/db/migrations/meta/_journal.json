@@ -225,6 +225,27 @@
       "when": 1793217025207,
       "tag": "0031_clear_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793231803177,
+      "tag": "0032_solo_a",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793231825767,
+      "tag": "0033_solo_b",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793231953592,
+      "tag": "0034_solo_d",
+      "breakpoints": true
     }
   ]
 }

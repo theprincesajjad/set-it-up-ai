@@ -272,8 +272,17 @@ export const merchants = pgTable(
     halalReminders: jsonb("halal_reminders").$type<{ validUntil: string; d60?: string; d30?: string }>(),
     /** Pre-orders cancel free until this many hours before pickup; null = the item's notice period. */
     preorderCancelCutoffHours: integer("preorder_cancel_cutoff_hours"),
-    /** Stripe Connect charge mode: destination (platform account) or direct (merchant is merchant of record). */
-    chargeMode: text("charge_mode").notNull().default("destination"),
+    /** Stripe Connect charge mode: destination (platform account) or direct (merchant is merchant of record). New shops default to direct (0032); existing shops keep theirs. */
+    chargeMode: text("charge_mode").notNull().default("direct"),
+    // ---- phase-solo: A (0032_solo_a) ----
+    /** Promo allowance (@ll/shared promoAllowance): promos sent since promos_sent_period_start; reset with the billing period. */
+    promosSentPeriodStart: ts("promos_sent_period_start"),
+    promosSentCount: integer("promos_sent_count").notNull().default(0),
+    /** Annual plan includes the website builder (ANNUAL_INCLUDES_WEBSITE); kept in sync with subscriptions.interval by the billing webhook. */
+    annualSiteEntitled: boolean("annual_site_entitled").notNull().default(false),
+    /** Took the founding solo annual price (FOUNDING_SOLO); counts against its slots. */
+    foundingSolo: boolean("founding_solo").notNull().default(false),
+    // ---- end phase-solo: A ----
     /** WhatsApp Business phone number (E.164) connected for this shop. */
     whatsappNumber: text("whatsapp_number"),
     whatsappCreditsUsed: integer("whatsapp_credits_used").notNull().default(0),
@@ -326,6 +335,10 @@ export const merchants = pgTable(
     healthUnit: text("health_unit"),
     healthUnitNotifiedOn: date("health_unit_notified_on"),
     foodHandlerBadge: boolean("food_handler_badge").notNull().default(false),
+    /** Where the owner works (phase solo, onboarding-v1 §3.2): "home" (my place), "shop" (a shop or salon), "mobile" (travels to clients). Null = not asked (older shops, treated as "shop"). */
+    workSetting: text("work_setting"),
+    /** Mobile pros: how far they travel, in km (5, 10 or 20). */
+    serviceRadiusKm: integer("service_radius_km"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -344,6 +357,16 @@ export const locations = pgTable(
     postalCode: text("postal_code"),
     lat: doublePrecision("lat"),
     lng: doublePrecision("lng"),
+    /**
+     * Who may see the street address before a booking (solo-pro-launch.md §2.3): "exact" (storefronts), "area" (neighbourhood
+     * label and an offset pin) or "city" (city centroid). For area and city the address is released only on a confirmed booking.
+     */
+    addressVisibility: text("address_visibility").notNull().default("exact"),
+    /** "Bloor West" for an area location (the neighbourhood name, or the postal FSA's area). */
+    areaLabel: text("area_label"),
+    /** The public pin. Exact = lat/lng; area = the area centroid plus a fixed per-merchant offset (≤ 400 m); city = the city centroid. */
+    mapLat: doublePrecision("map_lat"),
+    mapLng: doublePrecision("map_lng"),
     phone: text("phone"),
     /** { mon: [["09:00","17:00"]], ... } */
     hours: jsonb("hours").$type<Record<string, [string, string][]>>(),
@@ -517,6 +540,12 @@ export const merchantMembers = pgTable(
     tags: jsonb("tags").$type<string[]>().notNull().default([]),
     referredByMemberId: uuid("referred_by_member_id"),
     lastBirthdayBonusYear: integer("last_birthday_bonus_year"),
+    // ---- phase-solo: D (0034_solo_d) ----
+    /** How the shop reaches this person: best (the ladder: app, web push, email, text), app, email or text. Set on the profile. */
+    channelPref: text("channel_pref").notNull().default("best"),
+    /** Language for reminders and promos from this shop (en, hi, ur, pa); null = the customer's own app language. */
+    locale: text("locale"),
+    // ---- end phase-solo: D ----
     createdAt: createdAt(),
   },
   (t) => [
@@ -1466,6 +1495,8 @@ export const services = pgTable(
     /** A merchant category, so no-earn categories keep working. */
     categoryId: uuid("category_id").references(() => merchantCategories.id, { onDelete: "set null" }),
     rebookAfterDays: integer("rebook_after_days"),
+    /** phase-solo D: one optional question asked of a client at booking ("Any sensitivities or a current set?"). */
+    intakeQuestion: text("intake_question"),
     taxable: boolean("taxable").notNull().default(true),
     active: boolean("active").notNull().default(true),
     sort: integer("sort").notNull().default(0),
@@ -1577,6 +1608,15 @@ export const appointments = pgTable(
     rebookNudgeSentAt: ts("rebook_nudge_sent_at"),
     /** An online booking waiting for its deposit or card; unpaid holds are cancelled after this. */
     holdExpiresAt: ts("hold_expires_at"),
+    // ---- phase-solo: D (0034_solo_d) ----
+    /** What the pro did, written at checkout ("Classic fill, C curl 11 mm"). Internal only; prefills the next booking's staff note. */
+    visitNote: text("visit_note"),
+    visitPhotoUrl: text("visit_photo_url"),
+    /** The client's answer to the service's intake question, asked once at booking. */
+    intakeAnswer: text("intake_answer"),
+    /** Booked from an inbox thread (Instagram DM, text): the thread it came from. */
+    conversationId: uuid("conversation_id"),
+    // ---- end phase-solo: D ----
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -3228,3 +3268,196 @@ export const washVisits = pgTable(
   },
   (t) => [index("wash_visits_merchant_idx").on(t.merchantId, t.day), index("wash_visits_user_idx").on(t.userId, t.merchantId, t.day)],
 );
+
+// ---------------------------------------------------------------------------
+// ---- phase-solo: D (0034_solo_d) ---- People side: inbox, web push, promo templates, Instagram (docs/business/people-side.md)
+// ---------------------------------------------------------------------------
+/**
+ * One thread between a shop and a person, whatever the channel. A customer thread has user_id; an Instagram thread may have no
+ * user yet (only the handle). Channel: in_app | sms | email | whatsapp | instagram.
+ */
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    channel: text("channel").notNull(),
+    /** The provider's id for the other side (a phone for sms, the Instagram-scoped user id). */
+    externalId: text("external_id"),
+    displayName: text("display_name"),
+    handle: text("handle"),
+    lastMessageAt: ts("last_message_at"),
+    /** Messages from the person the shop has not opened yet. */
+    unread: integer("unread").notNull().default(0),
+    instagramThreadId: text("instagram_thread_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("conversations_merchant_last_idx").on(t.merchantId, t.lastMessageAt),
+    uniqueIndex("conversations_user_uq").on(t.merchantId, t.userId).where(sql`${t.userId} is not null and ${t.channel} <> 'instagram'`),
+    uniqueIndex("conversations_external_uq").on(t.merchantId, t.channel, t.externalId).where(sql`${t.externalId} is not null`),
+  ],
+);
+
+/** One message in a thread. direction: in (from the person) | out (from the shop). kind: text | system | booking. */
+export const conversationMessages = pgTable(
+  "conversation_messages",
+  {
+    id: id(),
+    conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+    direction: text("direction").notNull(),
+    body: text("body").notNull(),
+    kind: text("kind").notNull().default("text"),
+    /** in_app | push | web_push | email | sms | instagram: how an outgoing message went out (or how an incoming one came in). */
+    channel: text("channel"),
+    sentByUserId: uuid("sent_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    providerMessageId: text("provider_message_id"),
+    /** Provider id of an imported message (Instagram mid), for idempotent imports. */
+    externalMessageId: text("external_message_id"),
+    readAt: ts("read_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("conversation_messages_thread_idx").on(t.conversationId, t.createdAt),
+    uniqueIndex("conversation_messages_external_uq").on(t.conversationId, t.externalMessageId).where(sql`${t.externalMessageId} is not null`),
+  ],
+);
+
+/** A browser's Web Push subscription (the PWA pass or the booking confirmation). Free to send; second rung after app push. */
+export const webPushSubscriptions = pgTable(
+  "web_push_subscriptions",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    keys: jsonb("keys").$type<{ p256dh: string; auth: string }>().notNull(),
+    userAgent: text("user_agent"),
+    lastSuccessAt: ts("last_success_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("web_push_subscriptions_endpoint_uq").on(t.endpoint), index("web_push_subscriptions_user_idx").on(t.userId)],
+);
+
+/**
+ * Extra seasonal promo templates added by an admin (the built-in list lives in @ll/shared promo-templates.ts and wins on a key
+ * clash). window: { from: "MM-DD", to: "MM-DD" } in shop time.
+ */
+export const promoTemplates = pgTable(
+  "promo_templates",
+  {
+    id: id(),
+    trade: text("trade").notNull(),
+    season: text("season").notNull(),
+    key: text("key").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    window: jsonb("window").$type<{ from: string; to: string }>().notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("promo_templates_key_uq").on(t.key), index("promo_templates_trade_idx").on(t.trade)],
+);
+
+/** A shop's Instagram professional account, read-only (DMs into the inbox). The token is encrypted; disconnect purges messages. */
+export const instagramConnections = pgTable(
+  "instagram_connections",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    igUserId: text("ig_user_id").notNull(),
+    username: text("username"),
+    tokenEncrypted: text("token_encrypted"),
+    /** stub | instagram */
+    provider: text("provider").notNull().default("instagram"),
+    connectedAt: ts("connected_at").notNull().defaultNow(),
+    disconnectedAt: ts("disconnected_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("instagram_connections_merchant_idx").on(t.merchantId), index("instagram_connections_ig_user_idx").on(t.igUserId)],
+);
+// ---- end phase-solo: D ----
+
+// ---- phase-solo: G (website builder) ----
+/** Shape of @ll/shared SiteContent (kept structural: @ll/db does not depend on @ll/shared). */
+type SiteContentJson = { preset: string; order: string[]; hidden: string[]; copy: Record<string, Record<string, string>> };
+/**
+ * One built-in website per shop (docs/engineering/site-builder.md). `content` is the builder's working draft and
+ * `published_content` what the public page shows; both are { preset, order, hidden, copy } (@ll/shared SiteContent). Prices,
+ * services, hours, rewards, promos, ratings and the map pin are never stored here: the page reads them live.
+ */
+export const sites = pgTable(
+  "sites",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    /** studio | portfolio | shopfront */
+    preset: text("preset").notNull(),
+    content: jsonb("content").$type<SiteContentJson>().notNull(),
+    publishedContent: jsonb("published_content").$type<SiteContentJson>(),
+    /** draft | published | unpublished */
+    status: text("status").notNull().default("draft"),
+    /** The custom hostname once it is live (mirrors the live site_domains row; null = /s/<slug> only). */
+    domain: text("domain"),
+    /** none | requested | pending | live | failed */
+    domainStatus: text("domain_status").notNull().default("none"),
+    /** AI usage in the current allowance window (SITE_AI_GENERATIONS_PER_MONTH / SITE_AI_EDITS_PER_MONTH). */
+    aiGenerationsPeriod: integer("ai_generations_period").notNull().default(0),
+    aiEditsPeriod: integer("ai_edits_period").notNull().default(0),
+    /** Start of the window the counters belong to; a later window resets them. */
+    periodStart: ts("period_start"),
+    publishedAt: ts("published_at"),
+    /** First time a published site was seen without the annual plan (the 30-day banner starts here); cleared when it comes back. */
+    lapsedAt: ts("lapsed_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("sites_merchant_uq").on(t.merchantId), index("sites_domain_idx").on(t.domain)],
+);
+
+/** Custom domains: registered by us (.ca, behind SITE_DOMAINS_ENABLED) or connected by hand (an admin task). */
+export const siteDomains = pgTable(
+  "site_domains",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    hostname: text("hostname").notNull(),
+    /** register | connect */
+    mode: text("mode").notNull(),
+    /** requested | pending | live | failed | removed */
+    status: text("status").notNull().default("requested"),
+    /** Registrar order id or Cloudflare custom hostname id. */
+    registrarRef: text("registrar_ref"),
+    /** DNS records and TLS state: { dns: [{ type, name, value }], ssl?: string, provider?: string }. */
+    verification: jsonb("verification").$type<{ dns?: { type: "CNAME" | "TXT" | "A"; name: string; value: string }[]; ssl?: string; provider?: string }>(),
+    note: text("note"),
+    liveAt: ts("live_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("site_domains_merchant_idx").on(t.merchantId),
+    uniqueIndex("site_domains_hostname_uq").on(t.hostname).where(sql`${t.status} <> 'removed'`),
+  ],
+);
+
+/** One row per model call (draft or one-line rewrite): tokens for the cost check in solo-pro-launch.md §4.1. */
+export const siteAiCalls = pgTable(
+  "site_ai_calls",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    /** draft | rewrite */
+    kind: text("kind").notNull(),
+    model: text("model").notNull(),
+    /** ok | refusal | invalid | error | max_tokens */
+    outcome: text("outcome").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [index("site_ai_calls_merchant_idx").on(t.merchantId, t.createdAt)],
+);
+// ---- end phase-solo: G ----

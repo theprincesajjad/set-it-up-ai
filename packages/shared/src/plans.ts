@@ -50,14 +50,15 @@ export const PLANS: Record<PlanId, Plan> = {
     annualPriceCents: 0,
     blurb: `Your loyalty program, the network listing, wallet pass and reports. Free forever: no subscription and no fee on loyalty. Online orders on Free carry ${Number((ORDER_BPS_FREE / 100).toFixed(2))}%.`,
     bestFor: ["Every shop"],
-    smsPerMonth: 0,
+    // Reserved for transactional texts (confirmations and reminders to clients with no app, pass or email); then email.
+    smsPerMonth: 30,
   },
   plus: {
     id: "plus",
     name: "Café & Retail",
     priceCents: 3900,
     annualPriceCents: 39000,
-    blurb: "Promos, VIP levels, email and text marketing, POS auto-award, customer exports, order-ahead, appointment booking, and class schedules with packs and memberships.",
+    blurb: "Unlimited bookable calendars, 4 promos a month to your regulars, rebooking nudges, VIP levels, email and text marketing, POS auto-award, customer exports, order-ahead, and class schedules with packs and memberships.",
     bestFor: ["Cafés", "Bakeries", "Retail", "Grocers", "Salons", "Barbers", "Yoga & fitness studios"],
     smsPerMonth: 500,
   },
@@ -195,6 +196,11 @@ export interface FeatureDef {
    * still needs the vertical, an admin override still wins). Everyone else needs `minPlan`.
    */
   freeForVerticals?: readonly string[];
+  /**
+   * Only on an annual paid subscription (ANNUAL_INCLUDES_WEBSITE): the plan alone is not enough, the merchant must also be
+   * annualSiteEntitled (merchants.annual_site_entitled, synced from subscriptions.interval === "year"). An admin override still wins.
+   */
+  requiresAnnual?: boolean;
 }
 
 /** Active shops before a network-wide extra opens (the 100-shop gate). */
@@ -240,6 +246,8 @@ export const FEATURE_KEYS = [
   "booking.pickup_slots",
   "booking.appointments",
   "service.rebooking",
+  // Built-in website builder (workstream G): Café & Retail on the annual plan only (FeatureDef.requiresAnnual).
+  "site.builder",
   // Yoga, pilates, boxing, dance and women-only studios (docs/research/fitness-studios.md): sold inside Café & Retail, no pack.
   "booking.classes",
   "booking.walkin_queue",
@@ -380,8 +388,10 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
     f("payments.in_app", "In-app payments", "Card payments via Stripe. No platform fee on online orders; 1% on deposits and invoices.", "plus", 2, 100),
     f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
-    { ...f("booking.appointments", "Appointments", "Staff calendar, services and prices, online booking, reminders and no-show protection for salons, barbers and studios. Free for pharmacies (pharmacist appointments).", "plus", 2, 100), freeForVerticals: ["pharmacy"] as const },
+    // Free for one bookable calendar (FREE_BOOKABLE_CALENDARS, solo-pro-launch.md §3.1); unlimited calendars on Café & Retail. Not FREE_FOREVER (phase 2): the calendar cap is its only gate.
+    { ...f("booking.appointments", "Appointments", "Calendar, services and prices, online booking, deposits, reminders and no-show protection. One bookable calendar on Free, unlimited on Café & Retail.", "free", 2), freeForVerticals: ["pharmacy"] as const },
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
+    { ...f("site.builder", "Website", "A website built from your bookings, services, prices, loyalty, promos, reviews and map pin, with AI copy, hosting and one .ca domain. Included with the annual plan.", "plus", 2), requiresAnnual: true },
     f("booking.classes", "Classes", "Class schedule with capacity and waitlist, drop-ins, class packs and intro offers, late-cancel fees and door check-in for yoga, pilates, boxing, dance and women-only studios.", "plus", 2, 100),
     f("booking.walkin_queue", "Walk-in line", "A live line for walk-ins: join from a phone or a tablet at the door, a wait estimate, a text when next, and the barber picks who is next.", "plus", 2, 100),
     f("staff.payouts", "Barber payouts and chair rental", "Per-barber services, tips, commission, rent and take-home for the week, and a renter who sees only their own clients.", "plus", 2, 100),
@@ -464,6 +474,8 @@ export interface FeatureContext {
   vertical?: string | null;
   /** Active add-on ids (merchant_add_ons). banquet_module / phone_ai unlock their feature on Growth. */
   addOns?: readonly string[];
+  /** On an annual paid subscription (merchants.annual_site_entitled), for FeatureDef.requiresAnnual features. */
+  annualSiteEntitled?: boolean;
 }
 
 /**
@@ -482,6 +494,7 @@ export function isFeatureEnabled(key: FeatureKey, ctx: FeatureContext): boolean 
     if (!ctx.restaurantTier) return false;
     if (RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK[def.packTier!] && !unlockedByAddOn(key, ctx)) return false;
   } else if (PLAN_RANK[effectivePlan(ctx.plan, ctx.restaurantTier)] < PLAN_RANK[def.minPlan] && !(ctx.vertical && def.freeForVerticals?.includes(ctx.vertical))) return false;
+  if (def.requiresAnnual && !(ANNUAL_INCLUDES_WEBSITE && ctx.annualSiteEntitled)) return false;
   if (ctx.stage === "beta") return ctx.betaOptIn === true;
   return true;
 }
@@ -512,7 +525,8 @@ export function isPlanAvailable(
 export type FeatureOffer =
   | { kind: "network"; unlockAtMerchants: number }
   | { kind: "restaurant"; tier: RestaurantTier; name: string; priceCents: number }
-  | { kind: "plan"; plan: "plus" | "pro"; name: string; priceCents: number }
+  /** interval "year": only the annual subscription unlocks it (FeatureDef.requiresAnnual); priceCents is then the annual price. */
+  | { kind: "plan"; plan: "plus" | "pro"; name: string; priceCents: number; interval?: "year" }
   | { kind: "free" };
 
 export function featureOffer(key: FeatureKey): FeatureOffer {
@@ -524,5 +538,119 @@ export function featureOffer(key: FeatureKey): FeatureOffer {
   }
   if (d.minPlan === "free") return { kind: "free" };
   const plan = PLANS[d.minPlan];
+  if (d.requiresAnnual) return { kind: "plan", plan: d.minPlan as "plus" | "pro", name: plan.name, priceCents: plan.annualPriceCents, interval: "year" };
   return { kind: "plan", plan: d.minPlan as "plus" | "pro", name: plan.name, priceCents: plan.priceCents };
 }
+
+// ---- phase-solo: A ----
+// Solo pro packaging (docs/business/solo-pro-launch.md §3, docs/business/pricing.md "Solo pro packaging"). Other
+// workstreams read these; never hard-code the numbers.
+
+/** Bookable calendars (staff with online booking hours) on Free. Paid plans and restaurant tiers: unlimited. */
+export const FREE_BOOKABLE_CALENDARS = 1;
+
+/** Bookable calendars a plan allows; null = unlimited. */
+export function bookableCalendarLimit(plan: PlanId, restaurantTier?: RestaurantTier | null): number | null {
+  return effectivePlan(plan, restaurantTier) === "free" ? FREE_BOOKABLE_CALENDARS : null;
+}
+
+/** Texts a month on Free, reserved for transactional texts (confirmations, reminders); after that the reminder goes by email. */
+export const FREE_REMINDER_SMS_PER_MONTH = PLANS.free.smsPerMonth;
+
+/** Paid plans: each text over the monthly allowance, in cents (CAD). Free never goes over; it falls back to email. */
+export const SMS_OVERAGE_CENTS = 4;
+
+/** Promos to your regulars (app push and email, no texts) on Café & Retail monthly; unused promos do not roll over. */
+export const PROMOS_PER_MONTH_PLUS = 4;
+/** Promos on the annual plan, used whenever the shop likes within the subscription year. */
+export const PROMOS_PER_YEAR_ANNUAL = 48;
+
+/** The annual paid plan includes the built-in website (feature "site.builder", one .ca domain). */
+export const ANNUAL_INCLUDES_WEBSITE = true;
+/** Website builder AI caps (workstream G enforces them server-side, reset with the billing period). */
+export const SITE_AI_GENERATIONS_PER_MONTH = 10;
+export const SITE_AI_EDITS_PER_MONTH = 40;
+
+export type BillingInterval = "month" | "year";
+
+export interface PromoAllowanceInput {
+  plan: PlanId;
+  restaurantTier?: RestaurantTier | null;
+  /** The active paid subscription's interval; null/undefined on Free. */
+  interval?: BillingInterval | null;
+  /** merchants.promos_sent_count and merchants.promos_sent_period_start. */
+  sentCount: number;
+  sentPeriodStart: Date | string | null;
+  /** Start of the current billing period (month or year). The counter resets when this is later than sentPeriodStart. */
+  periodStart: Date | string;
+}
+
+export interface PromoAllowance {
+  /** 0 on Free. */
+  limit: number;
+  used: number;
+  remaining: number;
+  /** "month" (Café & Retail monthly), "year" (annual) or null (Free, no promos). */
+  period: BillingInterval | null;
+  periodStart: string;
+}
+
+/** How many promos a shop can still send this billing period. One answer for the API (send gate) and the UI (counter). */
+export function promoAllowance(m: PromoAllowanceInput): PromoAllowance {
+  const paid = effectivePlan(m.plan, m.restaurantTier) !== "free";
+  const period: BillingInterval | null = paid ? (m.interval === "year" ? "year" : "month") : null;
+  const limit = period === "year" ? PROMOS_PER_YEAR_ANNUAL : period === "month" ? PROMOS_PER_MONTH_PLUS : 0;
+  const start = new Date(m.periodStart);
+  const sentStart = m.sentPeriodStart ? new Date(m.sentPeriodStart) : null;
+  const used = sentStart && sentStart.getTime() >= start.getTime() ? Math.max(0, m.sentCount) : 0;
+  return { limit, used, remaining: Math.max(0, limit - used), period, periodStart: start.toISOString() };
+}
+
+/** Trades the founding solo price is for (beauty pros and barbershops). Vertical ids from verticals.ts (nails, brows_lashes, makeup land with workstream B). */
+export const SOLO_VERTICALS = ["nails", "brows_lashes", "makeup", "salon", "barber"] as const;
+
+export interface FoundingSoloConfig {
+  /** Founder proposal, not yet confirmed (solo-pro-launch.md §8.3): on by default, FOUNDING_SOLO_ENABLED=false turns it off. */
+  enabled: boolean;
+  /** First-year annual price in cents (CAD); renews at PLANS.plus.annualPriceCents. */
+  priceCents: number;
+  slots: number;
+  verticals: readonly string[];
+}
+
+/** Founding solo price: the first 200 beauty pros and barbershops on the annual plan pay $290 for year one, then $390. */
+export const FOUNDING_SOLO: FoundingSoloConfig = { enabled: true, priceCents: 29000, slots: 200, verticals: SOLO_VERTICALS };
+
+/**
+ * The founding config with env overrides (FOUNDING_SOLO_ENABLED, FOUNDING_SOLO_PRICE_CENTS, FOUNDING_SOLO_SLOTS), so the
+ * founder can change or strike the offer without a release. Pass process.env (API or a server component).
+ */
+export function foundingSoloConfig(env: Record<string, string | undefined> = {}): FoundingSoloConfig {
+  const off = /^(0|false|off|no)$/i.test(env.FOUNDING_SOLO_ENABLED?.trim() ?? "");
+  const int = (v: string | undefined, d: number) => {
+    const n = Number(v);
+    return v != null && v.trim() !== "" && Number.isInteger(n) && n >= 0 ? n : d;
+  };
+  return {
+    enabled: FOUNDING_SOLO.enabled && !off,
+    priceCents: int(env.FOUNDING_SOLO_PRICE_CENTS, FOUNDING_SOLO.priceCents),
+    slots: int(env.FOUNDING_SOLO_SLOTS, FOUNDING_SOLO.slots),
+    verticals: FOUNDING_SOLO.verticals,
+  };
+}
+
+/** Spots left on the founding solo price, given how many shops already took it (merchants.founding_solo). */
+export function foundingSoloSpotsLeft(taken: number, cfg: FoundingSoloConfig = FOUNDING_SOLO): number {
+  return cfg.enabled ? Math.max(0, cfg.slots - Math.max(0, taken)) : 0;
+}
+
+/** Can this shop take the founding price on an annual Café & Retail checkout? */
+export function isFoundingSoloEligible(
+  m: { vertical: string | null | undefined; foundingSolo?: boolean },
+  taken: number,
+  cfg: FoundingSoloConfig = FOUNDING_SOLO,
+): boolean {
+  if (!cfg.enabled || m.foundingSolo) return false;
+  return !!m.vertical && cfg.verticals.includes(m.vertical) && foundingSoloSpotsLeft(taken, cfg) > 0;
+}
+// ---- end phase-solo: A ----

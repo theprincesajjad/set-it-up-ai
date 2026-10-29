@@ -14,7 +14,10 @@
     "./theme.css": "./css/theme.css",
     "./map/corner-light.json": "./map/corner-light.json",
     "./map/corner-dark.json": "./map/corner-dark.json",
-    "./assets/categories/*": "./assets/categories/*"
+    "./icons3d.css": "./css/icons3d.css",
+    "./css/icons3d.css": "./css/icons3d.css",
+    "./assets/categories/*": "./assets/categories/*",
+    "./assets/icons3d/*": "./assets/icons3d/*"
   },
   "files": [
     "src",

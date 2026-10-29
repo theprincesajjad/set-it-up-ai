@@ -15,7 +15,7 @@ import { conflict, notFound } from "../lib/errors.js";
 import { PLATFORM_CHARGE_MARKER, getPayments, type ChargeMode, type CreatePaymentIntentArgs, type OffSessionResult, type PaymentIntentInfo, type PaymentsEvent, type PlatformChargeResult, type SavedMethodScope } from "../providers/payments.js";
 import { onBillingInvoiceFailed, onCheckoutCompleted, onSubscriptionEvent } from "./billing.js";
 import { isRestaurantObject, onRestaurantCheckoutCompleted, onRestaurantInvoicePaid, onRestaurantSubscriptionEvent } from "./billing-restaurant.js";
-import { requireFeature } from "./features.js";
+import { getMerchantFeatures, requireFeature, requireFeatureFrom } from "./features.js";
 import { onInvoicePayment } from "./invoices.js";
 import { onOrderPayment } from "./orders.js";
 import { onTiffinPayment, onTiffinSetup, resetSavedMethodsForChargeModeChange } from "./tiffin.js";
@@ -32,12 +32,16 @@ type Merchant = typeof merchants.$inferSelect;
 // Connect
 // ---------------------------------------------------------------------------
 export async function startConnectOnboarding(ctx: AppContext, merchant: Merchant, body: z.infer<typeof billingApi.connectBody>): Promise<billingApi.ConnectResponse> {
-  await requireFeature(ctx.db, merchant, "payments.in_app");
+  // In-app payments (paid), or deposits and no-show fees on the free calendar (booking.appointments, solo-pro-launch.md §3.2).
+  const f = await getMerchantFeatures(ctx.db, merchant);
+  if (!f["payments.in_app"].enabled && !f["booking.appointments"].enabled) requireFeatureFrom(f, "payments.in_app");
   const payments = getPayments(ctx);
   let accountId = merchant.stripeAccountId;
   if (!accountId) {
     accountId = (await payments.createConnectedAccount({ merchantId: merchant.id, email: merchant.email, businessName: merchant.name })).accountId;
-    await ctx.db.update(merchants).set({ stripeAccountId: accountId, updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id));
+    // A shop connecting for the first time has no charges on the platform yet, so it starts on direct charges (the default for new
+    // shops; a Free shop's deposits need them so the per-account Connect fee is not ours). Shops already on destination keep it.
+    await ctx.db.update(merchants).set({ stripeAccountId: accountId, ...(merchant.plan === "free" && !merchant.restaurantTier ? { chargeMode: "direct" } : {}), updatedAt: ctx.now() }).where(eq(merchants.id, merchant.id));
   }
   const page = `${ctx.config.publicWebUrl}/dashboard/payments?merchant=${merchant.id}`;
   const { url } = await payments.createOnboardingLink({ accountId, returnUrl: body.returnUrl ?? `${page}&onboarding=done`, refreshUrl: body.refreshUrl ?? `${page}&onboarding=refresh` });
@@ -75,6 +79,18 @@ export async function connectStatus(ctx: AppContext, merchant: Merchant): Promis
 /** The mode to use for this merchant's Connect charges. "direct" only while STRIPE_DIRECT_CHARGES is on. */
 export function chargeModeFor(ctx: Pick<AppContext, "config">, merchant: Pick<Merchant, "chargeMode">): ChargeMode {
   return ctx.config.stripe.directCharges && merchant.chargeMode === "direct" ? "direct" : "destination";
+}
+
+/**
+ * Can this shop take an appointment deposit, a card on file or a no-show fee online? Paid shops: in-app payments and a
+ * Connect account that takes charges. Free shops (one free calendar): the same account, and only on direct charges, so the
+ * shop is the merchant of record and pays Stripe's per-account fee itself (solo-pro-launch.md §3.2, pricing.md).
+ */
+export async function appointmentPaymentsReady(ctx: AppContext, merchant: Merchant): Promise<boolean> {
+  if (!merchant.stripeAccountId || !merchant.stripeChargesEnabled) return false;
+  const f = await getMerchantFeatures(ctx.db, merchant);
+  if (f["payments.in_app"].enabled) return true;
+  return f["booking.appointments"].enabled && chargeModeFor(ctx, merchant) === "direct";
 }
 
 /**

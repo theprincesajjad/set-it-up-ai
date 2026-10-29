@@ -62,7 +62,7 @@ export interface Config {
   /** TIFFIN_PAD=1 lets tiffin subscribers pay by pre-authorized debit (Stripe acss_debit). */
   tiffin?: { padEnabled?: boolean };
   stripe: { secretKey?: string; webhookSecret?: string; prices: { plusMonthly?: string; plusAnnual?: string; proMonthly?: string; proAnnual?: string };
-    /** STRIPE_DIRECT_CHARGES: honour merchants.chargeMode = "direct" (merchant of record). Default off. */
+    /** STRIPE_DIRECT_CHARGES: honour merchants.chargeMode = "direct" (merchant of record). Default on (phase solo); set 0 to force destination. */
     directCharges?: boolean;
     /** STRIPE_AUTOMATIC_TAX: Stripe Tax collects GST/HST on our own subscription checkouts (needs Stripe Tax registrations). Default off. */
     automaticTax?: boolean;
@@ -175,7 +175,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         proMonthly: env.STRIPE_PRICE_PRO_MONTHLY,
         proAnnual: env.STRIPE_PRICE_PRO_ANNUAL,
       },
-      directCharges: env.STRIPE_DIRECT_CHARGES === "1" || env.STRIPE_DIRECT_CHARGES === "true",
+      // phase-solo A: on unless STRIPE_DIRECT_CHARGES=0/false (new shops default to direct; destination stays for existing ones).
+      directCharges: !/^(0|false|off|no)$/i.test(env.STRIPE_DIRECT_CHARGES?.trim() ?? ""),
       automaticTax: env.STRIPE_AUTOMATIC_TAX === "1" || env.STRIPE_AUTOMATIC_TAX === "true",
     },
     square: { appId: env.SQUARE_APP_ID, appSecret: env.SQUARE_APP_SECRET, webhookSignatureKey: env.SQUARE_WEBHOOK_SIGNATURE_KEY, environment: env.SQUARE_ENV === "production" ? "production" : "sandbox" },

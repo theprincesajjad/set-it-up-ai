@@ -446,6 +446,93 @@ export const copy = {
       pageNote: "Every number on this page is made up to show what a board report looks like. Your report uses your street’s real visits.",
     },
   },
+  // ---- phase-solo: E ----
+  solo: {
+    chipsLabel: "Booking for",
+    chips: [
+      { label: "Nail techs", href: "/for-nail-techs" },
+      { label: "Brow techs", href: "/for-nail-techs?trade=brows" },
+      { label: "Lash techs", href: "/for-nail-techs?trade=lashes" },
+      { label: "Barbers", href: "/for-barbers" },
+      { label: "Pet groomers", href: "/for-groomers" },
+    ],
+    fullPage: "Prefer the full sign-up page?",
+    plans: {
+      free: ["One bookable calendar", "Deposits, app reminders and {freeTexts} texts a month", "Client list, stamp card and your pass"],
+      paid: ["Everything in Free", "4 promos a month to your regulars", "{texts} reminder texts a month", "VIP levels and customer exports"],
+      yearly: ["Everything in the monthly plan", "Your own website, built in", "You pay for {months} months, not 12"],
+    },
+    compare: {
+      rows: { price: "Monthly price", free: "Free plan", deposit: "Deposits and payments", newClient: "Fee on a new client", texts: "Reminder texts", chairs: "Four chairs" },
+      us: {
+        price: "Free. Or {plus} a month for the whole shop.",
+        free: "Yes. One bookable calendar.",
+        deposit: "Deposits on Free. {fee}% plus card processing.",
+        newClient: "None. We never take a cut of a client.",
+        texts: "App reminders are free. {free} texts a month on Free, {paid} on paid.",
+        chairs: "{plus} a month. One price, any number of chairs.",
+      },
+      usSource: "our own plans",
+      foot: "Figures are copied from each company's page on the date shown. Where a page did not say which currency, we say so. Prices change; check the page before you decide.",
+    },
+    nail: {
+      title: "Booking software for nail, brow and lash techs",
+      description: "A booking link with deposits, reminders and a client list, free to start. Made for home-based nail, brow and lash techs who are tired of booking in DMs.",
+      jobs: [
+        { eyebrow: "Book", title: "clients pick a time. you stop typing.", body: "Your link shows your services and your open times. They choose, you get a message. No more \"what times do you have Saturday?\"", rows: ["Gel fill · Sat 11:00 am", "Brow lamination · Sat 1:30 pm", "Classic set · Sun 10:00 am"] },
+        { eyebrow: "Deposit", title: "hold the spot with a deposit.", body: "Ask for $20 up front. It comes off the total, and changes are free until 24 hours before, so you're fair and you don't get stood up.", rows: ["$20 holds your spot", "Free change until 24 h before", "Deposit comes off the total"] },
+        { eyebrow: "Remind", title: "reminders go out on their own.", body: "Push, in-app and email reminders reach clients without you. Texts are there for the ones who need one.", rows: ["The day before, with the address", "Two hours before, a quick nudge", "Three weeks later, a rebook link"] },
+      ],
+      regulars: ["A stamp card on their phone for every visit", "Promos to your regulars, like Valentine's nails or a back-to-school week", "One pass that also works at other shops on your street"],
+      privacy: ["The map shows your area, like \"Bloor West area · by appointment\". Not your door.", "Clients get the address after they book, and after the deposit when you ask for one.", "It never shows on your page, your site or in search.", "You choose at signup: my place, a salon or shop, or I travel to clients."],
+      privacyBefore: "Before they book",
+      privacyBeforeLine: "Home studio in the Bloor West area. The address is sent after you book.",
+      privacyAfter: "After they book",
+      privacyAfterLine: "Address: sent in your confirmation and the day-before reminder.",
+      faq: [
+        { q: "Is it really free?", a: "Yes. One bookable calendar, deposits, reminders and your client list are free. Paid plans add promos to your regulars, VIP levels and the website." },
+        { q: "What does a deposit cost me?", a: "We take 1% of the deposit, plus the card processing fee. No monthly charge on the free plan." },
+        { q: "Do my clients need an app?", a: "No. They book on a web page, and they can add their card to their phone's wallet if they like." },
+        { q: "What about my Instagram?", a: "Keep it. Put your booking link in your bio and it takes the bookings your DMs used to." },
+        { q: "Will my clients see where I live?", a: "Not before they book. They see your area, and the address is sent after." },
+        { q: "Can I bring my client list?", a: "Yes. Add your regulars or import them, and send them your link in one message." },
+      ],
+    },
+    barber: {
+      title: "Booking and walk-in line for barbershops",
+      description: "Bookings, a walk-in line, family cards and chair-renter payouts in one place. One price for the whole shop, no per-chair charge.",
+      jobs: [
+        { eyebrow: "Line", title: "the walk-in line runs itself.", body: "Clients join from the door tablet or their phone, see their place and the wait, and get told when you're ready. No clipboard.", rows: ["1. Dre · now", "2. Sam · about 15 min", "3. You · about 40 min"] },
+        { eyebrow: "Family", title: "dad books, the kids' cuts go on the same card.", body: "One card for the family. Each person books their own time, and the stamps land in one place.", rows: ["Dad · Cut and beard", "Kai · Kids' cut", "Stamps on one card"] },
+        { eyebrow: "Payouts", title: "chair renters keep their own clients.", body: "Every barber has their own calendar and clients. Payouts and chair rent are tracked in the app, not a spreadsheet.", rows: ["Own calendar and clients", "Chair rent, tracked", "A private payouts view"] },
+      ],
+      regulars: ["A stamp card on their phone for every cut", "Promos to your regulars, like a back-to-school week", "One pass that also works at other shops on your street"],
+      faq: [
+        { q: "Is there a charge per chair?", a: "No. One price for the whole shop, however many barbers work in it." },
+        { q: "Can chair renters keep their own clients?", a: "Yes. Each barber has their own calendar and client list, and a private view of their payouts." },
+        { q: "Does the walk-in line need a tablet?", a: "No. Clients can join from their phone. A tablet at the door is optional." },
+        { q: "Can I take deposits?", a: "Yes, on the free plan too. We take 1% of the deposit, plus the card processing fee." },
+        { q: "Do my clients need an app?", a: "No. They book and join the line from a web page." },
+      ],
+    },
+    groom: {
+      title: "Booking software for pet groomers",
+      description: "Free groom booking with vaccine dates on every pet's profile, prices by dog size and rebooking that runs itself.",
+      jobs: [
+        { eyebrow: "Vaccines", title: "vaccines checked before the groom.", body: "Each pet's profile holds the expiry date and the certificate photo, so you see it before the dog is on your table.", rows: ["Rabies · expires Mar 14", "Certificate photo on file", "A reminder when it's due"] },
+        { eyebrow: "Rebook", title: "Max is due. One tap to book.", body: "We know how often each dog comes. When it's time, the owner gets a nudge with a link that already knows the dog.", rows: ["Max · due in 4 days", "One tap to rebook", "Same groom, same price"] },
+        { eyebrow: "Prices", title: "prices by dog size, no back and forth.", body: "Set a price for each size. After the owner picks their dog, they only see that dog's prices.", rows: ["Small · $65", "Large · $95", "Shown after picking the dog"] },
+      ],
+      regulars: ["A stamp card on the owner's phone for every groom", "Promos to your regulars, like a spring shed-out special", "One pass that also works at other shops on your street"],
+      faq: [
+        { q: "Is it really free?", a: "Yes. One bookable calendar, deposits, reminders and your client list are free." },
+        { q: "How do prices by dog size work?", a: "You set a price for each size. Owners pick their dog first, then see only that dog's prices." },
+        { q: "Where do the vaccine records live?", a: "On the pet's profile, with the expiry date and a photo of the certificate." },
+        { q: "Do owners need an app?", a: "No. They book on a web page." },
+        { q: "Can I take deposits?", a: "Yes, on the free plan too. We take 1% of the deposit, plus the card processing fee." },
+      ],
+    },
+  },
 } as const;
 
 export type Copy = typeof copy;

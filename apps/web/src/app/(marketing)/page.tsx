@@ -4,6 +4,7 @@ import { categoryLabels, type MapCategoryId } from "@ll/design-tokens";
 import { BRAND } from "@ll/shared";
 import { AudienceRouter } from "@/components/marketing/AudienceRouter";
 import { BiaBand } from "@/components/marketing/BiaBand";
+import { ChipLink } from "@/components/marketing/ChipLink";
 import { CompetitorTable } from "@/components/marketing/CompetitorTable";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { Faq } from "@/components/marketing/Faq";
@@ -81,6 +82,15 @@ export default function Home() {
         </div>
         <div className="mx-auto max-w-[1200px] px-4 pt-4 pb-10 md:px-8">
           <TradeChips label={WARM.madeFor} />
+          {/* phase-solo E: one row of chips to the solo-pro landing pages. */}
+          <nav aria-label={copy.solo.chipsLabel} className="mt-5 flex flex-wrap items-center gap-2.5">
+            <span className="display me-2 text-title text-foreground">{copy.solo.chipsLabel}</span>
+            {copy.solo.chips.map((c) => (
+              <ChipLink key={c.href} href={c.href}>
+                {c.label}
+              </ChipLink>
+            ))}
+          </nav>
         </div>
       </section>
 
