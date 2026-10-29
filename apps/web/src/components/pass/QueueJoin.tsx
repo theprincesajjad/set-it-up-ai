@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { barberApi } from "@ll/shared";
@@ -119,7 +120,7 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
         </fieldset>
       ) : null}
       {signedIn ? (
-        <a className="text-meta text-fg underline" href="/me/family">{t("q.manageFamily")}</a>
+        <Link className="text-meta text-fg underline" href="/me/family">{t("q.manageFamily")}</Link>
       ) : null}
       <label className="flex items-start gap-3 text-body text-fg">
         <input type="checkbox" className="mt-1 size-5" checked={consent} onChange={(e) => setConsent(e.target.checked)} />

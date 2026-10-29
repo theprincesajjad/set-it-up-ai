@@ -61,6 +61,7 @@ const NAV: Record<ConsoleKind, ConsoleSection[]> = {
         { key: "campaigns", href: "/admin/campaigns", label: "shell.console.biaCampaigns" },
         { key: "ads", href: "/admin/ads", label: "shell.console.adsReview" },
         { key: "salesAgent", href: "/admin/sales-agent", label: "shell.console.salesAgent" },
+        { key: "siteDomains", href: "/admin/site-domains", label: "shell.console.siteDomains" },
       ],
     },
     {

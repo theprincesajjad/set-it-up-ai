@@ -178,7 +178,15 @@ export const DISCOUNT_CARD_VERTICALS: readonly string[] = ["pharmacy", "retail",
 export const GROCERY_FEATURES: readonly FeatureKey[] = ["grocery.counter_preorders", "grocery.flyer", "grocery.pantry_reminders", "grocery.whatsapp_orders"];
 export const hasGroceryFeature = (enabled: Set<FeatureKey>) => GROCERY_FEATURES.some((k) => enabled.has(k));
 /** Appointment businesses (staff calendar) and drop-off repair businesses (tickets). */
-export const APPOINTMENT_VERTICALS: readonly string[] = ["salon", "barber", "spa"];
+/** Nail, brow and lash techs and makeup artists (phase solo): one person and a calendar. */
+export const SOLO_BEAUTY_VERTICALS: readonly string[] = ["nails", "brows_lashes", "makeup"];
+export const APPOINTMENT_VERTICALS: readonly string[] = ["salon", "barber", "spa", ...SOLO_BEAUTY_VERTICALS];
+/**
+ * What a nail, brow or lash tech or a makeup artist never runs, even on a paid plan that unlocks them (final audit: the annual plan
+ * filled her sidebar with classes, the door, passes and pickup slots). The walk-in line stays (nail bars take walk-ins); payouts show
+ * once there is a second calendar to pay.
+ */
+const NOT_FOR_SOLO_BEAUTY: readonly string[] = ["classes", "class-offers", "class-door", "slots"];
 /** Class studios (yoga, pilates, boxing, dance, gyms): they live in the class schedule, not in orders, tickets or pickup slots. */
 export const STUDIO_VERTICALS: readonly string[] = ["fitness"];
 export const REPAIR_VERTICALS: readonly string[] = ["repair_electronics", "repair_auto", "alterations", "dry_cleaning", "print_shop"];
@@ -217,6 +225,10 @@ export function navVisible(key: string, enabled: Set<FeatureKey>, shop?: ShopNav
   // Salons, barbers and spas live in the calendar: no repair tickets unless they also bought the Service plan. Repair shops get no calendar.
   if (key === "tickets" && shop.vertical && APPOINTMENT_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
   if (key === "calendar" && shop.vertical && REPAIR_VERTICALS.includes(shop.vertical)) return false;
+  // Phase solo made one bookable calendar free for every shop. A café, bakery or grocer on Free keeps its loyalty-first sidebar and Today
+  // (no Calendar, no appointment stats); it gets them on a paid plan as before. Pet shops groom by appointment and pharmacies book
+  // consults, so they keep theirs.
+  if ((key === "calendar" || key === "services") && shop.plan === "free" && shop.vertical && LOYALTY_FIRST_VERTICALS.includes(shop.vertical) && !["pet", "pharmacy"].includes(shop.vertical) && !enabled.has("service.tickets")) return false;
   // A studio's sidebar is classes, members and the door; the café and repair sections stay out of its way unless it bought them.
   if (shop.vertical && STUDIO_VERTICALS.includes(shop.vertical) && ["orders", "catalog", "slots", "discount-cards"].includes(key) && !hasRestaurantFeature(enabled)) return false;
   if (key === "tickets" && shop.vertical && STUDIO_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
@@ -229,6 +241,7 @@ export function navVisible(key: string, enabled: Set<FeatureKey>, shop?: ShopNav
   if (key === "campaigns" && shop.onOpenStreet === false) return false;
   if (key === "discount-cards" && shop.vertical && !DISCOUNT_CARD_VERTICALS.includes(shop.vertical)) return false;
   if (key === "staff" && shop.soloCalendar === true) return false;
+  if (shop.vertical && SOLO_BEAUTY_VERTICALS.includes(shop.vertical) && (NOT_FOR_SOLO_BEAUTY.includes(key) || (key === "payouts" && shop.soloCalendar === true))) return false;
   if (PRO_ONLY_FOR_LOYALTY_FIRST.includes(key) && shop.vertical && LOYALTY_FIRST_VERTICALS.includes(shop.vertical)) {
     return shop.plan === "pro" || hasRestaurantFeature(enabled) || (shop.vertical === "grocery" && hasGroceryFeature(enabled));
   }
@@ -246,7 +259,8 @@ const UNDER_SETTINGS = ["staff", "integrations", "billing"];
 export function buildMerchantNav(base: string, role: StaffRole, enabled: Set<FeatureKey>, shop?: ShopNavContext): NavEntry[] {
   const entries = buildNavEntries(base, role, enabled, shop);
   if (role === "owner" || role === "manager") {
-    const at = entries.findIndex((e) => e.key === "staff");
+    // Settings goes right before its first sub-row (Staff, or POS & integrations when a one-calendar solo shop has Staff hidden).
+    const at = entries.findIndex((e) => UNDER_SETTINGS.includes(e.key));
     const settings: NavEntry = { key: "settings", href: `${base}/settings`, label: "Settings", group: "shop" };
     entries.splice(at < 0 ? entries.length : at, 0, settings);
   }

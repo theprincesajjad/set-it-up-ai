@@ -487,16 +487,16 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
               Google Play <ArrowUpRight aria-hidden className="size-3.5" />
             </a>
           ) : null}
-          <a className="font-semibold text-fg" href="/me">
+          <Link className="font-semibold text-fg" href="/me">
             {t("auth.joined.myCard")}
-          </a>
+          </Link>
         </div>
       </div>
 
       {info.merchant.vertical === "pet" ? (
         <section aria-label={t("pet.add.cta")} data-testid="join-add-dog" className="flex flex-col gap-2 rounded-card border border-line p-4">
           <p className="text-body text-fg">{t("pet.add.body", { shop: info.merchant.name })}</p>
-          <a className="self-start rounded-pill bg-primary px-4 py-2 text-meta-strong text-primary-foreground shadow-glow focus-visible:focus-ring clear:shadow-none" href="/me/pets">{t("pet.add.cta")}</a>
+          <Link className="self-start rounded-pill bg-primary px-4 py-2 text-meta-strong text-primary-foreground shadow-glow focus-visible:focus-ring clear:shadow-none" href="/me/pets">{t("pet.add.cta")}</Link>
         </section>
       ) : null}
 

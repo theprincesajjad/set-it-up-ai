@@ -78,7 +78,7 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "POS & integrations" })).toBeVisible();
-  await expect(page.getByText(/More with Café & Retail, \$39 a month: promos, texts, POS sync and the tools for your kind of shop/)).toBeVisible();
+  await expect(page.getByText(/More with Café & Retail, \$39 a month: 4 promos a month, 500 texts, POS sync and the tools for your kind of shop/)).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: shot("01-home"), fullPage: true });
 

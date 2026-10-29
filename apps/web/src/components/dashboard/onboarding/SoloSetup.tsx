@@ -330,6 +330,7 @@ function ServicesCard({ solo, api, trade, next }: CardProps) {
               onPriceChange={(v) => set(r.id, { price: v.replace(/[^0-9.]/g, "").slice(0, 7) })}
               labels={{ duration: `${r.name || t("ob.solo.services.newName")}: ${t("ob.solo.services.minutes")}`, price: `${r.name || t("ob.solo.services.newName")}: ${t("ob.solo.services.price")}` }}
               deposit={{ on: r.depositOn, onChange: (v) => set(r.id, { depositOn: v }), label: t("ob.solo.services.deposit"), amount: money(fieldToCents(r.deposit) ?? 0) }}
+              units={{ duration: t("bk.dur.min", { n: "" }).trim(), price: "$" }}
             />
           </div>
         ))}
@@ -640,16 +641,26 @@ function StaffCard({ api, trade, next, base }: CardProps) {
 const LATER_COPY: Record<string, { title: string; body: string; cta: string; path: string; icon: "check_done" | "stamp_card" | "instagram_mark" | "site" | "megaphone" | "pos" }> = {
   profile: { title: "ob.solo.profile.title", body: "ob.solo.profile.body", cta: "ob.solo.profile.open", path: "/settings", icon: "check_done" },
   loyalty: { title: "ob.solo.loyalty.title", body: "ob.solo.loyalty.body", cta: "ob.solo.loyalty.open", path: "/program", icon: "stamp_card" },
-  instagram_connect: { title: "ob.solo.instagram.title", body: "ob.solo.instagram.body", cta: "ob.solo.instagram.soon", path: "", icon: "instagram_mark" },
+  instagram_connect: { title: "ob.solo.instagram.title", body: "ob.solo.instagram.body", cta: "ob.solo.instagram.soon", path: "/settings?tab=messages", icon: "instagram_mark" },
   site: { title: "ob.solo.site.title", body: "ob.solo.site.body", cta: "ob.solo.site.open", path: "/site", icon: "site" },
-  promos: { title: "ob.solo.promos.title", body: "ob.solo.promos.body", cta: "ob.solo.promos.open", path: "/messages", icon: "megaphone" },
+  promos: { title: "ob.solo.promos.title", body: "ob.solo.promos.body", cta: "ob.solo.promos.open", path: "/messages/promos", icon: "megaphone" },
   pos: { title: "ob.solo.pos.title", body: "ob.solo.pos.body", cta: "ob.solo.pos.open", path: "/integrations", icon: "pos" },
 };
 
 function LaterCard({ k, api, trade, onChange, base, checklist }: CardProps) {
   const { t } = useLocale();
   const s = useSave();
-  const { detail } = useMerchant();
+  const { detail, api: merchantApiClient } = useMerchant();
+  // Instagram: "coming" (add me to the list) while the connector is off; once it is on (or the dev stub), the card opens Settings > Messages.
+  const [igOn, setIgOn] = useState(false);
+  useEffect(() => {
+    if (k !== "instagram_connect") return;
+    let live = true;
+    merchantApiClient.instagram.status().then((r) => live && setIgOn(r.mode !== "off"), () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [k, merchantApiClient]);
   const c = LATER_COPY[k] ?? LATER_COPY.profile!;
   const done = checklist.later.find((x) => x.key === k)?.done;
   const mark = async () => {
@@ -664,7 +675,7 @@ function LaterCard({ k, api, trade, onChange, base, checklist }: CardProps) {
       trade={trade}
       title={tk(c.title)}
       body={tk(c.body)}
-      primary={k === "instagram_connect" ? { label: done ? t("ob.solo.instagram.listed") : tk(c.cta), onClick: () => void mark(), disabled: done, loading: s.busy === "mark" } : { label: tk(c.cta), href: `${base}${c.path}` }}
+      primary={k === "instagram_connect" && igOn ? { label: t("ig.card.connect"), href: `${base}${c.path}` } : k === "instagram_connect" ? { label: done ? t("ob.solo.instagram.listed") : tk(c.cta), onClick: () => void mark(), disabled: done, loading: s.busy === "mark" } : { label: tk(c.cta), href: `${base}${c.path}` }}
       secondary={k === "instagram_connect" || done || k === "pos" ? undefined : { label: t("ob.solo.later.notNow"), onClick: () => void mark() }}
     >
       <Err text={s.error} />

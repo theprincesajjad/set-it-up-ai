@@ -1,6 +1,6 @@
 /** phase-solo D: the Inbox entry for appointment-led shops, and no Staff page for a one-calendar solo pro. */
 import { describe, expect, it } from "vitest";
-import type { FeatureKey } from "@ll/shared";
+import { FEATURES, type FeatureKey } from "@ll/shared";
 import { buildMerchantNav } from "../src/lib/dashboard/nav";
 import { isAppointmentLed } from "../src/lib/dashboard/people";
 import { bookAgainHref, lastFinished } from "../src/lib/people";
@@ -20,6 +20,31 @@ describe("people-side nav", () => {
     expect(keys("nails", true)).not.toContain("staff");
     expect(keys("nails", false)).toContain("staff");
     expect(keys("nails")).toContain("staff");
+  });
+  it("a brow tech on the paid plan gets her own tools, not the café, studio or barbershop sections (final audit)", () => {
+    // What the annual plan unlocks for her (every Café & Retail feature; the restaurant and grocery packs are add-ons she does not have).
+    const all = new Set((Object.keys(FEATURES) as FeatureKey[]).filter((k) => ["free", "plus"].includes((FEATURES[k] as { minPlan?: string }).minPlan ?? "free") && !k.startsWith("restaurant.") && !k.startsWith("grocery.")));
+    const paid = (vertical: string, soloCalendar: boolean) => buildMerchantNav("/m/x", "owner", all, { vertical, plan: "plus", soloCalendar }).map((e) => e.key);
+    const k = paid("brows_lashes", true);
+    for (const gone of ["orders", "catalog", "payouts", "classes", "class-offers", "class-door", "slots", "tickets"]) expect(k, gone).not.toContain(gone);
+    for (const kept of ["calendar", "services", "customers", "inbox", "messages", "site", "queue"]) expect(k, kept).toContain(kept);
+    expect(paid("nails", false)).toContain("payouts");
+    expect(paid("barber", true)).toContain("classes");
+  });
+  it("a café on Free keeps its loyalty-first sidebar although one calendar is free for everyone; a groomer and a nail tech keep the calendar", () => {
+    const free = (vertical: string, plan: "free" | "plus" = "free") => buildMerchantNav("/m/x", "owner", on, { vertical, plan }).map((e) => e.key);
+    expect(free("cafe")).not.toContain("calendar");
+    expect(free("bakery")).not.toContain("services");
+    expect(free("cafe", "plus")).toContain("calendar");
+    expect(free("pet")).toContain("calendar");
+    expect(free("nails")).toContain("calendar");
+  });
+  it("keeps Settings above its sub-rows when Staff is hidden (final audit: it fell below POS & integrations and Billing)", () => {
+    for (const solo of [true, false]) {
+      const k = keys("nails", solo);
+      expect(k.indexOf("settings"), String(solo)).toBeLessThan(k.indexOf("integrations"));
+      expect(k.indexOf("settings"), String(solo)).toBeLessThan(k.indexOf("billing"));
+    }
   });
 });
 

@@ -8,12 +8,12 @@ import { ShopLogo } from "@/components/ui/ShopTile";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n";
 
-/** Lowercase Bricolage heading like the canvas for English; the locale's own face (never lowercased) for hi / ur / pa. */
+/** The display heading: lowercase Bricolage for English under Warm, sentence case (Inter) under Clear; the locale's own face (never lowercased) for hi / ur / pa. */
 export function Heading({ children, level = 1, className, plain }: { children: ReactNode; level?: 1 | 2 | 3; className?: string; /** Sentence-case Inter semibold (service-business screens); the default is the lowercase display face. */ plain?: boolean }) {
   const { locale } = useLocaleOrEnglish();
   const Tag = `h${level}` as "h1";
   const size = level === 1 ? "text-large-title" : level === 2 ? "text-title" : "text-headline";
-  return <Tag className={cn(size, "text-fg", plain ? "font-semibold" : locale === "en" ? "display lowercase" : "font-bold", className)}>{children}</Tag>;
+  return <Tag className={cn(size, "text-fg", plain ? "font-semibold" : locale === "en" ? "display warm:lowercase" : "font-bold", className)}>{children}</Tag>;
 }
 
 /** Big number in the display face (amounts due). */

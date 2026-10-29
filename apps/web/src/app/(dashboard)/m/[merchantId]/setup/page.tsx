@@ -36,7 +36,8 @@ export default function SetupPage() {
   const solo = !!state.data?.solo && state.data.path !== "storefront";
   return (
     <div className="flex flex-col gap-6">
-      {solo ? <SoloHeader /> : <PageHeader flush title="Set up your shop" description="A few steps to live on the street. Each saves as you go." />}
+      {/* No header until the path is known: a solo pro (in Urdu too) must not see the storefront's English header flash first. */}
+      {!state.data ? null : solo ? <SoloHeader /> : <PageHeader flush title="Set up your shop" description="A few steps to live on the street. Each saves as you go." />}
       <Async state={state} skeleton={<SkeletonRows rows={5} />}>
         {(c) => (c.solo && c.path !== "storefront" ? <SoloSetup checklist={c} onChange={(n) => state.setData(n)} footer={<NudgeToggle checklist={c} onChange={(n) => state.setData(n)} />} /> : <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />)}
       </Async>
