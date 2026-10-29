@@ -3,9 +3,10 @@
  *  - restaurant, tiffin, caterer, banquet hall: the restaurant plan screen, with the right tier marked, then a menu-first setup.
  *  - salon, barber, repair, pet, auto, studio, grocer: their own setup step (services, hours and tax, classes, price list).
  *  - pharmacy: the pharmacist's rules. Everyone else: the first stamp.
+ *  - a nail, brow, lash or makeup pro, and a stylist, barber or groomer who works from home, travels or picked "A shop or salon": the booking link.
  * A plan button on /pricing wins: the checkout for that plan opens straight away from the billing page.
  */
-import { tradeSetupFor, type RestaurantTier } from "@ll/shared";
+import { onboardingPath, tradeSetupFor, type RestaurantTier } from "@ll/shared";
 
 export const RESTAURANT_VERTICALS: readonly string[] = ["restaurant", "restaurant_south_asian", "tiffin", "caterer", "banquet_hall", "bar"];
 
@@ -16,8 +17,10 @@ export function recommendedRestaurantTier(vertical: string): RestaurantTier {
   return "starter";
 }
 
-export function afterSignupPath(base: string, vertical: string, plan?: string | null): string {
+export function afterSignupPath(base: string, vertical: string, plan?: string | null, workSetting?: string | null): string {
   if (plan) return `${base}/billing?subscribe=${plan}`;
+  // Solo pros and appointment-led storefronts start on their booking link (onboarding-v1.md §3.1; phase-solo B).
+  if (onboardingPath(vertical, workSetting) !== "storefront") return `${base}/setup?step=your_link`;
   if (RESTAURANT_VERTICALS.includes(vertical)) return `${base}/billing?welcome=restaurant&tier=${recommendedRestaurantTier(vertical)}`;
   if (vertical === "pharmacy") return `${base}/setup?step=pharmacy_rules`;
   return `${base}/setup?step=${tradeSetupFor(vertical) ? "trade_setup" : "first_stamp"}`;

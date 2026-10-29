@@ -475,7 +475,8 @@ export default function Explore() {
         key={s.merchant.id}
         variant="list"
         shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor, distanceM: s.distanceMetres }}
-        subtitle={[sub.text, formatDistanceL(L, s.distanceMetres)].filter(Boolean).join(" · ")}
+        // A home studio or a pro who travels shows by area or city, "by appointment", never a distance to a door (phase-solo B).
+        subtitle={[sub.text, s.location?.addressVisibility && s.location.addressVisibility !== "exact" ? tr("shop.byAppt", { place: s.location.areaLabel ? tr("shop.area", { area: s.location.areaLabel }) : s.location.city }) : formatDistanceL(L, s.distanceMetres)].filter(Boolean).join(" · ")}
         rewardReady={sub.accent}
         divider={i < n - 1}
         onPress={() => router.push(`/shop/${s.merchant.slug}`)}

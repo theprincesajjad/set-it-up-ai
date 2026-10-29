@@ -7,6 +7,7 @@
  * shown only when at least one of them is enabled for the shop (plan + rollout + admin override).
  */
 import { ADD_ONS, FEATURES, RESTAURANT_PLANS, type AddOnId, type FeatureKey, type PlanId } from "@ll/shared";
+import { isAppointmentLed } from "./people";
 
 export type StaffRole = "owner" | "manager" | "staff" | "instructor";
 
@@ -194,6 +195,11 @@ export interface ShopNavContext {
   stages?: Partial<Record<FeatureKey, string>>;
   /** The shop is on an open street. Street campaigns are a street's thing: a shop with no street never sees the item. */
   onOpenStreet?: boolean;
+  /**
+   * phase-solo D: one bookable calendar and nobody else on the team (a solo pro). Staff leaves the sidebar; Settings carries an
+   * "Add a second chair" plan line instead. Undefined (not known yet) keeps Staff.
+   */
+  soloCalendar?: boolean;
 }
 
 /** Is the whole Phase 3 section live (any of its keys at stage ga)? Unknown stages count as live (no gate). */
@@ -222,6 +228,7 @@ export function navVisible(key: string, enabled: Set<FeatureKey>, shop?: ShopNav
   if ((key === "ads" || key === "campaigns") && !stageGa(key, shop.stages)) return false;
   if (key === "campaigns" && shop.onOpenStreet === false) return false;
   if (key === "discount-cards" && shop.vertical && !DISCOUNT_CARD_VERTICALS.includes(shop.vertical)) return false;
+  if (key === "staff" && shop.soloCalendar === true) return false;
   if (PRO_ONLY_FOR_LOYALTY_FIRST.includes(key) && shop.vertical && LOYALTY_FIRST_VERTICALS.includes(shop.vertical)) {
     return shop.plan === "pro" || hasRestaurantFeature(enabled) || (shop.vertical === "grocery" && hasGroceryFeature(enabled));
   }
@@ -298,6 +305,8 @@ function buildNavEntries(base: string, role: StaffRole, enabled: Set<FeatureKey>
     home,
     counter,
     { key: "customers", href: `${base}/customers`, label: "Customers", group: "customers" },
+    // phase-solo D: one thread per customer, Instagram DMs read-only; free on every plan. Appointment-led shops (the calendar is on).
+    ...(isAppointmentLed(shop?.vertical, enabled.has("booking.appointments")) ? [{ key: "inbox", href: `${base}/inbox`, label: "Inbox", group: "customers" as NavSection }] : []),
     { key: "program", href: `${base}/program`, label: "Rewards", group: "customers" },
     { key: "promos", href: `${base}/promos`, label: "Promos", group: "customers" },
     { key: "discount-cards", href: `${base}/discount-cards`, label: "Discount cards", group: "customers" },

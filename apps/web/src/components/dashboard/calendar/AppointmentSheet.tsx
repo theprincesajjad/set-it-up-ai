@@ -15,6 +15,8 @@ import { clock, dateLabel, duePreview, duration, instantAt, money, parts } from 
 import { maskPhone } from "@/lib/dashboard/customers";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { formatDate } from "@/lib/format";
+import { useMessageCustomer } from "@/components/dashboard/inbox/useMessageCustomer";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 
 type Appt = appointmentsApi.AppointmentDto;
@@ -50,6 +52,8 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
   const unpaidDone = appt.status === "completed" && !appt.invoiceId;
   const fee = appt.noShowFeeCents ? Math.max(0, appt.noShowFeeCents - (appt.depositPaidAt ? appt.depositCents : 0)) : 0;
   const minutes = appt.items.reduce((n, i) => n + i.durationMin, 0);
+  const message = useMessageCustomer();
+  const { t } = useLocaleOrEnglish();
 
   async function run(fn: () => Promise<unknown>, done?: string) {
     const r = await act.run(fn);
@@ -122,6 +126,25 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
           <p className="text-meta text-fg">{appt.clientNote ?? appt.notes}</p>
         </div>
       ) : null}
+      {/* phase-solo D: the intake answer, the visit note written at checkout, and the thread a booking came from. */}
+      {appt.intakeAnswer ? (
+        <div className="rounded-input bg-bg-subtle px-3 py-2.5" data-testid="appt-intake">
+          <p className="text-caption text-fg-muted">{t("people.intake")}</p>
+          <p className="text-meta text-fg">{appt.intakeAnswer}</p>
+        </div>
+      ) : null}
+      {appt.visitNote ? (
+        <div className="rounded-input border border-line px-3 py-2.5" data-testid="appt-visit-note">
+          <p className="text-caption text-fg-muted">{t("people.visitNote")}</p>
+          <p className="text-meta text-fg">{appt.visitNote}</p>
+          {appt.visitPhotoUrl ? <a className="text-meta text-link underline underline-offset-2" href={appt.visitPhotoUrl} target="_blank" rel="noreferrer">{t("people.photo")}</a> : null}
+        </div>
+      ) : null}
+      {appt.conversationId ? (
+        <a className="inline-flex min-h-11 items-center text-meta text-link underline underline-offset-4" href={`${base}/inbox?c=${appt.conversationId}`}>
+          {appt.source === "instagram" ? `${t("inbox.from.instagram")} · ${t("inbox.back")}` : t("inbox.back")}
+        </a>
+      ) : null}
 
       {detail.data?.lastVisits.length ? (
         <div>
@@ -152,6 +175,7 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
         {live ? (
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" onClick={() => setMoving(true)}>Reschedule</Button>
+            {appt.customer.id ? <Button variant="secondary" size="sm" loading={message.busy} onClick={() => message.open({ userId: appt.customer.id! })}>{t("people.message")}</Button> : null}
             <Button variant="secondary" size="sm" onClick={() => setNoShow(true)}>No-show</Button>
             <Button variant="ghost" size="sm" onClick={() => setCancel(true)}>Cancel</Button>
           </div>

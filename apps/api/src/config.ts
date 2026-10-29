@@ -67,6 +67,8 @@ export interface Config {
    */
   site: {
     apiKey?: string;
+    /** SITE_AI_FAKE=1 (never in production): a deterministic local stand-in for the model, for e2e runs without a key. */
+    fake: boolean;
     model: string;
     editModel: string;
     effort: "low" | "medium" | "high";
@@ -182,6 +184,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     // ---- phase-solo: G ----
     site: {
       apiKey: env.ANTHROPIC_API_KEY || undefined,
+      fake: env.SITE_AI_FAKE === "1" && !isProd,
       model: env.SITE_AI_MODEL || "claude-opus-5-5",
       editModel: env.SITE_AI_EDIT_MODEL || "claude-haiku-5-5",
       effort: env.SITE_AI_EFFORT === "medium" || env.SITE_AI_EFFORT === "high" ? env.SITE_AI_EFFORT : "low",

@@ -95,6 +95,8 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const m = shop.merchant;
   const heroSubtitle = [kindL(L, m.vertical), locale === "en" ? m.neighbourhood?.name.toLowerCase() : m.neighbourhood?.name].filter(Boolean).join(" · ");
   const loc = shop.locations[0] ?? null;
+  // A home studio or a pro who travels: the area or city only, never a street, a postcode or a route to a door (phase-solo B, §2.3).
+  const privatePlace = !!loc && !!loc.addressVisibility && loc.addressVisibility !== "exact";
   const program = shop.program;
   const status = loc ? openStatusL(L, loc.hours, m.timezone) : null;
   let nearby: networkApi.ShopListItemDto[] = [];
@@ -114,8 +116,8 @@ export default async function ShopPage({ params, searchParams }: Props) {
     url: `${env.siteUrl}/shops/${m.slug}`,
     image: m.logoUrl ?? undefined,
     telephone: m.phone ?? loc?.phone ?? undefined,
-    address: loc ? { "@type": "PostalAddress", streetAddress: loc.address, addressLocality: loc.city, postalCode: loc.postalCode ?? undefined, addressCountry: "CA" } : undefined,
-    geo: loc?.lat != null ? { "@type": "GeoCoordinates", latitude: loc.lat, longitude: loc.lng } : undefined,
+    address: loc ? (privatePlace ? { "@type": "PostalAddress", addressLocality: loc.city, addressCountry: "CA" } : { "@type": "PostalAddress", streetAddress: loc.address, addressLocality: loc.city, postalCode: loc.postalCode ?? undefined, addressCountry: "CA" }) : undefined,
+    geo: loc?.lat != null && !privatePlace ? { "@type": "GeoCoordinates", latitude: loc.lat, longitude: loc.lng } : undefined,
   };
   const joinInfo: networkApi.JoinInfoResponse | null = loc ? { qrCode: "", merchant: m, location: loc, program, rewards: shop.rewards.slice(0, 3), consentText: shop.consentText } : null;
 
@@ -141,12 +143,12 @@ export default async function ShopPage({ params, searchParams }: Props) {
     rest
       ? [
           phone ? { href: `tel:${phone}`, label: t("shop.call"), icon: Phone } : null,
-          loc ? { href: directionsUrl(loc), label: t("shop.directions"), icon: Navigation } : null,
+          loc && !privatePlace ? { href: directionsUrl(loc), label: t("shop.directions"), icon: Navigation } : null,
           rest.whatsappNumber ? { href: whatsappChatUrl(rest.whatsappNumber), label: t("rs.whatsapp"), icon: MessageCircle } : m.website ? { href: m.website, label: t("shop.website"), icon: Globe } : null,
         ]
       : [
           m.phone || loc?.phone ? { href: `tel:${m.phone ?? loc?.phone}`, label: t("shop.call"), icon: Phone } : null,
-          loc ? { href: directionsUrl(loc), label: t("shop.directions"), icon: Navigation } : null,
+          loc && !privatePlace ? { href: directionsUrl(loc), label: t("shop.directions"), icon: Navigation } : null,
           m.website ? { href: m.website, label: t("shop.website"), icon: Globe } : null,
         ]
   ).filter((x): x is { href: string; label: string; icon: typeof Phone } => !!x);
@@ -304,7 +306,29 @@ export default async function ShopPage({ params, searchParams }: Props) {
             content: (
               <>
                 {m.description ? <p className="text-body text-fg">{m.description}</p> : null}
-                {loc ? (
+                {loc && privatePlace ? (
+                  <ListGroup title={t("wp.shop.visit")} as="div">
+                    <div className="-mx-4 flex items-center gap-3 px-4 py-3.5" data-testid="shop-place">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-body-strong text-fg">{t("shop.byAppt", { place: loc.areaLabel ? t("shop.area", { area: loc.areaLabel }) : loc.city })}</p>
+                        <p className="text-meta text-fg-muted">{t("bk.privacy.after")}</p>
+                      </div>
+                    </div>
+                    {loc.hours ? (
+                      <table className="my-2 w-full text-meta">
+                        <caption className="sr-only">{t("wp.shop.hoursCaption")}</caption>
+                        <tbody>
+                          {weekRowsL(L, loc.hours).map((r) => (
+                            <tr key={r.day}>
+                              <th scope="row" className="py-1 text-start font-normal text-fg-muted">{r.day}</th>
+                              <td className="py-1 text-end tabular-nums text-fg">{r.text}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : null}
+                  </ListGroup>
+                ) : loc ? (
                   <ListGroup title={t("wp.shop.visit")} as="div">
                     <a href={directionsUrl(loc)} rel="noopener noreferrer" className="-mx-4 flex items-center gap-3 px-4 py-3.5 hover:bg-bg-subtle focus-visible:focus-ring">
                       <div className="min-w-0 flex-1">

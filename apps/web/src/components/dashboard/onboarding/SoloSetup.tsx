@@ -57,9 +57,11 @@ export function SoloSetup({ checklist, onChange, footer }: { checklist: Checklis
   return (
     <div className="flex flex-col gap-6">
       {solo.live && shared ? (
-        <Banner tone="success" title={t("ob.solo.live")}>
-          {solo.secondsToLive !== null ? t("ob.solo.liveIn", { time: durationLabel(solo.secondsToLive, t) }) : null}
-        </Banner>
+        <div data-testid="solo-live">
+          <Banner tone="success" title={t("ob.solo.live")}>
+            {solo.secondsToLive !== null ? t("ob.solo.liveIn", { time: durationLabel(solo.secondsToLive, t) }) : null}
+          </Banner>
+        </div>
       ) : null}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)_300px] lg:gap-8">
         <div className="flex min-w-0 flex-col gap-6">
@@ -67,7 +69,7 @@ export function SoloSetup({ checklist, onChange, footer }: { checklist: Checklis
           <LaterList steps={checklist.later} current={key} onPick={go} t={t} className="hidden md:block" />
         </div>
         <div className="flex min-w-0 flex-col gap-4" id="solo-card" tabIndex={-1}>
-          <Card k={key} solo={solo} checklist={checklist} api={api} trade={trade} next={next} onChange={onChange} go={go} base={base} />
+          <Card key={key} k={key} solo={solo} checklist={checklist} api={api} trade={trade} next={next} onChange={onChange} go={go} base={base} />
           <LaterList steps={checklist.later} current={key} onPick={go} t={t} className="md:hidden" />
           {footer}
         </div>
@@ -114,7 +116,7 @@ function Preview({ solo, step }: { solo: Solo; step: string }) {
   const { t } = useLocale();
   const m = detail.merchant;
   const data: appointmentsApi.PublicServicesResponse = {
-    shop: { name: m.name, slug: solo.slug, timezone: m.timezone, address: solo.addressVisibility === "exact" ? (detail.locations[0]?.address ?? null) : null, phone: m.phone, logoUrl: m.logoUrl, brandColor: m.brandColor, locationId: detail.locations[0]?.id ?? null, vertical: m.vertical, addressVisibility: solo.addressVisibility, placeLine: placeLine(solo, t) },
+    shop: { name: m.name, slug: solo.slug, timezone: m.timezone, address: solo.addressVisibility === "exact" ? (detail.locations[0]?.address ?? null) : null, phone: m.phone, logoUrl: m.logoUrl, brandColor: m.brandColor, locationId: detail.locations[0]?.id ?? null, vertical: m.vertical, addressVisibility: solo.addressVisibility, placeLine: placeLine(solo, t), areaLabel: solo.addressVisibility === "area" ? solo.areaLabel : null, city: solo.city },
     tax: { applies: false, name: "HST" },
     policy: { cancelWindowHours: 24, noShowFeeCents: 0, takesCards: true },
     services: solo.services.map((s) => ({ id: s.id, name: s.name, description: null, durationMin: s.durationMin, priceCents: s.priceCents, priceFrom: false, depositCents: s.depositCents, categoryName: null, translations: {}, staffIds: [], taxable: false, staffOverrides: [] })),
@@ -205,27 +207,24 @@ function LinkCard({ solo, api, trade, next }: CardProps) {
   const s = useSave();
   const [slug, setSlug] = useState(solo.slug);
   const [handle, setHandle] = useState(solo.instagram ? `@${solo.instagram}` : "");
-  const [check, setCheck] = useState<{ slug: string; available: boolean; suggestion: string | null } | null>(null);
-  const [fromHandle, setFromHandle] = useState<string | null>(null);
+  // Results are kept with the text they answer, so a stale answer never shows for a newer value.
+  const [checkRes, setCheck] = useState<{ slug: string; available: boolean; suggestion: string | null } | null>(null);
+  const [handleRes, setHandleRes] = useState<{ handle: string; slug: string | null } | null>(null);
   const host = solo.displayLink.slice(0, solo.displayLink.length - solo.slug.length);
+  const typed = slug.trim().toLowerCase();
   useEffect(() => {
-    const v = slug.trim().toLowerCase();
-    if (!v || v === solo.slug) {
-      setCheck(null);
-      return;
-    }
-    const id = setTimeout(() => void api.slug(v).then(setCheck).catch(() => setCheck(null)), 300);
+    if (!typed || typed === solo.slug) return;
+    const id = setTimeout(() => void api.slug(typed).then(setCheck).catch(() => undefined), 300);
     return () => clearTimeout(id);
-  }, [slug, solo.slug, api]);
+  }, [typed, solo.slug, api]);
   useEffect(() => {
     const h = handle.trim();
-    if (!h) {
-      setFromHandle(null);
-      return;
-    }
-    const id = setTimeout(() => void api.slug(h).then((r) => setFromHandle(r.available && r.slug !== slug ? r.slug : null)).catch(() => setFromHandle(null)), 300);
+    if (!h) return;
+    const id = setTimeout(() => void api.slug(h).then((r) => setHandleRes({ handle: h, slug: r.available ? r.slug : null })).catch(() => undefined), 300);
     return () => clearTimeout(id);
-  }, [handle, slug, api]);
+  }, [handle, api]);
+  const check = checkRes && checkRes.slug === typed && typed !== solo.slug ? checkRes : null;
+  const fromHandle = handleRes && handleRes.handle === handle.trim() && handleRes.slug && handleRes.slug !== typed ? handleRes.slug : null;
   const fmt = !/^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){2,39}$/.test(slug.trim().toLowerCase());
   const fieldError = slug && fmt ? t("ob.solo.link.format") : check && !check.available ? (check.suggestion ? t("ob.solo.link.taken", { suggestion: check.suggestion }) : t("ob.solo.link.takenPlain")) : undefined;
   return (
@@ -246,7 +245,7 @@ function LinkCard({ solo, api, trade, next }: CardProps) {
     >
       <Err text={s.error} />
       <div className="flex flex-col gap-4">
-        <TextField label={t("ob.solo.link.field")} prefix={<bdi dir="ltr">{host}</bdi>} value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))} error={fieldError} hint={!fieldError ? t("ob.solo.link.free", { link: `${host}${slug}` }) : undefined} autoComplete="off" spellCheck={false} maxLength={40} dir="ltr" />
+        <TextField label={t("ob.solo.link.field")} prefix={host} value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))} error={fieldError} hint={!fieldError ? t("ob.solo.link.free", { link: `${host}${slug}` }) : undefined} autoComplete="off" spellCheck={false} maxLength={40} dir="ltr" />
         <TextField label={t("ob.solo.link.handle")} hint={t("ob.solo.link.handleHint")} value={handle} onChange={(e) => setHandle(e.target.value)} autoComplete="off" spellCheck={false} maxLength={60} dir="ltr" placeholder="@" />
         {fromHandle ? (
           <button type="button" onClick={() => setSlug(fromHandle)} className="relative self-start rounded-r2 text-body font-[550] text-link hover:underline focus-visible:focus-ring after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']">

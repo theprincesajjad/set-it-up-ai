@@ -37,8 +37,7 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
 
   app.post("/merchants/:merchantId/inbox", async (req: Req) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    const { memberId } = parse(inboxApi.startConversationBody, req.body);
-    return inbox.startConversation(ctx, s.merchant, memberId);
+    return inbox.startConversation(ctx, s.merchant, parse(inboxApi.startConversationBody, req.body));
   });
 
   app.get("/merchants/:merchantId/inbox/:conversationId", async (req: Req<{ conversationId: string }>) => {

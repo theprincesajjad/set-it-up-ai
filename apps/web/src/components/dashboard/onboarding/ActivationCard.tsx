@@ -5,12 +5,19 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { leadingMarkPct, paceTone, stepsLeft } from "@/lib/dashboard/onboarding";
 import { useMerchant } from "../MerchantContext";
+import { BookingsActivationCard } from "./BookingsActivationCard";
 
 /**
  * Home, first 30 days (docs/research/merchant-onboarding.md). One number that matters (members who visited),
  * whether that is enough for today's date, the four milestones, and one concrete next move.
  */
 export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist; base: string }) {
+  // phase-solo B: a solo pro counts bookings, not members.
+  if (c.solo && c.path !== "storefront") return <BookingsActivationCard solo={c.solo} base={base} />;
+  return <MembersActivationCard c={c} base={base} />;
+}
+
+function MembersActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist; base: string }) {
   const L = normalizeLocale(useMerchant().me.user.locale) ?? "en";
   const a = c.activation;
   const pct = a.target > 0 ? Math.min(100, (a.members / a.target) * 100) : 0;

@@ -4,7 +4,7 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { siteApi } from "@ll/shared";
 import { LogoMark } from "@/components/site/Brand";
 import { publicSiteEndpoints } from "@/components/site-builder/siteApi";
@@ -44,6 +44,8 @@ export async function siteMetadata(q: SiteLookup): Promise<Metadata> {
 
 export async function PublicSite({ lookup, searchParams }: { lookup: SiteLookup; searchParams?: Record<string, string | string[] | undefined> }) {
   const s = await loadSite(lookup);
+  // /s/<slug> used to redirect to the shop page: with no published site it still does.
+  if (!s && "slug" in lookup) redirect(`/shops/${encodeURIComponent(lookup.slug)}`);
   if (!s) notFound();
   const locale = await getLocale(searchParams);
   const t = translator(locale);

@@ -8,6 +8,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 import { duePreview, money, tipChoices } from "@/lib/dashboard/calendar";
 import { formatDate, formatPoints } from "@/lib/format";
@@ -56,6 +57,10 @@ export function CheckoutSheet({
   const [addId, setAddId] = useState("");
   const [phone, setPhone] = useState("");
   const [result, setResult] = useState<appointmentsApi.CheckoutResponse | null>(null);
+  // phase-solo D: what the pro did, for the profile timeline and the next booking (internal only).
+  const [visitNote, setVisitNote] = useState(appt.visitNote ?? "");
+  const [visitPhoto, setVisitPhoto] = useState(appt.visitPhotoUrl ?? "");
+  const { t } = useLocaleOrEnglish();
   useEffect(() => {
     if (!open) return;
     // Fresh numbers each time the sheet opens for an appointment.
@@ -99,6 +104,8 @@ export function CheckoutSheet({
       }),
     );
     if (r) {
+      const photo = /^https?:\/\/\S+$/i.test(visitPhoto.trim()) ? visitPhoto.trim() : null;
+      if (visitNote.trim() || photo) await api.people.visitNote(appt.id, { visitNote: visitNote.trim() || null, visitPhotoUrl: photo }).catch(() => undefined);
       setResult(r);
       await onDone();
     }
@@ -206,6 +213,9 @@ export function CheckoutSheet({
           ) : (
             <p className="text-meta text-fg-muted">They get a text with a link to pay and pick their tip for {staff.find((s) => s.userId === (tipStaff || appt.staffId))?.name ?? "their stylist"}.</p>
           )}
+
+          <TextField type="textarea" label={t("people.visitNote.label")} optionalLabel hint={t("people.visitNote.hint")} value={visitNote} onChange={(e) => setVisitNote(e.target.value)} maxLength={2000} data-testid="visit-note" />
+          <TextField type="url" label={t("people.visitNote.photo")} optionalLabel value={visitPhoto} onChange={(e) => setVisitPhoto(e.target.value)} placeholder="https://" />
 
           {needsPhone ? <TextField label="Client phone" hint="Walk-in: add a number to pay, earn points and get a receipt." inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /> : null}
 

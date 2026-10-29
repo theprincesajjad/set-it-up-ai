@@ -7,6 +7,7 @@ import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { ReminderCard } from "@/components/pass/ReminderCard";
+import { NotifyPrompt } from "@/components/pass/NotifyPrompt";
 import { SetupBox } from "@/components/pass/SetupBox";
 import { BigNumber, Heading, ShopHead, useFmt } from "@/components/restaurant/ui";
 import { Banner } from "@/components/ui/Banner";
@@ -45,6 +46,8 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const [avLoading, setAvLoading] = useState(false);
   const [avError, setAvError] = useState(false);
   const [notes, setNotes] = useState("");
+  // phase-solo D: the shop's one question for this service (the first picked service that has one).
+  const [intake, setIntake] = useState("");
   const notesRef = useHydratedValue<HTMLTextAreaElement>(notes, setNotes);
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<{ tone: "danger" | "info"; text: string } | null>(null);
@@ -70,8 +73,10 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const staffName = staffId ? (data.staff.find((s) => s.id === staffId)?.name ?? "") : "";
   const sel = useMemo(() => summarize(data.services, ids, staffId), [data.services, ids, staffId]);
   const picked = data.services.filter((s) => ids.includes(s.id));
+  const intakeQuestion = picked.find((s) => s.intakeQuestion)?.intakeQuestion ?? null;
   // Pharmacy: free to book, no card, no notes, no price shown (docs/research/pharmacies-wellness.md).
   const pharmacy = !!data.shop.pharmacy;
+  const privateAddress = !!data.shop.addressVisibility && data.shop.addressVisibility !== "exact";
   const takesCards = data.policy.takesCards;
   const deposit = takesCards ? sel.depositCents : 0;
   const fee = takesCards ? data.policy.noShowFeeCents : 0;
@@ -153,7 +158,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     setBusy(true);
     setBanner(null);
     try {
-      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null });
+      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null, intakeAnswer: !pharmacy && intakeQuestion ? intake.trim() || null : null });
       setBooked(r);
       if (r.confirmed) {
         setFinished(r.appointment);
@@ -226,9 +231,18 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           <p className="text-body text-fg-muted">{t("bk.done.body", { services: finished.items.map((i) => i.name).join(", "), shop: shop.name, when: when(finished.startsAt).replace(/\s([ap])\.m\.$/i, (_, x: string) => ` ${x.toUpperCase()}M`) })}</p>
           {finished.staffName ? <p className="text-meta text-fg-muted">{finished.staffName}</p> : null}
           {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta text-positive-text">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
+          {/* The confirmation is where a home studio's address is first shown (it arrives only once the booking is confirmed). */}
+          {finished.merchant.addressPrivate && finished.merchant.address ? (
+            <p className="text-body text-fg" data-testid="booked-address">
+              <span className="text-meta-strong">{t("bk.done.address")}: </span>
+              <bdi>{finished.merchant.address}</bdi>
+            </p>
+          ) : null}
         </section>
         {!pharmacy ? <NextVisitCard appt={finished} showManage={false} /> : null}
         <ReminderCard text={finished.reminderText} />
+        {/* phase-solo D: the free reminder channel for a client who booked on the web. */}
+        <NotifyPrompt />
         <div className="flex flex-col gap-3">
           <Button size="lg" fullWidth onClick={download}>{t("bk.done.calendar")}</Button>
           <Button size="lg" variant="secondary" fullWidth href={`/shops/${encodeURIComponent(shop.slug)}/book/${finished.id}`}>{t("bk.done.manage")}</Button>
@@ -327,10 +341,19 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             <p className="mt-1 text-meta text-fg-muted">{t("rx.book.privacyBody")}</p>
           </div>
         ) : (
+          <>
+          {intakeQuestion ? (
+            <label className="flex flex-col gap-1.5" data-testid="intake">
+              <span className="text-meta-strong text-fg">{t("bk.intake.label", { shop: shop.name })}</span>
+              <span className="text-meta text-fg-muted">{intakeQuestion}</span>
+              <textarea value={intake} onChange={(e) => setIntake(e.target.value)} rows={2} maxLength={500} placeholder={t("bk.intake.placeholder")} className="rounded-input border border-line bg-bg px-3 py-2 text-body text-fg focus-visible:focus-ring" />
+            </label>
+          ) : null}
           <label className="flex flex-col gap-1.5">
             <span className="text-meta-strong text-fg">{t("bk.notes")}</span>
             <textarea ref={notesRef} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} maxLength={400} className="rounded-input border border-line bg-bg px-3 py-2 text-body text-fg focus-visible:focus-ring" />
           </label>
+          </>
         )}
         {banner ? <Banner tone={banner.tone}>{banner.text}</Banner> : null}
         {wantsSignIn && !signedIn ? <PhoneSignIn heading="h2" devAutofill={devAutofill} title={t("bk.cta.signIn")} intro={t("bk.signIn.hint")} /> : null}
@@ -349,6 +372,12 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       <div className="flex flex-col gap-2">
         <Heading>{t(pharmacy ? "rx.book.title" : "bk.title")}</Heading>
         <p className="text-body text-fg-muted">{t("bk.intro", { shop: [shop.name, data.shop.address].filter(Boolean).join(", ") })}</p>
+        {/* A home studio or a pro who travels: the area, never the street, until the booking is confirmed (phase-solo B). */}
+        {privateAddress ? (
+          <p className="text-meta text-fg-muted" data-testid="booking-privacy">
+            {data.shop.areaLabel ? t("bk.privacy.home", { area: data.shop.areaLabel }) : t("bk.privacy.city", { city: data.shop.city ?? data.shop.placeLine ?? "" })}
+          </p>
+        ) : null}
       </div>
       <div role="radiogroup" aria-label={t("bk.anyone")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {[{ id: null as string | null, name: t("bk.anyone"), initials: "Any" }, ...data.staff].map((s) => {

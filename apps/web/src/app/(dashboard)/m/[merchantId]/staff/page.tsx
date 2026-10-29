@@ -20,6 +20,7 @@ import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
 import { maskPhone } from "@/lib/dashboard/customers";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 const ROLES: { value: merchantApi.StaffRole; label: string; desc: string }[] = [
   { value: "staff", label: "Staff", desc: "Counter and Today only. Can undo their own awards for 15 minutes." },
@@ -98,6 +99,8 @@ export default function StaffPage() {
                             Hours and services
                           </Button>
                         ) : null}
+                        {/* phase-solo D: "Dev's link": /shops/<slug>/book?staff=<id> books straight with this person. */}
+                        {enabled("booking.appointments") ? <StaffLinkButton userId={s.userId} name={(s.name ?? s.email ?? "").split(" ")[0] ?? ""} /> : null}
                         {enabled("staff.payouts") && role !== "staff" ? (
                           <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => setPay(s)}>
                             How paid
@@ -226,5 +229,28 @@ export default function StaffPage() {
         }}
       />
     </div>
+  );
+}
+
+/** phase-solo D: copy this person's own booking link (people-side.md gap 8). */
+function StaffLinkButton({ userId, name }: { userId: string; name: string }) {
+  const { detail } = useMerchant();
+  const { t } = useLocaleOrEnglish();
+  const toast = useToast();
+  const link = `${typeof window === "undefined" ? "" : window.location.origin}/shops/${detail.merchant.slug}/book?staff=${userId}`;
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="max-sm:w-full max-sm:border max-sm:border-line"
+      title={t("people.staffLinkHint", { name })}
+      data-testid="staff-link"
+      onClick={async () => {
+        await navigator.clipboard?.writeText(link).catch(() => undefined);
+        toast({ message: t("people.linkCopied"), tone: "success" });
+      }}
+    >
+      {t("people.staffLink", { name: name || t("people.copyLink") })}
+    </Button>
   );
 }

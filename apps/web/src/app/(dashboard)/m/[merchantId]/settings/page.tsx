@@ -8,6 +8,7 @@ import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { PageHeader, PageTabs, Panel, SaveBar } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { YourDataPanel } from "@/components/dashboard/YourDataPanel";
+import { PeopleSettings } from "@/components/dashboard/inbox/PeopleSettings";
 import { TaxStatus } from "@/components/dashboard/TaxStatus";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -24,20 +25,22 @@ import { useToast } from "@/components/ui/Toast";
 import { hoursDraft, hoursFromDraft } from "@/lib/dashboard/hours";
 import { useAction } from "@/lib/dashboard/useApi";
 
-type Tab = "profile" | "hours" | "tax" | "counter" | "appearance" | "privacy" | "danger";
+type Tab = "profile" | "hours" | "tax" | "counter" | "appearance" | "messages" | "privacy" | "danger";
 
 export default function SettingsPage() {
   const { detail, role } = useMerchant();
   const { t } = useLocaleOrEnglish();
   const params = useSearchParams();
   const want = params.get("tab");
-  const [tab, setTab] = useState<Tab>(want === "tax" || want === "hours" || want === "appearance" ? want : "profile");
+  const [tab, setTab] = useState<Tab>(want === "tax" || want === "hours" || want === "appearance" || want === "messages" ? want : "profile");
   const items: { id: Tab; label: string }[] = [
     { id: "profile", label: "Shop profile" },
     { id: "hours", label: "Hours" },
     { id: "tax", label: "Tax" },
     { id: "counter", label: "Counter & receipts" },
     ...(role === "owner" || role === "manager" ? [{ id: "appearance" as const, label: t("settings.appearance.tab") }] : []),
+    // phase-solo D: Instagram, reminders and messages, intake questions, the second chair.
+    ...(role === "owner" || role === "manager" ? [{ id: "messages" as const, label: t("people.settings.tab") }] : []),
     { id: "privacy", label: "Privacy" },
     ...(role === "owner" ? [{ id: "danger" as const, label: "Pause or close" }] : []),
   ];
@@ -51,6 +54,7 @@ export default function SettingsPage() {
       {tab === "tax" ? <div role="tabpanel"><TaxStatus owner={role === "owner"} /></div> : null}
       {tab === "counter" || tab === "privacy" || tab === "danger" ? <div role="tabpanel">{tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}</div> : null}
       {tab === "appearance" ? <div role="tabpanel"><Appearance /></div> : null}
+      {tab === "messages" ? <div role="tabpanel"><PeopleSettings /></div> : null}
     </div>
   );
 }

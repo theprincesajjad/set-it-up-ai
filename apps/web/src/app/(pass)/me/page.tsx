@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { appointmentsApi, campaignsApi, groceryApi, networkApi, tiffinApi } from "@ll/shared";
 import { PantryReminders } from "@/components/pass/PantryReminders";
 import { NextVisitCard } from "@/components/pass/NextVisitCard";
+import { PeopleLinks } from "@/components/pass/PeopleLinks";
+import { lastFinished } from "@/lib/people";
 import { PetLinks } from "@/components/pass/PetLinks";
 import { VehicleLinks } from "@/components/pass/VehicleLinks";
 import { TiffinLinks } from "@/components/pass/TiffinLinks";
@@ -73,6 +75,8 @@ export default async function MePage({ searchParams }: Props) {
         nextVisit={nextVisit ? <NextVisitCard appt={nextVisit} /> : null}
         extras={
           <>
+            {/* phase-solo D: book again, messages from shops, reminders on this phone */}
+            <PeopleLinks last={nextVisit ? null : lastFinished(visits)} hasVisits={visits.length > 0} />
             <TiffinLinks items={tiffin} />
             <PantryReminders items={pantry} />
             <PetLinks pets={petCount} cards={foodCount} shop={petShop} />

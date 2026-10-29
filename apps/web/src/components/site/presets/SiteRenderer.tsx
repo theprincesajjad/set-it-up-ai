@@ -36,7 +36,12 @@ type Ctx = SiteRendererProps & { t: ReturnType<typeof useLocaleOrEnglish>["t"]; 
 
 /** A line of the owner's words; selectable in the builder. */
 function Line({ ctx, field, as: As = "span", className, children }: { ctx: Ctx; field: SiteCopyField; as?: "span" | "p" | "h1" | "h2"; className?: string; children: ReactNode }) {
-  if (!ctx.onPick) return <As className={className}>{children}</As>;
+  if (!ctx.onPick)
+    return (
+      <As dir="auto" className={className}>
+        {children}
+      </As>
+    );
   const pick = () => ctx.onPick!(field);
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -45,7 +50,7 @@ function Line({ ctx, field, as: As = "span", className, children }: { ctx: Ctx; 
     }
   };
   return (
-    <As className={className}>
+    <As dir="auto" className={className}>
       <span
         role="button"
         tabIndex={0}
@@ -110,7 +115,7 @@ function Actions({ ctx, align = "start" }: { ctx: Ctx; align?: "start" | "center
           {data.content.copy.hero.cta}
         </Line>
       </Act>
-      {data.booking.enabled && data.loyalty ? (
+      {data.booking.enabled && data.loyalty && data.content.copy.hero.cta.trim().toLowerCase() !== t("site.join").toLowerCase() ? (
         <Act ctx={ctx} href={`${shopBase}#join`} className={pillSecondary} action="join">
           {t("site.join")}
         </Act>
@@ -195,7 +200,7 @@ function Hero({ ctx }: { ctx: Ctx }) {
         {data.services.slice(0, 3).map((s) => (
           <div key={s.id} className="flex items-center justify-between gap-3 text-body">
             <span className="min-w-0 truncate text-foreground">{s.name}</span>
-            <span className="shrink-0 tabular-nums text-muted-foreground">{priceText(ctx, s)}</span>
+            <bdi className="shrink-0 tabular-nums text-muted-foreground">{priceText(ctx, s)}</bdi>
           </div>
         ))}
         {data.reviews ? (
@@ -231,9 +236,9 @@ function Services({ ctx }: { ctx: Ctx }) {
           {data.services.map((s) => (
             <li key={s.id} className="relative flex min-h-16 items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-body-strong text-foreground">{s.name}</p>
+                <p dir="auto" className="text-body-strong text-foreground">{s.name}</p>
                 <p className="text-body text-muted-foreground">
-                  {t("site.minutes", { n: s.durationMin })} · <span className="tabular-nums">{priceText(ctx, s)}</span>
+                  <bdi>{t("site.minutes", { n: s.durationMin })}</bdi> · <bdi className="tabular-nums">{priceText(ctx, s)}</bdi>
                 </p>
               </div>
               {data.booking.enabled ? (
@@ -408,7 +413,7 @@ function MapBlock({ ctx }: { ctx: Ctx }) {
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           {exact ? (
-            <p className="text-body-strong text-foreground">
+            <p dir="auto" className="text-body-strong text-foreground">
               {loc.address}
               {loc.city ? `, ${loc.city}` : ""}
               {loc.postalCode ? ` ${loc.postalCode}` : ""}
@@ -461,7 +466,7 @@ function Contact({ ctx }: { ctx: Ctx }) {
         {ig ? (
           <a href={`https://instagram.com/${encodeURIComponent(ig)}`} rel="noopener noreferrer" className={pillSecondary}>
             <AtSign aria-hidden className="size-4" strokeWidth={1.75} />
-            @{ig}
+            <bdi dir="ltr">@{ig}</bdi>
           </a>
         ) : null}
       </div>

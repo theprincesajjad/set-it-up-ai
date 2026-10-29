@@ -70,7 +70,7 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   return {
     // A home studio or a travelling pro: no street address before booking, only the public line (phase-solo B, §2.3).
-    shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc && !isAddressPrivate(loc.addressVisibility) ? loc.address : null, addressVisibility: addressVisibilityOf(loc?.addressVisibility), placeLine: loc ? publicPlaceLine(loc) : null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null, vertical: merchant.vertical, ...(isPharmacy(merchant) ? { pharmacy: true } : {}) },
+    shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc && !isAddressPrivate(loc.addressVisibility) ? loc.address : null, addressVisibility: addressVisibilityOf(loc?.addressVisibility), placeLine: loc ? publicPlaceLine(loc) : null, areaLabel: loc && addressVisibilityOf(loc.addressVisibility) === "area" ? (loc.areaLabel ?? null) : null, city: loc?.city ?? null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null, vertical: merchant.vertical, ...(isPharmacy(merchant) ? { pharmacy: true } : {}) },
     tax: salesTaxCopy({ province: await merchantProvince(ctx.db, merchant), taxRegistered: merchant.taxRegistered }),
     policy: { cancelWindowHours: merchant.cancelWindowHours, noShowFeeCents: isPharmacy(merchant) ? 0 : merchant.noShowFeeCents, takesCards: isPharmacy(merchant) ? false : cardsOk },
     services: rows.map((s) => ({
@@ -285,7 +285,8 @@ async function notifyConfirmed(ctx: AppContext, merchant: Merchant, a: Appointme
     ? t("rx.appt.confirmed", { when: whenText(a.startsAt, merchant.timezone, locale), link: manageLink(ctx, merchant, a) })
     : await confirmedText(ctx, merchant, a, t, locale);
   // phase-solo D: the ladder (app, web push, email, then a one-segment text inside the plan's texts).
-  const textBody = rx ? `${body} ${t("bk.msg.stop")}` : await oneSegmentText(ctx, t, "bk.msg.textBooked", { shop: merchant.name, when: whenText(a.startsAt, merchant.timezone, locale), address: await textAddress(ctx, a), link: shortManageLink(ctx) });
+  // One segment in English; a text in Hindi, Urdu or Punjabi script can't fit one (70 characters), so it keeps the full sentence.
+  const textBody = rx || locale !== "en" ? `${body} ${t("bk.msg.stop")}` : await oneSegmentText(ctx, t, "bk.msg.textBooked", { shop: merchant.name, when: whenText(a.startsAt, merchant.timezone, locale), address: await textAddress(ctx, a), link: shortManageLink(ctx) });
   await deliverAppointmentMessage(ctx, { a, merchant, title: rx ? t("rx.appt.titleBooked") : t("bk.msg.confirmedTitle", { shop: merchant.name }), body, textBody, kind: "appointment_confirmed" });
 }
 
@@ -654,7 +655,7 @@ export async function sendReminders(ctx: AppContext): Promise<number> {
     const fixed = isPharmacy(m) ? pharmacyReminderText(ctx, m, a, locale) : null;
     const body = fixed?.body ?? t(near ? "bk.msg.remind2" : "bk.msg.remind24", vars);
     // phase-solo D: the ladder; the text (last rung) is one segment: shop, service, time, the address when it fits, a short link, STOP.
-    const textBody = fixed?.sms ?? (await oneSegmentText(ctx, t, near ? "bk.msg.text2" : "bk.msg.text24", { shop: m.name, service: vars.service, when: vars.when, address: vars.address, link: shortManageLink(ctx) }));
+    const textBody = fixed?.sms ?? (locale !== "en" ? `${body} ${t("bk.msg.stop")}` : await oneSegmentText(ctx, t, near ? "bk.msg.text2" : "bk.msg.text24", { shop: m.name, service: vars.service, when: vars.when, address: vars.address, link: shortManageLink(ctx) }));
     await deliverAppointmentMessage(ctx, { a, merchant: m, title: isPharmacy(m) ? t("rx.appt.titleReminder") : t(near ? "bk.msg.remind2Title" : "bk.msg.remind24Title", { shop: m.name }), body, textBody, kind: near ? "appointment_reminder_2h" : "appointment_reminder_24h" });
     sent++;
   }

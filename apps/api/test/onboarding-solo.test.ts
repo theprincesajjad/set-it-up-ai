@@ -53,6 +53,13 @@ describe("signup: where do you work", () => {
     expect(m!.neighbourhoodId).toBeTruthy();
   });
 
+  it("keeps where the owner came from (the landing page's src) with the signup", async () => {
+    const { id } = await signupSolo({ source: "nail-techs" });
+    const [row] = await env.db.select().from(merchantMilestones).where(eq(merchantMilestones.merchantId, id));
+    expect(row).toMatchObject({ key: "signed_up", data: { source: "nail-techs", workSetting: "home" } });
+    expect((await signupSolo({ source: "<bad>" })).res.status).toBe(400);
+  });
+
   it("falls back to the city centre when the postal code cannot be placed; a mobile pro is city-only with a radius", async () => {
     const home = await signupSolo({ postalCode: "M6S 2K1" });
     expect(home.res.body.locations[0]).toMatchObject({ addressVisibility: "area", areaLabel: "Toronto M6S" });

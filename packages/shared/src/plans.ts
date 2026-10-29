@@ -653,4 +653,8 @@ export function isFoundingSoloEligible(
   if (!cfg.enabled || m.foundingSolo) return false;
   return !!m.vertical && cfg.verticals.includes(m.vertical) && foundingSoloSpotsLeft(taken, cfg) > 0;
 }
+/** "Powered by Local Loyalty" shows on the booking and shop pages of Free shops only (solo-pro-launch.md §3.2). */
+export function showsPoweredBy(plan: PlanId, restaurantTier?: RestaurantTier | null): boolean {
+  return effectivePlan(plan, restaurantTier) === "free";
+}
 // ---- end phase-solo: A ----

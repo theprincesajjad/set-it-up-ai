@@ -14,6 +14,7 @@ import { rewardNoun } from "@/lib/dashboard/home";
 import { useApi } from "@/lib/dashboard/useApi";
 import { AudienceHeader } from "./Audience";
 import { Composer } from "./Composer";
+import { PromoPicker } from "./PromoPicker";
 
 /** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
 export default function MessagesPageGated() {
@@ -48,6 +49,8 @@ function MessagesPage() {
           </>
         }
       />
+      {/* phase-solo D: seasonal promos to regulars with the allowance counter. */}
+      <PromoPicker />
       <AudienceHeader />
       <Composer onSent={() => void list.reload()} />
 

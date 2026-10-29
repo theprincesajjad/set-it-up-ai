@@ -38,6 +38,7 @@ import { appointmentEndpoints, myAppointmentEndpoints, publicAppointmentEndpoint
 import { barberEndpoints, myBarberEndpoints, publicBarberEndpoints } from "./barber";
 import { myPetEndpoints, petEndpoints, publicPetEndpoints } from "./pets";
 import { autoEndpoints, myAutoEndpoints } from "./auto";
+import { inboxEndpoints, myInboxEndpoints } from "./inbox";
 import { classEndpoints, myClassEndpoints, publicClassEndpoints } from "./classes";
 import { myBookingEndpoints, publicServiceEndpoints, serviceOpsEndpoints } from "./serviceOps";
 import { pharmacyEndpoints } from "./pharmacy";
@@ -155,6 +156,8 @@ export function llApi(c: ApiClient) {
       ...myAutoEndpoints(c),
       // Classes: book, waitlist, packs, memberships (classes.ts)
       ...myClassEndpoints(c),
+      // phase-solo D: my threads with shops, web push on this browser, how shops reach me (inbox.ts)
+      ...myInboxEndpoints(c),
     },
     merchants: {
       mine: () => c.get<PageOf<merchantApi.MyMerchant>>("/v1/merchants"),
@@ -318,6 +321,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     ...restaurantWebEndpoints(c, b),
     // Grocers and butchers: weekly flyer, weigh-in, Eid plan, pantry reminders (grocery.ts)
     ...groceryEndpoints(c, b),
+    // phase-solo D: inbox, client profile extras and list, promos to regulars, Instagram (inbox.ts)
+    ...inboxEndpoints(c, b),
     detail: () => c.get<merchantApi.MerchantDetail>(b),
     update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
     onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),

@@ -124,8 +124,36 @@ Same rule: the GET (the link in our reminder texts and emails) shows a confirm p
 ### `handleInboundSms(ctx, fromPhone, body)` — service function for the Twilio webhook (integrations team)
 In `services/messaging.ts`. `fromPhone` must be E.164. Returns `{ action: "opted_out" | "help" | "none", merchantsAffected, reply }`.
 STOP keywords → every membership of that phone gets `muted = true`, `marketing_consent_at = null`, audited as
-`consent.withdrawn_sms_stop`. `HELP/INFO/AIDE` → help text. Anything else → `none` (`reply: null`).
+`consent.withdrawn_sms_stop`. `HELP/INFO/AIDE` → help text. Anything else → `none` (`reply: null`); since phase solo
+(workstream D) such a reply (not START) is also attached to the sender's inbox thread (`services/inbox.ts attachInboundSms`:
+the thread the last shop text went out on, else the shop that last texted them). See [inbox.md](./inbox.md).
 
 ## Jobs (`jobs/messaging.ts`)
 `messaging.send-scheduled` (1 min) · `messaging.automations` (15 min) · `loyalty.birthday-bonus` (1 h) ·
 `messaging.sms-credit-reset` (1 h, idempotent per month via audit log) · `promos.lifecycle` (1 min).
+
+
+## Promos to regulars (phase solo, workstream D)
+Seasonal templates per trade (`@ll/shared` `promo-templates.ts`: nails, brows_lashes, makeup, barber, salon, cafe, bakery,
+grocery, pet and a general list; at least six each; copy in the i18n catalogue as `promo.tpl.<key>.title|body`), sent to the
+shop's regulars by **app push (or web push) and email only, never a text**, inside the plan's promo allowance
+(`plans.ts promoAllowance`: 0 on Free, 4 a month on Café & Retail, 48 a year on the annual plan; counted by
+`services/billing.ts consumePromo`).
+
+### `GET /v1/merchants/:id/promo-templates?lang=` (manager+)
+`PromoTemplatesResponse`: `items` (title and body in `lang`, `{shop}` filled, in-season first then the soonest; each has
+`start`, `end`, `inSeason`, `daysAway`), `allowance` (`limit`, `used`, `remaining`, `period`), `audience` (`regulars`,
+`byPush`, `byEmail`), `offer` (Free: the plan that includes promos), `last` (the last promo's result). Admin-added templates in
+`promo_templates` join the list unless their key is a built-in one. Free shops get `200` (they see the picker and the plan line).
+
+### `POST /v1/merchants/:id/promo-sends` (manager+)
+Body `SendPromoBody { templateKey?, title (≤80), body (≤180), segment: "regulars" | "all" }`. Regulars = rhythm regulars plus
+anyone with two or more completed appointments in 12 months; then CASL (consent, not muted). Each person gets it once: app push,
+else web push, else email (with the unsubscribe footer and `List-Unsubscribe` headers). Stored as a `messages` row
+(`automation = "promo:<key>"`), deliveries in `message_deliveries`. `201 SendPromoResponse { result, allowance }`.
+`402 feature_locked` with `details.offer` on Free; `402 promo_allowance_used` when the period's promos are used up;
+`409 no_recipients` when no regular can get it (nothing is counted); a send that reaches nobody gives the promo back.
+
+### `GET /v1/merchants/:id/promo-sends/last` (staff+)
+`{ result: PromoResult | null }`: the last promo's title, recipients, by push and email, and `booked` (recipients who booked in
+the 14 days after the send). Home shows it as "Valentine's nails: sent to 112, 12 booked from this".

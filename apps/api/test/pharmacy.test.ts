@@ -328,7 +328,7 @@ describe("pharmacist appointments keep only that a booking exists", () => {
 
   it("a customer books free, with no notes, no card step, and a reminder that does not name the service", async () => {
     const c = await clinic();
-    const who = await customer(env);
+    const who = await customer(env, { pushToken: false }); // no app: the reminder goes by text (phase-solo D ladder)
     await env.db.update(users).set({ locale: "en" }).where(eq(users.id, who.user.id));
     const withNote = await call(env, who.token, "POST", "/v1/me/appointments", { serviceIds: [c.flu.body.id], staffId: null, startsAt: at("2026-11-05 10:00"), notes: "I take metformin" });
     expect(withNote.status).toBe(422);
@@ -352,7 +352,7 @@ describe("pharmacist appointments keep only that a booking exists", () => {
 
   it("the booked screen shows the exact fixed reminder text, and that is the text the phone gets, day before and two hours before", async () => {
     const c = await clinic();
-    const who = await customer(env);
+    const who = await customer(env, { pushToken: false }); // no app: the reminder goes by text (phase-solo D ladder)
     await env.db.update(users).set({ locale: "en" }).where(eq(users.id, who.user.id));
     const r = await call(env, who.token, "POST", "/v1/me/appointments", { serviceIds: [c.flu.body.id], staffId: null, startsAt: at("2026-11-05 10:00") });
     expect(r.status).toBe(201);

@@ -242,8 +242,6 @@ export interface AppointmentDto {
   intakeAnswer?: string | null;
   /** The inbox thread this booking came from (Instagram DM, text). */
   conversationId?: string | null;
-  /** The client's last visit note at this shop, to prefill this visit's staff note. */
-  lastVisitNote?: string | null;
 }
 export interface AppointmentsResponse {
   items: AppointmentDto[];
@@ -453,7 +451,7 @@ export interface PublicServicesResponse {
    * `address` is null for a home studio or a mobile pro (addressVisibility area or city): the booking page shows `placeLine`
    * ("Bloor West area", "Toronto") and says the address comes after booking.
    */
-  shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null; vertical?: string; pharmacy?: boolean; addressVisibility?: "exact" | "area" | "city"; placeLine?: string | null };
+  shop: { name: string; slug: string; timezone: string; address: string | null; phone: string | null; logoUrl: string | null; brandColor: string | null; locationId: string | null; vertical?: string; pharmacy?: boolean; addressVisibility?: "exact" | "area" | "city"; placeLine?: string | null; areaLabel?: string | null; city?: string | null };
   /** `applies` only when the shop is registered for GST/HST; `name` is what to call it ("HST"). */
   tax: { applies: boolean; name: string };
   policy: PublicBookingPolicyDto;

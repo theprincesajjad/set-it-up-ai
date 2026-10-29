@@ -135,6 +135,12 @@ export default function Appointment() {
           {a.status === "booked" ? <Button size="lg" fullWidth onPress={() => void addToCalendar()}>{t("bk.done.calendar")}</Button> : null}
           {live ? <Button size="lg" variant="secondary" fullWidth onPress={() => setMode("move")}>{t("bk.manage.reschedule")}</Button> : null}
           {live ? <Button size="lg" variant="ghost" fullWidth onPress={() => setMode("cancel")}>{t("bk.manage.cancel")}</Button> : null}
+          {/* phase-solo D: a finished visit books again with the same service and person. */}
+          {a.status === "completed" ? (
+            <Button size="lg" variant="secondary" fullWidth onPress={() => router.push({ pathname: "/book/[slug]", params: { slug: a.merchant.slug, ...(a.items.find((i) => i.serviceId)?.serviceId ? { service: a.items.find((i) => i.serviceId)!.serviceId! } : {}), ...(a.staffId ? { staff: a.staffId } : {}) } } as never)}>
+              {t("people.bookAgain")}
+            </Button>
+          ) : null}
           <Button variant="ghost" fullWidth onPress={() => router.push(`/book/${a.merchant.slug}`)}>{t("bk.done.another")}</Button>
         </View>
       )}

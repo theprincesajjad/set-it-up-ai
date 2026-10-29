@@ -63,6 +63,8 @@ export const NAV_LABEL_KEYS: Record<string, MessageKey> = {
   "Butcher counter": "shell.nav.butcher",
   "Weekly flyer": "shell.nav.flyer",
   "Pantry reminders": "shell.nav.pantry",
+  // phase-solo D
+  Inbox: "shell.nav.inbox",
 };
 
 /** The word for a row in the active language, or the English label when there is none. */

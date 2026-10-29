@@ -198,7 +198,8 @@ export function loyaltyNeeds(i: LoyaltyInput, f: Fmt, nowMs: number): NeedsRow[]
 
 /** Where a setup step is done (the same paths the setup checklist uses). */
 export function setupPath(key: merchantApi.OnboardingStepKey): string {
-  const paths: Record<merchantApi.OnboardingStepKey, string> = {
+  // The solo-pro cards (phase-solo B) all live on the setup page itself: /setup?step=<key>.
+  const paths: Partial<Record<merchantApi.OnboardingStepKey, string>> = {
     program: "/program",
     first_stamp: "/setup?step=first_stamp",
     qr_kit: "/locations/kit",
@@ -209,7 +210,7 @@ export function setupPath(key: merchantApi.OnboardingStepKey): string {
     pos: "/integrations",
     trade_setup: "/setup?step=trade_setup",
   };
-  return paths[key];
+  return paths[key] ?? `/setup?step=${key}`;
 }
 
 const itemsLine = (o: commerceApi.OrderDto) => o.items.slice(0, 2).map((x) => (x.quantity > 1 ? `${x.quantity} ${x.name}` : x.name)).join(", ");

@@ -16,6 +16,7 @@ import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { useSoloCalendar } from "@/lib/dashboard/useSoloCalendar";
 import { AccountMenu } from "./AccountMenu";
 import type { CommandSearch } from "./CommandMenu";
 import { useMerchant } from "./MerchantContext";
@@ -26,6 +27,7 @@ import { useThemeStyle } from "@/components/ui/ThemeStyle";
 import { AlertsLink, LocationChip } from "./TopBar";
 
 const ICONS: Record<string, LucideIcon> = {
+  inbox: MessageCircle, // phase-solo D
   home: Home, counter: Calculator, customers: Users, program: Gift, promos: Megaphone, "discount-cards": IdCard, messages: Mail, reports: BarChart3,
   locations: QrCode, staff: UserCog, integrations: Blocks, billing: CreditCard, settings: SlidersHorizontal, orders: ShoppingBag, catalog: Tag, tickets: Wrench,
   "restaurant-menu": UtensilsCrossed, "restaurant-preorders": Clock, "restaurant-tiffin": Truck, "restaurant-catering": PartyPopper, "restaurant-banquet": Building2,
@@ -167,11 +169,13 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
   const { base, detail, role, features, viewingAs, api } = useMerchant();
   const { t } = useLocaleOrEnglish();
   const pathname = usePathname() ?? "";
+  const soloCalendar = useSoloCalendar();
   const entries = buildMerchantNav(base, role, new Set(features.features.filter((f) => f.enabled).map((f) => f.key)), {
     vertical: detail.merchant.vertical,
     plan: features.plan,
     stages: Object.fromEntries(features.features.map((f) => [f.key, f.stage])),
     onOpenStreet: !!detail.merchant.neighbourhoodId,
+    soloCalendar, // phase-solo D: a one-calendar solo pro has no Staff page in the sidebar
   });
   // Restaurants: counts after Orders, Phone orders and WhatsApp (new orders in orange; the others are waiting on someone, so muted).
   const isRestaurant = entries.some((e) => e.badge);

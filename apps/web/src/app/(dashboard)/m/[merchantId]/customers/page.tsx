@@ -2,11 +2,14 @@
 import { Download, Upload } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { isAppointmentLed } from "@/lib/dashboard/people";
 import type { merchantApi } from "@ll/shared";
 import { CustomerView } from "@/components/dashboard/customers/CustomerView";
 import { Capsules, EmptyState, PageHeader, SidePanel, SkeletonRows, ToolbarButton } from "@/components/dashboard/kit";
 import { CustomersGrid } from "@/components/dashboard/customers/CustomersGrid";
+import { ClientsList } from "@/components/dashboard/customers/ClientsList";
 import { ListError, ListLoading } from "@/components/dashboard/ListStates";
 import { Button } from "@/components/ui/Button";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -26,6 +29,35 @@ export default function CustomersPage() {
 }
 
 function Customers() {
+  const { enabled, detail } = useMerchant();
+  const [view, setView] = useState<"visits" | "loyalty">("visits");
+  // phase-solo D (people-side.md gap 12): a beauty pro, barber or salon gets the appointment-led list first; the loyalty list stays one tap away.
+  if (!isAppointmentLed(detail.merchant.vertical, enabled("booking.appointments"))) return <LoyaltyCustomers />;
+  const toggle = <SegmentedControl size="sm" label="View" value={view} onChange={setView} options={[{ value: "visits", label: "By visit" }, { value: "loyalty", label: "By stamps" }]} />;
+  return view === "visits" ? <AppointmentCustomers toggle={toggle} /> : <LoyaltyCustomers toggle={toggle} />;
+}
+
+function AppointmentCustomers({ toggle }: { toggle: ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const open = params.get("member");
+  const setOpen = (id: string | null) => {
+    const p = new URLSearchParams(params.toString());
+    if (id) p.set("member", id);
+    else p.delete("member");
+    router.replace(`${pathname}${p.size ? `?${p}` : ""}`, { scroll: false });
+  };
+  return (
+    <div>
+      <PageHeader title="Customers" description="Phone numbers are hidden here, and each time you reveal one it's logged" actions={toggle} />
+      <ClientsList openId={open} onOpen={setOpen} />
+      <CustomerPanel memberId={open} onClose={() => setOpen(null)} onChanged={() => undefined} />
+    </div>
+  );
+}
+
+function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
   const { api, base, detail, role, enabled, viewingAs } = useMerchant();
   // Done-for-you migration: reps and admins (viewing as the shop) can import on any plan.
   const canImport = enabled("customers.csv_import") || !!viewingAs;
@@ -126,6 +158,7 @@ function Customers() {
         actions={
           role !== "staff" && (canImport || enabled("customers.csv_export")) ? (
             <>
+              {toggle}
               {canImport ? (
                 <ToolbarButton icon={Upload} href={`${base}/customers/import`}>
                   Import
@@ -137,7 +170,7 @@ function Customers() {
                 </ToolbarButton>
               ) : null}
             </>
-          ) : undefined
+          ) : toggle
         }
       />
 

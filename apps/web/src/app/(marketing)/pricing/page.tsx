@@ -18,7 +18,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Free for one bookable calendar with deposits, and free forever for your loyalty program. Café & Retail at $39 a month or $390 a year with your own website. Prices in CAD.",
+  description: `Free for one bookable calendar with deposits, and free forever for your loyalty program. ${PLANS.plus.name} at ${moneyShort(PLANS.plus.priceCents)} a month or ${moneyShort(PLANS.plus.annualPriceCents)} a year with your own website. Prices in CAD.`,
   alternates: { canonical: "/pricing" },
 };
 
@@ -60,7 +60,7 @@ export default async function PricingPage({ searchParams }: Props) {
   const bia = campaignsApi.CAMPAIGN_PACKAGES;
   return (
     <>
-      <section className="mx-auto grid max-w-[1200px] items-center gap-10 px-4 pt-10 pb-10 md:grid-cols-[1.4fr_1fr] md:gap-14 md:px-8 md:pt-16 md:pb-14">
+      <section className="mx-auto grid max-w-300 items-center gap-10 px-4 pt-10 pb-10 md:grid-cols-[1.4fr_1fr] md:gap-14 md:px-8 md:pt-16 md:pb-14">
         <div>
           <p className="text-meta-strong text-primary-text">{P.eyebrow}</p>
           <h1 className="display mkt-rise mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
@@ -78,25 +78,25 @@ export default async function PricingPage({ searchParams }: Props) {
       </section>
 
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
-        <p className="mx-auto mb-4 max-w-[1200px] px-4 text-meta-strong text-muted-foreground md:px-8">{copy.soloPricing.pricesNote}</p>
-        <div className="mx-auto grid max-w-[1200px] items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3">
+        <p className="mx-auto mb-4 max-w-300 px-4 text-meta-strong text-muted-foreground md:px-8">{copy.soloPricing.pricesNote}</p>
+        <div className="mx-auto grid max-w-300 items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3">
           <FreeCard />
           <PaidCard id="plus" />
           <AnnualCard founding={founding} />
         </div>
-        <div className="mx-auto mt-4 max-w-[1200px] px-4 md:px-8">
+        <div className="mx-auto mt-4 max-w-300 px-4 md:px-8">
           <ServiceLine />
         </div>
-        <div className="mx-auto mt-10 max-w-[1200px] px-4 md:px-8">
+        <div className="mx-auto mt-10 max-w-300 px-4 md:px-8">
           <h2 className="display text-mkt-md">{copy.soloPricing.table.title}</h2>
           <div className="mt-4 rounded-card bg-card px-5 pb-2 shadow-card md:px-7">
             <SoloTable />
           </div>
         </div>
-        <div className="mx-auto mt-12 max-w-[1200px] px-4 md:px-8">
+        <div className="mx-auto mt-12 max-w-300 px-4 md:px-8">
           <CompareStrip />
         </div>
-        <p className="mx-auto mt-6 max-w-[1200px] px-4 text-meta text-muted-foreground md:px-8">
+        <p className="mx-auto mt-6 max-w-300 px-4 text-meta text-muted-foreground md:px-8">
           {fill(P.openNote, { target: String(PLUS_TARGET) })}{activeShops !== null ? ` ${activeShops} shops have joined so far.` : ""} Your loyalty program never moves to a paid plan.
         </p>
       </section>
@@ -130,7 +130,7 @@ export default async function PricingPage({ searchParams }: Props) {
         </div>
       </MSection>
 
-      <section id="compare" className="mx-auto max-w-[1200px] scroll-mt-20 px-4 pb-16 md:px-8 md:pb-24">
+      <section id="compare" className="mx-auto max-w-300 scroll-mt-20 px-4 pb-16 md:px-8 md:pb-24">
         <details open={compareOpen} className="group rounded-card bg-card shadow-card" data-testid="compare">
           <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 px-5 text-headline text-foreground focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
             {P.compareSummary}

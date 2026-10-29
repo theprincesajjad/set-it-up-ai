@@ -1,6 +1,7 @@
 import type { merchantApi } from "@ll/shared";
 
-export const ONBOARDING_STEPS_UI: Record<merchantApi.OnboardingStepKey, { title: string; body: string }> = {
+/** Storefront steps only; the solo cards carry their own copy (ob.solo.*, SoloSetup). */
+export const ONBOARDING_STEPS_UI: Record<Exclude<merchantApi.OnboardingStepKey, merchantApi.OnboardingSoloStepKey>, { title: string; body: string }> = {
   program: { title: "Your program", body: "We set this up from your shop type, rewards included. Customers see it on their card." },
   first_stamp: { title: "Give your first stamp", body: "Nothing helps more than seeing a stamp work. It takes about three minutes." },
   qr_kit: { title: "Print your QR stand", body: "Customers scan it to join in 30 seconds, no app needed. Put it next to the till." },

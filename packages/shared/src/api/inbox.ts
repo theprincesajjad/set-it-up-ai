@@ -67,7 +67,8 @@ export interface ThreadResponse {
   replyChannel: DeliveryChannel | null;
 }
 
-export const startConversationBody = z.object({ memberId: uuidSchema });
+/** Open the thread with a customer: by their membership (profile) or their user id (calendar sheet). */
+export const startConversationBody = z.union([z.object({ memberId: uuidSchema }), z.object({ userId: uuidSchema })]);
 export const sendInboxMessageBody = z.object({ body: z.string().trim().min(1).max(INBOX_MAX_BODY) });
 export type SendInboxMessageBody = z.infer<typeof sendInboxMessageBody>;
 

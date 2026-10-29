@@ -111,12 +111,49 @@ export function createSiteAiClient(config: Config): SiteAiClient | null {
   };
 }
 
+/**
+ * SITE_AI_FAKE=1 outside production: answers like the model would, from the request alone, with no network. For e2e runs
+ * that need the AI path without a key (the real API is never called from tests).
+ */
+export function fakeSiteAiClient(): SiteAiClient {
+  return {
+    name: "fake",
+    async complete(req) {
+      const usage = { input: Math.ceil((req.system.length + req.user.length) / 4), output: 300, cacheRead: 0, cacheWrite: 0 };
+      if (req.kind === "rewrite") {
+        const o = JSON.parse(req.user) as { current: string; maxCharacters: number };
+        const text = `${o.current.replace(/[.!]+$/, "")}. Come say hi.`.slice(0, o.maxCharacters);
+        return { json: { text }, outcome: "ok", model: "fake-haiku", usage };
+      }
+      const facts = JSON.parse(req.user.slice(req.user.indexOf("{"))) as { business: { name: string; trade: string; neighbourhood: string | null } };
+      const { name, trade, neighbourhood } = facts.business;
+      const where = neighbourhood ? ` in ${neighbourhood}` : "";
+      const json = {
+        order: [],
+        copy: {
+          hero: { headline: `${name}, close to home`, subhead: `A friendly ${trade}${where}. See the prices and book a time that suits you.`, cta: "Book a time" },
+          about: { title: `About ${name}`, body: `${name} is a ${trade}${where}. We keep things relaxed and on time, and regulars collect rewards as they go.` },
+          services: { title: "Services and prices", intro: "Pick one to see open times." },
+          reviews: { title: "What clients say" },
+          loyalty: { title: "Rewards for regulars", body: "Join free with your phone number and collect on every visit." },
+          promos: { title: "On now", intro: "Offers running this week." },
+          hours: { title: "Hours" },
+          map: { title: "Where to find us", note: neighbourhood ? `We're in ${neighbourhood}. You'll get the exact address when you book.` : "You'll get the exact address when you book." },
+          contact: { title: "Get in touch", body: "Questions first? Send a message." },
+          seo: { title: `${name}${where ? ` ·${where.replace(" in", "")}` : ""}`, description: `${trade}${where}. Book online and join the rewards.` },
+        },
+      };
+      return { json, outcome: "ok", model: "fake-opus", usage };
+    },
+  };
+}
+
 const clients = new WeakMap<Config, SiteAiClient | null>();
 
 /** The model client: ctx.providers.siteAi when set (tests), else Anthropic when ANTHROPIC_API_KEY is set, else null (no AI). */
 export function siteAiFor(ctx: AppContext): SiteAiClient | null {
   if (ctx.providers.siteAi !== undefined) return ctx.providers.siteAi;
-  if (!clients.has(ctx.config)) clients.set(ctx.config, createSiteAiClient(ctx.config));
+  if (!clients.has(ctx.config)) clients.set(ctx.config, createSiteAiClient(ctx.config) ?? (ctx.config.site.fake ? fakeSiteAiClient() : null));
   return clients.get(ctx.config) ?? null;
 }
 

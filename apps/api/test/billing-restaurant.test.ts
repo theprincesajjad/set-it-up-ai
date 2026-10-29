@@ -248,8 +248,17 @@ describe("charge mode", () => {
     return adminToken;
   }
 
-  it("destination is the default, and direct stays off while STRIPE_DIRECT_CHARGES is off", async () => {
+  it("new shops default to direct and the flag defaults on; with STRIPE_DIRECT_CHARGES off every shop uses destination", async () => {
+    // phase-solo A: direct charges are the default for new shops (0032_solo_a) and STRIPE_DIRECT_CHARGES defaults on.
+    expect(env.ctx.config.stripe.directCharges).toBe(true);
+    const fresh = await paidMerchant(env);
+    expect((await row(fresh.merchant.id)).chargeMode).toBe("direct");
+    expect((await pay(fresh, "k0")).chargeMode).toBe("direct");
+    env.ctx.config.stripe.directCharges = false;
+    // An existing shop on destination.
     const m = await paidMerchant(env);
+    await env.db.update(merchants).set({ chargeMode: "destination" }).where(eq(merchants.id, m.merchant.id));
+    m.merchant = await row(m.merchant.id);
     expect((await pay(m)).chargeMode).toBe("destination");
     const t = await admin();
     expect((await setMode(t, m.merchant.id, "direct")).body).toMatchObject({ chargeMode: "direct", directChargesEnabled: false });

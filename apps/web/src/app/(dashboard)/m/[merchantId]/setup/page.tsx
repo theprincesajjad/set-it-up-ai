@@ -155,9 +155,9 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         ? { title: TRADE_COPY[family].title, body: TRADE_COPY[family].body }
         : step.key === "first_members"
           ? { title: `Your first ${checklist.activationTarget} customers`, body: `Goal: ${checklist.activationTarget} customers who have visited within ${a.windowDays} days. Having ${a.leadingMembers} by day ${a.leadingByDay} keeps you on track.` }
-          : ONBOARDING_STEPS_UI[step.key];
+          : ONBOARDING_STEPS_UI[step.key as keyof typeof ONBOARDING_STEPS_UI];
   const pb = checklist.playbook;
-  const complete = async (key: Exclude<merchantApi.OnboardingStepKey, "first_members" | "first_stamp" | "pharmacy_rules" | "trade_setup">, advance = true) => {
+  const complete = async (key: "staff" | "program" | "qr_kit" | "profile" | "pos", advance = true) => {
     const r = await act.run(() => api.completeStep(key));
     if (r) {
       onChange(r);

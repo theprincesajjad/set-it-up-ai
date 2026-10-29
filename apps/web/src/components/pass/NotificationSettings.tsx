@@ -6,7 +6,8 @@
  *    (points and rewards · orders and repairs · offers), each stating its own limit.
  * On the customer notifications API (docs/engineering/api/notifications.md). An older API (404) hides the section.
  */
-import { customerApi, LOCALE_LIST, t as translate, type MessageKey } from "@ll/shared";
+import { customerApi, inboxApi, LOCALE_LIST, t as translate, type MessageKey } from "@ll/shared";
+import { NotifyPrompt } from "@/components/pass/NotifyPrompt";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ListGroup } from "@/components/ui/Card";
@@ -198,7 +199,13 @@ export function NotificationSettings() {
     }
   }
 
-  const language = <MessagesLanguage />;
+  // phase-solo D: how shops reach me (the ladder or one channel) and reminders on this phone (web push).
+  const language = (
+    <>
+      <MessagesLanguage />
+      <ReachMe />
+    </>
+  );
   if (state === "missing") return language;
   if (state === "loading")
     return (
@@ -265,5 +272,40 @@ export function NotificationSettings() {
         </ListGroup>
       ))}
     </div>
+  );
+}
+
+/** phase-solo D: the channel every shop uses for my reminders and messages, and web push on this browser. */
+function ReachMe() {
+  const { t } = useLocaleOrEnglish();
+  const toast = useToast();
+  const [pref, setPref] = useState<inboxApi.ChannelPref | null>(null);
+  useEffect(() => {
+    browserApi.me.channelPref().then((r) => setPref(r.channelPref)).catch(() => setPref(null));
+  }, []);
+  if (!pref) return <NotifyPrompt />;
+  return (
+    <section aria-labelledby="reach-me-h" className="flex flex-col gap-3" data-testid="reach-me">
+      <h2 id="reach-me-h" className="text-headline text-fg">{t("people.pref.title")}</h2>
+      <p className="text-meta text-fg-muted">{t("people.pref.hint")}</p>
+      <SegmentedControl
+        label={t("people.pref.title")}
+        value={pref}
+        onChange={async (v) => {
+          const prev = pref;
+          setPref(v);
+          try {
+            await browserApi.me.setChannelPref(v);
+            toast({ message: t("people.pref.saved"), tone: "success" });
+          } catch {
+            setPref(prev);
+            toast({ message: t("sh.set.saveFail"), tone: "error" });
+          }
+        }}
+        options={inboxApi.CHANNEL_PREFS.map((c) => ({ value: c, label: t(`people.pref.${c}` as const) }))}
+        className="max-w-full overflow-x-auto"
+      />
+      <NotifyPrompt />
+    </section>
   );
 }

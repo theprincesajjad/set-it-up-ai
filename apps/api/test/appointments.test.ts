@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { appointments, invoices, ledgerTransactions, merchantCategories, merchantMembers, merchants, rewards, users } from "@ll/db";
-import { FEATURES, FREE_FOREVER } from "@ll/shared";
+import { FEATURES, FREE_FOREVER, smsSegments } from "@ll/shared";
 import { appointmentJobs } from "../src/jobs/appointments.js";
 import { computeFees } from "../src/services/fees.js";
 import { zonedToUtc } from "../src/services/bookings.js";
@@ -47,7 +47,8 @@ async function salon(opts: { plan?: "free" | "plus" | "pro"; connect?: boolean; 
   const threading = await mk({ name: "Threading, brows", durationMin: 15, priceCents: 1500 });
   for (const s of [simran, aisha]) {
     const r = await call(env, owner, "PUT", `${base}/staff/${s.user.id}/hours`, { days: MON_SAT });
-    expect(r.status).toBe(opts.plan === "free" ? 402 : 200);
+    // Free has one bookable calendar (FREE_BOOKABLE_CALENDARS): Simran gets hers, Aisha is refused with the plan offer.
+    expect(r.status).toBe(opts.plan === "free" && s === aisha ? 402 : 200);
   }
   if (opts.plan !== "free" && (opts.feeCents !== undefined || opts.windowHours !== undefined)) {
     const r = await call(env, owner, "PUT", `${base}/appointments/settings`, { noShowFeeCents: opts.feeCents, cancelWindowHours: opts.windowHours });
@@ -63,12 +64,23 @@ const staffBooking = (s: Salon, staffId: string, start: string, services: string
   book(s, s.desk.token, { staffId, serviceIds: services, startsAt: at(start), customer: { phone: "+14165550123", name: "Neha Sharma" }, ...extra });
 
 describe("gating and price list", () => {
-  it("is a Café & Retail feature: Free is locked, Plus works, repair price list rides service.tickets", async () => {
+  it("is free for one calendar, unlimited on Plus; repair price list rides service.tickets", async () => {
     const free = await salon({ plan: "free" });
-    // Every service created above used the owner token on a free plan: they were refused, so there are none.
-    expect(free.cut.error?.code).toBe("feature_locked");
-    expect((await call(env, free.ownerToken, "GET", `${free.base}/services`)).status).toBe(402);
-    expect((await call(env, null, "GET", `/v1/public/shops/${free.merchant.slug}/services`)).status).toBe(402);
+    // A Free shop creates services and gets one bookable calendar; the second is refused with the Café & Retail offer.
+    expect(free.cut.id).toBeTruthy();
+    expect((await call(env, free.ownerToken, "GET", `${free.base}/services`)).body.items).toHaveLength(4);
+    expect((await call(env, null, "GET", `/v1/public/shops/${free.merchant.slug}/services`)).status).toBe(200);
+    const second = await call(env, free.ownerToken, "PUT", `${free.base}/staff/${free.aisha.user.id}/hours`, { days: MON_SAT });
+    expect(second.status).toBe(402);
+    expect(second.body.error).toMatchObject({ code: "plan_limit", details: { limit: "bookable_calendars", max: 1, offer: { kind: "plan", plan: "plus", priceCents: 3900 } } });
+    // Also refused through a service list or the service's staff list.
+    expect((await call(env, free.ownerToken, "PUT", `${free.base}/staff/${free.aisha.user.id}/services`, { services: [{ serviceId: free.cut.id }] })).status).toBe(402);
+    expect((await call(env, free.ownerToken, "PATCH", `${free.base}/services/${free.cut.id}`, { staffIds: [free.simran.user.id, free.aisha.user.id] })).status).toBe(402);
+    // Simran can still change her own hours and services.
+    expect((await call(env, free.ownerToken, "PUT", `${free.base}/staff/${free.simran.user.id}/hours`, { days: MON_SAT.slice(0, 3) })).status).toBe(200);
+    const cal = await call(env, free.desk.token, "GET", `${free.base}/appointments/staff`);
+    expect(cal.status).toBe(200);
+    expect(cal.body.items.map((x: { userId: string }) => x.userId)).toEqual([free.simran.user.id]);
 
     const s = await salon();
     const list = await call(env, s.desk.token, "GET", `${s.base}/services`);
@@ -98,7 +110,7 @@ describe("gating and price list", () => {
 
   it("keeps the new keys off the free-forever list and prices checkout at 0%", () => {
     expect(FREE_FOREVER).not.toContain("booking.appointments");
-    expect(FEATURES["booking.appointments"]).toMatchObject({ minPlan: "plus", defaultStage: "ga", freeForVerticals: ["pharmacy"] });
+    expect(FEATURES["booking.appointments"]).toMatchObject({ minPlan: "free", defaultStage: "ga", freeForVerticals: ["pharmacy"] });
     expect(computeFees({ kind: "appointment_checkout", amountCents: 14_500, plan: "plus" })).toMatchObject({ platformFeeBps: 0, platformFeeCents: 0, merchantNetCents: 14_500 });
     expect(computeFees({ kind: "appointment_checkout", amountCents: 14_500, plan: "free" }).platformFeeCents).toBe(0);
     // Online deposits stay at 1%.
@@ -423,8 +435,8 @@ describe("online booking: deposit, card on file and the 10-minute hold", () => {
     expect(row!.stripeCustomerId).toBeTruthy();
     const after = await call(env, c.token, "GET", `/v1/me/appointments/${r.body.appointment.id}`);
     expect(after.body).toMatchObject({ appointment: { pending: false, hasCardOnFile: true }, deposit: null, setup: null });
-    // Confirmation text.
-    expect(env.ctx.providers.outbox.sms.at(-1)).toMatchObject({ to: c.user.phone, body: expect.stringContaining("You are booked at Test Shop") });
+    // Confirmation: the client has the app, so it goes by app push (phase-solo D ladder: app, web push, email, then a text).
+    expect(env.ctx.providers.outbox.push.at(-1)).toMatchObject({ body: expect.stringContaining("You are booked at Test Shop") });
     // It shows on the shop's calendar with the card on file.
     const cal = await call(env, s.desk.token, "GET", `${s.base}/appointments?from=${encodeURIComponent(at("2026-11-04 00:00"))}&to=${encodeURIComponent(at("2026-11-05 00:00"))}`);
     expect(cal.body.items[0]).toMatchObject({ source: "online", hasCardOnFile: true, depositCents: 4000, clientNote: "Ammonia-free colour please" });
@@ -446,7 +458,7 @@ describe("online booking: deposit, card on file and the 10-minute hold", () => {
     const c2 = await customer(env);
     const r2 = await call(env, c2.token, "POST", "/v1/me/appointments", { serviceIds: [s2.cut.id], staffId: s2.aisha.user.id, startsAt: at("2026-11-04 09:00") });
     expect(r2.body).toMatchObject({ confirmed: true, deposit: null, setup: null, appointment: { pending: false, holdExpiresAt: null } });
-    expect(env.ctx.providers.outbox.sms.at(-1)?.body).toContain("You are booked at Test Shop");
+    expect(env.ctx.providers.outbox.push.at(-1)?.body).toContain("You are booked at Test Shop");
     // Without a Connect account there is no card step either: the shop collects at the chair.
     const s3 = await salon({ connect: false, feeCents: 2500 });
     const r3 = await call(env, c2.token, "POST", "/v1/me/appointments", { serviceIds: [s3.highlights.id], staffId: s3.simran.user.id, startsAt: at("2026-11-04 09:00") });
@@ -914,15 +926,16 @@ describe("checkout", () => {
 
 describe("reminders", () => {
   const sms = () => env.ctx.providers.outbox.sms;
+  // No app: the reminders reach these clients by text, the last rung of the ladder (phase-solo D).
   async function booked(s: Salon, start: string, locale?: string, stylist = s.simran.user.id) {
-    const c = await customer(env);
+    const c = await customer(env, { pushToken: false });
     if (locale) await env.db.update(users).set({ locale }).where(eq(users.id, c.user.id));
     const r = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.cut.id], staffId: stylist, startsAt: at(start) });
     expect(r.body.confirmed).toBe(true);
     return { c, id: r.body.appointment.id as string };
   }
 
-  it("texts and pushes 24 hours and 2 hours before, once each, with shop, time, address, link and STOP", async () => {
+  it("texts 24 hours and 2 hours before, once each, in one segment with shop, service, time, address, link and STOP", async () => {
     const s = await salon();
     const a = await booked(s, "2026-11-05 10:00");
     const n0 = sms().length;
@@ -932,17 +945,18 @@ describe("reminders", () => {
     expect(await sendReminders(env.ctx)).toBe(1);
     const day = sms().slice(n0).at(-1)!;
     expect(day.to).toBe(a.c.user.phone);
-    expect(day.body).toContain("Reminder: Cut and blow-dry at Test Shop");
+    expect(day.body).toContain("Test Shop: Cut and blow-dry");
     expect(day.body).toContain("123 Roncesvalles Ave");
-    expect(day.body).toContain(`/shops/${s.merchant.slug}/book/${a.id}`);
+    expect(day.body).toContain("/me");
     expect(day.body).toContain("Thu, Nov 5");
-    expect(day.body).toContain("Reply STOP to opt out.");
-    expect(env.ctx.providers.outbox.push.at(-1)).toMatchObject({ title: "Test Shop: reminder" });
+    expect(day.body).toContain("STOP to opt out");
+    expect(smsSegments(day.body)).toBe(1);
     expect(await sendReminders(env.ctx)).toBe(0);
 
     env.clock.now = new Date(at("2026-11-05 08:30")); // 1.5 hours before
     expect(await sendReminders(env.ctx)).toBe(1);
-    expect(sms().at(-1)!.body).toContain("See you soon: Cut and blow-dry at Test Shop today at 10:00");
+    expect(sms().at(-1)!.body).toContain("Test Shop: see you at 10:00");
+    expect(smsSegments(sms().at(-1)!.body)).toBe(1);
     expect(await sendReminders(env.ctx)).toBe(0);
     const [row] = await env.db.select().from(appointments).where(eq(appointments.id, a.id));
     expect(row!.reminder24SentAt).toBeTruthy();
@@ -953,7 +967,7 @@ describe("reminders", () => {
   it("skips the day-before text for a booking made inside 24 hours, and ignores cancelled or held bookings", async () => {
     const s = await salon({ feeCents: 2500 });
     env.clock.now = new Date(at("2026-11-04 09:00"));
-    const late = await customer(env);
+    const late = await customer(env, { pushToken: false });
     const r = await call(env, late.token, "POST", "/v1/me/appointments", { serviceIds: [s.cut.id], staffId: s.aisha.user.id, startsAt: at("2026-11-04 15:00") });
     await deliver(env, fake(env).succeedSetupIntent(r.body.setup.setupIntentId));
     const n0 = sms().length;
@@ -961,8 +975,8 @@ describe("reminders", () => {
     expect(await sendReminders(env.ctx)).toBe(0);
     env.clock.now = new Date(at("2026-11-04 13:30"));
     expect(await sendReminders(env.ctx)).toBe(1);
-    expect(sms().slice(n0).filter((m) => m.body.includes("See you soon"))).toHaveLength(1);
-    expect(sms().slice(n0).filter((m) => m.body.startsWith("Reminder"))).toHaveLength(0);
+    expect(sms().slice(n0).filter((m) => m.body.includes("see you at"))).toHaveLength(1);
+    expect(sms().slice(n0).filter((m) => m.body.startsWith("Test Shop: Cut"))).toHaveLength(0);
 
     // A held booking and a cancelled one get nothing.
     const held = await call(env, (await customer(env)).token, "POST", "/v1/me/appointments", { serviceIds: [s.cut.id], staffId: s.simran.user.id, startsAt: at("2026-11-04 14:00") });

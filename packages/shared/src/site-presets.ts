@@ -203,7 +203,7 @@ export function defaultCopy(preset: SitePreset, shop: SiteShopFacts): SiteCopy {
       about: { title: "Hi, I'm glad you're here", body: `I run ${shop.name}${inWhere}. Have a look at what I offer below, and book the time that works for you. Questions first? Send me a message.` },
     },
     shopfront: {
-      hero: { headline: shop.name, subhead: `Your neighbourhood ${shop.tradeLabel}${inWhere}. Come by, and collect rewards every visit.`, cta: shop.hasLoyalty ? "Join the rewards" : book },
+      hero: { headline: shop.name, subhead: `Your neighbourhood ${shop.tradeLabel}${inWhere}. Come by, and collect rewards every visit.`, cta: shop.books ? book : shop.hasLoyalty ? "Join the rewards" : book },
       about: { title: "About us", body: `${shop.name} is a ${shop.tradeLabel}${inWhere}. We're glad to be part of the street, and we keep a little thank-you for the people who come back.` },
     },
   };

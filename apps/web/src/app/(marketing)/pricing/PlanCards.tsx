@@ -201,7 +201,7 @@ export function ServiceLine() {
       <p className="text-body text-foreground">{S.service.line}</p>
       <div className="flex shrink-0 items-center gap-4">
         <p className="flex items-baseline gap-1">
-          <span className="text-title tabular-nums text-primary-text">{S.service.price}</span>
+          <span className="text-title tabular-nums text-primary-text">{price("pro")}</span>
           <span className="text-meta text-muted-foreground">{S.service.per}</span>
         </p>
         <Button href="/signup?plan=pro" variant="secondary">

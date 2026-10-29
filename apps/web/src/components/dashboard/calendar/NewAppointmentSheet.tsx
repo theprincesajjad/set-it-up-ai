@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { serviceFitsSize, type appointmentsApi } from "@ll/shared";
+import { serviceFitsSize, type appointmentsApi, type inboxApi } from "@ll/shared";
+import Link from "next/link";
 import { SidePanel } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
@@ -26,6 +27,7 @@ export function NewAppointmentSheet({
   services,
   defaults,
   onCreated,
+  prefill,
 }: {
   open: boolean;
   onClose: () => void;
@@ -33,8 +35,10 @@ export function NewAppointmentSheet({
   services: Service[];
   defaults: { date: string; minutes: number; staffId: string | null; petId?: string | null };
   onCreated: (a: appointmentsApi.AppointmentDto) => void;
+  /** phase-solo D: "Create booking" from an inbox message (an Instagram DM or a text): name, handle, the message as the client note, a link back. */
+  prefill?: inboxApi.BookingPrefill | null;
 }) {
-  const { api, role, detail } = useMerchant();
+  const { api, role, detail, base } = useMerchant();
   // A pet shop books a dog, not just a person: pick the dog and its owner is the client.
   const petShop = detail.merchant.vertical === "pet";
   const [petId, setPetId] = useState("");
@@ -49,6 +53,7 @@ export function NewAppointmentSheet({
   const [date, setDate] = useState(defaults.date);
   const [time, setTime] = useState(minutesToTime(defaults.minutes));
   const [notes, setNotes] = useState("");
+  const [clientNote, setClientNote] = useState("");
   const [force, setForce] = useState(false);
   const [tried, setTried] = useState(false);
   useEffect(() => {
@@ -62,14 +67,19 @@ export function NewAppointmentSheet({
     setForce(false);
     setTried(false);
     act.setError(null);
+    if (prefill) {
+      setName(prefill.customerName ?? "");
+      setClientNote(prefill.clientNote ?? "");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaults.date, defaults.minutes, defaults.staffId, defaults.petId]);
+  }, [open, defaults.date, defaults.minutes, defaults.staffId, defaults.petId, prefill?.conversationId]);
 
   const reset = () => {
     setPhone(null);
     setName("");
     setIds([]);
     setNotes("");
+    setClientNote("");
     setPetId("");
   };
   const errs = { client: !phone && !name.trim() && !petId ? "Pick a dog, or add the client's name or phone." : undefined, services: !ids.length ? "Pick at least one service." : undefined };
@@ -84,9 +94,10 @@ export function NewAppointmentSheet({
         staffId: staffId || null,
         serviceIds: ids,
         startsAt: instantAt(date, hh * 60 + mm).toISOString(),
-        customer: phone || name.trim() ? { phone: phone ?? undefined, name: name.trim() || undefined } : undefined,
+        customer: prefill?.userId && !phone ? { userId: prefill.userId } : phone || name.trim() ? { phone: phone ?? undefined, name: name.trim() || undefined } : undefined,
         petId: petId || null,
         notes: notes.trim() || null,
+        ...(prefill ? { source: prefill.source, conversationId: prefill.conversationId, clientNote: clientNote.trim() || null } : {}),
         force,
       }),
     );
@@ -114,6 +125,15 @@ export function NewAppointmentSheet({
       }
     >
       <div className="flex flex-col gap-4">
+        {prefill ? (
+          <div className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg" data-testid="from-message">
+            <p className="font-semibold">{prefill.source === "instagram" ? `From Instagram${prefill.handle ? ` · ${prefill.handle}` : ""}` : "From a message"}</p>
+            <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+              <Link href={prefill.threadPath.replace(/^\/m\/[^/]+/, base)} className="inline-flex min-h-11 items-center text-link underline underline-offset-4">Back to the conversation</Link>
+              {prefill.externalUrl ? <a href={prefill.externalUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-link underline underline-offset-4">Open on Instagram</a> : null}
+            </p>
+          </div>
+        ) : null}
         {petShop ? (
           <Select label="Dog" hint="Its owner is the client, and the visit shows the dog and its handling note." value={petId} onChange={(e) => { setPetId(e.target.value); setIds([]); }} options={[{ value: "", label: "No dog (a new client)" }, ...(petList.data?.items ?? []).map((p) => ({ value: p.id, label: `${p.name} · ${p.ownerName ?? "owner"}` }))]} />
         ) : null}
@@ -130,6 +150,7 @@ export function NewAppointmentSheet({
           <ServicePicker services={petId && pet.data ? services.filter((x) => serviceFitsSize(x.name, pet.data!.sizeBand)) : services} value={ids} onChange={setIds} />
           {tried && errs.services ? <p className="mt-1 text-meta text-negative">{errs.services}</p> : null}
         </div>
+        {prefill ? <TextField type="textarea" label="Client note" hint="From their message." value={clientNote} onChange={(e) => setClientNote(e.target.value)} maxLength={1000} /> : null}
         <TextField label="Note for the shop" optionalLabel value={notes} onChange={(e) => setNotes(e.target.value)} />
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         {outside && manager ? (

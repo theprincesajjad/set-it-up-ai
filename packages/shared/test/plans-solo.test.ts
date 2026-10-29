@@ -119,3 +119,12 @@ describe("founding solo price", () => {
     expect(isFoundingSoloEligible({ vertical: "nails" }, 0, foundingSoloConfig({ FOUNDING_SOLO_ENABLED: "false" }))).toBe(false);
   });
 });
+
+describe("powered by badge", () => {
+  it("shows on Free only", async () => {
+    const { showsPoweredBy } = await import("../src/index.js");
+    expect(showsPoweredBy("free")).toBe(true);
+    expect(showsPoweredBy("plus")).toBe(false);
+    expect(showsPoweredBy("free", "starter")).toBe(false);
+  });
+});

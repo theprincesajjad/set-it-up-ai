@@ -10,6 +10,8 @@ export interface SignupPrefill {
   phone?: string;
   /** The plan button on /pricing the owner came from (?plan=plus, restaurant-growth ...): the checkout opens after signup. */
   plan?: string;
+  /** Where the owner came from (?src=ig on an ad or landing page), stored with the new shop for attribution. */
+  src?: string;
 }
 
 /** Plans a pricing-page button can carry through signup. */
@@ -26,6 +28,8 @@ export function signupPrefill(params: Params): SignupPrefill {
   if (vertical && (VERTICALS as readonly string[]).includes(vertical)) out.vertical = vertical;
   const plan = one(params.plan)?.trim();
   if (plan && (SIGNUP_PLANS as readonly string[]).includes(plan)) out.plan = plan;
+  const src = one(params.src)?.trim();
+  if (src && /^[A-Za-z0-9_.-]{1,40}$/.test(src)) out.src = src;
   // The form's phone field holds the 10 digits of a Canadian number.
   let phone = (one(params.phone) ?? "").replace(/\D/g, "");
   if (phone.length === 11 && phone.startsWith("1")) phone = phone.slice(1);

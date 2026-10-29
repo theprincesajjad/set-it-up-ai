@@ -132,8 +132,9 @@ export async function listInbox(ctx: AppContext, merchant: Merchant, q: inboxApi
 }
 
 /** Open (or create) the thread with a customer of this shop, from the profile or the calendar. */
-export async function startConversation(ctx: AppContext, merchant: Merchant, memberId: string): Promise<inboxApi.ConversationDto> {
-  const [m] = await ctx.db.select({ userId: merchantMembers.userId }).from(merchantMembers).where(and(eq(merchantMembers.id, memberId), eq(merchantMembers.merchantId, merchant.id))).limit(1);
+export async function startConversation(ctx: AppContext, merchant: Merchant, who: { memberId: string } | { userId: string }): Promise<inboxApi.ConversationDto> {
+  const by = "memberId" in who ? eq(merchantMembers.id, who.memberId) : eq(merchantMembers.userId, who.userId);
+  const [m] = await ctx.db.select({ userId: merchantMembers.userId }).from(merchantMembers).where(and(by, eq(merchantMembers.merchantId, merchant.id))).limit(1);
   if (!m) throw notFound("Customer");
   const c = await ensureConversation(ctx, merchant.id, m.userId);
   return (await conversationDtos(ctx, merchant.id, [c]))[0]!;
@@ -196,7 +197,8 @@ export async function sendShopMessage(ctx: AppContext, staff: StaffContext, id: 
     textBody,
     textCredits: smsSegments(textBody),
     emailBody: `${text}\n\n${t("inbox.n.emailFooter", { link: `${ctx.config.publicWebUrl}/me/messages` })}`,
-    data: { type: "shop_message", conversationId: c.id, screen: "thread" },
+    // The app opens its inbox (/notifications), where the thread is; the web pass opens /me/messages/<id> (url below).
+    data: { type: "shop_message", conversationId: c.id, screen: "inbox", url: null },
     url: `/me/messages/${c.id}`,
   });
   const channel: inboxApi.DeliveryChannel = sent.rung === "in_app" ? "in_app" : sent.rung === "web_push" ? "web_push" : (sent.rung as inboxApi.DeliveryChannel);

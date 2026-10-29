@@ -558,7 +558,7 @@ export const copy = {
       per: "/year",
       lead: "Everything in monthly, plus your own website on a .ca domain.",
       cta: "Start the annual plan",
-      lines: ["Everything in Café & Retail", "{promos} promos a year, sent when you like", "Your website, built from your bookings and services", "One .ca domain, registered and renewed by us", "AI writes the first draft of your site"],
+      lines: ["Everything in Café & Retail", "{promosYear} promos a year, sent when you like", "Your website, built from your bookings and services", "One .ca domain, registered and renewed by us", "AI writes the first draft of your site"],
       saving: "Two months free against monthly.",
     },
     founding: {
@@ -570,7 +570,6 @@ export const copy = {
     },
     service: {
       line: "Repair, auto, alterations or print shop? Service adds tickets, quotes, deposits and invoices.",
-      price: "$99",
       per: "/month",
       cta: "Start Service",
     },

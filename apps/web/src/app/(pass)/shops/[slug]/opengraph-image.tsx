@@ -10,6 +10,7 @@ export const contentType = "image/png";
 export const alt = "Earn rewards at this shop"; // l10n-ok: social-card image is rendered once for crawlers; it has no Indic fonts or request language
 
 /** Shop social card (v2): "Earn rewards at {Shop}" on white; the shop's own colour only in its avatar. */
+/** No address on this card, for any shop: only the neighbourhood name (home studios show by area only, phase-solo B). */
 export default async function ShopOg({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   let name = "a local shop";

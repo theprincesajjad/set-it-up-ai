@@ -23,6 +23,8 @@ import { formatE164 } from "@/lib/phone";
 import { CONSENT_LABEL, consentState, maskPhone, usuallyAround } from "@/lib/dashboard/customers";
 import { useAction, useNow } from "@/lib/dashboard/useApi";
 import { sourceLabel } from "@/lib/dashboard/labels";
+import { ClientPeople } from "./ClientPeople";
+import { isAppointmentLed } from "@/lib/dashboard/people";
 
 const JOINED_VIA: Record<string, string> = { qr: "QR scan", counter: "Counter", staff_app: "Counter", web_counter: "Counter", import: "Import", web: "Web", app: "App", referral: "Referral", pos: "POS" };
 
@@ -58,6 +60,8 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
   const goal = program?.earnType === "stamps" ? program.stampGoal : (active.find((r) => r.pointsCost > c.balance) ?? active[active.length - 1])?.pointsCost ?? 0;
   const rewardName = (id: string) => rewards.find((r) => r.id === id)?.name ?? "Reward";
   const recentCutoff = useNow() - 90 * 86_400_000;
+  // phase-solo D: an appointment shop sees the next visit, the visits timeline, Message and Book again first.
+  const appointmentLed = isAppointmentLed(detail.merchant.vertical, enabled("booking.appointments"));
 
   const phone = (
     <span className="inline-flex items-center gap-2">
@@ -334,6 +338,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
       {layout === "panel" ? (
         // `cust-*` hooks: in Clear (kit/clear.css) each block is a card inside the glass sheet, 12 apart (audit #19); Warm ignores them.
         <div className="cust-stack flex flex-col gap-6">
+          {appointmentLed ? <div className="cust-card"><ClientPeople memberId={c.memberId} layout="panel" /></div> : null}
           {panelSummary}
           <div className="cust-card">{panelDetails}</div>
           <div className="cust-card">{ledger}</div>
@@ -343,6 +348,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
       ) : (
         <div className="cust-page grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="cust-col flex min-w-0 flex-col gap-8">
+            {appointmentLed ? <div className="cust-card"><ClientPeople memberId={c.memberId} layout="page" /></div> : null}
             <div className="cust-card">{summary}</div>
             <div className="cust-card">{ledger}</div>
           </div>

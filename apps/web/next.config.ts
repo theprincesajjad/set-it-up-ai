@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
       { source: "/dashboard/billing", has: [{ type: "query", key: "merchant", value: "(?<mid>[0-9a-f-]+)" }], destination: "/m/:mid/billing", permanent: false },
       { source: "/dashboard/payments", has: [{ type: "query", key: "merchant", value: "(?<mid>[0-9a-f-]+)" }], destination: "/m/:mid/billing", permanent: false },
       { source: "/dashboard/:path*", destination: "/m", permanent: false },
-      { source: "/s/:slug", destination: "/shops/:slug", permanent: false },
+      // phase-solo G: /s/:slug is now the shop's built-in website (app/(site)/s/[slug]); with no published site it still goes to /shops/:slug.
       { source: "/card", destination: "/me", permanent: false },
       { source: "/terms", destination: "/legal/terms", permanent: true },
       { source: "/privacy", destination: "/legal/privacy", permanent: true },
