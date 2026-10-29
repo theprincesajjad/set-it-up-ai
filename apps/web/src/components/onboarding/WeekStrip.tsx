@@ -60,7 +60,7 @@ export function WeekStrip({ days, selected, onSelect, hours, onHoursChange, labe
               data-day={d.id}
               tabIndex={on ? 0 : -1}
               onClick={() => onSelect(d.id)}
-              className={cn("relative h-10 min-w-0 flex-1 rounded-[10px] text-body font-[550] focus-visible:focus-ring max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-0.5 max-md:after:content-['']", on ? "bg-card text-foreground shadow-[0_1px_2px_rgba(0,0,0,.12)]" : d.off ? "text-subtle-foreground" : "text-muted-foreground")}
+              className={cn("relative h-10 min-w-0 flex-1 rounded-[10px] text-body font-[550] focus-visible:focus-ring max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-0.5 max-md:after:content-['']", on ? "bg-card text-foreground shadow-sm" : d.off ? "text-subtle-foreground" : "text-muted-foreground")}
             >
               {d.label}
             </button>

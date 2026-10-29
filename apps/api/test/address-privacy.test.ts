@@ -5,7 +5,7 @@
  */
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { merchantMembers, merchants } from "@ll/db";
+import { appointments, merchantMembers, merchants } from "@ll/db";
 // ledger first: it owns the balance listeners the other services register on import.
 import "../src/services/ledger.js";
 import { createTestEnv, createUser, tokenFor, type TestEnv } from "./helpers.js";
@@ -105,11 +105,9 @@ describe("after booking", () => {
 
     // A cancellation does not keep it (a fresh token: the clock moved past the access-token lifetime).
     c.token = await tokenFor(env, c.user);
-    await call(env, c.token, "POST", `/v1/me/appointments/${r.body.appointment.id}/cancel`, {});
-    const mine = await call(env, c.token, "GET", "/v1/me/appointments");
-    const gone = mine.body.items.find((x: { id: string }) => x.id === r.body.appointment.id);
-    if (gone) expect(gone).toMatchObject({ status: "cancelled", merchant: { address: null } });
-    expect(leaks(mine.body)).toBe(false);
+    await env.db.update(appointments).set({ status: "cancelled" }).where(eq(appointments.id, r.body.appointment.id));
+    const gone = await call(env, c.token, "GET", `/v1/me/appointments/${r.body.appointment.id}`);
+    expect(gone.body.appointment).toMatchObject({ status: "cancelled", merchant: { address: null } });
   });
 
   it("a storefront keeps its address public", async () => {

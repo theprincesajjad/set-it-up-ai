@@ -385,14 +385,14 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
       }
     }
     const template = await applyVerticalTemplate(tx, m!.id, b.vertical);
-    await recordMilestone(tx, m!.id, "signed_up", ctx.now());
+    await recordMilestone(tx, m!.id, "signed_up", ctx.now(), b.source || work ? { ...(b.source ? { source: b.source.toLowerCase() } : {}), ...(work ? { workSetting: work } : {}) } : undefined);
     await writeAudit(tx, {
       actorUserId: args.actorUserId,
       merchantId: m!.id,
       action: args.repUserId ? "rep.merchant_created" : "merchant.created",
       entity: "merchant",
       entityId: m!.id,
-      data: { vertical: b.vertical, template },
+      data: { vertical: b.vertical, template, ...(b.source ? { source: b.source.toLowerCase() } : {}) },
     });
     return { merchant: m!, location: loc!, template };
   });

@@ -107,6 +107,8 @@ export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
   "integrations.webhooks",
   // Pet shops: report cards are a button on a pet's page and on the daycare day.
   "pets.report_cards",
+  // ---- phase-solo: G ---- the website builder page is open to every owner (build and preview); this key gates Publish there.
+  "site.builder",
 ];
 
 /**

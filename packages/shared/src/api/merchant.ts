@@ -43,6 +43,8 @@ export const createMerchantBody = z.object({
   workSetting: z.enum(WORK_SETTINGS).optional(),
   /** Mobile pros: how far they go. */
   serviceRadiusKm: z.union([z.literal(SERVICE_RADII_KM[0]), z.literal(SERVICE_RADII_KM[1]), z.literal(SERVICE_RADII_KM[2])]).optional(),
+  /** Where the owner came from (the landing page's `src`, kept in the `ll_src` cookie): "ig", "tiktok", "nails-lp". Attribution only. */
+  source: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,40}$/).optional(),
   city: z.string().trim().max(80).optional(),
   postalCode: z.string().trim().max(10).optional(),
   phone: phoneSchema,
@@ -353,6 +355,12 @@ export const soloShareBody = z.object({ channel: z.enum(["instagram", "text", "q
 export const soloInviteBody = z.object({ people: z.array(z.object({ name: z.string().trim().max(80).nullish(), phone: z.string().trim().min(7).max(20) })).max(200).default([]) });
 /** POST /merchants/:id/onboarding/solo/complete: tick a card by hand ("I'll do this later" keeps it open). */
 export const soloCompleteBody = z.object({ step: z.enum(ONBOARDING_SOLO_STEPS) });
+
+export type SoloLinkBody = z.input<typeof soloLinkBody>;
+export type SoloServicesBody = z.input<typeof soloServicesBody>;
+export type SoloHoursBody = z.input<typeof soloHoursBody>;
+export type SoloPrivacyBody = z.input<typeof soloPrivacyBody>;
+export type SoloInviteBody = z.input<typeof soloInviteBody>;
 
 /** POST /merchants/:id/onboarding/import-link: a public Linktree, Beacons, Fresha or Booksy page. */
 export const importLinkBody = z.object({ url: z.string().trim().min(4).max(500) });

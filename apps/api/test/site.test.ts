@@ -212,7 +212,7 @@ describe("AI drafts and rewrites (scripted model)", () => {
     // Typing still works when the AI allowance is spent.
     expect((await req(env, s.ownerToken, "PUT", s.base, { copy: { hero: { headline: "Typed by hand" } } })).body.site.draft.copy.hero.headline).toBe("Typed by hand");
     env.clock.now = new Date("2026-12-02T15:00:00Z");
-    const next = await req(env, s.ownerToken, "POST", `${s.base}/draft`, {});
+    const next = await req(env, await tokenFor(env, s.owner), "POST", `${s.base}/draft`, {});
     expect(next.status).toBe(200);
     expect(next.body.usage.drafts.used).toBe(1);
   });

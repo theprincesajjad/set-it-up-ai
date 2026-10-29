@@ -76,7 +76,7 @@ export async function entitlementOf(ctx: AppContext, m: Merchant): Promise<{ ent
   const paid = effectivePlan(m.plan, m.restaurantTier) !== "free";
   if (m.annualSiteEntitled || (paid && sub?.interval === "year")) return { entitled: true, reason: "annual", sub };
   // A future feature-key rollout (workstream A's "site.builder") also counts, when it exists.
-  if (await isFeatureOn(ctx.db, m, "site.builder" as never).catch(() => false)) return { entitled: true, reason: "annual", sub };
+  if (await isFeatureOn(ctx.db, m, "site.builder").catch(() => false)) return { entitled: true, reason: "annual", sub };
   return { entitled: false, reason: paid ? "monthly" : "free", sub };
 }
 
