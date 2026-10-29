@@ -54,7 +54,7 @@ const STAT_ICONS: Record<string, LucideIcon[]> = {
 };
 
 
-/** What Café & Retail switches on for a trade, in the owner's words (the Today line that sells the plan). */
+/** What Pro switches on for a trade, in the owner's words (the Today line that sells the plan). */
 // One calendar and online booking are free since phase solo, so the appointment trades are sold more chairs, promos and nudges.
 const TRADE_TOOLS: Record<string, string> = {
   salon: "every chair bookable and rebooking nudges",

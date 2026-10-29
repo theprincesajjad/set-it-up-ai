@@ -4,7 +4,7 @@
  *
  * Rules:
  *  - A restaurant subscription is a subscriptions row with restaurantTier set and
- *    plan "free": it never feeds merchants.plan (billing.ts). Café & Retail comes
+ *    plan "free": it never feeds merchants.plan (billing.ts). Pro comes
  *    with any tier through effectivePlan().
  *  - merchants.restaurantTier mirrors the best live restaurant subscription,
  *    updated from webhooks (created / updated / deleted) and tier changes.

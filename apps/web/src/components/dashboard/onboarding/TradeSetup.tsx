@@ -41,7 +41,7 @@ export function TradeSetup({ family, done }: { family: TradeSetupFamily; done: b
   const c = TRADE_COPY[family];
   const on = enabled(c.feature) || (family === "menu" && enabled("restaurant.commission_free"));
   const offer = family === "menu" ? featureOffer("restaurant.commission_free") : featureOffer(c.feature);
-  // Repair shops write tickets and quotes: that is the Service plan ($99), not Café & Retail.
+  // Repair shops write tickets and quotes: that is the Service plan ($99), not Pro.
   const repair = ["repair_electronics", "alterations", "print_shop", "dry_cleaning"].includes(vertical);
   const owner = role === "owner";
   const origin = typeof window !== "undefined" ? window.location.origin : "";

@@ -203,7 +203,7 @@ test.describe("founder's console (desktop)", () => {
     await page.goto("/admin");
     const split = page.getByTestId("mrr-split");
     await expect(split).toBeVisible();
-    for (const label of ["Café & Retail and Service", "Restaurant tiers", "WhatsApp packs", "Extra locations", "Other add-ons"]) await expect(split.getByText(label)).toBeVisible();
+    for (const label of ["Pro and Service", "Restaurant tiers", "WhatsApp packs", "Extra locations", "Other add-ons"]) await expect(split.getByText(label)).toBeVisible();
     await shot(page, "admin-today-mrr-split");
     const o = await api<{ money: { mrrCents: number; mrrSplit: Record<string, number> } }>("/v1/admin/overview", await token(ADMIN));
     expect(Object.values(o.money.mrrSplit).reduce((a, b) => a + b, 0)).toBe(o.money.mrrCents);

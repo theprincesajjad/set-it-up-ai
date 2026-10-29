@@ -39,7 +39,7 @@ export function NetworkGauges({ activeMerchants, multiShopPct }: { activeMerchan
   const camp = FEATURES["campaigns.neighbourhood"].unlockAtMerchants;
   const items = [
     { label: "Service tools", value: activeMerchants, target: pro, unit: "shops" },
-    { label: "Café & Retail tools", value: activeMerchants, target: plus, unit: "shops" },
+    { label: "Pro tools", value: activeMerchants, target: plus, unit: "shops" },
     { label: "Street campaigns", value: activeMerchants, target: camp, unit: "shops" },
     { label: "Ads & sponsored", value: activeMerchants, target: ads, unit: "shops" },
   ];

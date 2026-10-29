@@ -9,8 +9,8 @@ import { PLANS, SMS_OVERAGE_CENTS, effectivePlan } from "@ll/shared";
 type Merchant = typeof merchants.$inferSelect;
 
 /**
- * Monthly text allowance: the plan's (Free 30, reserved for transactional texts; Café & Retail 500; a restaurant tier counts as
- * Café & Retail). Campaign texts need marketing.sms, so on Free only a pilot override sends them, inside the same 30.
+ * Monthly text allowance: the plan's (Free 30, reserved for transactional texts; Pro 500; a restaurant tier counts as
+ * Pro). Campaign texts need marketing.sms, so on Free only a pilot override sends them, inside the same 30.
  */
 export function smsAllowance(m: Pick<Merchant, "plan"> & { restaurantTier?: Merchant["restaurantTier"] }): number {
   return PLANS[effectivePlan(m.plan, m.restaurantTier)].smsPerMonth;

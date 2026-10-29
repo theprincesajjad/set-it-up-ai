@@ -94,7 +94,7 @@ describe("plans", () => {
 
 describe("appointments pricing", () => {
   it("puts appointments on Free for one bookable calendar, not free forever (solo-pro-launch.md §3.1)", () => {
-    expect(PLANS.plus.name).toBe("Café & Retail");
+    expect(PLANS.plus.name).toBe("Pro");
     expect(FEATURES["booking.appointments"].minPlan).toBe("free");
     expect(FEATURES["booking.appointments"].defaultStage).toBe("ga");
     expect(FREE_FOREVER).not.toContain("booking.appointments");
@@ -131,7 +131,7 @@ describe("points", () => {
 });
 
 describe("restaurant pack", () => {
-  it("gates restaurant features by tier, not plan, and includes Café & Retail", () => {
+  it("gates restaurant features by tier, not plan, and includes Pro", () => {
     expect(isFeatureEnabled("restaurant.tiffin", { plan: "pro", stage: "ga" })).toBe(false);
     expect(isFeatureEnabled("restaurant.tiffin", { plan: "free", stage: "ga", restaurantTier: "starter" })).toBe(false);
     expect(isFeatureEnabled("restaurant.tiffin", { plan: "free", stage: "ga", restaurantTier: "growth" })).toBe(true);
@@ -196,9 +196,9 @@ describe("trade tools self-serve (founder decision 2026-10-27)", () => {
 describe("featureOffer: the plan, price and checkout a locked feature points at", () => {
   it("names the real plan for each kind of feature", () => {
     expect(featureOffer("booking.appointments")).toEqual({ kind: "free" });
-    expect(featureOffer("promos.basic")).toMatchObject({ kind: "plan", plan: "plus", name: "Café & Retail", priceCents: 3900 });
+    expect(featureOffer("promos.basic")).toMatchObject({ kind: "plan", plan: "plus", name: "Pro", priceCents: 3900 });
     expect(featureOffer("promos.basic")).not.toHaveProperty("interval");
-    expect(featureOffer("site.builder")).toEqual({ kind: "plan", plan: "plus", name: "Café & Retail", priceCents: 39000, interval: "year" });
+    expect(featureOffer("site.builder")).toEqual({ kind: "plan", plan: "plus", name: "Pro", priceCents: 39000, interval: "year" });
     expect(featureOffer("service.tickets")).toMatchObject({ kind: "plan", plan: "pro", name: "Service", priceCents: 9900 });
     // Tiffin and catering are Growth ($199), not Starter ($99); banquet is Pro ($349).
     expect(featureOffer("restaurant.tiffin")).toMatchObject({ kind: "restaurant", tier: "growth", priceCents: 19900 });

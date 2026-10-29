@@ -1,5 +1,5 @@
 /**
- * Appointments (Café & Retail: booking.appointments): the calendar, price list, staff hours, checkout, and the
+ * Appointments (Pro: booking.appointments): the calendar, price list, staff hours, checkout, and the
  * customer booking calls. Spread into `merchantEndpoints` as `api.appointments`; the customer pages use
  * `publicAppointmentEndpoints` (no login) and `myAppointmentEndpoints` (signed in).
  * Contract: @ll/shared appointmentsApi; routes: docs/engineering/api/appointments.md.

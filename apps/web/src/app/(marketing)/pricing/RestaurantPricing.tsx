@@ -14,7 +14,7 @@ const pct = (bps: number) => `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
 
 /** Features a tier adds over the one below it (from the shared list, so the page can't drift from gating). */
 const added = (tier: RestaurantTier) => RESTAURANT_FEATURES.filter((k) => FEATURES[k].packTier === tier).map((k) => FEATURES[k].name);
-const below: Record<RestaurantTier, string> = { starter: "Everything in Café & Retail, plus", growth: "Everything in Starter, plus", pro: "Everything in Growth, plus" };
+const below: Record<RestaurantTier, string> = { starter: "Everything in Pro, plus", growth: "Everything in Starter, plus", pro: "Everything in Growth, plus" };
 const shortName = (tier: RestaurantTier) => RESTAURANT_PLANS[tier].name.replace(/^Restaurant /, "");
 
 function TierCard({ tier, featured }: { tier: RestaurantTier; featured?: boolean }) {

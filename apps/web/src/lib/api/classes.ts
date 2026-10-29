@@ -1,5 +1,5 @@
 /**
- * Classes and memberships (Café & Retail: booking.classes, memberships.recurring). Spread into `merchantEndpoints`
+ * Classes and memberships (Pro: booking.classes, memberships.recurring). Spread into `merchantEndpoints`
  * as `api.classes`; the studio page uses `publicClassEndpoints` (browsing, signed in or not) and the passes page
  * uses `myClassEndpoints` (signed in). Contract: @ll/shared classesApi; routes: docs/engineering/api/classes.md.
  */

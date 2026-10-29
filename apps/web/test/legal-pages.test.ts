@@ -48,14 +48,16 @@ describe("legal pages render their numbers from plans.ts", () => {
 
   it("the headline numbers are the ones the business decided", () => {
     expect([FEES.orderBpsFree, FEES.orderBpsPaid, FEES.depositInvoiceBps, FEES.tiffinBps, FEES.appointmentCheckoutBps, FEES.customerServiceFeeCents]).toEqual([150, 0, 100, 100, 0, 49]);
-    expect(PLANS.plus.name).toBe("Café & Retail");
+    expect(PLANS.plus.name).toBe("Pro");
   });
 
   it("no retired plan names or fee numbers appear in any legal page", () => {
     for (const slug of Object.keys(LEGAL_DOCS) as (keyof typeof LEGAL_DOCS)[]) {
       const md = rendered(slug);
       expect(md, slug).not.toMatch(/0\.75%/);
-      expect(md, slug).not.toMatch(/\bPlus plan\b|\bPro plan\b|\bPlus\b \$|\bPro\b \$/);
+      // "Plus" is retired. "Pro" is again the display name of the $39 plan (founder, Oct 29, 2026; id `plus`), so it may appear, but only as PLANS.plus.name.
+      expect(md, slug).not.toMatch(/\bPlus plan\b|\bPlus\b \$/);
+      for (const m of md.matchAll(/\bPro\b \$(\d+)/g)) expect(Number(m[1]) * 100, slug).toBe(PLANS.plus.priceCents);
     }
   });
 

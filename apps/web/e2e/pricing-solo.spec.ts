@@ -1,5 +1,5 @@
 /**
- * phase-solo A: the pricing page's three solo plans (Free, Café & Retail, Annual) and the billing page that mirrors it,
+ * phase-solo A: the pricing page's three solo plans (Free, Pro, Annual) and the billing page that mirrors it,
  * at 390 and 1440, in Clear light and in Urdu. Screenshots go to SOLO_SHOTS (default: e2e/screenshots/solo-a, not tracked).
  */
 import { createRequire } from "node:module";
@@ -56,7 +56,7 @@ test.describe("solo pricing", () => {
       await expect(shops).toContainText("Prices in CAD");
       await expect(shops.getByTestId("founding-strip")).toContainText("$290 for your first year, then $390");
       await expect(shops.getByTestId("founding-strip")).toContainText("of 200 spots left");
-      await expect(page.getByRole("table", { name: "Compare Free, Café & Retail and the annual plan" })).toBeVisible();
+      await expect(page.getByRole("table", { name: "Compare Free, Pro and the annual plan" })).toBeVisible();
       await expect(page.getByTestId("solo-table")).toContainText("30 a month, then email");
       await expect(page.getByTestId("solo-compare")).toContainText("Fresha");
       await expect(page.getByTestId("solo-compare")).toContainText("Oct 28, 2026");

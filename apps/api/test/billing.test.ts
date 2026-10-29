@@ -23,7 +23,7 @@ describe("billing", () => {
     expect((await call(env, null, "GET", `/v1/merchants/${merchant.id}/billing`)).status).toBe(401);
   });
 
-  it("trade tools self-serve: Café & Retail and Service are purchasable on day one; Free always is", async () => {
+  it("trade tools self-serve: Pro and Service are purchasable on day one; Free always is", async () => {
     const { merchant, ownerToken } = await createMerchant(env);
     const o = await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/billing`);
     expect(o.body.plan).toBe("free");

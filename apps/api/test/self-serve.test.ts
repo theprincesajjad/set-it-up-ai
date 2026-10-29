@@ -28,7 +28,7 @@ const features = async (token: string, id: string) => {
 const geocoder = (hit: { lat: number; lng: number } | null): Geocoder => ({ name: "test", geocode: async () => hit });
 
 describe("trade tools self-serve", () => {
-  it("a new salon has its free calendar at once and buys Café & Retail for the rest, with no admin override", async () => {
+  it("a new salon has its free calendar at once and buys Pro for the rest, with no admin override", async () => {
     const token = await owner();
     const made = await signup(token, { vertical: "salon" });
     const id = made.body.merchant.id as string;

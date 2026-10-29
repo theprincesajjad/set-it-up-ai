@@ -26,7 +26,7 @@ export function canConfirmStage(f: Pick<adminApi.AdminFeature, "key" | "freeFore
   return !requiresTypedKey(to) || typed.trim() === f.key;
 }
 
-const PLAN_NAME: Record<string, string> = { free: "every plan", plus: "Café & Retail", pro: "Service" };
+const PLAN_NAME: Record<string, string> = { free: "every plan", plus: "Pro", pro: "Service" };
 
 export function stageEffect(f: Pick<adminApi.AdminFeature, "name" | "minPlan" | "phase">, to: Stage): string {
   const who = f.minPlan === "free" ? "every shop" : `shops on ${PLAN_NAME[f.minPlan]}`;
@@ -50,7 +50,7 @@ export function canForceOff(f: Pick<adminApi.AdminFeature, "freeForever">): bool
 
 export function groupFeatures(items: adminApi.AdminFeature[]): { id: string; title: string; items: adminApi.AdminFeature[] }[] {
   const groups = [
-    { id: "plus", title: "Phase 2 · Café & Retail", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "plus" },
+    { id: "plus", title: "Phase 2 · Pro", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "plus" },
     { id: "pro", title: "Phase 2 · Service", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "pro" },
     { id: "network", title: "Phase 3 · Needs many shops", test: (f: adminApi.AdminFeature) => f.phase === 3 },
     { id: "free", title: "Free forever · Phase 1", test: (f: adminApi.AdminFeature) => f.freeForever || (f.phase === 1 && f.minPlan === "free") },

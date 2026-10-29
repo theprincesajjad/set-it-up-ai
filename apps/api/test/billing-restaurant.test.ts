@@ -49,7 +49,7 @@ describe("restaurant subscriptions", () => {
     expect((await call(env, null, "GET", `/v1/merchants/${merchant.id}/billing/restaurant`)).status).toBe(401);
   });
 
-  it("checkout -> webhook stores the tier, mirrors it on the merchant and implies Café & Retail", async () => {
+  it("checkout -> webhook stores the tier, mirrors it on the merchant and implies Pro", async () => {
     const s = await subscribe("starter");
     expect(s.done.body.events.map((e: { type: string }) => e.type)).toEqual(["checkout.session.completed", "customer.subscription.created"]);
     const [sub] = await env.db.select().from(subscriptions).where(eq(subscriptions.merchantId, s.merchant.id));

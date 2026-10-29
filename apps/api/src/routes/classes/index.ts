@@ -1,5 +1,5 @@
 /**
- * Classes and memberships (Café & Retail: booking.classes, memberships.recurring): the class schedule with
+ * Classes and memberships (Pro: booking.classes, memberships.recurring): the class schedule with
  * capacity and a waitlist, packs, intro offers and drop-ins, recurring memberships, late-cancel fees and door check-in.
  * Contract: @ll/shared classesApi. Docs: docs/engineering/api/classes.md.
  */

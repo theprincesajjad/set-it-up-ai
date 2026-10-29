@@ -3,7 +3,7 @@
  * members and their visits at no charge for RETENTION.leaverExportDays (90). "Leave" means the shop closed
  * (merchant.status_changed to closed) or fell back to Free (billing.plan_changed to free, whether it was cancelled
  * now, at the end of the period, or by a failed payment). During the window the owner can download the members CSV
- * and the visits (activity) CSV even though the Café & Retail feature (customers.csv_export) is off.
+ * and the visits (activity) CSV even though the Pro feature (customers.csv_export) is off.
  */
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { auditLogs, type DbOrTx, type merchants } from "@ll/db";

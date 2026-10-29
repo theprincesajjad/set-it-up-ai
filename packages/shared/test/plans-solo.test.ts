@@ -44,11 +44,11 @@ describe("solo pro packaging (solo-pro-launch.md §3.2)", () => {
     expect(bookableCalendarLimit("free")).toBe(1);
     expect(bookableCalendarLimit("plus")).toBeNull();
     expect(bookableCalendarLimit("pro")).toBeNull();
-    // A restaurant tier includes Café & Retail, so no cap.
+    // A restaurant tier includes Pro, so no cap.
     expect(bookableCalendarLimit("free", "starter")).toBeNull();
   });
 
-  it("keeps Café & Retail purchasable after appointments moved to Free", () => {
+  it("keeps Pro purchasable after appointments moved to Free", () => {
     expect(isPlanAvailable("plus", {})).toBe(true);
   });
 });
@@ -58,7 +58,7 @@ describe("promo allowance", () => {
   it("is zero on Free", () => {
     expect(promoAllowance({ plan: "free", sentCount: 0, sentPeriodStart: null, periodStart })).toMatchObject({ limit: 0, remaining: 0, period: null });
   });
-  it("gives 4 a month on Café & Retail monthly and counts this period's sends", () => {
+  it("gives 4 a month on Pro monthly and counts this period's sends", () => {
     const a = promoAllowance({ plan: "plus", interval: "month", sentCount: 3, sentPeriodStart: "2026-11-02T10:00:00Z", periodStart });
     expect(a).toMatchObject({ limit: 4, used: 3, remaining: 1, period: "month" });
   });
@@ -73,7 +73,7 @@ describe("promo allowance", () => {
   it("never goes below zero", () => {
     expect(promoAllowance({ plan: "plus", interval: "month", sentCount: 9, sentPeriodStart: periodStart, periodStart }).remaining).toBe(0);
   });
-  it("counts a restaurant tier as Café & Retail", () => {
+  it("counts a restaurant tier as Pro", () => {
     expect(promoAllowance({ plan: "free", restaurantTier: "starter", interval: "month", sentCount: 0, sentPeriodStart: null, periodStart }).limit).toBe(4);
   });
 });

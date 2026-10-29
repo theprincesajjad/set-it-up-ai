@@ -195,7 +195,7 @@ describe("tool use and grounding", () => {
     const p = (await getPricing(env.ctx, "all")) as Record<string, any>;
     expect(p.shop_plans.map((x: any) => x.monthly)).toEqual([legalTokens()["plan.free.price"], legalTokens()["plan.plus.price"], legalTokens()["plan.pro.price"]]);
     expect(p.shop_plans[0].status).toContain("open");
-    expect(p.shop_plans[1].status).toBe("open now"); // trade tools self-serve: Café & Retail is buyable on day one
+    expect(p.shop_plans[1].status).toBe("open now"); // trade tools self-serve: Pro is buyable on day one
     expect(p.restaurant_plans.tiers.map((t: any) => t.monthly)).toEqual([legalTokens()["restaurant.starter.price"], legalTokens()["restaurant.growth.price"], legalTokens()["restaurant.pro.price"]]);
     expect(p.add_ons.find((a: any) => a.id === "whatsapp_1000").price).toBe(legalTokens()["addon.whatsapp_1000.price"]);
     expect(p.add_ons.find((a: any) => a.id === "phone_ai").price).toBe(`$${ADD_ONS.phone_ai.priceCents / 100}/month`);
@@ -569,7 +569,7 @@ describe("owner phone check (OTP) and account tools", () => {
     const { mine } = await ownerChat();
     const phone = mine.owner.phone!;
     withModel(script(use("request_phone_verification", { phone }, "t1"), say("type the code")));
-    const a = await web("upgrade me to Café & Retail");
+    const a = await web("upgrade me to Pro");
     const code = smsTo(phone).at(-1)!.body.match(/\b(\d{6})\b/)![1]!;
     const args = { product: "shop_plan", plan: "plus", tier: null, interval: "month", shop_number: null };
     const m2 = script(use("create_checkout_link", { ...args, confirmation_id: null }, "t1"), say("Create it? yes or no"));

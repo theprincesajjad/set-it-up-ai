@@ -73,7 +73,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
 
   return (
     <>
-      <Section title="Restaurant plan" description="For restaurants, sweet shops and tiffin kitchens. Any tier includes Café & Retail.">
+      <Section title="Restaurant plan" description="For restaurants, sweet shops and tiffin kitchens. Any tier includes Pro.">
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         <Panel>
           <p className="text-meta text-fg-muted">Current restaurant plan</p>
@@ -134,7 +134,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
                   ) : null}
                   <p className="text-meta text-fg">{p.blurb}</p>
                   <ul className="flex flex-col gap-1.5 border-t border-line pt-3 text-meta text-fg">
-                    {lower.length ? <li className="text-fg-muted">Everything in {lower[lower.length - 1]!.name}, plus</li> : <li className="text-fg-muted">Includes Café & Retail</li>}
+                    {lower.length ? <li className="text-fg-muted">Everything in {lower[lower.length - 1]!.name}, plus</li> : <li className="text-fg-muted">Includes Pro</li>}
                     {feats.map((f) => (
                       <li key={f} className="flex items-start gap-2">
                         <Check aria-hidden className="mt-0.5 size-3.5 shrink-0 text-fg-muted" />

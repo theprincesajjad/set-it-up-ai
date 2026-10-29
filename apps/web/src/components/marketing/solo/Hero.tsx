@@ -10,7 +10,8 @@ export const COVER_SIZES = "290px";
 
 /**
  * Block 1: the hook on the start side, and on the end side the client's booking page on a big phone running the four-screen flow
- * (pick, time, deposit, booked) with the three moments beside it. The stage is one picture for assistive tech (role="img").
+ * (pick, time, details, booked: no deposit in the default story; the details screen says deposits are each pro's option) with the
+ * three moments beside it (the DM, the new booking, the reminder). The stage is one picture for assistive tech (role="img").
  */
 export function Hero({ v }: { v: SoloView }) {
   const [s1, s2, s3] = v.services;
@@ -20,17 +21,17 @@ export function Hero({ v }: { v: SoloView }) {
     <section className="sl-hero" aria-labelledby="sl-hook">
       <div className="sl-wrap sl-hero-grid">
         <div className="sl-copy">
-          <p className="sl-eyebrow sl-rise">{T.eyebrow}</p>
+          <p className="sl-eyebrow sl-rise">{v.hero.eyebrow}</p>
           <h1 className="sl-h1" id="sl-hook">
-            <span>{T.hook[0]}</span>{" "}
+            <span>{v.hero.hook[0]}</span>{" "}
             <span className="sl-i1">
-              <em>{T.hook[1]}</em>
+              <em>{v.hero.hook[1]}</em>
             </span>
           </h1>
           <p className="sl-lede sl-rise sl-i2">{v.hero.lede}</p>
           <div className="sl-ctas sl-rise sl-i3">
             <a className="sl-btn" href="#start">
-              {H.cta}
+              {v.hero.cta}
               <Arrow />
             </a>
             <a className="sl-price-link" href="#plans">
@@ -40,7 +41,7 @@ export function Hero({ v }: { v: SoloView }) {
             </a>
           </div>
           <ul className="sl-trust sl-rise sl-i4">
-            {("trust" in T ? T.trust : H.trust).map((x) => (
+            {v.hero.trust.map((x) => (
               <li key={x}>
                 <Check />
                 {x}
@@ -61,11 +62,11 @@ export function Hero({ v }: { v: SoloView }) {
             </div>
             <div className="sl-float sl-dep glass-sheet">
               <span className="ic">
-                <Obj name="deposit" />
+                <Obj name="first_booking" />
               </span>
               <div>
-                <b>{v.hero.depositCard}</b>
-                <small>{v.hero.depositCardLine}</small>
+                <b>{v.hero.bookedCard}</b>
+                <small>{v.hero.bookedCardLine}</small>
               </div>
             </div>
             <div className="sl-float sl-rem glass-sheet">
@@ -130,12 +131,12 @@ export function Hero({ v }: { v: SoloView }) {
                     </div>
                   ))}
                   <div className="sl-policy">
-                    <b>{v.hero.policyTitle}</b>
+                    <b>{H.policyTitle}</b>
                     {H.policyBody}
                   </div>
-                  <div className="sl-cta">{v.hero.bookPay}</div>
+                  <div className="sl-cta">{H.next}</div>
                 </div>
-                {/* 3. The deposit */}
+                {/* 3. Details: no deposit in the default story; deposits are each pro's option */}
                 <div className={`sl-app ${n(2)}`}>
                   <div className="sl-who">
                     <span className="sl-avatar">{initial}</span>
@@ -144,24 +145,33 @@ export function Hero({ v }: { v: SoloView }) {
                       <small>{H.when}</small>
                     </div>
                   </div>
+                  <div className="sl-hd">{H.details}</div>
                   <div className="sl-row">
                     <div>
-                      <b>{s2!.name}</b>
-                      <small>{H.totalToday}</small>
+                      <small>{H.nameLabel}</small>
+                      <b>{T.client}</b>
                     </div>
-                    <span className="price num">{s2!.price.replace(/^from /, "")}</span>
+                  </div>
+                  <div className="sl-row">
+                    <div>
+                      <small>{H.phoneLabel}</small>
+                      <b className="num">{H.phone}</b>
+                    </div>
                   </div>
                   <div className="sl-pay">
                     <div className="l">
-                      <span>{H.depositNow}</span>
-                      <b className="num">{v.deposit}</b>
+                      <span>{s2!.name}</span>
+                      <b className="num">{s2!.price}</b>
                     </div>
                     <div className="l">
-                      <span>{H.atVisit}</span>
-                      <b className="num">{v.rest}</b>
+                      <span>{H.payLater}</span>
                     </div>
-                    <div className="big num">{v.deposit}</div>
-                    <div className="apple">{H.pay}</div>
+                    <div className="l opt">
+                      <span>{H.depositRow}</span>
+                      <span className="sl-chip">{H.depositNone}</span>
+                    </div>
+                    <p className="sl-optnote">{H.depositNote}</p>
+                    <div className="sl-cta">{H.book}</div>
                   </div>
                 </div>
                 {/* 4. Booked */}
@@ -174,7 +184,7 @@ export function Hero({ v }: { v: SoloView }) {
                     <p>
                       {s2!.name} · {H.bookedWhen}
                       <br />
-                      {v.hero.bookedLine}
+                      {H.bookedLine}
                     </p>
                     <span className="sl-wallet">{H.wallet}</span>
                   </div>

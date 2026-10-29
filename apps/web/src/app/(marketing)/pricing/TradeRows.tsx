@@ -15,7 +15,7 @@ const TONES = [
   "bg-tile-lilac text-tile-lilac-foreground",
 ];
 
-/** One row per trade: what Café & Retail switches on for that kind of shop, and what it costs. The same list sells and gates. */
+/** One row per trade: what Pro switches on for that kind of shop, and what it costs. The same list sells and gates. */
 export function TradeRows() {
   return (
     <MSection id="trades" tone="butter" className="scroll-mt-20 md:py-20!">

@@ -22,7 +22,7 @@ describe("people-side nav", () => {
     expect(keys("nails")).toContain("staff");
   });
   it("a brow tech on the paid plan gets her own tools, not the café, studio or barbershop sections (final audit)", () => {
-    // What the annual plan unlocks for her (every Café & Retail feature; the restaurant and grocery packs are add-ons she does not have).
+    // What the annual plan unlocks for her (every Pro feature; the restaurant and grocery packs are add-ons she does not have).
     const all = new Set((Object.keys(FEATURES) as FeatureKey[]).filter((k) => ["free", "plus"].includes((FEATURES[k] as { minPlan?: string }).minPlan ?? "free") && !k.startsWith("restaurant.") && !k.startsWith("grocery.")));
     const paid = (vertical: string, soloCalendar: boolean) => buildMerchantNav("/m/x", "owner", all, { vertical, plan: "plus", soloCalendar }).map((e) => e.key);
     const k = paid("brows_lashes", true);

@@ -94,7 +94,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
     }
   }
 
-  // A "Start Café & Retail" button on the pricing page lands here with ?subscribe=plus: go straight to the checkout once.
+  // A "Start Pro" button on the pricing page lands here with ?subscribe=plus: go straight to the checkout once.
   useEffect(() => {
     if (autoRan.current || sub || (subscribe !== "plus" && subscribe !== "pro")) return;
     autoRan.current = true;
@@ -123,7 +123,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
           You&apos;re on {b.plan === "free" ? "Free" : b.plans.find((p) => p.id === b.plan)?.name}
           {b.plan === "free" ? ". Forever." : "."}
         </h2>
-        {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, Café &amp; Retail tools are included.</p> : null}
+        {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, Pro tools are included.</p> : null}
         <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {["No subscription and no fee on loyalty", "Unlimited locations, staff and members", "Your loyalty program and reports", "Network listing and perks"].map((t) => (
             <li key={t} className="flex items-center gap-2 text-meta text-fg">

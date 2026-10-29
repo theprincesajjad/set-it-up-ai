@@ -1,5 +1,5 @@
 /**
- * API contract for classes and memberships (Café & Retail): a class schedule with capacity and a waitlist,
+ * API contract for classes and memberships (Pro): a class schedule with capacity and a waitlist,
  * drop-ins, class packs and intro offers, recurring memberships with freezes and Ontario-compliant cancellation,
  * late-cancel fees and door check-in. Features `booking.classes` and `memberships.recurring`.
  * Routes: apps/api/src/routes/classes. Docs: docs/engineering/api/classes.md.

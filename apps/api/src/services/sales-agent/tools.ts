@@ -58,7 +58,7 @@ export const TOOLS: ToolDef[] = [
     kind: { type: "string", enum: ["shop", "restaurant"] },
     business_name: nullable("string"),
     phone: nullable("string"),
-    plan_interest: nullable("string", { description: "Free, Café & Retail, Service, or a restaurant tier name, if they said." }),
+    plan_interest: nullable("string", { description: "Free, Pro, Service, or a restaurant tier name, if they said." }),
     ...confirmProp,
   }),
   def("request_founder_call", "Record a request for a call with the founder, at the time the person prefers, and tell the team. It is a request, not a booking: the team confirms. Two steps: call once without confirmation_id, show the summary, ask yes or no. Needs a phone or an email.", {
@@ -77,7 +77,7 @@ export const TOOLS: ToolDef[] = [
   def("get_my_account", "The verified owner's own shops: plan, status, restaurant tier, subscription state. Only works after the phone code succeeded. Takes no id: it can only ever return this person's own shops.", {}),
   def("create_checkout_link", "Create a checkout link for a plan on one of the verified owner's own shops. Fails if that plan is not open yet or they are already on it. Two steps: call once without confirmation_id, show the summary, ask yes or no.", {
     product: { type: "string", enum: ["shop_plan", "restaurant_plan"] },
-    plan: { type: ["string", "null"], enum: ["plus", "pro", null], description: "For shop_plan: plus = Café & Retail, pro = Service." },
+    plan: { type: ["string", "null"], enum: ["plus", "pro", null], description: "For shop_plan: plus = the Pro plan ($39 a month; its id is plus), pro = the Service plan ($99; its id is pro)." },
     tier: { type: ["string", "null"], enum: ["starter", "growth", "pro", null], description: "For restaurant_plan." },
     interval: { type: "string", enum: ["month", "year"] },
     shop_number: nullable("integer", { description: "The # of the shop from get_my_account. Null when they own one." }),
@@ -134,7 +134,7 @@ export async function getPricing(ctx: AppContext, topic: string | null): Promise
     });
   if (want("restaurant_plans"))
     out.restaurant_plans = {
-      note: "A separate ladder for restaurants, sweet shops and tiffin kitchens. Any restaurant plan includes everything in the Café & Retail plan.",
+      note: "A separate ladder for restaurants, sweet shops and tiffin kitchens. Any restaurant plan includes everything in the Pro plan.",
       tiers: RESTAURANT_TIERS.map((k) => ({ tier: k, name: RESTAURANT_PLANS[k].name, monthly: t[`restaurant.${k}.price`], annual: t[`restaurant.${k}.annual`], includes: RESTAURANT_PLANS[k].blurb, whatsapp_messages_included_per_month: RESTAURANT_PLANS[k].whatsappPerMonth, status: "open now" })),
     };
   if (want("add_ons")) out.add_ons = ADD_ON_IDS.map((id) => ({ id, name: ADD_ONS[id].name, price: t[`addon.${id}.price`], whatsapp_pack_messages: id === "whatsapp_1000" ? WHATSAPP_PACK_MESSAGES : undefined }));

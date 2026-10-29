@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { copy } from "@/copy/en-CA";
+import type { JobId } from "@/lib/marketing/landing-variants";
 import type { SoloView } from "@/lib/marketing/solo-view";
 import { Check, Mark, Obj, Photo, Plus, n } from "./parts";
 
@@ -28,11 +29,77 @@ export function Facts({ v }: { v: SoloView }) {
   );
 }
 
-/** Block 3: book, deposit, remind as three live UI cards (the demos are pictures: aria-hidden). */
+/** Block 3: three jobs as three live UI cards, in the variant's order (the demos are pictures: aria-hidden). */
 export function Jobs({ v }: { v: SoloView }) {
-  const [j1, j2, j3] = v.jobs;
   const J = C.jobs;
   const P = v.trade.people;
+  const demo: Record<JobId, React.ReactNode> = {
+    book: (
+      <div className="sl-demo sl-week" aria-hidden>
+        {J.week.map((d, di) => (
+          <div key={d}>
+            <span className="sl-day">
+              {d}
+              <b className="num">{di + 2}</b>
+            </span>
+            {[0, 1, 2].map((r) => {
+              const hit = WEEK.find(([wd, wr]) => wd === di && wr === r);
+              return <i key={r} className={hit ? `b ${n(hit[2])}` : undefined} />;
+            })}
+          </div>
+        ))}
+        <div className="sl-weeknote">
+          <Obj name="first_booking" />
+          <div>
+            {J.weekBooked}
+            <small>{J.weekLine}</small>
+          </div>
+        </div>
+      </div>
+    ),
+    remind: (
+      <div className="sl-demo" aria-hidden>
+        <div className="sl-lock">
+          <div className="sl-clock">
+            <small>{J.lockDate}</small>
+            {J.lockTime}
+          </div>
+          {v.notes.map((x, i) => (
+            <div key={x} className={`sl-notif ${n(i)}`}>
+              <Mark />
+              <div>
+                <b>
+                  {v.trade.studio}
+                  <small>{[J.now, J.before, J.later][i]}</small>
+                </b>
+                <span>{x}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+    regulars: (
+      <div className="sl-demo sl-deps" aria-hidden>
+        <div className="sl-sum">
+          <small>{J.regularsLabel}</small>
+          <b className="num">{J.regularsTotal}</b>
+        </div>
+        {[0, 1, 2].map((i) => (
+          <div key={P[i]} className={`sl-dr ${n(i)}`}>
+            <span className="sl-avatar">{P[i]![0]}</span>
+            <div>
+              <b>
+                {P[i]} · {v.services[[1, 0, 2][i]!]!.name}
+              </b>
+              <small>{J.times[i]}</small>
+            </div>
+            <span className={i === 0 ? "sl-chip trade" : "sl-chip up"}>{J.chips[i]}</span>
+          </div>
+        ))}
+      </div>
+    ),
+  };
   return (
     <section className="sl-sec" id="jobs" aria-labelledby="sl-jobs">
       <div className="sl-wrap">
@@ -43,87 +110,15 @@ export function Jobs({ v }: { v: SoloView }) {
           </h2>
         </div>
         <div className="sl-jobs">
-          <article className="sl-job card-clear">
-            <div>
-              <h3>{j1!.title}</h3>
-              <p>{j1!.body}</p>
-            </div>
-            <div className="sl-demo sl-week" aria-hidden>
-              {J.week.map((d, di) => (
-                <div key={d}>
-                  <span className="sl-day">
-                    {d}
-                    <b className="num">{di + 2}</b>
-                  </span>
-                  {[0, 1, 2].map((r) => {
-                    const hit = WEEK.find(([wd, wr]) => wd === di && wr === r);
-                    return <i key={r} className={hit ? `b ${n(hit[2])}` : undefined} />;
-                  })}
-                </div>
-              ))}
-              <div className="sl-weeknote">
-                <Obj name="first_booking" />
-                <div>
-                  {J.weekBooked}
-                  <small>{J.weekLine}</small>
-                </div>
+          {v.jobs.map((j) => (
+            <article key={j.id} className="sl-job card-clear" data-job={j.id}>
+              <div>
+                <h3>{j.title}</h3>
+                <p>{j.body}</p>
               </div>
-            </div>
-          </article>
-          <article className="sl-job card-clear">
-            <div>
-              <h3>{j2!.title}</h3>
-              <p>{j2!.body}</p>
-            </div>
-            <div className="sl-demo sl-deps" aria-hidden>
-              <div className="sl-sum">
-                <small>{J.depositsLabel}</small>
-                <b className="num">{J.depositsTotal}</b>
-              </div>
-              {[
-                { who: P[0]!, svc: v.services[1]!.name, when: J.depositTimes[0] },
-                { who: P[1]!, svc: v.services[0]!.name, when: J.depositTimes[1] },
-                { who: P[2]!, svc: v.services[2]!.name, when: `${J.depositTimes[2]} · ${J.moved}` },
-              ].map((r, i) => (
-                <div key={r.who} className={`sl-dr ${n(i)}`}>
-                  <span className="sl-avatar">{r.who[0]}</span>
-                  <div>
-                    <b>
-                      {r.who} · {r.svc}
-                    </b>
-                    <small>{r.when}</small>
-                  </div>
-                  <span className="sl-chip up">{v.paid}</span>
-                </div>
-              ))}
-            </div>
-          </article>
-          <article className="sl-job card-clear">
-            <div>
-              <h3>{j3!.title}</h3>
-              <p>{j3!.body}</p>
-            </div>
-            <div className="sl-demo" aria-hidden>
-              <div className="sl-lock">
-                <div className="sl-clock">
-                  <small>{J.lockDate}</small>
-                  {J.lockTime}
-                </div>
-                {v.notes.map((x, i) => (
-                  <div key={x} className={`sl-notif ${n(i)}`}>
-                    <Mark />
-                    <div>
-                      <b>
-                        {v.trade.studio}
-                        <small>{[J.now, J.before, J.later][i]}</small>
-                      </b>
-                      <span>{x}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </article>
+              {demo[j.id]}
+            </article>
+          ))}
         </div>
       </div>
     </section>

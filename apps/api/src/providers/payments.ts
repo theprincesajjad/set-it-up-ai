@@ -166,7 +166,7 @@ export interface CheckoutArgs {
   customerId: string;
   merchantId: string;
   plan: "plus" | "pro";
-  /** Restaurant pack checkout: the tier being bought (plan is then "plus", the tier's Café & Retail floor). */
+  /** Restaurant pack checkout: the tier being bought (plan is then "plus", the tier's Pro floor). */
   restaurantTier?: RestaurantTier;
   /** Stripe coupon id applied at checkout (founding offer year one). */
   couponId?: string;

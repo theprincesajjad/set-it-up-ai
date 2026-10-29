@@ -16,7 +16,7 @@ describe("pricing cards", () => {
     expect(html).not.toContain("Pilot shops now");
     expect(html).not.toContain("early access");
     expect(html).toContain('href="/signup?plan=plus"');
-    expect(html).toContain("Start Café &amp; Retail");
+    expect(html).toContain("Start Pro");
     expect(html).toContain(`or ${moneyShort(PLANS.plus.annualPriceCents)} a year`);
   });
   it("sells Service at $99 with the same button", () => {

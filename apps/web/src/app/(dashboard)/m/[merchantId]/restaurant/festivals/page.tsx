@@ -387,8 +387,8 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
             Send as
             <select value={channel} onChange={(e) => setChannel(e.target.value as typeof channel)} className="h-9 rounded-input border border-line bg-bg px-2 text-meta text-fg focus-visible:focus-ring">
               <option value="whatsapp">{available.whatsapp ? "WhatsApp" : "WhatsApp (Restaurant Growth)"}</option>
-              <option value="sms">{available.sms ? "Text message" : "Text message (Café & Retail)"}</option>
-              <option value="email">{available.email ? "Email" : "Email (Café & Retail)"}</option>
+              <option value="sms">{available.sms ? "Text message" : "Text message (Pro)"}</option>
+              <option value="email">{available.email ? "Email" : "Email (Pro)"}</option>
             </select>
           </label>
           {channel !== "whatsapp" ? (

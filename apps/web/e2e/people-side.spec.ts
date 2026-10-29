@@ -10,7 +10,7 @@
  *      with the plan line and cannot send.
  *   6. Instagram reads "Coming soon" until switched on; with INSTAGRAM_DM_ENABLED=stub a seeded DM shows in the inbox and "Create
  *      booking" opens the sheet with the handle and the message as the client note.
- * Seed shops: Arch & Thread Brow Bar (free), Crown & Fade (renters), Rangrez Beauty Studio (put on Café & Retail here).
+ * Seed shops: Arch & Thread Brow Bar (free), Crown & Fade (renters), Rangrez Beauty Studio (put on Pro here).
  * Screenshots: $SHOTS_DIR (default e2e/screenshots/people).
  */
 import { expect, test, type Page } from "@playwright/test";
@@ -166,7 +166,7 @@ test("5: a free shop sees the seasonal templates and the plan line; a paid shop 
   await expect(page.getByTestId("promo-send")).toHaveCount(0);
   await page.screenshot({ path: shot(`promos-free-1440-${LANG}`), fullPage: true });
 
-  // Rangrez on Café & Retail (the fake Stripe checkout), with one regular who opted in.
+  // Rangrez on Pro (the fake Stripe checkout), with one regular who opted in.
   const rz = await owner("rangrez-beauty-studio");
   const co = await call<{ sessionId: string }>("POST", `${rz.base}/billing/checkout`, { plan: "plus", interval: "month" }, rz.token).catch(() => null);
   if (co) await call("POST", "/v1/payments/fake/simulate", { action: "complete_checkout", id: co.sessionId }).catch(() => undefined);

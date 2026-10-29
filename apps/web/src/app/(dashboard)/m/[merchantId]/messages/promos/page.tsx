@@ -4,7 +4,7 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { PromoPicker } from "../PromoPicker";
 
 /**
- * Promos to regulars, on every plan: a free shop sees the seasonal templates and the plan line (and cannot send); Café & Retail
+ * Promos to regulars, on every plan: a free shop sees the seasonal templates and the plan line (and cannot send); Pro
  * sends 4 a month, the annual plan 48 a year (phase solo, workstream D). The Messages page carries the same picker for paid shops.
  */
 export default function RegularsPromosPage() {

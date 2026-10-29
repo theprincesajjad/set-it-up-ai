@@ -139,6 +139,10 @@
 .sl-pay { margin-top: auto; background: var(--card); border-radius: calc(22px * var(--ph)); padding: calc(16px * var(--ph)); box-shadow: var(--lg-shadow), inset 0 0 0 1px var(--border); display: grid; gap: calc(10px * var(--ph)); }
 .sl-pay .l { display: flex; justify-content: space-between; font-size: 0.93em; }
 .sl-pay .l b { font-weight: 650; }
+.sl-pay .l.opt { color: var(--muted-foreground); align-items: center; }
+.sl-optnote { font-size: 0.8em; color: var(--muted-foreground); line-height: 1.35; }
+.sl-pay .sl-cta { margin-top: calc(4px * var(--ph)); }
+.sl-app .sl-chip { height: auto; padding: calc(3px * var(--ph)) calc(8px * var(--ph)); font-size: 0.8em; }
 .sl-pay .big { font-size: calc(34px * var(--ph)); font-weight: 800; letter-spacing: -0.03em; }
 .sl-pay .apple { height: calc(50px * var(--ph)); border-radius: calc(12px * var(--ph)); background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; font-weight: 650; }
 .sl-done { margin: auto 0; display: grid; gap: calc(10px * var(--ph)); text-align: center; }

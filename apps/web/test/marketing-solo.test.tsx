@@ -8,6 +8,7 @@ import { copy } from "@/copy/en-CA";
 import { SOLO_COMPETITORS, SOLO_ROWS } from "@/lib/marketing/competitors-solo";
 import { signupPrefill } from "@/lib/marketing/signupPrefill";
 import { NAIL_TRADES, SOLO_PHOTOS, nailTrade } from "@/lib/marketing/solo";
+import { landingVariant, variantIds } from "@/lib/marketing/landing-variants";
 import { soloView } from "@/lib/marketing/solo-view";
 import { formatAsOf } from "@/lib/marketing/sources";
 import { moneyShort } from "@/lib/marketing/text";
@@ -40,7 +41,9 @@ describe("price block", () => {
     expect(v.price.plans.map((p) => p.price)).toEqual([moneyShort(0), moneyShort(PLANS.plus.priceCents), moneyShort(PLANS.plus.annualPriceCents)]);
     expect(v.price.plans[1]!.what).toContain(`${PROMOS_PER_MONTH_PLUS} promos a month`);
     expect(v.price.plans[1]!.what).toContain(PLANS.plus.smsPerMonth.toLocaleString("en-CA"));
-    expect(v.price.note).toContain(`${FEES.depositInvoiceBps / 100}% on deposits`);
+    expect(v.price.note).toContain(`${FEES.depositInvoiceBps / 100}% plus card processing`);
+    expect(v.price.plans.map((p) => p.name)).toEqual(["Free", "Pro", "Pro, yearly"]);
+    expect(PLANS.plus.name).toBe("Pro");
     expect(v.hero.price).toBe(`${moneyShort(0)} to start, then ${moneyShort(PLANS.plus.priceCents)} a month`);
   });
 });
@@ -75,7 +78,7 @@ describe("landing v2", () => {
       expect(page).toContain(`name="trade" checked="" value="${trade}"`);
     }
     const barber = html("barber");
-    expect(barber).toContain("No per-chair");
+    expect(barber).toContain("One link for");
     expect(barber).toContain('data-trade="barber"');
     expect(barber).toContain("/marketing/barber-hero-900.avif");
     const groom = html("groom");
@@ -98,6 +101,32 @@ describe("landing v2", () => {
     expect(imgs.filter((i) => /loading="eager"/.test(i))).toHaveLength(2);
     expect((page.match(/<source type="image\/avif"/g) ?? []).length).toBe((page.match(/<source type="image\/webp"/g) ?? []).length);
     expect(page).toMatch(/<link rel="preload" as="image"[^>]*imageSrcSet="\/marketing\/nails-red-800.avif 800w"/);
+  });
+});
+
+describe("deposits are optional, not the lead", () => {
+  it("keeps deposits out of the hero copy, the trust row and the facts, and shows them only as an option", () => {
+    for (const [id, trade] of [["nail", "nails"], ["nail", "brows"], ["nail", "lashes"], ["nail", "makeup"], ["barber", undefined], ["groom", undefined]] as const) {
+      const v = soloView(id, trade);
+      expect(JSON.stringify([v.hero.eyebrow, v.hero.hook, v.hero.lede, v.hero.cta, v.hero.trust, v.facts])).not.toMatch(/deposit/i);
+      expect(v.jobs.map((j) => j.id)).toEqual(["book", "remind", "regulars"]);
+    }
+    const page = renderToStaticMarkup(<SoloLanding id="nail" />);
+    expect(page).toContain("Deposits are optional");
+    expect(page).toContain("Optional deposits, if you want them.");
+  });
+});
+
+describe("A/B variants", () => {
+  it("renders control by default, swaps the hero and the job order for another variant, and falls back to control", () => {
+    expect(variantIds("nails")[0]).toBe("control");
+    for (const k of ["nails", "brows", "lashes", "makeup", "barber", "groom"] as const) expect(landingVariant(k).id).toBe("control");
+    const price = renderToStaticMarkup(<SoloLanding id="barber" variant="price" />);
+    expect(price).toContain('data-variant="price"');
+    expect(price).toContain("No per-chair");
+    expect([...price.matchAll(/data-job="(\w+)"/g)].map((m) => m[1])).toEqual(["book", "regulars", "remind"]);
+    expect(landingVariant("nails", "nope").id).toBe("control");
+    expect(renderToStaticMarkup(<SoloLanding id="nail" />)).toContain('data-variant="control"');
   });
 });
 

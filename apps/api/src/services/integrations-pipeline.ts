@@ -220,7 +220,7 @@ async function afterAward(ctx: AppContext, merchantId: string, provider: string,
   await notifyPassUpdate(ctx, r.member.userId);
 }
 
-export const POS_PAUSED_MESSAGE = "POS auto-award is paused: it's a Café & Retail feature that isn't enabled for this business";
+export const POS_PAUSED_MESSAGE = "POS auto-award is paused: it's a Pro feature that isn't enabled for this business";
 
 export async function applyPosPurchase(ctx: AppContext, integ: Integration, p: PurchaseEvent, eventRowId: string): Promise<OutcomeRow> {
   const provider = integ.provider as PosProviderId;

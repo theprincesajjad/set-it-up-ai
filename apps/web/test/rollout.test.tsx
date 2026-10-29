@@ -30,8 +30,8 @@ describe("rollout control rules", () => {
   });
 
   it("explains the effect in plain words", () => {
-    expect(stageEffect(feat({}), "beta")).toMatch(/shops on Café & Retail who turned on early access/);
-    expect(stageEffect(feat({}), "ga")).toMatch(/Café & Retail plan becomes purchasable/);
+    expect(stageEffect(feat({}), "beta")).toMatch(/shops on Pro who turned on early access/);
+    expect(stageEffect(feat({}), "ga")).toMatch(/Pro plan becomes purchasable/);
   });
 
   it("colours gauges by share of target (low < 40%, building, ready >= 100%)", () => {

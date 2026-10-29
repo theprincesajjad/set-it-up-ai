@@ -36,7 +36,7 @@ const TABLE_GROUPS: { title: string; match: (k: FeatureKey) => boolean }[] = [
   { title: "Team", match: (k) => (k.startsWith("staff.") && k !== "staff.payouts") || k.startsWith("locations.") },
 ];
 
-/** Active shops at which the first paid features open to every shop (the lowest gate among Café & Retail features). */
+/** Active shops at which the first paid features open to every shop (the lowest gate among Pro features). */
 export const PLUS_TARGET = NETWORK_GATE_SHOPS;
 
 export const price = (id: PlanId) => (id === "free" ? "$0" : moneyShort(PLANS[id].priceCents));
@@ -104,7 +104,7 @@ export function FreeCard() {
 }
 
 /**
- * Café & Retail monthly (id "plus") with the §3.2 lines, or Service (id "pro") with its own highlights. Real prices in the
+ * Pro monthly (id "plus") with the §3.2 lines, or Service (id "pro") with its own highlights. Real prices in the
  * normal text colour; the Start button goes to signup with the plan.
  */
 export function PaidCard({ id }: { id: "plus" | "pro" }) {
@@ -130,7 +130,7 @@ export function PaidCard({ id }: { id: "plus" | "pro" }) {
           {`Start ${plan.name}`}
         </Button>
         <div className="mt-8">
-          <h3 className="text-meta-strong text-muted-foreground">{id === "plus" ? "Everything in Free, plus" : "Everything in Café & Retail, plus"}</h3>
+          <h3 className="text-meta-strong text-muted-foreground">{id === "plus" ? "Everything in Free, plus" : "Everything in Pro, plus"}</h3>
           <ul className="mt-1">
             {id === "plus" ? S.monthly.lines.map((l) => <PlainLine key={l}>{fill(l, soloVars)}</PlainLine>) : keys.map((k) => <FeatureLine key={k} k={k} />)}
           </ul>
@@ -148,7 +148,7 @@ export function PaidCard({ id }: { id: "plus" | "pro" }) {
   );
 }
 
-/** The annual plan: Café & Retail paid yearly, plus the website (ANNUAL_INCLUDES_WEBSITE), and the founding strip when it is on. */
+/** The annual plan: Pro paid yearly, plus the website (ANNUAL_INCLUDES_WEBSITE), and the founding strip when it is on. */
 export function AnnualCard({ founding }: { founding: billingApi.FoundingSoloDto | null }) {
   const plan = PLANS.plus;
   return (
@@ -212,7 +212,7 @@ export function ServiceLine() {
   );
 }
 
-/** The §3.2 table, row for row: Free, Café & Retail monthly and the annual plan. */
+/** The §3.2 table, row for row: Free, Pro monthly and the annual plan. */
 export function SoloTable() {
   const cols = [
     { key: "free", name: PLANS.free.name, price: "$0" },

@@ -70,6 +70,13 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
   await expect(page.locator("#plans [data-plan=monthly]")).toContainText("$39");
   await expect(page.locator("#plans [data-plan=yearly]")).toContainText("$390");
   await expect(page.locator("#plans").getByRole("link", { name: /compare with Fresha/ })).toHaveAttribute("href", "/pricing#booking-apps");
+  // Deposits are optional, never the lead: not in the hero copy or the trust row; the booking flow says so on its details step.
+  await expect(page.locator(".sl-copy")).not.toContainText(/deposit/i);
+  await expect(page.locator(".sl-app").nth(2)).toContainText("Deposits are optional");
+  await expect(page.locator("#plans [data-plan=free]")).toContainText("Optional deposits, if you want them.");
+  await expect(page.locator("#plans [data-plan=monthly]")).toContainText("Pro");
+  // The three jobs, in the control order.
+  expect(await page.locator("[data-job]").evaluateAll((els) => els.map((e) => e.getAttribute("data-job")))).toEqual(["book", "remind", "regulars"]);
   // The comparison table, the FAQ and the twelve-field wizard are off the page.
   await expect(page.locator("table")).toHaveCount(0);
   await expect(page.locator("input[type=password]")).toHaveCount(0);
@@ -82,7 +89,7 @@ test("the other looks of the nail page swap the words, the photos and the sign-u
   for (const [trade, hook, chip, vertical, photo, nav] of [
     ["brows", "Stop booking in your DMs.", "Brows", "brows_lashes", "brows-", "Brow techs"],
     ["lashes", "Stop booking in your DMs.", "Lashes", "brows_lashes", "lashes-", "Lash techs"],
-    ["makeup", "Get the deposit before the date.", "Makeup", "makeup", "lashes-", null],
+    ["makeup", "Your dates, booked for you.", "Makeup", "makeup", "lashes-", null],
   ] as const) {
     await page.goto(`/for-nail-techs?trade=${trade}`);
     await expect(page).toHaveURL(new RegExp(`/for-nail-techs\\?trade=${trade}$`));
@@ -99,9 +106,10 @@ test("the other looks of the nail page swap the words, the photos and the sign-u
   await expect(page.locator("[data-solo-trade=nails]")).toHaveCount(1);
 });
 
-test("barber page: no per-chair charge, the barber preset, and the comparison on /pricing", async ({ page }) => {
+test("barber page: one link for the shop, the barber preset, and the comparison on /pricing", async ({ page }) => {
   await page.goto("/for-barbers");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("No per-chair charge. Ever.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("One link for the whole shop.");
+  await expect(page.locator("[data-variant=control]")).toHaveCount(1);
   await expect(page.locator("[data-trade=barber]")).toHaveCount(1);
   await expect(page.locator("#start").getByRole("radio", { name: "Barber" })).toBeChecked();
   await expect(page.locator("#start").getByRole("link", { name: "Prefer the full sign-up page?" })).toHaveAttribute("href", "/signup?vertical=barber&src=barbers");

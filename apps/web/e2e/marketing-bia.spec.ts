@@ -153,7 +153,7 @@ test.describe("pricing", () => {
     const plans = (await call<{ items: { id: string; available: boolean }[] }>("GET", "/v1/public/plans")).json.items;
     expect(plans.filter((p) => p.id !== "free").every((p) => p.available)).toBe(true);
     await expect(page.locator("#shops").getByText("Early access")).toHaveCount(0);
-    await expect(page.locator("#shops").getByRole("link", { name: "Start Café & Retail" })).toHaveAttribute("href", "/signup?plan=plus");
+    await expect(page.locator("#shops").getByRole("link", { name: "Start Pro" })).toHaveAttribute("href", "/signup?plan=plus");
     await expect(page.locator("#shops").getByRole("link", { name: "Start Service" })).toHaveAttribute("href", "/signup?plan=pro");
     await expect(page.locator("#trades")).toContainText("Pharmacies");
     await expect(page.getByTestId("compare")).not.toHaveAttribute("open", "");

@@ -87,7 +87,7 @@ const book = (c: Awaited<ReturnType<typeof member>>, sessionId: string, body: Re
 const mine = async (c: Awaited<ReturnType<typeof member>>) => (await call(env, c.token, "GET", "/v1/me/classes")).body;
 
 describe("classes: pricing and gating", () => {
-  it("sits in Café & Retail, live at launch (trade tools self-serve), never free; online money carries the 1% class fee", () => {
+  it("sits in Pro, live at launch (trade tools self-serve), never free; online money carries the 1% class fee", () => {
     for (const k of ["booking.classes", "memberships.recurring"] as const) {
       expect(FEATURES[k].minPlan).toBe("plus");
       expect(FEATURES[k].defaultStage).toBe("ga");

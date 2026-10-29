@@ -1475,7 +1475,7 @@ export const rebookingNudges = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Appointments (Café & Retail: booking.appointments): salons, barbers, nails, threading, henna, bridal
+// Appointments (Pro: booking.appointments): salons, barbers, nails, threading, henna, bridal
 // ---------------------------------------------------------------------------
 /** A price-list entry. Backs appointment services (kind "appointment") and any shop's canned lines (kind "repair_line"). */
 export const services = pgTable(

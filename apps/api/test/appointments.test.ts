@@ -66,7 +66,7 @@ const staffBooking = (s: Salon, staffId: string, start: string, services: string
 describe("gating and price list", () => {
   it("is free for one calendar, unlimited on Plus; repair price list rides service.tickets", async () => {
     const free = await salon({ plan: "free" });
-    // A Free shop creates services and gets one bookable calendar; the second is refused with the Café & Retail offer.
+    // A Free shop creates services and gets one bookable calendar; the second is refused with the Pro offer.
     expect(free.cut.id).toBeTruthy();
     expect((await call(env, free.ownerToken, "GET", `${free.base}/services`)).body.items).toHaveLength(4);
     expect((await call(env, null, "GET", `/v1/public/shops/${free.merchant.slug}/services`)).status).toBe(200);

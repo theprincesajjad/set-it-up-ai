@@ -1,5 +1,5 @@
 /**
- * API contract for appointments (Café & Retail, feature `booking.appointments`): services and prices,
+ * API contract for appointments (Pro, feature `booking.appointments`): services and prices,
  * staff hours and time off, the day calendar, computed availability, online booking with a deposit or a
  * card on file, checkout with a tip, and the no-show policy.
  * Routes: apps/api/src/routes/appointments. Docs: docs/engineering/api/appointments.md.

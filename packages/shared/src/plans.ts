@@ -8,7 +8,7 @@
  *     wallet pass, the customer directory and basic reports. No fee on loyalty,
  *     unlimited members. (Unlimited staff and locations are kept free per the
  *     founder's earlier instruction; whether they stay free is an open question.)
- *  2. Everything else is on Café & Retail ($39), Service ($99) or the restaurant pack. Trade tools
+ *  2. Everything else is on Pro ($39), Service ($99) or the restaurant pack. Trade tools
  *     ship "ga": a new shop subscribes and uses them at once (founder decision 2026-10-27).
  *     Only network-wide extras (FeatureDef.networkGated: sponsored promos and listings, map pins,
  *     BIA campaigns, nearby push) ship "hidden" until the network has 100 shops; an admin
@@ -55,7 +55,7 @@ export const PLANS: Record<PlanId, Plan> = {
   },
   plus: {
     id: "plus",
-    name: "Café & Retail",
+    name: "Pro",
     priceCents: 3900,
     annualPriceCents: 39000,
     blurb: "Unlimited bookable calendars, 4 promos a month to your regulars, rebooking nudges, VIP levels, email and text marketing, POS auto-award, customer exports, order-ahead, and class schedules with packs and memberships.",
@@ -67,7 +67,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Service",
     priceCents: 9900,
     annualPriceCents: 99000,
-    blurb: "Everything in Café & Retail, plus service tickets, quote approvals, deposits, invoices and scheduling.",
+    blurb: "Everything in Pro, plus service tickets, quote approvals, deposits, invoices and scheduling.",
     bestFor: ["Repair", "Auto", "Alterations", "Print shops"],
     smsPerMonth: 1500,
   },
@@ -81,7 +81,7 @@ export const PLATFORM_PAYMENT_FEE_BPS = 100;
 
 // ---------------------------------------------------------------------------
 // Restaurant pack (docs/business/combined-strategy.md): a separate ladder for
-// restaurants. Any tier includes Café & Retail; Growth adds tiffin, catering,
+// restaurants. Any tier includes Pro; Growth adds tiffin, catering,
 // pot pre-orders, festival campaigns and WhatsApp; Pro adds banquet, kitchen
 // display, multilingual staff screens and the rest.
 // ---------------------------------------------------------------------------
@@ -246,24 +246,24 @@ export const FEATURE_KEYS = [
   "booking.pickup_slots",
   "booking.appointments",
   "service.rebooking",
-  // Built-in website builder (workstream G): Café & Retail on the annual plan only (FeatureDef.requiresAnnual).
+  // Built-in website builder (workstream G): Pro on the annual plan only (FeatureDef.requiresAnnual).
   "site.builder",
-  // Yoga, pilates, boxing, dance and women-only studios (docs/research/fitness-studios.md): sold inside Café & Retail, no pack.
+  // Yoga, pilates, boxing, dance and women-only studios (docs/research/fitness-studios.md): sold inside Pro, no pack.
   "booking.classes",
   "booking.walkin_queue",
   "staff.payouts",
   "memberships.recurring",
-  // Grocers and halal butchers (docs/research/grocers.md): sold inside Café & Retail, no pack.
+  // Grocers and halal butchers (docs/research/grocers.md): sold inside Pro, no pack.
   "grocery.flyer",
   "grocery.counter_preorders",
   "grocery.pantry_reminders",
   "grocery.whatsapp_orders",
-  // Groomers, dog daycare and pet food stores (docs/research/pet-care.md): sold inside Café & Retail, no pack.
+  // Groomers, dog daycare and pet food stores (docs/research/pet-care.md): sold inside Pro, no pack.
   "pets.profiles",
   "pets.daycare",
   "pets.food_cards",
   "pets.report_cards",
-  // Car washes, garages and tire shops (docs/research/auto-care.md): sold inside Café & Retail, no pack. Estimates ride the Pro service tickets.
+  // Car washes, garages and tire shops (docs/research/auto-care.md): sold inside Pro, no pack. Estimates ride the Pro service tickets.
   "auto.vehicles",
   "auto.tires",
   "auto.wash",
@@ -388,8 +388,8 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
     f("payments.in_app", "In-app payments", "Card payments via Stripe. No platform fee on online orders; 1% on deposits and invoices.", "plus", 2, 100),
     f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
-    // Free for one bookable calendar (FREE_BOOKABLE_CALENDARS, solo-pro-launch.md §3.1); unlimited calendars on Café & Retail. Not FREE_FOREVER (phase 2): the calendar cap is its only gate.
-    { ...f("booking.appointments", "Appointments", "Calendar, services and prices, online booking, deposits, reminders and no-show protection. One bookable calendar on Free, unlimited on Café & Retail.", "free", 2), freeForVerticals: ["pharmacy"] as const },
+    // Free for one bookable calendar (FREE_BOOKABLE_CALENDARS, solo-pro-launch.md §3.1); unlimited calendars on Pro. Not FREE_FOREVER (phase 2): the calendar cap is its only gate.
+    { ...f("booking.appointments", "Appointments", "Calendar, services and prices, online booking, deposits, reminders and no-show protection. One bookable calendar on Free, unlimited on Pro.", "free", 2), freeForVerticals: ["pharmacy"] as const },
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
     { ...f("site.builder", "Website", "A website built from your bookings, services, prices, loyalty, promos, reviews and map pin, with AI copy, hosting and one .ca domain. Included with the annual plan.", "plus", 2), requiresAnnual: true },
     f("booking.classes", "Classes", "Class schedule with capacity and waitlist, drop-ins, class packs and intro offers, late-cancel fees and door check-in for yoga, pilates, boxing, dance and women-only studios.", "plus", 2, 100),
@@ -505,7 +505,7 @@ function unlockedByAddOn(key: FeatureKey, ctx: FeatureContext): boolean {
   return ctx.addOns.some((id) => ADD_ON_UNLOCKS[id as AddOnId]?.includes(key));
 }
 
-/** Any restaurant tier includes everything in Café & Retail (ordering, promos, marketing, POS sync). */
+/** Any restaurant tier includes everything in Pro (ordering, promos, marketing, POS sync). */
 export function effectivePlan(plan: PlanId, restaurantTier?: RestaurantTier | null): PlanId {
   return restaurantTier && PLAN_RANK[plan] < PLAN_RANK.plus ? "plus" : plan;
 }
@@ -560,7 +560,7 @@ export const FREE_REMINDER_SMS_PER_MONTH = PLANS.free.smsPerMonth;
 /** Paid plans: each text over the monthly allowance, in cents (CAD). Free never goes over; it falls back to email. */
 export const SMS_OVERAGE_CENTS = 4;
 
-/** Promos to your regulars (app push and email, no texts) on Café & Retail monthly; unused promos do not roll over. */
+/** Promos to your regulars (app push and email, no texts) on Pro monthly; unused promos do not roll over. */
 export const PROMOS_PER_MONTH_PLUS = 4;
 /** Promos on the annual plan, used whenever the shop likes within the subscription year. */
 export const PROMOS_PER_YEAR_ANNUAL = 48;
@@ -590,7 +590,7 @@ export interface PromoAllowance {
   limit: number;
   used: number;
   remaining: number;
-  /** "month" (Café & Retail monthly), "year" (annual) or null (Free, no promos). */
+  /** "month" (Pro monthly), "year" (annual) or null (Free, no promos). */
   period: BillingInterval | null;
   periodStart: string;
 }
@@ -644,7 +644,7 @@ export function foundingSoloSpotsLeft(taken: number, cfg: FoundingSoloConfig = F
   return cfg.enabled ? Math.max(0, cfg.slots - Math.max(0, taken)) : 0;
 }
 
-/** Can this shop take the founding price on an annual Café & Retail checkout? */
+/** Can this shop take the founding price on an annual Pro checkout? */
 export function isFoundingSoloEligible(
   m: { vertical: string | null | undefined; foundingSolo?: boolean },
   taken: number,

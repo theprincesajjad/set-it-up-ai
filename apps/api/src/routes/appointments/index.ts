@@ -1,5 +1,5 @@
 /**
- * Appointments (Café & Retail: booking.appointments): services and prices, staff hours and time off, the
+ * Appointments (Pro: booking.appointments): services and prices, staff hours and time off, the
  * calendar, walk-ins, checkout with a tip, online booking with a deposit or card on file, reminders.
  * Contract: @ll/shared appointmentsApi. Docs: docs/engineering/api/appointments.md.
  */

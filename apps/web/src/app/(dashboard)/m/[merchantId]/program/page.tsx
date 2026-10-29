@@ -319,7 +319,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
           ) : (
             <section id="bonuses" className="rounded-card bg-bg-subtle px-6 py-5" aria-labelledby="more-h">
               <h2 id="more-h" className="text-[15px] font-semibold text-fg">More ways to earn</h2>
-              <p className="mt-2 text-[14px] text-fg-muted">Birthday treat, refer a friend and VIP levels come with Café &amp; Retail. They show up here once you subscribe.</p>
+              <p className="mt-2 text-[14px] text-fg-muted">Birthday treat, refer a friend and VIP levels come with Pro. They show up here once you subscribe.</p>
               <p className="mt-2 text-[14px] text-fg">
                 <NotifyLink keys={["loyalty.birthday_bonus", "loyalty.referrals", "loyalty.vip_levels"]} className="text-[14px] no-underline" /> when they are ready
               </p>

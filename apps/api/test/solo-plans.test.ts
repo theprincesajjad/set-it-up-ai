@@ -52,9 +52,9 @@ describe("one free bookable calendar with deposits", () => {
     const second = await staffMember(env, m.merchant.id, "staff");
     const refused = await call(env, m.ownerToken, "PUT", `${base}/staff/${second.user.id}/hours`, { days: MON_SAT });
     expect(refused.status).toBe(402);
-    expect(refused.body.error).toMatchObject({ code: "plan_limit", details: { limit: "bookable_calendars", max: 1, offer: { kind: "plan", plan: "plus", name: "Café & Retail" } } });
+    expect(refused.body.error).toMatchObject({ code: "plan_limit", details: { limit: "bookable_calendars", max: 1, offer: { kind: "plan", plan: "plus", name: "Pro" } } });
 
-    // Café & Retail lifts the cap.
+    // Pro lifts the cap.
     await env.db.update(merchants).set({ plan: "plus" }).where(eq(merchants.id, m.merchant.id));
     expect((await call(env, m.ownerToken, "PUT", `${base}/staff/${second.user.id}/hours`, { days: MON_SAT })).status).toBe(200);
     const usage = await call(env, m.ownerToken, "GET", `${base}/billing/usage`);
@@ -105,7 +105,7 @@ describe("texts", () => {
 });
 
 describe("promo allowance", () => {
-  it("none on Free, 4 a month on Café & Retail, reset with the billing period", async () => {
+  it("none on Free, 4 a month on Pro, reset with the billing period", async () => {
     const { merchant } = await createMerchant(env);
     await expect(consumePromo(env.ctx, await row(merchant.id))).rejects.toMatchObject({ statusCode: 402, code: "feature_locked" });
 

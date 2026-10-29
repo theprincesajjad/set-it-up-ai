@@ -1,5 +1,5 @@
 /**
- * Appointments (booking.appointments: free for one bookable calendar, unlimited on Café & Retail): the price list, staff hours and time off, computed
+ * Appointments (booking.appointments: free for one bookable calendar, unlimited on Pro): the price list, staff hours and time off, computed
  * availability, and the staff side of the calendar (create, move, resize, status, walk-ins).
  * Customer booking, payments and jobs live in appointments-booking.ts; checkout in appointments-checkout.ts.
  *

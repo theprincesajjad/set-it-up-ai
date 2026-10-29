@@ -96,9 +96,6 @@ export function soloKey(id: SoloPageId, trade: NailTrade = "nails"): SoloKey {
   return id === "nail" ? trade : id;
 }
 
-/** The sample deposit everywhere on the page ($20): the free plan's default ask. */
-export const SAMPLE_DEPOSIT_CENTS = 2000;
-
 /** Which three of SAMPLE_SERVICES the phone and the demos show; the second one is the service booked through the page (the DM asks for it). */
 export const SHOWN_SERVICES: Record<SoloKey, [number, number, number]> = { nails: [0, 1, 3], brows: [1, 0, 2], lashes: [0, 1, 2], makeup: [0, 1, 2], barber: [0, 1, 2], groom: [2, 0, 3] };
 

@@ -105,7 +105,7 @@ const PLAYBOOKS: Record<PlaybookKey, Playbook> = {
     tactic: "Stamp before they pay so they see it work, and keep the QR stand next to the card machine.",
     tips: ["Stamp before the customer taps their card.", "Put the QR stand next to the card machine, not behind the till.", "Tell regulars first. They tell the line."],
     firstStampHint: "Stamp your own coffee or pastry. It takes ten seconds.",
-    upsell: { plan: "plus", headline: "bring them back on a slow day", body: "Café & Retail adds promos for slow hours, texts to regulars who have gone quiet and POS auto-award." },
+    upsell: { plan: "plus", headline: "bring them back on a slow day", body: "Pro adds promos for slow hours, texts to regulars who have gone quiet and POS auto-award." },
   },
   restaurant: {
     key: "restaurant",
@@ -165,7 +165,7 @@ const PLAYBOOKS: Record<PlaybookKey, Playbook> = {
     tactic: "Add a line to the receipt and put the QR stand at the till. Every sale is a chance to join.",
     tips: ["Ask at the till, every time, for two weeks.", "Put the QR stand where people wait.", "Give a welcome bonus so the first purchase pays off."],
     firstStampHint: "Ring a small sale for yourself and add the points.",
-    upsell: { plan: "plus", headline: "sell more to people who already shop with you", body: "Café & Retail adds promos, birthday bonuses and texts to members who have not been in for a while." },
+    upsell: { plan: "plus", headline: "sell more to people who already shop with you", body: "Pro adds promos, birthday bonuses and texts to members who have not been in for a while." },
   },
   pharmacy: {
     key: "pharmacy",
@@ -175,7 +175,7 @@ const PLAYBOOKS: Record<PlaybookKey, Playbook> = {
     tactic: "Front-store items only: prescriptions never earn points. Ask at the front till and mention the discount card for seniors.",
     tips: ["Prescriptions and dispensing fees never earn points. The template already blocks them.", "Ask at the front-store till only.", "Put the QR stand where the line forms."],
     firstStampHint: "Buy something small from the front store and add the points.",
-    upsell: { plan: "plus", headline: "keep front-store customers coming back", body: "Café & Retail adds promos and texts for front-store regulars." },
+    upsell: { plan: "plus", headline: "keep front-store customers coming back", body: "Pro adds promos and texts for front-store regulars." },
   },
   salon: {
     key: "salon",
@@ -185,7 +185,7 @@ const PLAYBOOKS: Record<PlaybookKey, Playbook> = {
     tactic: "Ask at checkout while they have the phone out, and rebook right there.",
     tips: ["Ask at checkout, not at the chair.", "Rebook before they leave.", "Put the QR on the mirror card."],
     firstStampHint: "Stamp your next haircut or give yourself a visit.",
-    upsell: { plan: "plus", headline: "fill your calendar", body: "Café & Retail adds online booking and rebooking texts so empty slots fill themselves." },
+    upsell: { plan: "plus", headline: "fill your calendar", body: "Pro adds online booking and rebooking texts so empty slots fill themselves." },
   },
   repair: {
     key: "repair",
@@ -205,7 +205,7 @@ const PLAYBOOKS: Record<PlaybookKey, Playbook> = {
     tactic: "Ask every customer for two weeks and keep the QR stand next to the till.",
     tips: ["Ask every customer for the first two weeks.", "Keep the QR stand where people pay.", "Stamp before they pay so they see it work."],
     firstStampHint: "Add a stamp or points for yourself.",
-    upsell: { plan: "plus", headline: "do more with the members you have", body: "Café & Retail adds promos, texts and email to your members." },
+    upsell: { plan: "plus", headline: "do more with the members you have", body: "Pro adds promos, texts and email to your members." },
   },
 };
 

@@ -11,7 +11,7 @@ export interface LockedFeatureProps {
   title: string;
   /** One line: what it does + why it isn't here yet. */
   description: ReactNode;
-  /** hidden → "Coming soon"; beta → "In beta"; plan → "Available on Café & Retail · $39/mo". */
+  /** hidden → "Coming soon"; beta → "In beta"; plan → "Available on Pro · $39/mo". */
   state?: "hidden" | "beta" | "plan";
   planLabel?: string;
   network?: { current: number; target: number } | null;

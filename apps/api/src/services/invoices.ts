@@ -48,7 +48,7 @@ export function invoiceDto(i: Invoice, publicWebUrl: string): serviceApi.Invoice
   };
 }
 
-/** Catering / hall balance invoices ride the restaurant pack, and appointment checkouts ride booking.appointments (Café & Retail), not the Pro service plan. */
+/** Catering / hall balance invoices ride the restaurant pack, and appointment checkouts ride booking.appointments (the Pro plan, id plus), not the Service plan (id pro). */
 export function invoiceFeature(inv: Pick<Invoice, "cateringEventId" | "hallBookingId"> & { appointmentId?: string | null }): FeatureKey {
   return inv.cateringEventId ? "restaurant.catering" : inv.hallBookingId ? "restaurant.banquet" : inv.appointmentId ? "booking.appointments" : "service.invoices";
 }

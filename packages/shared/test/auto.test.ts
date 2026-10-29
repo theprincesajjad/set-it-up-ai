@@ -145,7 +145,7 @@ describe("plates and plans", () => {
     expect(normalizePlate("ABCDEFGHIJ")).toBeNull();
     expect(normalizePlate(null)).toBeNull();
   });
-  it("features are Café & Retail ($39) for their trade and never free", () => {
+  it("features are Pro ($39) for their trade and never free", () => {
     for (const k of ["auto.vehicles", "auto.tires", "auto.wash"] as const) {
       expect(FEATURES[k]).toMatchObject({ minPlan: "plus", defaultStage: "ga" });
       expect(FREE_FOREVER).not.toContain(k);

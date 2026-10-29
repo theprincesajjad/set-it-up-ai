@@ -127,7 +127,7 @@ export async function startCheckout(ctx: AppContext, merchant: Merchant, body: z
   if (live && !live.cancelAtPeriodEnd) throw conflict(`You're already on ${PLANS[live.plan].name}. Use Manage billing to change plans.`);
   const customerId = await ensureCustomer(ctx, merchant);
   const p = PLANS[body.plan];
-  // Founding solo price: an annual Café & Retail checkout for a beauty pro or barbershop while spots last. The coupon takes the
+  // Founding solo price: an annual Pro checkout for a beauty pro or barbershop while spots last. The coupon takes the
   // first annual invoice down to the founding price; it renews at the list price.
   const founding = body.plan === "plus" && body.interval === "year" ? await foundingSoloFor(ctx, merchant) : null;
   const foundingOn = !!founding?.eligible && p.annualPriceCents > founding.priceCents;
@@ -322,7 +322,7 @@ export function billingPeriodStart(now: Date, sub: Pick<Subscription, "interval"
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }
 
-/** The shop's promo allowance this billing period (4 a month on Café & Retail, 48 a year on annual, none on Free). */
+/** The shop's promo allowance this billing period (4 a month on Pro, 48 a year on annual, none on Free). */
 export async function promoAllowanceFor(ctx: AppContext, merchant: Merchant, sub?: Subscription | null): Promise<PromoAllowance> {
   const live = sub === undefined ? await currentSubscription(ctx, merchant.id) : sub;
   return promoAllowance({

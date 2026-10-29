@@ -28,7 +28,7 @@ const visits = (m: Shop) => csv(m, "activity/export.csv");
 const window = (m: { merchant: { id: string }; ownerToken: string }) => call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/customers/export-window`);
 
 describe("CSV export after leaving (merchant agreement 2.1)", () => {
-  it("a Free shop that has not left still needs Café & Retail for the CSV", async () => {
+  it("a Free shop that has not left still needs Pro for the CSV", async () => {
     const m = await paidMerchant(env, { plan: "free", connect: false });
     expect((await members(m)).status).toBe(402);
     expect((await visits(m)).status).toBe(402);
