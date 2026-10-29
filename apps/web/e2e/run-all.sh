@@ -97,6 +97,9 @@ else
   export DATABASE_URL="pglite://$DB_DIR/pg"
 fi
 export PUBLIC_API_URL="$API_URL" PUBLIC_WEB_URL="$WEB_URL"
+# Landing A/B clock (packages/shared/src/experiments.ts): pinned before any test starts, so every landing spec sees control and
+# no random arm. e2e/landing-ab.spec.ts moves it per request with the x-ll-experiments-now header (EXPERIMENTS_TEST_CLOCK=1).
+export EXPERIMENTS_NOW="${EXPERIMENTS_NOW:-2026-01-01T00:00:00Z}"
 
 echo "==> seeding a fresh database ($DATABASE_URL)"
 pnpm --filter @ll/api seed > "$LOG_DIR/seed.log" 2>&1
@@ -112,7 +115,7 @@ if [ -z "${SKIP_BUILD:-}" ]; then
 fi
 
 echo "==> starting the web app on $WEB_URL"
-(cd apps/web && NEXT_DIST_DIR="$DIST" NEXT_PUBLIC_API_URL="$API_URL" API_INTERNAL_URL="$API_URL" NEXT_PUBLIC_SITE_URL="$WEB_URL" OTP_AUTOFILL=1 PORT="$WEB_PORT" npx next start --port "$WEB_PORT" > "$LOG_DIR/web.log" 2>&1 & echo $! > "$LOG_DIR/web.pid")
+(cd apps/web && NEXT_DIST_DIR="$DIST" NEXT_PUBLIC_API_URL="$API_URL" API_INTERNAL_URL="$API_URL" NEXT_PUBLIC_SITE_URL="$WEB_URL" OTP_AUTOFILL=1 EXPERIMENTS_TEST_CLOCK=1 PORT="$WEB_PORT" npx next start --port "$WEB_PORT" > "$LOG_DIR/web.log" 2>&1 & echo $! > "$LOG_DIR/web.pid")
 PIDS+=("$(cat "$LOG_DIR/web.pid")")
 wait_for "$WEB_URL/" "the web app" 120
 

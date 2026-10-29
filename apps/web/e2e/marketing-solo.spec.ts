@@ -138,7 +138,7 @@ test("groomer page and home chips", async ({ page }) => {
     await expect(page.getByRole("navigation", { name: "Booking for" }).getByRole("link", { name })).toHaveAttribute("href", href);
 });
 
-test("the variant preview (?v=) renders the researched challengers, and an unknown id shows control", async ({ page }) => {
+test("an ad URL's ?v= renders the researched challengers (no test running: any variant of the look), and an unknown id falls back", async ({ page }) => {
   for (const [url, variant, hook, jobs] of [
     ["/for-nail-techs?v=yours", "yours", "Your clients stay yours.", ["book", "yours", "noshow"]],
     ["/for-nail-techs?trade=brows&v=privacy", "privacy", "Clients see your area, not your door.", ["private", "book", "noshow"]],
@@ -149,8 +149,13 @@ test("the variant preview (?v=) renders the researched challengers, and an unkno
     await expect(page.locator(`[data-variant=${variant}]`)).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(hook);
     expect(await page.locator("[data-job]").evaluateAll((els) => els.map((e) => e.getAttribute("data-job")))).toEqual([...jobs]);
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    // One page, many versions: the canonical is always the bare URL (the internal variant path is noindexed by the proxy).
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`${url.split("?")[0]}${url.includes("trade=") ? "\\?trade=brows" : ""}$`));
   }
+  // An unknown id falls back to the cookie (the ?v= above stuck), and with no cookie to control.
+  await page.goto("/for-nail-techs?v=nope");
+  await expect(page.locator("[data-variant=yours]")).toHaveCount(1);
+  await page.context().clearCookies();
   await page.goto("/for-nail-techs?v=nope");
   await expect(page.locator("[data-variant=control]")).toHaveCount(1);
 });
