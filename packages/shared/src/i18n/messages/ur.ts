@@ -1119,6 +1119,7 @@ export const ur: Messages = {
   "bk.shop.bookSub": "اسٹائلسٹ، خدمات اور وقت چنیں۔",
   "bk.title": "بکنگ کریں",
   "bk.intro": "{shop}۔ کرسی خالی ہو تو سیدھا آنا بھی ٹھیک ہے۔",
+  "bk.introPrivate": "{shop}۔ صرف اپائنٹمنٹ پر۔",
   "bk.anyone": "کوئی بھی",
   "bk.all": "سب",
   "bk.dur.min": "{n} منٹ",

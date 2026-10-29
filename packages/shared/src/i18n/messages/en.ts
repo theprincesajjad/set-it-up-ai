@@ -1123,6 +1123,7 @@ export const en = {
   "bk.shop.bookSub": "Pick a stylist, services and a time.",
   "bk.title": "Book a visit",
   "bk.intro": "{shop}. Walk-ins welcome when a chair is free.",
+  "bk.introPrivate": "{shop}. By appointment only.",
   "bk.anyone": "Anyone",
   "bk.all": "All",
   "bk.dur.min": "{n} min",

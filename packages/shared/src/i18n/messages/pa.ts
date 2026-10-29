@@ -1119,6 +1119,7 @@ export const pa: Messages = {
   "bk.shop.bookSub": "ਸਟਾਈਲਿਸਟ, ਸੇਵਾਵਾਂ ਅਤੇ ਸਮਾਂ ਚੁਣੋ।",
   "bk.title": "ਬੁਕਿੰਗ ਕਰੋ",
   "bk.intro": "{shop}। ਕੁਰਸੀ ਖਾਲੀ ਹੋਵੇ ਤਾਂ ਸਿੱਧਾ ਆਉਣ ਦਾ ਵੀ ਸੁਆਗਤ ਹੈ।",
+  "bk.introPrivate": "{shop}। ਸਿਰਫ਼ ਅਪੌਇੰਟਮੈਂਟ ਨਾਲ।",
   "bk.anyone": "ਕੋਈ ਵੀ",
   "bk.all": "ਸਭ",
   "bk.dur.min": "{n} ਮਿੰਟ",

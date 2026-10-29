@@ -1119,6 +1119,7 @@ export const hi: Messages = {
   "bk.shop.bookSub": "स्टाइलिस्ट, सेवाएँ और समय चुनें।",
   "bk.title": "बुकिंग करें",
   "bk.intro": "{shop}। कुर्सी खाली होने पर सीधे आना भी ठीक है।",
+  "bk.introPrivate": "{shop}। सिर्फ़ अपॉइंटमेंट से।",
   "bk.anyone": "कोई भी",
   "bk.all": "सभी",
   "bk.dur.min": "{n} मिनट",

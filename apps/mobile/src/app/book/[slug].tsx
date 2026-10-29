@@ -234,7 +234,7 @@ export default function Book() {
     <Screen
       back
       title={t("bk.title")}
-      subtitle={t("bk.intro", { shop: [data.shop.name, data.shop.address].filter(Boolean).join(", ") })}
+      subtitle={data.shop.addressVisibility && data.shop.addressVisibility !== "exact" ? t("bk.introPrivate", { shop: data.shop.name }) : t("bk.intro", { shop: [data.shop.name, data.shop.address].filter(Boolean).join(", ") })}
       footer={
         <View style={{ gap: 8 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>

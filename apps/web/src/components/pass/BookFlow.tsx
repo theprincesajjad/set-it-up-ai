@@ -371,7 +371,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       {head}
       <div className="flex flex-col gap-2">
         <Heading>{t(pharmacy ? "rx.book.title" : "bk.title")}</Heading>
-        <p className="text-body text-fg-muted">{t("bk.intro", { shop: [shop.name, data.shop.address].filter(Boolean).join(", ") })}</p>
+        <p className="text-body text-fg-muted">{data.shop.addressVisibility && data.shop.addressVisibility !== "exact" ? t("bk.introPrivate", { shop: shop.name }) : t("bk.intro", { shop: [shop.name, data.shop.address].filter(Boolean).join(", ") })}</p>
         {/* A home studio or a pro who travels: the area, never the street, until the booking is confirmed (phase-solo B). */}
         {privateAddress ? (
           <p className="text-meta text-fg-muted" data-testid="booking-privacy">
