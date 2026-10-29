@@ -65,6 +65,8 @@
 .sl-price-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 16px; font-weight: 550; color: var(--foreground); text-decoration: none; }
 .sl-price-link u { text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 3px; }
 .sl-price-link:hover u { text-decoration-color: var(--foreground); }
+.sl-proof { font-size: 13px; color: var(--muted-foreground); margin-top: -18px; }
+.sl-demo-h { font-size: 12px; font-weight: 650; color: var(--muted-foreground); padding-inline: 4px; }
 .sl-trust { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; font-weight: 550; color: var(--muted-foreground); padding: 0; margin: 0; list-style: none; }
 .sl-trust li { display: inline-flex; align-items: center; gap: 7px; }
 .sl-trust svg, .sl-ready svg { width: 16px; height: 16px; color: var(--success); flex: none; }
@@ -190,6 +192,10 @@
 .sl-dr b { font-weight: 650; display: block; }
 .sl-dr small { color: var(--muted-foreground); display: block; }
 .sl-dr .sl-chip { margin-inline-start: auto; }
+.sl-switch { margin-inline-start: auto; display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 650; background: var(--muted); color: var(--muted-foreground); }
+.sl-switch.on { background: var(--success-soft); color: var(--success-text); }
+.sl-deps .sl-dr img { width: 28px; height: 28px; flex: none; }
+.sl-deps .sl-note { margin-top: 2px; }
 /* 3: reminders as lock-screen notifications, on a flat trade tint (no gradient) */
 .sl-lock { padding: 18px 12px 22px; border-radius: 24px; background: var(--trade-tint); display: grid; gap: 8px; align-content: start; }
 .sl-job .sl-lock { margin-bottom: -22px; border-end-start-radius: 0; border-end-end-radius: 0; padding-bottom: 30px; }

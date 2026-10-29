@@ -40,6 +40,7 @@ export function Hero({ v }: { v: SoloView }) {
               <u>{H.priceLink}</u>
             </a>
           </div>
+          <p className="sl-proof sl-rise sl-i3">{H.proof}</p>
           <ul className="sl-trust sl-rise sl-i4">
             {v.hero.trust.map((x) => (
               <li key={x}>
@@ -131,8 +132,8 @@ export function Hero({ v }: { v: SoloView }) {
                     </div>
                   ))}
                   <div className="sl-policy">
-                    <b>{H.policyTitle}</b>
-                    {H.policyBody}
+                    <b>{v.hero.policy.title}</b>
+                    {v.hero.policy.body}
                   </div>
                   <div className="sl-cta">{H.next}</div>
                 </div>

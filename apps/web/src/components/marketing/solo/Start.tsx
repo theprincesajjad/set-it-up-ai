@@ -61,6 +61,7 @@ export function Start({ v }: { v: SoloView }) {
             <Arrow />
           </button>
           <p className="sl-fine">{S.fine}</p>
+          <p className="sl-fine">{S.deposits}</p>
           <a className="sl-full" href={v.signupHref}>
             {copy.solo.fullPage}
           </a>

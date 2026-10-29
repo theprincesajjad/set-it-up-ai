@@ -76,7 +76,8 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
   await expect(page.locator("#plans [data-plan=free]")).toContainText("Optional deposits, if you want them.");
   await expect(page.locator("#plans [data-plan=monthly]")).toContainText("Pro");
   // The three jobs, in the control order.
-  expect(await page.locator("[data-job]").evaluateAll((els) => els.map((e) => e.getAttribute("data-job")))).toEqual(["book", "remind", "regulars"]);
+  expect(await page.locator("[data-job]").evaluateAll((els) => els.map((e) => e.getAttribute("data-job")))).toEqual(["book", "remind", "noshow"]);
+  await expect(page.locator("[data-job=noshow]")).toContainText("Don't? Leave it off.");
   // The comparison table, the FAQ and the twelve-field wizard are off the page.
   await expect(page.locator("table")).toHaveCount(0);
   await expect(page.locator("input[type=password]")).toHaveCount(0);
@@ -137,6 +138,23 @@ test("groomer page and home chips", async ({ page }) => {
     await expect(page.getByRole("navigation", { name: "Booking for" }).getByRole("link", { name })).toHaveAttribute("href", href);
 });
 
+test("the variant preview (?v=) renders the researched challengers, and an unknown id shows control", async ({ page }) => {
+  for (const [url, variant, hook, jobs] of [
+    ["/for-nail-techs?v=yours", "yours", "Your clients stay yours.", ["book", "yours", "noshow"]],
+    ["/for-nail-techs?trade=brows&v=privacy", "privacy", "Clients see your area, not your door.", ["private", "book", "noshow"]],
+    ["/for-barbers?v=price", "price", "No per-chair charge. Ever.", ["book", "yours", "line"]],
+    ["/for-groomers?v=yours", "yours", "Your clients stay yours.", ["book", "yours", "noshow"]],
+  ] as const) {
+    await page.goto(url);
+    await expect(page.locator(`[data-variant=${variant}]`)).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(hook);
+    expect(await page.locator("[data-job]").evaluateAll((els) => els.map((e) => e.getAttribute("data-job")))).toEqual([...jobs]);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+  }
+  await page.goto("/for-nail-techs?v=nope");
+  await expect(page.locator("[data-variant=control]")).toHaveCount(1);
+});
+
 test("the three-field start leads into the sign-up wizard, prefilled", async ({ page }) => {
   await page.goto("/for-nail-techs");
   const start = page.locator("#start");
@@ -166,7 +184,7 @@ for (const [w, h] of [[1440, 900], [390, 844]] as const) {
   test(`floating cards never cover the phone, targets are 44 px and the pages are axe-clean at ${w}`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: w, height: h });
-    for (const [path, tag] of [["/for-nail-techs", "nail"], ["/for-nail-techs?trade=brows", "brows"], ["/for-barbers", "barber"], ["/for-groomers", "groom"]] as const) {
+    for (const [path, tag] of [["/for-nail-techs", "nail"], ["/for-nail-techs?trade=brows", "brows"], ["/for-barbers", "barber"], ["/for-groomers", "groom"], ["/for-nail-techs?v=yours", "nail-yours"], ["/for-nail-techs?v=privacy", "nail-privacy"], ["/for-barbers?v=price", "barber-price"]] as const) {
       await page.goto(path);
       expect(await floatsOverScreen(page), `${path} at ${w}`).toEqual([]);
       expect(await smallTargets(page), `${path} at ${w}`).toEqual([]);

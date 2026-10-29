@@ -7,7 +7,8 @@
 import { LANDING_VARIANTS } from "@/copy/en-CA";
 import type { SoloKey } from "./solo";
 
-export type JobId = "book" | "remind" | "regulars";
+/** The job cards (copy.solo.trades.<look>.jobs). `private` is for the tech pages, `line` for barbers. */
+export type JobId = "book" | "remind" | "regulars" | "noshow" | "yours" | "private" | "line";
 
 export interface LandingVariant {
   eyebrow: string;
@@ -18,6 +19,8 @@ export interface LandingVariant {
   cta: string;
   /** The three job cards, in order. */
   jobs: readonly [JobId, JobId, JobId];
+  /** The policy card on the hero phone's time screen; the default is "Free to change". */
+  policy?: { title: string; body: string };
 }
 
 export const CONTROL = "control";

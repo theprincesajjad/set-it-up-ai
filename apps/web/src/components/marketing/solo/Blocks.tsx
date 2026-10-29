@@ -79,6 +79,75 @@ export function Jobs({ v }: { v: SoloView }) {
         </div>
       </div>
     ),
+    noshow: (
+      <div className="sl-demo sl-deps" aria-hidden>
+        <p className="sl-demo-h">{J.noshowLabel}</p>
+        {J.noshowRows.map((r, i) => (
+          <div key={r} className={`sl-dr ${n(i)}`}>
+            <div>
+              <b>{r}</b>
+            </div>
+            <span className={i === 0 ? "sl-switch on" : "sl-switch"}>{i === 0 ? J.on : J.off}</span>
+          </div>
+        ))}
+        <p className="sl-note">{J.noshowNote}</p>
+      </div>
+    ),
+    yours: (
+      <div className="sl-demo sl-deps" aria-hidden>
+        <div className="sl-sum">
+          <small>{J.yoursLabel}</small>
+          <b className="num">{J.yoursTotal}</b>
+        </div>
+        {[0, 1, 2].map((i) => (
+          <div key={P[i]} className={`sl-dr ${n(i)}`}>
+            <span className="sl-avatar">{P[i]![0]}</span>
+            <div>
+              <b>{P[i]}</b>
+              <small>{v.services[[1, 0, 2][i]!]!.name}</small>
+            </div>
+            <span className={i === 0 ? "sl-chip up" : "sl-chip"}>{J.yoursChips[i]}</span>
+          </div>
+        ))}
+      </div>
+    ),
+    private: (
+      <div className="sl-demo sl-deps" aria-hidden>
+        <div className="sl-dr">
+          <Obj name="pin_area" />
+          <div>
+            <small>{J.privateBefore}</small>
+            <b>{v.trade.area}</b>
+          </div>
+        </div>
+        <div className="sl-dr sl-n1">
+          <Obj name="home_studio" />
+          <div>
+            <small>{J.privateAfter}</small>
+            <b>{J.privateAddress}</b>
+          </div>
+          <span className="sl-chip up">{v.trade.client}</span>
+        </div>
+      </div>
+    ),
+    line: (
+      <div className="sl-demo sl-deps" aria-hidden>
+        <div className="sl-sum">
+          <small>{J.lineLabel}</small>
+          <b className="num">{J.linePlace}</b>
+          <small>{J.lineWait}</small>
+        </div>
+        {J.lineRows.map(([who, when], i) => (
+          <div key={who} className={`sl-dr ${n(i)}`}>
+            <span className="sl-avatar">{i + 1}</span>
+            <div>
+              <b>{who}</b>
+              <small>{when}</small>
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
     regulars: (
       <div className="sl-demo sl-deps" aria-hidden>
         <div className="sl-sum">

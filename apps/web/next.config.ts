@@ -43,6 +43,11 @@ const nextConfig: NextConfig = {
     return {
       // Before the filesystem: /for-nail-techs is a page of its own, so an afterFiles rewrite would never be tried.
       beforeFiles: [
+        // TEMPORARY: ?v=<variant> (ids in LANDING_VARIANTS; any other value shows the page's control) previews a landing variant (app/(landing)/lp, prerendered, noindex) until the A/B assignment is built.
+        { source: "/for-nail-techs", has: [{ type: "query", key: "trade", value: "(?<trade>brows|lashes|makeup)" }, { type: "query", key: "v", value: "(?<v>control|yours|privacy)" }], destination: "/lp/:trade/:v" },
+        { source: "/for-nail-techs", has: [{ type: "query", key: "v", value: "(?<v>control|yours|privacy)" }], destination: "/lp/nails/:v" },
+        { source: "/for-barbers", has: [{ type: "query", key: "v", value: "(?<v>control|yours|price)" }], destination: "/lp/barber/:v" },
+        { source: "/for-groomers", has: [{ type: "query", key: "v", value: "(?<v>control|yours)" }], destination: "/lp/groom/:v" },
         // The nail page's other looks (?trade=brows|lashes|makeup) are prerendered at /for-nail-techs/[trade]; the public URL keeps the query.
         { source: "/for-nail-techs", has: [{ type: "query", key: "trade", value: "(?<trade>brows|lashes|makeup)" }], destination: "/for-nail-techs/:trade" },
       ],

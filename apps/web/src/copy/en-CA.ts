@@ -468,6 +468,7 @@ export const copy = {
     hero: {
       price: "{free} to start, then {monthly} a month",
       priceLink: "See prices",
+      proof: "Prices in CAD. Made in Toronto.",
       trust: ["One link for your bio", "No app for your clients", "Your address stays private"],
       stageLabel: "The booking flow, as a client sees it",
       steps: ["Pick", "Time", "Details", "Booked"],
@@ -518,6 +519,21 @@ export const copy = {
       regularsTotal: "38 regulars",
       times: ["Sat 11:30 am", "Sat 1:00 pm", "Sun 10:00 am"],
       chips: ["5th visit", "Rebooked from a reminder", "Back after 6 weeks"],
+      noshowLabel: "No-show settings",
+      noshowRows: ["Reminders, 24 h and 2 h before", "Card on file", "Deposit"],
+      on: "On",
+      off: "Off",
+      noshowNote: "Off by default. Turn either on per service.",
+      yoursLabel: "Your clients",
+      yoursTotal: "214",
+      yoursChips: ["0% fee", "From your link", "Regular"],
+      privateBefore: "Before they book",
+      privateAfter: "After they book",
+      privateAddress: "12 Jane St, buzz 4",
+      lineLabel: "Your place in line",
+      linePlace: "3rd",
+      lineWait: "About 40 min",
+      lineRows: [["Dre", "In the chair"], ["Sam", "Next, about 15 min"], ["You", "About 40 min"]],
       lockDate: "Friday, Nov 6",
       lockTime: "9:41",
       now: "now",
@@ -581,6 +597,7 @@ export const copy = {
       contactHint: "We'll use it to sign you in.",
       cta: "Get your booking link, free",
       fine: "Next you pick where you work and set a password, then your link is live. No card needed.",
+      deposits: "No deposits needed. Reminders go out either way; turn deposits on per service if you want them.",
       trades: { nails: "Nails", brows: "Brows", lashes: "Lashes", makeup: "Makeup", barber: "Barber", groom: "Groomer" },
     },
     /** One entry per landing page. Sample studios, clients and messages: made up, and the page never presents them as real. */
@@ -600,6 +617,9 @@ export const copy = {
           book: { title: "Clients book themselves.", body: "Your services and your open times. They choose, you get a message. No more \"what times do you have Saturday?\"" },
           remind: { title: "Reminders send themselves.", body: "App and email reminders go out without you, the day before and two hours before. Texts for the ones who need one." },
           regulars: { title: "Regulars come back.", body: "A stamp card on their phone, a rebook nudge when a fill is due, and a promo to everyone who said yes." },
+          noshow: { title: "No-shows, handled your way.", body: "Reminders go out by themselves. Want a card on file or a {deposit} deposit for the slots that matter? Turn it on per service. Don't? Leave it off." },
+          yours: { title: "Your clients stay yours.", body: "No marketplace. No cut of a booking. No \"new client\" fee. Their numbers, their history and their notes are in your list, and nobody else can see it." },
+          private: { title: "Clients see your area, not your door.", body: "The map shows \"{area}\". The address goes out after they book, and in the reminder the day before." },
         },
         notes: ["Tomorrow 11:30 am · {service}. Address: 12 Jane St, buzz 4.", "See you at 11:30. Reply to change.", "Time for a fill? Book in one tap."],
         promo: "Valentine's nails",
@@ -621,6 +641,9 @@ export const copy = {
           book: { title: "Clients book themselves.", body: "Your services and your open times. They choose, you get a message. No more \"what times do you have Saturday?\"" },
           remind: { title: "Reminders send themselves.", body: "App and email reminders go out without you, the day before and two hours before. Texts for the ones who need one." },
           regulars: { title: "Regulars come back.", body: "A stamp card on their phone, a nudge when the tint has faded, and a promo to everyone who said yes." },
+          noshow: { title: "No-shows, handled your way.", body: "Reminders go out by themselves. Want a card on file or a {deposit} deposit for the slots that matter? Turn it on per service. Don't? Leave it off." },
+          yours: { title: "Your clients stay yours.", body: "No marketplace. No cut of a booking. No \"new client\" fee. Their numbers, their history and their notes are in your list, and nobody else can see it." },
+          private: { title: "Clients see your area, not your door.", body: "The map shows \"{area}\". The address goes out after they book, and in the reminder the day before." },
         },
         notes: ["Tomorrow 11:30 am · {service}. Address: 12 Jane St, buzz 4.", "See you at 11:30. Reply to change.", "Six weeks since your tint. Book in one tap."],
         promo: "Spring brow refresh",
@@ -642,6 +665,9 @@ export const copy = {
           book: { title: "Clients book themselves.", body: "Your services and your open times. They choose, you get a message. No more \"what times do you have Saturday?\"" },
           remind: { title: "Reminders send themselves.", body: "App and email reminders go out without you, the day before and two hours before. Texts for the ones who need one." },
           regulars: { title: "Regulars come back.", body: "A stamp card on their phone, a nudge three weeks after a set, and a promo to everyone who said yes." },
+          noshow: { title: "No-shows, handled your way.", body: "Reminders go out by themselves. Want a card on file or a {deposit} deposit for the slots that matter? Turn it on per service. Don't? Leave it off." },
+          yours: { title: "Your clients stay yours.", body: "No marketplace. No cut of a booking. No \"new client\" fee. Their numbers, their history and their notes are in your list, and nobody else can see it." },
+          private: { title: "Clients see your area, not your door.", body: "The map shows \"{area}\". The address goes out after they book, and in the reminder the day before." },
         },
         notes: ["Tomorrow 11:30 am · {service}. Address: 12 Jane St, buzz 4.", "See you at 11:30. Reply to change.", "Three weeks since your fill. Book in one tap."],
         promo: "Holiday lash sets",
@@ -663,6 +689,9 @@ export const copy = {
           book: { title: "Clients book themselves.", body: "Trials, bridal, events, each with its own length. They choose, you get a message. No more \"are you free that day?\"" },
           remind: { title: "Reminders send themselves.", body: "App and email reminders go out without you. Texts for the ones who need one. The address goes only to people who booked." },
           regulars: { title: "Regulars come back.", body: "A stamp card on their phone, a note before the next big date, and a promo to everyone who said yes." },
+          noshow: { title: "No-shows, handled your way.", body: "Reminders go out by themselves. Want a card on file or a {deposit} deposit for the slots that matter? Turn it on per service. Don't? Leave it off." },
+          yours: { title: "Your clients stay yours.", body: "No marketplace. No cut of a booking. No \"new client\" fee. Their numbers, their history and their notes are in your list, and nobody else can see it." },
+          private: { title: "Clients see your area, not your door.", body: "The map shows \"{area}\". The address goes out after they book, and in the reminder the day before." },
         },
         notes: ["Tomorrow 11:30 am · {service}. Address: 12 Jane St, buzz 4.", "See you at 11:30. Reply to change.", "Your wedding is in 30 days. Book the day."],
         promo: "Wedding season",
@@ -685,6 +714,9 @@ export const copy = {
           book: { title: "They book, or join the line.", body: "Clients book a time or join the walk-in line from their phone, and see the wait. You see who's next. No clipboard." },
           remind: { title: "Reminders send themselves.", body: "App and email reminders go out without you. Texts for the ones who need one. No more empty chair at 11:30." },
           regulars: { title: "Regulars come back.", body: "A stamp card for the whole family, a rebook nudge two weeks after the cut, and a promo to every regular." },
+          noshow: { title: "No-shows, handled your way.", body: "Reminders go out by themselves, and a rebook nudge two weeks after the cut. A card on file for Saturday slots if you want it." },
+          yours: { title: "Your clients stay yours.", body: "No marketplace, no cut of a booking, no \"new client\" fee, no per-chair charge. Renters keep their own list." },
+          line: { title: "The walk-in line, on their phone.", body: "\u201cYou're 3rd · about 40 min · we'll let you know.\u201d" },
         },
         notes: ["Tomorrow 11:30 am · {service} at Corner Cuts.", "See you at 11:30. Reply to change.", "Two weeks since your cut. Book in one tap."],
         promo: "Back-to-school cuts",
@@ -707,6 +739,8 @@ export const copy = {
           book: { title: "They pick a time and the dog.", body: "Owners pick their dog first, then see that dog's prices and your open times. Rabies and bordetella dates are on the profile." },
           remind: { title: "Reminders send themselves.", body: "A reminder the day before, with the vaccine check. Texts for the owners who need one." },
           regulars: { title: "Max comes back on time.", body: "When Max is due again, the owner gets a link that already knows him. And a stamp card for every groom." },
+          noshow: { title: "No-shows, handled your way.", body: "A reminder the day before with the vaccine check. A {deposit} deposit for the long grooms if you want one." },
+          yours: { title: "Your clients stay yours.", body: "No marketplace, no cut, no \"new client\" fee. Every dog's record stays with you." },
         },
         notes: ["Tomorrow 11:30 am · {service}. Rabies on file until Mar 14.", "See you and Max at 11:30. Reply to change.", "Max is due for a groom. Book in one tap."],
         promo: "Spring shed-out special",
@@ -970,21 +1004,46 @@ export type Copy = typeof copy;
 /**
  * Landing v2 hero copy and job order, per page look and variant, for A/B tests (types and the resolver:
  * lib/marketing/landing-variants.ts). "control" is what the pages render; another variant only needs an entry here.
- * `{x}` fills: {free}, {monthly}, {client}, {service}. The lead story is neutral until the positioning research reports:
- * one link for bookings, clients book themselves, reminders send themselves, regulars come back. Deposits are optional, never the lead.
+ * `{x}` fills: {free}, {monthly}, {client}, {service}. Control is the neutral DM story; `yours` (every trade), `price` (barbers) and
+ * `privacy` (tech pages) are the challengers from docs/marketing/value-props.md §2.2, with its copy. Deposits are optional, never the
+ * lead: one sentence in the "No-shows, handled your way" card, off by default.
  */
 const NEUTRAL_LEDE = "One link for bookings, free. Clients book themselves, the reminder sends itself, and your regulars come back.";
 const CTA = "Get your booking link, free";
-const ORDER = ["book", "remind", "regulars"] as const;
+const SHOP_CTA = "Get your shop's link, free";
+const ORDER = ["book", "remind", "noshow"] as const;
+/** docs/marketing/value-props.md §2.2: the lead challenger, every trade. Tech copy is the doc's, with the trade word swapped. */
+const yours = (eyebrow: string, who: string) => ({
+  eyebrow: `${eyebrow} · not a marketplace`,
+  hook: ["Your clients", "stay yours."],
+  lede: `If ${who}, put your bookings, your clients and your reminders in one place. Clients book from your bio instead of your DMs. Nobody takes a cut, nobody charges you for a "new" client, and your list is yours. Free to start.`,
+  cta: CTA,
+  jobs: ["book", "yours", "noshow"],
+}) as const;
+/** §2.2 `private` (id `privacy`): the nail, brow, lash and makeup pages only. */
+const privacy = {
+  eyebrow: "For home studios",
+  hook: ["Clients see your area,", "not your door."],
+  lede: "A booking link made for working from home. The map shows your area, the address goes out only after someone books, and reminders send themselves. Free to start.",
+  cta: CTA,
+  jobs: ["private", "book", "noshow"],
+  policy: { title: "Address: sent after you book", body: "Until then the map shows your area, never your door." },
+} as const;
 export const LANDING_VARIANTS = {
-  nails: { control: { eyebrow: "For nail techs", hook: ["Stop booking", "in your DMs."], lede: NEUTRAL_LEDE, cta: CTA, jobs: ORDER } },
-  brows: { control: { eyebrow: "For brow techs", hook: ["Stop booking", "in your DMs."], lede: NEUTRAL_LEDE, cta: CTA, jobs: ORDER } },
-  lashes: { control: { eyebrow: "For lash techs", hook: ["Stop booking", "in your DMs."], lede: NEUTRAL_LEDE, cta: CTA, jobs: ORDER } },
-  makeup: { control: { eyebrow: "For makeup artists", hook: ["Your dates,", "booked for you."], lede: "One link for trials, bridal and events, free. Clients book themselves, the reminder sends itself, and your regulars come back.", cta: CTA, jobs: ORDER } },
+  nails: { control: { eyebrow: "For nail techs", hook: ["Stop booking", "in your DMs."], lede: NEUTRAL_LEDE, cta: CTA, jobs: ORDER }, yours: yours("For nail techs", "you're a nail tech"), privacy },
+  brows: { control: { eyebrow: "For brow techs", hook: ["Stop booking", "in your DMs."], lede: NEUTRAL_LEDE, cta: CTA, jobs: ORDER }, yours: yours("For brow techs", "you're a brow tech"), privacy },
+  lashes: { control: { eyebrow: "For lash techs", hook: ["Stop booking", "in your DMs."], lede: NEUTRAL_LEDE, cta: CTA, jobs: ORDER }, yours: yours("For lash techs", "you do lashes"), privacy },
+  makeup: { control: { eyebrow: "For makeup artists", hook: ["Your dates,", "booked for you."], lede: "One link for trials, bridal and events, free. Clients book themselves, the reminder sends itself, and your regulars come back.", cta: CTA, jobs: ORDER }, yours: yours("For makeup artists", "you're a makeup artist"), privacy },
   barber: {
-    control: { eyebrow: "For barbershops", hook: ["One link for", "the whole shop."], lede: "Bookings and the walk-in line in one link, free to start. Clients book themselves, reminders send themselves, and regulars come back. One price, however many chairs.", cta: CTA, jobs: ORDER },
-    /** The pricing hook from the ad plan, ready to test against control. */
-    price: { eyebrow: "For barbershops", hook: ["No per-chair", "charge. Ever."], lede: "Bookings, a walk-in line and family cards for the whole shop. One price, however many barbers. Free to start.", cta: CTA, jobs: ["book", "regulars", "remind"] },
+    control: { eyebrow: "For barbershops", hook: ["One link for", "the whole shop."], lede: "Bookings and the walk-in line in one link, free to start. Clients book themselves, reminders send themselves, and regulars come back. One price, however many chairs.", cta: SHOP_CTA, jobs: ["book", "remind", "regulars"] },
+    /** §2.2 barber lead; {monthly} is PLANS.plus.priceCents. */
+    price: { eyebrow: "For barbershops · prices in CAD", hook: ["No per-chair", "charge. Ever."], lede: "If you're a barber, manage all your stuff in one place: bookings, the walk-in line, family cards and chair renters. {monthly} a month however many chairs, and nobody takes a cut of your clients. Free to start.", cta: SHOP_CTA, jobs: ["book", "yours", "line"] },
+    /** The doc has no barber row for `yours`: the tech copy in barber words, with the doc's barber `yours` card. */
+    yours: { eyebrow: "For barbershops · not a marketplace", hook: ["Your clients", "stay yours."], lede: "If you're a barber, put your bookings, the walk-in line and your regulars in one place. Nobody takes a cut, nobody charges you for a \"new\" client, there is no per-chair charge, and your list is yours. Free to start.", cta: SHOP_CTA, jobs: ["book", "yours", "line"] },
   },
-  groom: { control: { eyebrow: "For pet groomers", hook: ["Vaccines checked.", "Max rebooked."], lede: "One link for grooms, free. Owners book themselves, vaccine dates sit on every pet, the reminder sends itself, and Max comes back on time.", cta: CTA, jobs: ORDER } },
+  groom: {
+    control: { eyebrow: "For pet groomers", hook: ["Vaccines checked.", "Max rebooked."], lede: "One link for grooms, free. Owners book themselves, vaccine dates sit on every pet, the reminder sends itself, and Max comes back on time.", cta: CTA, jobs: ["book", "remind", "noshow"] },
+    /** The doc has no groomer row for `yours`: the tech copy in groomer words, with the doc's groomer `yours` card. */
+    yours: { eyebrow: "For pet groomers · not a marketplace", hook: ["Your clients", "stay yours."], lede: "If you groom dogs, put your bookings, the vaccine dates and your reminders in one place. Nobody takes a cut, nobody charges you for a \"new\" client, and every dog's record stays with you. Free to start.", cta: CTA, jobs: ["book", "yours", "noshow"] },
+  },
 } as const;

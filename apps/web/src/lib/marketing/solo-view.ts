@@ -5,9 +5,9 @@
  */
 import { FEES, PLANS, PROMOS_PER_MONTH_PLUS } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
-import { landingVariant } from "./landing-variants";
+import { landingVariant, type JobId } from "./landing-variants";
 import { fill, moneyShort } from "./text";
-import { SAMPLE_SERVICES, SHOWN_SERVICES, SOLO_PAGES, SOLO_PHOTOS, soloKey, soloVertical, type NailTrade, type SoloKey, type SoloPageId } from "./solo";
+import { SAMPLE_DEPOSIT_CENTS, SAMPLE_SERVICES, SHOWN_SERVICES, SOLO_PAGES, SOLO_PHOTOS, soloKey, soloVertical, type NailTrade, type SoloKey, type SoloPageId } from "./solo";
 
 const C = copy.solo;
 
@@ -36,6 +36,8 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
   const plus = PLANS.plus;
   const vars = {
     pro: plus.name,
+    deposit: moneyShort(SAMPLE_DEPOSIT_CENTS),
+    area: T.area,
     client: T.client,
     service: booked.name,
     free: moneyShort(0),
@@ -69,13 +71,18 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
       cta: V.cta,
       trust: "trust" in T ? T.trust : C.hero.trust,
       price: f(C.hero.price),
+      policy: V.policy ?? { title: C.hero.policyTitle, body: C.hero.policyBody },
       booked: f(C.hero.booked),
       bookedCard: C.hero.bookedCard,
       bookedCardLine: f(C.hero.bookedCardLine),
     },
     facts,
     /** The three job cards in the variant's order. */
-    jobs: V.jobs.map((j) => ({ id: j, title: f(T.jobs[j].title), body: f(T.jobs[j].body) })),
+    jobs: V.jobs.map((j) => {
+      const card = (T.jobs as Partial<Record<JobId, { title: string; body: string }>>)[j];
+      if (!card) throw new Error(`landing variant ${key}/${V.id}: no "${j}" job card for this look`);
+      return { id: j, title: f(card.title), body: f(card.body) };
+    }),
     notes: T.notes.map(f),
     dmAfter: f(C.dm.after),
     card: fill(C.regulars.card, { client: T.client, have: goal - 1, goal }),

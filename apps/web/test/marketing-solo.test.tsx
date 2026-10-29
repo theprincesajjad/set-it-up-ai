@@ -109,8 +109,12 @@ describe("deposits are optional, not the lead", () => {
     for (const [id, trade] of [["nail", "nails"], ["nail", "brows"], ["nail", "lashes"], ["nail", "makeup"], ["barber", undefined], ["groom", undefined]] as const) {
       const v = soloView(id, trade);
       expect(JSON.stringify([v.hero.eyebrow, v.hero.hook, v.hero.lede, v.hero.cta, v.hero.trust, v.facts])).not.toMatch(/deposit/i);
-      expect(v.jobs.map((j) => j.id)).toEqual(["book", "remind", "regulars"]);
+      expect(v.jobs[0]!.id).toBe("book");
     }
+    // Deposits live in one optional sentence of the "No-shows, handled your way" card, off by default.
+    const noshow = soloView("nail").jobs.find((j) => j.id === "noshow")!;
+    expect(noshow.title).toBe("No-shows, handled your way.");
+    expect(noshow.body).toContain("$20 deposit for the slots that matter? Turn it on per service. Don't? Leave it off.");
     const page = renderToStaticMarkup(<SoloLanding id="nail" />);
     expect(page).toContain("Deposits are optional");
     expect(page).toContain("Optional deposits, if you want them.");
@@ -124,9 +128,29 @@ describe("A/B variants", () => {
     const price = renderToStaticMarkup(<SoloLanding id="barber" variant="price" />);
     expect(price).toContain('data-variant="price"');
     expect(price).toContain("No per-chair");
-    expect([...price.matchAll(/data-job="(\w+)"/g)].map((m) => m[1])).toEqual(["book", "regulars", "remind"]);
+    expect([...price.matchAll(/data-job="(\w+)"/g)].map((m) => m[1])).toEqual(["book", "yours", "line"]);
+    expect(price).toContain(`${moneyShort(PLANS.plus.priceCents)} a month however many chairs`);
     expect(landingVariant("nails", "nope").id).toBe("control");
     expect(renderToStaticMarkup(<SoloLanding id="nail" />)).toContain('data-variant="control"');
+  });
+
+  it("renders every variant of every look with its own job cards and no unfilled placeholder", () => {
+    const looks = [["nail", "nails"], ["nail", "brows"], ["nail", "lashes"], ["nail", "makeup"], ["barber", undefined], ["groom", undefined]] as const;
+    for (const [id, trade] of looks) {
+      const key = trade ?? id;
+      for (const variant of variantIds(key)) {
+        const html = renderToStaticMarkup(<SoloLanding id={id} trade={trade} variant={variant} />);
+        expect(html, `${key}/${variant}`).toContain(`data-variant="${variant}"`);
+        expect(html, `${key}/${variant}`).not.toMatch(/\{\w+\}/);
+        expect(html.match(/data-job=/g), `${key}/${variant}`).toHaveLength(3);
+      }
+    }
+    expect(variantIds("nails")).toEqual(["control", "yours", "privacy"]);
+    expect(variantIds("barber")).toEqual(["control", "price", "yours"]);
+    expect(variantIds("groom")).toEqual(["control", "yours"]);
+    const privacy = renderToStaticMarkup(<SoloLanding id="nail" variant="privacy" />);
+    expect(privacy).toContain("Address: sent after you book");
+    expect(privacy).toContain("Clients see your area,");
   });
 });
 
