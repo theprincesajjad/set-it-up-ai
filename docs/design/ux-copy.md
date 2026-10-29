@@ -435,7 +435,7 @@ Written by the copy writer to the glossary; nobody fluent has read them yet.
    list) and in Latin inside sentences.
 6. **Added in the final audit (Oct 29)**: the booking policy now says "we remind you" instead of "we text you" (`bk.policy.fee`,
    `bk.policy.nofee`: याद दिलाते हैं, یاد دلاتے ہیں, ਯਾਦ ਕਰਾਉਂਦੇ ਹਾਂ), and the admin console's `shell.console.siteDomains`
-   (साइट डोमेन, سائٹ ڈومینز, ਸਾਈਟ ਡੋਮੇਨ).
+   (साइट डोमेन, سائٹ ڈومینز, ਸਾਈਟ ਡੋਮੇਨ), and `bk.introPrivate` for a home studio's booking page ("By appointment only.").
 6. **Inbox status words** (`inbox.sentBy.*`, `inbox.via.*`, `people.status.*`): tense and gender must agree
    with the thing described ("नहीं आए", "کرسی پر ہیں", "ਕੁਰਸੀ ਤੇ ਹਨ").
 7. **Reminder and Instagram wording** (`webpush.prompt.*`, `ig.card.*`): the iPhone steps name the buttons as the
