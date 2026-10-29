@@ -98,8 +98,9 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
     try {
       if (!registered) {
         try {
-          // Your name comes later (Settings); until then the part of the email before the @.
-          await sessionApi.register({ name: account.email.trim().split("@")[0]!.slice(0, 60) || "Owner", email: account.email.trim(), password: account.password });
+          // Your own name comes later (Settings); until then the shop's name, which is what a client sees as the stylist at a solo
+          // studio. Never the part of the email before the @: it reached the public booking page and the confirmation (final audit).
+          await sessionApi.register({ name: shop.name.trim().slice(0, 120) || "Owner", email: account.email.trim(), password: account.password });
           setRegistered(true);
         } catch (err) {
           if (isApiError(err) && err.status === 409)

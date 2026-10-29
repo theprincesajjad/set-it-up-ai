@@ -199,7 +199,8 @@ export function TodayPage() {
   // "Good morning, Sana": the first name of whoever is signed in; a support session (admin or rep) says no name.
   const first = me.user.name?.trim().split(/\s+/)[0] ?? "";
   const hour = shopHour(now);
-  const named = first.length > 0 && !viewingAsOther;
+  // Until the owner sets their own name it is the shop's (signup): "Good morning" alone reads better than "Good morning, Brows".
+  const named = first.length > 0 && !viewingAsOther && me.user.name?.trim() !== detail.merchant.name.trim();
   const greeting = t(greetingKey(hour, named), { name: first });
   const GreetIcon = hour < 12 ? Sun : hour < 17 ? Sunset : Moon;
   // The sparklines: the loyalty numbers are visits, stamps, rewards redeemed, new members, in that order.
