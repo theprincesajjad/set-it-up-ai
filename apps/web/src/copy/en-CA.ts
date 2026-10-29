@@ -621,7 +621,8 @@ export const copy = {
     calendarsUnlimited: "{used}, no limit",
     texts: "Reminder texts",
     textsValue: "{used} of {included} this month",
-    textsOver: "{n} over, {amount} so far",
+    // Overage is shown, not billed, until Stripe usage records land (docs/business/pricing.md): say so.
+    textsOver: "{n} over the plan, {amount} at the overage rate. Not billed yet.",
     textsFree: "After {included}, reminders go by email.",
     promos: "Promos to your regulars",
     promosValue: "{used} of {limit} this {period}",

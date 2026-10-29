@@ -252,7 +252,8 @@ test("screens in Urdu at 1440 and 390: customers, a profile, the inbox, promos a
     await page.locator("[data-testid^=promo-tpl-]").first().click();
     await page.screenshot({ path: shot(`promos-${w}-ur`), fullPage: true });
     await page.goto(`/m/${arch.id}/settings?tab=messages&lang=ur`);
-    await expect(page.getByTestId("instagram-card").getByText(/@|Connect|Coming/).first()).toBeVisible();
+    // The page is in Urdu: the connected handle, "Connect Instagram" (Instagram جوڑیں) or the "coming" badge (جلد آ رہا ہے).
+    await expect(page.getByTestId("instagram-card").getByText(/@|جوڑیں|جلد آ رہا ہے/).first()).toBeVisible();
     await page.screenshot({ path: shot(`settings-messages-${w}-ur`), fullPage: true });
   }
 });

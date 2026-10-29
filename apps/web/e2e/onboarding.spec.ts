@@ -121,11 +121,11 @@ test("a South Asian restaurant sees its playbook, and the paid-tier offer only o
 test("a café never sees the restaurant offer, and an owner can stop setup reminders", async ({ page }) => {
   const shop = await newShop("cafe", `Beanery ${rand()}`);
   await signIn(page, shop, `/m/${shop.id}/setup`);
-  await expect(page.getByText(/Setup reminders by text: on/)).toBeVisible();
+  await expect(page.getByText(/Setup reminders by text are on/)).toBeVisible();
   await page.getByRole("button", { name: "Stop reminders" }).click();
-  await expect(page.getByText(/Setup reminders by text: off/)).toBeVisible();
+  await expect(page.getByText(/Setup reminders by text are off/)).toBeVisible();
   await page.getByRole("button", { name: "Turn on" }).click();
-  await expect(page.getByText(/Setup reminders by text: on/)).toBeVisible();
+  await expect(page.getByText(/Setup reminders by text are on/)).toBeVisible();
   for (let i = 0; i < 25; i++) await stamp(shop.id, shop.token);
   await page.goto(`/m/${shop.id}`);
   const offer = page.getByRole("region", { name: "Next step for your shop" });

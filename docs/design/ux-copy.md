@@ -433,6 +433,9 @@ Written by the copy writer to the glossary; nobody fluent has read them yet.
    Urdu and Punjabi equivalents are what people say in a salon; check against the words a client would
    use. Instagram is spelled in the local script where a label has no other script (inbox filter, source
    list) and in Latin inside sentences.
+6. **Added in the final audit (Oct 29)**: the booking policy now says "we remind you" instead of "we text you" (`bk.policy.fee`,
+   `bk.policy.nofee`: याद दिलाते हैं, یاد دلاتے ہیں, ਯਾਦ ਕਰਾਉਂਦੇ ਹਾਂ), and the admin console's `shell.console.siteDomains`
+   (साइट डोमेन, سائٹ ڈومینز, ਸਾਈਟ ਡੋਮੇਨ).
 6. **Inbox status words** (`inbox.sentBy.*`, `inbox.via.*`, `people.status.*`): tense and gender must agree
    with the thing described ("नहीं आए", "کرسی پر ہیں", "ਕੁਰਸੀ ਤੇ ਹਨ").
 7. **Reminder and Instagram wording** (`webpush.prompt.*`, `ig.card.*`): the iPhone steps name the buttons as the
