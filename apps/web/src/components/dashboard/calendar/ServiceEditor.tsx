@@ -11,6 +11,8 @@ import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { useAction } from "@/lib/dashboard/useApi";
+import { REMIND_BEFORE_DAYS } from "@/lib/dashboard/rebooking"; // phase-pro: p3
+import { useLocaleOrEnglish } from "@/lib/i18n/client"; // phase-pro: p3
 
 type Service = appointmentsApi.ServiceDto;
 
@@ -37,6 +39,7 @@ export function ServiceEditor({
 }) {
   const { api, detail } = useMerchant();
   const toast = useToast();
+  const { t: tRb } = useLocaleOrEnglish(); // phase-pro: p3
   const act = useAction();
   const repair = kind === "repair_line";
   // Pharmacy: an appointment type is a name and a length. No price, deposit, group, rebooking or tax (docs/research/pharmacies-wellness.md).
@@ -156,7 +159,7 @@ export function ServiceEditor({
           </div>
         ) : null}
         {pharmacy ? null : <Select label="Group" value={category} onChange={(e) => setCategory(e.target.value)} hint="Hair, Threading, Nails. A group set to earn no points keeps that rule." options={[{ value: "", label: "No group" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />}
-        {pharmacy ? null : <TextField label="Rebook after" optionalLabel inputMode="numeric" suffix="days" hint="The usual gap between visits. Used for rebooking nudges." value={rebook} onChange={(e) => setRebook(e.target.value.replace(/\D/g, ""))} />}
+        {pharmacy ? null : <TextField label="Rebook after" optionalLabel inputMode="numeric" suffix="days" hint={rebook ? tRb("rb.service.sentence", { days: REMIND_BEFORE_DAYS }) /* phase-pro: p3 */ : "The usual gap between visits. Used for rebooking nudges."} value={rebook} onChange={(e) => setRebook(e.target.value.replace(/\D/g, ""))} />}
         {pharmacy ? null : <Switch label="Charge tax" description="Added at checkout when your shop is registered for GST/HST. Turn it off for a service with no tax." checked={taxable} onChange={setTaxable} />}
         <Switch label={active ? "Bookable" : "Hidden from booking"} checked={active} onChange={setActive} />
         {!repair && staff.length ? (

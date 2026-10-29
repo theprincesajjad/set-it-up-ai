@@ -531,6 +531,7 @@ export function CounterPhone() {
           </span>
         </span>
         <FindPane />
+        <span className="mt-6 flex h-12 items-center justify-center rounded-r4 bg-card text-[15px] font-semibold shadow-[inset_0_0_0_1px_var(--border-strong)]">{M.counter.redeem}</span>
       </div>
     </div>
   );

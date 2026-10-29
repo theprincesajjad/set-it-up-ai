@@ -31,6 +31,12 @@ export function appointmentEndpoints(c: ApiClient, b: string) {
       putStaffServices: (userId: string, body: appointmentsApi.PutStaffServicesBody) => c.put<{ items: appointmentsApi.StaffServiceDto[] }>(`${b}/staff/${enc(userId)}/services`, body),
       addTimeOff: (userId: string, body: appointmentsApi.CreateTimeOffBody) => c.post<appointmentsApi.TimeOffDto>(`${b}/staff/${enc(userId)}/time-off`, body),
       deleteTimeOff: (id: string) => c.delete<void>(`${b}/staff/time-off/${enc(id)}`),
+      // ---- phase-pro: P5 ---- add-ons at booking
+      addOns: () => c.get<appointmentsApi.AddOnsResponse>(`${b}/add-ons`),
+      createAddOn: (body: appointmentsApi.CreateAddOnBody) => c.post<appointmentsApi.AddOnDto>(`${b}/add-ons`, body),
+      updateAddOn: (id: string, body: appointmentsApi.UpdateAddOnBody) => c.patch<appointmentsApi.AddOnDto>(`${b}/add-ons/${enc(id)}`, body),
+      deleteAddOn: (id: string) => c.delete<void>(`${b}/add-ons/${enc(id)}`),
+      // ---- end phase-pro: P5 ----
     },
   };
 }
@@ -39,8 +45,8 @@ export function appointmentEndpoints(c: ApiClient, b: string) {
 export function publicAppointmentEndpoints(c: ApiClient) {
   return {
     bookingServices: (slug: string) => c.get<appointmentsApi.PublicServicesResponse>(`/v1/public/shops/${enc(slug)}/services`, { anonymous: true }),
-    bookingAvailability: (slug: string, q: { serviceIds: string[]; staffId: string; from: string; to: string }) =>
-      c.get<appointmentsApi.AvailabilityResponse>(`/v1/public/shops/${enc(slug)}/availability`, { anonymous: true, query: { serviceIds: q.serviceIds.join(","), staffId: q.staffId, from: q.from, to: q.to } }),
+    bookingAvailability: (slug: string, q: { serviceIds: string[]; staffId: string; from: string; to: string; addOnIds?: string[] }) =>
+      c.get<appointmentsApi.AvailabilityResponse>(`/v1/public/shops/${enc(slug)}/availability`, { anonymous: true, query: { serviceIds: q.serviceIds.join(","), staffId: q.staffId, from: q.from, to: q.to, ...(q.addOnIds?.length ? { addOnIds: q.addOnIds.join(",") } : {}) } }), // phase-pro P5: addOnIds
   };
 }
 

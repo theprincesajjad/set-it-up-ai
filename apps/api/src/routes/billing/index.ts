@@ -1,6 +1,6 @@
 /**
  * Billing (owner only): plans with availability, Stripe Checkout for
- * Plus/Pro, customer portal, cancel/resume, downgrade to Free. Restaurant pack:
+ * Pro (plus), Studio and Service (pro), the 14-day Pro trial, customer portal, cancel/resume, downgrade to Free. Restaurant pack:
  * tier checkout/change/cancel, add-ons, fee table, invoice history. Admin:
  * switch a merchant's Stripe charge mode.
  * Docs: docs/engineering/api/billing.md. Contract: @ll/shared billingApi.
@@ -13,6 +13,7 @@ import { requirePlatformRole, requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import * as billing from "../../services/billing.js";
 import * as restaurant from "../../services/billing-restaurant.js";
+import * as trial from "../../services/trial.js";
 import { requireSupportSession } from "../../lib/support-session.js";
 import { setChargeMode } from "../../services/payments.js";
 
@@ -26,9 +27,16 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   // ---- phase-solo: A ----
   /** Calendars, texts, promos and the annual website: managers see it too (the promo counter lives on Messages). */
   app.get<P>("/merchants/:merchantId/billing/usage", async (req) => billing.planUsage(ctx, (await requireStaff(ctx, req, req.params.merchantId, "manager")).merchant));
-  /** Public: the founding solo price and the spots left, for the pricing and landing pages. */
-  app.get("/billing/founding-solo", async () => billing.foundingSoloFor(ctx, null));
   // ---- end phase-solo: A ----
+  // ---- phase-pro: p1 ----
+  /** Public: the first-year price of annual Pro, for the pricing and landing pages (no spots count: it stays internal). */
+  app.get("/billing/first-year-price", async () => billing.firstYearPriceFor(ctx, null));
+  /** Start the shop's one 14-day Pro trial (no card). The booking link going live starts it too. */
+  app.post<P>("/merchants/:merchantId/billing/trial", async (req, reply) => {
+    const r = await trial.startTrial(ctx, await owner(req, req.params.merchantId));
+    return reply.code(201).send(r);
+  });
+  // ---- end phase-pro: p1 ----
 
   app.get<P>("/merchants/:merchantId/billing/plans", async (req) => {
     const overview = await billing.billingOverview(ctx, await owner(req, req.params.merchantId));

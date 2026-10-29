@@ -2,13 +2,16 @@
 import { useHydratedValue } from "@/lib/useHydratedValue";
 import { ChevronLeft, ChevronRight, CircleCheck, CreditCard } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { serviceFitsSize, type appointmentsApi, type petApi } from "@ll/shared";
+import { appointmentsApi as apptApi, serviceFitsSize, type appointmentsApi, type petApi } from "@ll/shared";
 import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { ReminderCard } from "@/components/pass/ReminderCard";
 import { NotifyPrompt } from "@/components/pass/NotifyPrompt";
 import { SetupBox } from "@/components/pass/SetupBox";
+import { WaitlistSheet } from "@/components/pass/WaitlistSheet"; // phase-pro: p2
+import { browserClient } from "@/lib/api/browser"; // phase-pro: p2
+import { publicWaitlistEndpoints } from "@/lib/api/waitlist"; // phase-pro: p2
 import { BigNumber, Heading, ShopHead, useFmt } from "@/components/restaurant/ui";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +21,7 @@ import { browserApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { buildIcs, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn, totalText } from "@/lib/booking";
 import { cn } from "@/lib/cn";
+import { addOnPriceTime } from "@/lib/dashboard/add-ons"; // phase-pro: P5
 import { dayDate, todayIso } from "@/lib/restaurant/util";
 
 type Data = appointmentsApi.PublicServicesResponse;
@@ -35,7 +39,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const f = useFmt();
   const { t, money, date, time, pick } = f;
   const dur = (min: number) => durationText(t as never, min);
-  const [step, setStep] = useState<"services" | "time" | "pay" | "done">("services");
+  const [step, setStep] = useState<"services" | "addons" | "time" | "pay" | "done">("services"); // phase-pro: P5 "addons"
   const [staffId, setStaffId] = useState<string | null>(initial?.staff && data.staff.some((s) => s.id === initial.staff) ? initial.staff : null);
   const [category, setCategory] = useState<string>("all");
   const [ids, setIds] = useState<string[]>(initial?.service && data.services.some((s) => s.id === initial.service) ? [initial.service] : []);
@@ -69,11 +73,32 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     void browserApi.me.myPets().then((r) => { setMyPets(r.items); setPetId((cur) => cur || (r.items.length === 1 ? r.items[0]!.id : "")); }).catch(() => undefined);
   }, [signedIn, petShop]);
   const pickedPet = myPets.find((p) => p.id === petId) ?? null;
+  // ---- phase-pro: p2 ---- the waitlist: which days the shop works (a working day with no times is "Full"), and the sheet.
+  const [workDays, setWorkDays] = useState<Set<string> | null>(null);
+  const [waitSheet, setWaitSheet] = useState(false);
+  // ---- end phase-pro: p2 ----
 
   const staffName = staffId ? (data.staff.find((s) => s.id === staffId)?.name ?? "") : "";
-  const sel = useMemo(() => summarize(data.services, ids, staffId), [data.services, ids, staffId]);
+  const baseSel = useMemo(() => summarize(data.services, ids, staffId), [data.services, ids, staffId]);
   const picked = data.services.filter((s) => ids.includes(s.id));
   const intakeQuestion = picked.find((s) => s.intakeQuestion)?.intakeQuestion ?? null;
+  // ---- phase-pro: P5 ---- add-ons offered with the picked services (only a Pro shop's payload carries them)
+  const [addOnIds, setAddOnIds] = useState<string[]>([]);
+  const offeredAddOns = useMemo(() => {
+    const seen = new Map<string, appointmentsApi.PublicAddOnDto>();
+    for (const s of data.services) if (ids.includes(s.id)) for (const a of s.addOns ?? []) if (!seen.has(a.id)) seen.set(a.id, a);
+    return [...seen.values()];
+  }, [data.services, ids]);
+  const pickedAddOns = offeredAddOns.filter((a) => addOnIds.includes(a.id));
+  const extra = apptApi.addOnTotals(pickedAddOns);
+  useEffect(() => {
+    // Drop add-ons the new service choice no longer offers.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAddOnIds((cur) => (cur.every((id) => offeredAddOns.some((a) => a.id === id)) ? cur : cur.filter((id) => offeredAddOns.some((a) => a.id === id))));
+  }, [offeredAddOns]);
+  // Add-ons count in the length and the total, never in the deposit.
+  const sel = { ...baseSel, durationMin: baseSel.durationMin + extra.durationMin, priceCents: baseSel.priceCents + extra.priceCents };
+  // ---- end phase-pro: P5 ----
   // Pharmacy: free to book, no card, no notes, no price shown (docs/research/pharmacies-wellness.md).
   const pharmacy = !!data.shop.pharmacy;
   const privateAddress = !!data.shop.addressVisibility && data.shop.addressVisibility !== "exact";
@@ -98,7 +123,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     setAvLoading(true);
     setAvError(false);
     try {
-      const q = { serviceIds: ids, from: days[0]!, to: days[days.length - 1]! };
+      const q = { serviceIds: ids, addOnIds, from: days[0]!, to: days[days.length - 1]! }; // phase-pro: P5 addOnIds
       const [mine, any] = await Promise.all([browserApi.public.bookingAvailability(shop.slug, { ...q, staffId: staffId ?? "any" }), staffId ? browserApi.public.bookingAvailability(shop.slug, { ...q, staffId: "any" }) : Promise.resolve(null)]);
       setAv(mine);
       setAnyAv(any);
@@ -110,7 +135,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     } finally {
       setAvLoading(false);
     }
-  }, [ids, staffId, shop.slug, days]);
+  }, [ids, addOnIds, staffId, shop.slug, days]);
 
   useEffect(() => {
     if (step !== "time") return;
@@ -119,12 +144,18 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     void loadTimes();
   }, [step, loadTimes]);
 
+  // phase-pro: p2: the shop's working days in the strip, once per visit to this step (no waitlist: nothing changes).
+  useEffect(() => {
+    if (step !== "time" || workDays) return;
+    void publicWaitlistEndpoints(browserClient).info(shop.slug, { from: days[0]!, to: days[days.length - 1]! }).then((r) => setWorkDays(r.open ? new Set(r.workDays) : new Set())).catch(() => setWorkDays(new Set()));
+  }, [step, workDays, shop.slug, days]);
+
   const times = timesOn(av, day);
   const anyCount = staffId ? timesOn(anyAv, day).length : 0;
   const when = (iso: string) => date(iso, { weekday: "short", month: "short", day: "numeric" }) + ", " + time(iso);
   const endsAtOf = (s: Slot) => new Date(new Date(s.startsAt).getTime() + (av?.blockMin ?? sel.durationMin) * 60_000).toISOString();
   const shownStaff = slot ? (data.staff.find((s) => s.id === slot.staffId)?.name ?? staffName) : staffName;
-  const servicesText = picked.map((s) => pick(s).name).join(", ");
+  const servicesText = [...picked, ...pickedAddOns].map((s) => pick(s).name).join(", "); // phase-pro: P5 names the add-ons
 
   async function afterPay(id: string) {
     for (let i = 0; i < 12; i++) {
@@ -158,7 +189,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     setBusy(true);
     setBanner(null);
     try {
-      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null, intakeAnswer: !pharmacy && intakeQuestion ? intake.trim() || null : null, rebook: initial?.rebook ?? null /* phase-pro: p3 */ });
+      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null, addOnIds /* phase-pro: P5 */, intakeAnswer: !pharmacy && intakeQuestion ? intake.trim() || null : null, rebook: initial?.rebook ?? null /* phase-pro: p3 */ });
       setBooked(r);
       if (r.confirmed) {
         setFinished(r.appointment);
@@ -194,7 +225,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     </p>
   );
   const head = <ShopHead shop={shop} href={`/shops/${encodeURIComponent(shop.slug)}`} />;
-  const back = (to: "services" | "time", label = t("bk.back")) => (
+  const back = (to: "services" | "addons" | "time", label = t("bk.back")) => (
     <button type="button" onClick={() => { setStep(to); setBanner(null); }} aria-label={label} className="inline-flex size-11 items-center justify-center rounded-full border border-line text-fg hover:bg-bg-subtle focus-visible:focus-ring">
       <ChevronLeft aria-hidden className="size-5 rtl:rotate-180" strokeWidth={1.75} />
     </button>
@@ -275,6 +306,51 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     );
   }
 
+  // ---- phase-pro: P5 ---- "Add anything?": the add-ons as toggles, "+$10 · +15 min"
+  if (step === "addons") {
+    return (
+      <div className="flex flex-col gap-5 pb-28">
+        {head}
+        <div className="flex flex-col gap-3">
+          {back("services")}
+          <Heading>{t("addon.book.title")}</Heading>
+          <p className="text-body text-fg-muted">{t("addon.book.sub")}</p>
+        </div>
+        <ul className="divide-y divide-line border-y border-line" aria-label={t("addon.book.title")} data-testid="book-add-ons">
+          {offeredAddOns.map((a) => {
+            const on = addOnIds.includes(a.id);
+            const p = pick(a);
+            return (
+              <li key={a.id}>
+                <button type="button" role="switch" aria-checked={on} onClick={() => setAddOnIds((cur) => (on ? cur.filter((x) => x !== a.id) : [...cur, a.id]))} className="flex min-h-[64px] w-full items-center gap-3 py-3 text-start focus-visible:focus-ring">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-body-strong text-fg">{p.name}</span>
+                    {p.description ? <span className="block text-meta text-fg-muted">{p.description}</span> : null}
+                    <span className="block text-meta tabular-nums text-fg-muted">{addOnPriceTime(t as never, money, dur, a)}</span>
+                  </span>
+                  <span aria-hidden className={cn("relative h-7 w-12 shrink-0 rounded-full transition-colors", on ? "bg-trade clear:bg-primary" : "bg-bg-muted")}>
+                    <span className={cn("absolute top-0.5 size-6 rounded-full bg-bg shadow-card transition-all", on ? "start-[22px]" : "start-0.5")} />
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-meta text-fg-muted">{t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) })}{pickedAddOns.length ? ` · ${t("addon.book.count", { n: pickedAddOns.length })}` : ""}</p>
+              {pharmacy ? null : <p className="text-title tabular-nums text-fg">{totalText(t as never, data, sel, money)}</p>}
+            </div>
+            {deposit > 0 ? <p className="text-meta text-fg-muted">{t("bk.depositHold", { amount: money(deposit) })}</p> : null}
+          </div>
+          <Button size="lg" fullWidth onClick={() => { setSlot(null); setStep("time"); window.scrollTo?.({ top: 0 }); }}>{t("bk.chooseTime")}</Button>
+        </div>
+      </div>
+    );
+  }
+  // ---- end phase-pro: P5 ----
+
   // ---- time
   if (step === "time") {
     const label = deposit > 0 ? t("bk.cta.deposit", { amount: money(deposit) }) : needsCard ? t("bk.cta.card") : t("bk.cta.free");
@@ -282,7 +358,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       <div className="flex flex-col gap-5 pb-28">
         {head}
         <div className="flex flex-col gap-3">
-          {back("services")}
+          {back(offeredAddOns.length ? "addons" : "services") /* phase-pro: P5 */}
           <Heading>{t("bk.time.title")}</Heading>
           <p className="text-body text-fg-muted">{t("bk.time.sub", { services: servicesText, staff: staffName || t("bk.anyone").toLowerCase(), duration: dur(av?.blockMin ?? sel.durationMin) })}</p>
         </div>
@@ -290,10 +366,12 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           {days.map((d) => {
             const n = timesOn(av, d).length;
             const on = d === day;
+            const full = !!av && n === 0 && !!workDays?.has(d); // phase-pro: p2: a full working day stays tappable (it opens the waitlist)
             return (
-              <button key={d} type="button" aria-pressed={on} disabled={avLoading || (!!av && n === 0)} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && av && n === 0 && "text-fg-subtle")}>
+              <button key={d} type="button" aria-pressed={on} disabled={avLoading || (!!av && n === 0 && !full)} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && av && n === 0 && "text-fg-subtle")}>
                 <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
                 <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
+                {full ? <span className="text-[11px] leading-none">{t("wl.full")}</span> : null}
               </button>
             );
           })}
@@ -313,6 +391,19 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
                 </button>
               ))}
             </div>
+            {/* ---- phase-pro: p2 ---- "Full. Tell me if a spot opens" */}
+            {workDays?.size && !pharmacy && ids.length ? (
+              times.length === 0 && workDays.has(day) ? (
+                <div className="flex flex-col items-start gap-3 rounded-card bg-bg-subtle p-4" data-testid="wl-full">
+                  <p className="text-body-strong text-fg">{t("wl.book.full", { day: date(dayDate(day), { weekday: "long" }, "UTC") })}</p>
+                  <Button variant="secondary" onClick={() => setWaitSheet(true)}>{t("wl.book.cta")}</Button>
+                </div>
+              ) : times.length > 0 ? (
+                <button type="button" onClick={() => setWaitSheet(true)} className="min-h-11 self-start text-start text-meta text-fg underline underline-offset-2 focus-visible:focus-ring">{t("wl.book.other")}</button>
+              ) : null
+            ) : null}
+            {waitSheet ? <WaitlistSheet open onClose={() => setWaitSheet(false)} shop={{ slug: shop.slug, name: shop.name }} serviceId={ids[0]!} serviceName={picked[0] ? pick(picked[0]).name : ""} staffId={staffId} day={day} full={times.length === 0} signedIn={signedIn} needsName={needsName} /> : null}
+            {/* ---- end phase-pro: p2 ---- */}
             {staffId && anyCount > 0 ? (
               <p className="text-meta text-fg-muted">
                 {t("bk.time.anyHas", { n: anyCount, day: date(dayDate(day), { weekday: "long" }, "UTC") })}{" "}
@@ -453,7 +544,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             {deposit > 0 ? <p className="text-meta text-fg-muted">{t("bk.depositHold", { amount: money(deposit) })}</p> : null}
           </div>
         ) : null}
-        <Button size="lg" fullWidth disabled={!ids.length} onClick={() => { setStep("time"); window.scrollTo?.({ top: 0 }); }}>{t("bk.chooseTime")}</Button>
+        <Button size="lg" fullWidth disabled={!ids.length} onClick={() => { setStep(offeredAddOns.length ? "addons" : "time"); window.scrollTo?.({ top: 0 }); }}>{t(offeredAddOns.length ? "addon.book.next" : "bk.chooseTime") /* phase-pro: P5 */}</Button>
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ import { useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useSoloCalendar } from "@/lib/dashboard/useSoloCalendar";
 import { isAppointmentLed } from "@/lib/dashboard/people";
+import { insertWaitlistNav, WAITLIST_ICON } from "@/lib/dashboard/waitlist"; // phase-pro: p2
 import { AccountMenu } from "./AccountMenu";
 import type { CommandSearch } from "./CommandMenu";
 import { useMerchant } from "./MerchantContext";
@@ -40,6 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
   pets: PawPrint, "groom-rebooking": Repeat, daycare: Dog, "food-cards": Bone,
   wash: Droplets, vehicles: Car, "service-reminders": BellRing, "tire-season": Disc3,
   queue: ListOrdered, payouts: Wallet, invoices: FileText, rebooking: Repeat, pharmacy: Pill,
+  waitlist: WAITLIST_ICON, // phase-pro: p2
 };
 
 /** Merchant switcher (avatar + name). With several shops the name opens a menu of the owner's other shops. */
@@ -179,6 +181,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
     onOpenStreet: !!detail.merchant.neighbourhoodId,
     soloCalendar, // phase-solo D: a one-calendar solo pro has no Staff page in the sidebar
   });
+  insertWaitlistNav(entries, base, role, t("wl.nav")); // phase-pro: p2: Waitlist under Calendar
   // Restaurants: counts after Orders, Phone orders and WhatsApp (new orders in orange; the others are waiting on someone, so muted).
   const isRestaurant = entries.some((e) => e.badge);
   const badges = useApi(isRestaurant ? () => api.restaurantBadges() : null, [api, isRestaurant], { pollMs: 30_000 });

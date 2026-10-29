@@ -9,7 +9,7 @@
  * the shop, and an SMS carries "Reply STOP". The STOP reply is handled by messaging.handleInboundSms, which withdraws consent
  * everywhere, so a customer who replied STOP drops out of every list here on the next read.
  */
-import { and, desc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { appointments, invoices, merchantMembers, merchants, pushTokens, rebookingNudges, services, users, webPushSubscriptions } from "@ll/db";
 import { normalizeLocale, rungsFor, serviceApi, t, type ChannelPref, type LadderRung, type Locale } from "@ll/shared";
 import type { z } from "zod";
@@ -31,8 +31,7 @@ const WINDOW_MONTHS = 24;
 /** A customer who has not visited in this long is left alone. */
 const MAX_AGE_DAYS = 730;
 const UNANSWERED_LIMIT = 2;
-/** Automatic mode reminds a client this many days before they are due ("Clients are reminded 3 days before they're due"). */
-export const REMIND_BEFORE_DAYS = 3;
+export const REMIND_BEFORE_DAYS = serviceApi.REMIND_BEFORE_DAYS;
 export const REBOOKING_MODES = serviceApi.REBOOKING_MODES;
 export type RebookingMode = serviceApi.RebookingMode;
 
@@ -276,12 +275,14 @@ export async function rebookingOverview(ctx: AppContext, merchant: Merchant, sta
 
 /** The mode as the owner should see it: "auto" only counts while the plan includes it (a trial that ended falls back to review until she picks Pro). */
 export async function rebookingSettings(ctx: AppContext, merchant: Merchant): Promise<serviceApi.RebookingSettings> {
-  const mode = normalizeMode(merchant.rebookingMode);
+  const mode = modeOf(merchant);
   const included = (await getMerchantFeatures(ctx.db, merchant))["service.rebooking"].enabled;
   const effective: RebookingMode = mode === "auto" && !included ? "review" : mode;
   return { auto: effective === "auto", mode: effective, canAuto: included };
 }
 const normalizeMode = (m: string): RebookingMode => ((REBOOKING_MODES as readonly string[]).includes(m) ? (m as RebookingMode) : "review");
+/** The stored mode; rebook_auto still counts as "auto" for rows written before the mode column. */
+const modeOf = (m: Pick<Merchant, "rebookingMode" | "rebookAuto">): RebookingMode => (m.rebookAuto ? "auto" : normalizeMode(m.rebookingMode));
 
 async function rebookingStats(ctx: AppContext, merchant: Merchant, dueCount: number): Promise<serviceApi.RebookingResponse["stats"]> {
   const now = ctx.now();
@@ -470,8 +471,9 @@ export async function setRebookingMode(ctx: AppContext, merchant: Merchant, mode
 }
 
 export async function setAuto(ctx: AppContext, merchant: Merchant, auto: boolean) {
-  const s = await setRebookingMode(ctx, merchant, auto ? "auto" : normalizeMode(merchant.rebookingMode) === "off" ? "off" : "review");
-  return { auto: s.auto, mode: s.mode };
+  const was = normalizeMode(merchant.rebookingMode);
+  await setRebookingMode(ctx, merchant, auto ? "auto" : was === "off" ? "off" : "review");
+  return { auto };
 }
 
 export async function listRules(ctx: AppContext, merchant: Merchant): Promise<serviceApi.RebookRuleDto[]> {
@@ -492,7 +494,7 @@ export async function setRule(ctx: AppContext, merchant: Merchant, serviceId: st
  */
 export async function runRebookNudges(ctx: AppContext): Promise<number> {
   const now = ctx.now();
-  const shops = await ctx.db.select().from(merchants).where(and(eq(merchants.rebookingMode, "auto"), inArray(merchants.status, ["onboarding", "active"])));
+  const shops = await ctx.db.select().from(merchants).where(and(or(eq(merchants.rebookingMode, "auto"), eq(merchants.rebookAuto, true)), inArray(merchants.status, ["onboarding", "active"])));
   let sent = 0;
   for (const m of shops) {
     const hour = Number(new Intl.DateTimeFormat("en-CA", { timeZone: m.timezone, hour: "2-digit", hourCycle: "h23" }).format(now));

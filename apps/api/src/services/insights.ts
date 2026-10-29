@@ -10,7 +10,7 @@
  */
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { appointments, locations, merchantMembers, merchants, staffHours, visits } from "@ll/db";
-import { reportsApi, type SignalKey } from "@ll/shared";
+import { reportsApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest } from "../lib/errors.js";
 import { addDays } from "./bookings.js";
@@ -95,10 +95,12 @@ async function openWeekdays(ctx: AppContext, m: Merchant): Promise<Set<number> |
 export async function bestDayToPromote(
   ctx: AppContext,
   m: Merchant,
-  counts?: number[],
+  known?: Pick<Numbers, "source" | "weekdayCounts">,
 ): Promise<{ weekday: number; averagePerWeek: number } | null> {
-  let perDay = counts;
-  if (!perDay || perDay.every((n) => n === 0)) {
+  const thisWeek = weekStartOf(ctx.now(), m.timezone);
+  const nums = known ?? (await numbersByWeek(ctx, m, addDays(thisWeek, -7 * (TREND_WEEKS - 1)), thisWeek));
+  let perDay = nums.weekdayCounts;
+  if (nums.source === "visits") {
     const hm = await heatmap(ctx, m, TREND_WEEKS);
     // heatmap rows are Monday-first; this module counts from Sunday.
     perDay = Array.from({ length: 7 }, (_, d) => hm.matrix[(d + 6) % 7]!.reduce((s, n) => s + n, 0));
@@ -109,7 +111,7 @@ export async function bestDayToPromote(
   if (days.length < 2) return null;
   const today = localDate(ctx.now(), m.timezone).weekday;
   const ahead = (d: number) => (d - today + 7) % 7;
-  const pick = [...days].sort((a, b) => perDay![a]! - perDay![b]! || ahead(a) - ahead(b))[0]!;
+  const pick = [...days].sort((a, b) => perDay[a]! - perDay[b]! || ahead(a) - ahead(b))[0]!;
   return { weekday: pick, averagePerWeek: Math.round((perDay[pick]! / TREND_WEEKS) * 10) / 10 };
 }
 
@@ -137,7 +139,7 @@ export async function weekReport(ctx: AppContext, m: Merchant, opts: { start?: s
   const earlier = weeks.slice(0, -1).map((w) => num(w).revenueCents);
   const sw = sig.get(week) ?? noSignals();
   const goalCents = m.weeklyGoalCents ?? null;
-  const bestDay = await bestDayToPromote(ctx, m, nums.source === "appointments" ? nums.weekdayCounts : undefined);
+  const bestDay = await bestDayToPromote(ctx, m, nums);
   return {
     weekStart: week,
     weekEnd: addDays(week, 6),
@@ -188,7 +190,7 @@ export async function trialReceipt(ctx: AppContext, m: Merchant): Promise<report
       .orderBy(asc(appointments.startsAt)),
     signalsByWeek(ctx.db, m.id, weekStartOf(from, tz), weekStartOf(now, tz)),
   ]);
-  const sum = (key: SignalKey) => [...sig.values()].reduce((s, w) => ({ count: s.count + w.totals[key].count, amountCents: s.amountCents + w.totals[key].amountCents }), { count: 0, amountCents: 0 });
+  const sum = (key: reportsApi.SignalKey) => [...sig.values()].reduce((s, w) => ({ count: s.count + w.totals[key].count, amountCents: s.amountCents + w.totals[key].amountCents }), { count: 0, amountCents: 0 });
   const fills = sum("waitlist_fills");
   const rebooked = sum("rebook_booked");
   const addons = sum("addons_sold");

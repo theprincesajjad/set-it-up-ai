@@ -27,7 +27,7 @@ import {
   type AppointmentItemRow,
   type DbOrTx,
 } from "@ll/db";
-import { appointmentsApi, PLANS, SERVICE_STARTERS, defaultGroomWeeks, normalizeLocale, salesTaxCopy, tipsEnabledFor, vaccineStatus } from "@ll/shared";
+import { appointmentsApi, PLANS, PRO_BOOKABLE_CALENDARS, SERVICE_STARTERS, defaultGroomWeeks, normalizeLocale, salesTaxCopy, tipsEnabledFor, vaccineStatus } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { StaffContext } from "../lib/auth.js";
@@ -261,13 +261,22 @@ const hoursDto = (h: typeof staffHours.$inferSelect): appointmentsApi.StaffHours
 const timeOffDto = (t: typeof staffTimeOff.$inferSelect): appointmentsApi.TimeOffDto => ({ id: t.id, userId: t.userId, startsAt: t.startsAt.toISOString(), endsAt: t.endsAt.toISOString(), reason: t.reason });
 
 // ---- phase-solo: A: the bookable calendar cap (FREE_BOOKABLE_CALENDARS) ----
-/** 402 plan_limit: a second bookable calendar on Free. The details carry the plan offer the gate card shows. */
-export const calendarLimitReached = (max: number) =>
-  new HttpError(402, "plan_limit", `Free includes ${max} bookable calendar. ${PLANS.plus.name} has as many as you need.`, {
+/**
+ * 402 plan_limit: a calendar past the plan's cap. The details carry the plan offer the gate card shows: a second calendar on Free
+ * points at Pro, a third on Pro (or the trial) points at Studio (pro-value.md §5.6).
+ */
+export const calendarLimitReached = (max: number) => {
+  const next = max >= PRO_BOOKABLE_CALENDARS ? PLANS.studio : PLANS.plus;
+  const msg =
+    next.id === "studio"
+      ? `${PLANS.plus.name} includes ${max} bookable calendars. ${next.name} has as many as you need, with no per-chair charge.`
+      : `Free includes ${max} bookable calendar. ${next.name} has ${PRO_BOOKABLE_CALENDARS}, and ${PLANS.studio.name} as many as you need.`;
+  return new HttpError(402, "plan_limit", msg, {
     limit: "bookable_calendars",
     max,
-    offer: { kind: "plan", plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents },
+    offer: { kind: "plan", plan: next.id, name: next.name, priceCents: next.priceCents },
   });
+};
 
 /** The people who count as calendars, in join order, trimmed to the shop's cap (the first N stay bookable after a downgrade). */
 function capCalendars<T extends { userId: string }>(max: number | null, inOrder: T[]): T[] {
@@ -277,7 +286,7 @@ function capCalendars<T extends { userId: string }>(max: number | null, inOrder:
 /** Refuse to make anyone a new calendar (hours or a service list) past the plan's cap. People already bookable pass. */
 async function assertCalendarCap(db: DbOrTx, merchantId: string, userIds: string[]): Promise<void> {
   if (!userIds.length) return;
-  const [m] = await db.select({ id: merchants.id, plan: merchants.plan, restaurantTier: merchants.restaurantTier }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  const [m] = await db.select({ id: merchants.id, plan: merchants.plan, restaurantTier: merchants.restaurantTier, trialPlan: merchants.trialPlan }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
   const max = m ? await calendarLimitFor(db, m) : null;
   if (max == null) return;
   const [hrs, svc] = await Promise.all([

@@ -9,7 +9,7 @@
  *
  * Use `getPayments(ctx)`; never construct a provider in a route.
  */
-import { type AddOnId, type RestaurantTier } from "@ll/shared";
+import { type AddOnId, type PaidPlanId, type RestaurantTier } from "@ll/shared";
 import type { Config } from "../config.js";
 import type { AppContext } from "../context.js";
 import { FakePayments } from "./paymentsFake.js";
@@ -165,12 +165,12 @@ export interface SubscriptionSnapshot {
 export interface CheckoutArgs {
   customerId: string;
   merchantId: string;
-  plan: "plus" | "pro";
+  plan: PaidPlanId;
   /** Restaurant pack checkout: the tier being bought (plan is then "plus", the tier's Pro floor). */
   restaurantTier?: RestaurantTier;
   /** Stripe coupon id applied at checkout (founding offer year one). */
   couponId?: string;
-  /** Extra session and subscription metadata (phase-solo A: founding_solo = "1"). */
+  /** Extra session and subscription metadata (phase-pro P1: first_year_price = "1"). */
   metadata?: Record<string, string>;
   interval: BillingInterval;
   /** Configured Stripe Price id; when absent an inline CAD price is used. */
@@ -251,8 +251,8 @@ export interface PaymentsProvider {
   scheduleFoundingOffer(subscriptionId: string): Promise<void>;
   /** Stripe coupon id for the first phase of the founding offer (created on demand). */
   foundingCouponId(): Promise<string>;
-  /** Founding solo price (phase-solo A): a once-only amount-off coupon that brings the first annual invoice down to the founding price. */
-  foundingSoloCouponId(amountOffCents: number): Promise<string>;
+  /** First-year price (phase-pro P1): a once-only amount-off coupon that brings the first annual Pro invoice down to FIRST_YEAR_PRICE. */
+  firstYearCouponId(amountOffCents: number): Promise<string>;
   listInvoices(customerId: string, limit?: number): Promise<ProviderInvoice[]>;
   // Webhooks
   /** Verify the signature header against the raw body. Throws on mismatch. */

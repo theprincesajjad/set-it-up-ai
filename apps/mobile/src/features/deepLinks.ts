@@ -17,6 +17,7 @@ export function openDeepLink(url: string): void {
     [/^\/e\/([^/?#]+)/, (m) => `/e/${m[1]}`],
     [/^\/events\/([^/?#]+)/, (m) => `/events/${m[1]}`],
     [/^\/events\/?$/, () => "/events"],
+    [/^\/w\/([^/?#]+)/, () => "/appointments/waitlist"], // phase-pro: p2: a waitlist offer opens "Waiting for a spot"
   ];
   for (const [re, to] of map) {
     const m = path.match(re);

@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import type { inboxApi } from "@ll/shared";
 import { Capsules } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { PLANS } from "@ll/shared"; // phase-pro: p3
+import { PlanLine } from "@/components/onboarding/PlanLine"; // phase-pro: p3
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { SurfaceCard } from "@/components/ui/ClearKit";
@@ -19,7 +21,7 @@ import { useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen: (memberId: string) => void }) {
-  const { api, role } = useMerchant();
+  const { api, role, base, enabled } = useMerchant();
   const { t, date } = useLocaleOrEnglish();
   const [segment, setSegment] = useState<inboxApi.ClientSegment>("all");
   const [staffId, setStaffId] = useState("");
@@ -68,6 +70,12 @@ export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen:
         </div>
       </div>
 
+      {/* phase-pro: p3 -- Free: who is due, and what Pro does about it */}
+      {!enabled("service.rebooking") && (d?.counts.due ?? 0) > 0 ? (
+        <PlanLine href={`${base}/billing`} linkLabel={t("rb.planCta", { plan: PLANS.plus.name })} className="text-meta">
+          {t("rb.customers.due", { n: d!.counts.due })}
+        </PlanLine>
+      ) : null}
       {list.error ? <p className="text-meta text-negative">{list.error}</p> : null}
       {!d && !list.error ? <div className="h-60 animate-pulse rounded-r4 bg-bg-subtle" aria-hidden /> : null}
       {d && !rows.length ? <SurfaceCard padded><p className="text-meta text-fg-muted">{t("people.empty")}</p></SurfaceCard> : null}

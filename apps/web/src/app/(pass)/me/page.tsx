@@ -6,6 +6,7 @@ import { PeopleLinks } from "@/components/pass/PeopleLinks";
 import { lastFinished } from "@/lib/people";
 import { PetLinks } from "@/components/pass/PetLinks";
 import { VehicleLinks } from "@/components/pass/VehicleLinks";
+import { WaitlistLinks } from "@/components/pass/WaitlistLinks"; // phase-pro: p2
 import { TiffinLinks } from "@/components/pass/TiffinLinks";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { Wallet } from "@/components/pass/Wallet";
@@ -77,6 +78,7 @@ export default async function MePage({ searchParams }: Props) {
           <>
             {/* phase-solo D: book again, messages from shops, reminders on this phone */}
             <PeopleLinks last={nextVisit ? null : lastFinished(visits)} hasVisits={visits.length > 0} />
+            <WaitlistLinks />{/* phase-pro: p2: "Waiting for a spot" */}
             <TiffinLinks items={tiffin} />
             <PantryReminders items={pantry} />
             <PetLinks pets={petCount} cards={foodCount} shop={petShop} />

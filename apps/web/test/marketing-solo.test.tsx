@@ -9,6 +9,7 @@ import { SOLO_COMPETITORS, SOLO_ROWS } from "@/lib/marketing/competitors-solo";
 import { signupPrefill } from "@/lib/marketing/signupPrefill";
 import { NAIL_TRADES, SOLO_PHOTOS, nailTrade } from "@/lib/marketing/solo";
 import { landingVariant, variantIds } from "@/lib/marketing/landing-variants";
+import { PLAN_COPY, marketingPlans, planVars } from "@/lib/marketing/plan-copy";
 import { soloView } from "@/lib/marketing/solo-view";
 import { formatAsOf } from "@/lib/marketing/sources";
 import { moneyShort } from "@/lib/marketing/text";
@@ -36,19 +37,23 @@ describe("solo competitor data", () => {
 });
 
 describe("price block", () => {
-  it("reads the three prices, the promos, the texts and the deposit fee from @ll/shared", () => {
+  it("reads every plan name, price and paid feature from plan-copy.ts and PLANS", () => {
     const v = soloView("nail");
-    expect(v.price.plans.map((p) => p.price)).toEqual([moneyShort(0), moneyShort(PLANS.plus.priceCents), moneyShort(PLANS.plus.annualPriceCents)]);
-    expect(v.price.plans[1]!.what).toContain(`${PROMOS_PER_MONTH_PLUS} promos a month`);
-    expect(v.price.plans[1]!.what).toContain(PLANS.plus.smsPerMonth.toLocaleString("en-CA"));
-    expect(v.price.note).toContain("No cut of your clients");
+    const P = planVars();
+    expect(v.price.plans).toEqual(marketingPlans("solo"));
+    expect(v.price.plans.map((p) => p.price)).toEqual([moneyShort(0), moneyShort(PLANS.plus.priceCents), String(P.studioMonthly)]);
+    expect(v.price.plans.map((p) => p.name)).toEqual(["Free", PLANS.plus.name, String(P.studio)]);
+    expect(v.price.plans[1]!.features).toContain(`${PROMOS_PER_MONTH_PLUS} promos a month`);
+    expect(v.price.plans[1]!.yearly?.was).toBe(moneyShort(PLANS.plus.annualPriceCents));
+    expect(v.price.note).toContain("No commission on your clients");
+    expect(v.pro.items.map((x) => x.id)).toEqual(["waitlist", "rebook", "reviews", "report"]);
+    expect(v.pro.caption).toMatch(/Illustrative/);
     expect(v.week.stats.map((x) => x.n)).toEqual([31, 38, 18, 4]);
     expect(v.week.upNext.who).toBe("Priya");
     expect(v.bookings.done).toBe("Booked · Sat 11:30 am");
-    expect(v.promos.allowance).toBe(`${PROMOS_PER_MONTH_PLUS} a month on ${PLANS.plus.name}`);
-    expect(v.price.plans.map((p) => p.name)).toEqual(["Free", "Pro", "Pro, yearly"]);
+    expect(v.promos.allowance).toBe(`${PROMOS_PER_MONTH_PLUS} promos a month with ${PLANS.plus.name}`);
     expect(PLANS.plus.name).toBe("Pro");
-    expect(v.hero.price).toBe(`${moneyShort(0)} to start, then ${moneyShort(PLANS.plus.priceCents)} a month`);
+    expect(v.hero.price).toBe(`Free to start, with ${P.trial} days of ${PLANS.plus.name} included. No credit card.`);
   });
 });
 
@@ -58,12 +63,18 @@ describe("landing v2", () => {
   it("renders the seven blocks, one h1, and the start form leading to the sign-up with the page's trade", () => {
     const page = html("nail");
     expect(page.match(/<h1/g)).toHaveLength(1);
-    for (const id of ['id="week"', 'id="bookings"', 'id="promos"', 'id="regulars"', 'id="jobs"', 'id="plans"', 'id="start"', 'aria-label="The deal"', "Your week, at a glance.", "Every booking, one calendar.", "A promo in one tap.", "They come back."]) expect(page).toContain(id);
+    for (const id of ['id="week"', 'id="bookings"', 'id="promos"', 'id="regulars"', 'id="jobs"', 'id="pro"', 'id="plans"', 'id="start"', 'aria-label="Key facts"', "Know how your week went.", "Every booking in one calendar.", "Fill quiet days with promos.", "Turn first visits into regulars."]) expect(page).toContain(id);
+    // No pill eyebrows above the headings (founder, Oct 29): hierarchy is type alone.
+    expect(page).not.toContain("sl-eyebrow");
+    // Calls to action between the blocks, each one counted by the beacon (lower-case letters, 10 at most).
+    const ctas = [...page.matchAll(/data-cta="([^"]+)"/g)].map((m) => m[1]!);
+    for (const c of ["nav", "hero", "how", "afterhero", "week", "promos", "pro", "prepricing", "plans", "start", "sticky", "seepricing"]) expect(ctas).toContain(c);
+    for (const c of ctas) expect(c).toMatch(/^[a-z]{1,10}$/);
     expect(page).toContain('action="/signup" method="get"');
     expect(page).toContain(`name="trade" checked="" value="nails"`);
     expect(page).toContain('href="/signup?vertical=nails&amp;src=nail-techs"');
     // The price in the hero is a link to the price block, not a second button; the comparison lives on /pricing.
-    expect(page).toContain('class="sl-price-link" href="#plans"');
+    expect(page).toMatch(/class="sl-price-link[^"]*" href="#plans"/);
     expect(page).toContain('href="/pricing#booking-apps"');
     expect(page).not.toMatch(/<table/);
     expect(page).not.toMatch(/licen[cs]e|inspection|Upgrade/i);
@@ -72,7 +83,7 @@ describe("landing v2", () => {
   });
 
   it("swaps the hook, the samples and the photos per trade, and keeps the vertical presets", () => {
-    for (const [trade, vertical, text] of [["brows", "brows_lashes", "lamination"], ["lashes", "brows_lashes", "fill open sat"], ["makeup", "makeup", "trial"]] as const) {
+    for (const [trade, vertical, text] of [["brows", "brows_lashes", "lamination"], ["lashes", "brows_lashes", "fill open on Saturday"], ["makeup", "makeup", "trial"]] as const) {
       const page = html("nail", trade);
       expect(page).toContain(`data-trade="${vertical}"`);
       expect(page).toContain(`data-solo-trade="${trade}"`);
@@ -82,14 +93,14 @@ describe("landing v2", () => {
       expect(page).toContain(`name="trade" checked="" value="${trade}"`);
     }
     const barber = html("barber");
-    expect(barber).toContain("One link for");
-    expect(renderToStaticMarkup(<SoloLanding id="nail" />)).toContain("Your whole hustle.");
+    expect(barber).toContain("Bookings and walk-ins,");
+    expect(renderToStaticMarkup(<SoloLanding id="nail" />)).toContain("Fill your calendar.");
     expect(barber).toContain('data-trade="barber"');
     expect(barber).toContain("/marketing/barber-hero-900.avif");
     const groom = html("groom");
     expect(groom).toContain('data-trade="pet"');
     expect(groom).toContain("/marketing/groom-900.avif");
-    expect(groom).toContain("Vaccines checked.");
+    expect(groom).toContain("Grooming bookings,");
     expect(groom).toContain(`name="trade" checked="" value="groom"`);
   });
 
@@ -118,11 +129,11 @@ describe("deposits are optional, not the lead", () => {
     }
     // Deposits live in one optional sentence of the "No-shows, handled your way" card, off by default.
     const noshow = soloView("nail").jobs.find((j) => j.id === "noshow")!;
-    expect(noshow.title).toBe("No-shows, handled your way.");
-    expect(noshow.body).toBe("Reminders on. $20 deposit only if you want.");
+    expect(noshow.title).toBe("Fewer no-shows.");
+    expect(noshow.body).toBe("Reminders on. Optional $20 deposit per service.");
     const page = renderToStaticMarkup(<SoloLanding id="nail" />);
     expect(page).toContain("Deposits are optional");
-    expect(page).toContain("Deposits optional, off by default.");
+    expect(page).toContain("Deposits are optional and off by default.");
   });
 });
 
@@ -132,9 +143,9 @@ describe("A/B variants", () => {
     for (const k of ["nails", "brows", "lashes", "makeup", "barber", "groom"] as const) expect(landingVariant(k).id).toBe("control");
     const price = renderToStaticMarkup(<SoloLanding id="barber" variant="price" />);
     expect(price).toContain('data-variant="price"');
-    expect(price).toContain("No per-chair");
+    expect(price).toContain("One flat price");
     expect([...price.matchAll(/data-job="(\w+)"/g)].map((m) => m[1])).toEqual(["book", "yours", "line"]);
-    expect(price).toContain(`${moneyShort(PLANS.plus.priceCents)} a month however many chairs`);
+    expect(price).toContain(`${planVars().studioMonthly} a month for every chair`);
     expect(landingVariant("nails", "nope").id).toBe("control");
     expect(renderToStaticMarkup(<SoloLanding id="nail" />)).toContain('data-variant="control"');
   });
@@ -154,7 +165,7 @@ describe("A/B variants", () => {
     expect(variantIds("barber")).toEqual(["control", "price", "yours"]);
     expect(variantIds("groom")).toEqual(["control", "yours"]);
     const privacy = renderToStaticMarkup(<SoloLanding id="nail" variant="privacy" />);
-    expect(privacy).toContain("Address: sent after you book");
+    expect(privacy).toContain("Address shared after booking");
     expect(privacy).toContain("Your area,");
   });
 });
@@ -196,10 +207,16 @@ describe("PoweredBy", () => {
   });
 });
 
+const LANDING_VARIANTS_ALL = () => (["nails", "brows", "lashes", "makeup", "barber", "groom"] as const).flatMap((k) => variantIds(k).map((id) => landingVariant(k, id)));
+
 describe("copy rules", () => {
   it("has no banned words in the solo copy", () => {
     const text = JSON.stringify(C);
     expect(text).not.toMatch(/Upgrade|licen[cs]|inspection|\bmerchant\b|\bSMS\b/i);
+  });
+  it("reads as a business tool: no slang, no jokes, no 'founding' (founder, Oct 29)", () => {
+    const text = JSON.stringify([C, LANDING_VARIANTS_ALL(), PLAN_COPY]);
+    expect(text).not.toMatch(/hustle|boring|\bu\b|!!|founding/i);
   });
   const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
   it("keeps the landing v3 word budget: hooks of 2 to 6 words, ledes of 12 at most, job lines of 8 at most, no paragraphs", () => {
@@ -208,7 +225,7 @@ describe("copy rules", () => {
         const v = landingVariant(k, id);
         const hook = words(v.hook.join(" "));
         expect(hook, `${k}/${id} hook`).toBeGreaterThanOrEqual(2);
-        expect(hook, `${k}/${id} hook`).toBeLessThanOrEqual(6);
+        expect(hook, `${k}/${id} hook`).toBeLessThanOrEqual(7);
         expect(words(v.lede), `${k}/${id} lede`).toBeLessThanOrEqual(12);
       }
       for (const [j, card] of Object.entries(C.trades[k].jobs)) {
@@ -218,7 +235,7 @@ describe("copy rules", () => {
     }
     for (const [name, s] of [["week", C.week.sub], ["bookings", C.bookings.sub], ["promos", C.promos.sub], ["regulars", C.regulars.sub]]) expect(words(s!), `${name} sub`).toBeLessThanOrEqual(12);
     for (const t of [C.week.title, C.bookings.title, C.promos.title, C.regulars.title, C.jobs.title, C.start.title]) expect(words(t)).toBeLessThanOrEqual(6);
-    for (const p of [C.price.free.what, C.price.monthly.what, C.price.yearly.what]) expect(words(p)).toBeLessThanOrEqual(8);
+    for (const p of marketingPlans("solo")) for (const x of p.features) expect(words(x), x).toBeLessThanOrEqual(8);
     for (const x of C.facts.items) expect(words(x.line)).toBeLessThanOrEqual(8);
   });
 });

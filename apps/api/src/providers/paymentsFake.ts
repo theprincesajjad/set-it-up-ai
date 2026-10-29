@@ -471,8 +471,8 @@ export class FakePayments implements PaymentsProvider {
     return this.foundingCoupon;
   }
 
-  async foundingSoloCouponId(amountOffCents: number) {
-    return `founding_solo_${amountOffCents}`;
+  async firstYearCouponId(amountOffCents: number) {
+    return `first_year_${amountOffCents}`;
   }
 
   async scheduleFoundingOffer(subscriptionId: string) {

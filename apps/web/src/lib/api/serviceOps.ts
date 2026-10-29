@@ -36,6 +36,9 @@ export function serviceOpsEndpoints(c: ApiClient, b: string) {
       rebookSnooze: (userId: string, serviceId: string, snoozeDays = 14) => c.post<void>(`${b}/rebooking/${enc(userId)}/${enc(serviceId)}/snooze`, { snoozeDays }),
       rebookSendAll: () => c.post<{ sent: number; skipped: number }>(`${b}/rebooking/send-all`, {}),
       rebookAuto: (auto: boolean) => c.put<{ auto: boolean }>(`${b}/rebooking/settings`, { auto }),
+      // phase-pro: p3
+      rebookMode: (mode: serviceApi.RebookingMode) => c.put<serviceApi.RebookingSettings>(`${b}/rebooking/settings`, { mode }),
+      rebookResults: () => c.get<serviceApi.RebookingResultsResponse>(`${b}/rebooking/results`),
       rebookRules: () => c.get<{ items: serviceApi.RebookRuleDto[] }>(`${b}/rebooking/rules`),
       setRebookRule: (serviceId: string, rebookAfterDays: number | null) => c.put<serviceApi.RebookRuleDto>(`${b}/rebooking/rules/${enc(serviceId)}`, { rebookAfterDays }),
       dropoffSettings: () => c.get<commerceApi.DropoffSettingsDto>(`${b}/dropoff-settings`),
@@ -54,6 +57,8 @@ export function publicServiceEndpoints(c: ApiClient) {
     payInvoice: (token: string, tipCents = 0) => c.post<serviceApi.PayInvoiceResponse>(`/v1/public/invoices/${enc(token)}/pay`, { tipCents }, { anonymous: true }),
     dropoffSlots: (slug: string, q: { from?: string; to?: string; locationId?: string } = {}) =>
       c.get<{ items: commerceApi.SlotDto[] }>(`/v1/public/shops/${enc(slug)}/slots`, { anonymous: true, query: { kind: "dropoff", ...q } }),
+    // phase-pro: p3 -- a book-again link's welcome (first name, service, stylist)
+    rebookWelcome: (slug: string, nudgeId: string) => c.get<serviceApi.RebookWelcomeDto>(`/v1/public/shops/${enc(slug)}/rebook/${enc(nudgeId)}`, { anonymous: true }),
   };
 }
 

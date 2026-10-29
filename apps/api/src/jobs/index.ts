@@ -33,11 +33,13 @@ import { petJobs } from "./pets.js";
 import { autoJobs } from "./auto.js";
 import { tiffinJobs } from "./tiffin.js";
 import { weeklyReportJobs } from "./weekly-report.js"; // phase-pro: p6
+import { billingTrialJobs } from "./billing-trial.js"; // phase-pro: p1
 import { waitlistJobs } from "./waitlist.js"; // phase-pro: p2
 
 export const jobs: Job[] = [...messagingJobs, ...commerceJobs, ...adsJobs, ...connectorsJobs, ...redemptionJobs, ...notificationJobs, ...banquetJobs, ...tiffinJobs, ...restaurantMessagingJobs, ...appointmentJobs, ...classJobs, ...halalJobs, ...serviceJobs, ...onboardingJobs, ...retentionJobs, ...outboxJobs, ...groceryJobs, ...barberJobs, ...petJobs, ...autoJobs];
 
 jobs.push(...weeklyReportJobs); // phase-pro: p6
+jobs.push(...billingTrialJobs); // phase-pro: p1
 jobs.push(...waitlistJobs); // phase-pro: p2
 
 export function startJobs(ctx: AppContext): () => void {

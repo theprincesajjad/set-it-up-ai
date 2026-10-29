@@ -1,7 +1,7 @@
 "use client";
 /** Pieces the "This week" tile and Reports, Week share: the change chips, the goal bar and the trend bars. */
 import { Check, TrendingUp, Trophy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import type { reportsApi } from "@ll/shared";
 import { StatChip } from "@/components/ui/ClearKit";
 import { barHeights, deltaTone, goalProgress } from "@/lib/dashboard/insights";
@@ -55,7 +55,7 @@ export function GoalBar({ goal }: { goal: reportsApi.WeekInsight["goal"] }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, g.pct)} aria-label={label} className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div className={cn("h-full rounded-full transition-[width] duration-700 ease-out", goal.reached ? "bg-success" : "bg-chart-hi")} style={{ width: shown ? `${g.width}%` : "0%" }} />
+        <div className={cn("h-full rounded-full w-(--w) transition-all duration-700 ease-out", goal.reached ? "bg-success" : "bg-chart-hi")} style={{ "--w": shown ? `${g.width}%` : "0%" } as CSSProperties} />
       </div>
       <p className={cn("flex items-center gap-1.5 text-meta", goal.reached ? "font-semibold text-success-text" : "text-fg-muted")}>
         {goal.reached ? <Check aria-hidden className="size-3.5" strokeWidth={2.6} /> : null}
@@ -72,7 +72,7 @@ export function TrendBars({ trend, className }: { trend: reportsApi.WeekTrendPoi
   return (
     <div role="img" aria-label={t("insights.tile.trend", { n: trend.length })} className={cn("flex h-12 items-end gap-1", className)} dir="ltr">
       {heights.map((h, i) => (
-        <span key={trend[i]!.weekStart} className={cn("flex-1 rounded-sm", i === heights.length - 1 ? "bg-chart-hi" : "bg-chart-muted")} style={{ height: `${Math.max(h, 2)}%` }} />
+        <span key={trend[i]!.weekStart} className={cn("h-(--h) flex-1 rounded-sm", i === heights.length - 1 ? "bg-chart-hi" : "bg-chart-muted")} style={{ "--h": `${Math.max(h, 2)}%` } as CSSProperties} />
       ))}
     </div>
   );

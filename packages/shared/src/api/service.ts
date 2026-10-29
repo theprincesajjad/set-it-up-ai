@@ -214,6 +214,8 @@ export const rebookingActionBody = z.object({ snoozeDays: z.number().int().min(1
 // ---- phase-pro: p3 ----
 export const REBOOKING_MODES = ["review", "auto", "off"] as const;
 export type RebookingMode = (typeof REBOOKING_MODES)[number];
+/** Automatic mode reminds a client this many days before they are due ("Clients are reminded 3 days before they're due"). */
+export const REMIND_BEFORE_DAYS = 3;
 /** `auto` is kept for older callers (true = "auto", false = "review"); `mode` wins when both are sent. */
 export const rebookingSettingsBody = z.object({ auto: z.boolean().optional(), mode: z.enum(REBOOKING_MODES).optional() }).refine((b) => b.auto !== undefined || b.mode !== undefined, { message: "Send a mode" });
 // ---- end phase-pro: p3 ----

@@ -10,12 +10,12 @@
  */
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { merchantSignals, merchants, staffHours, type DbOrTx } from "@ll/db";
-import { reportsApi, type SignalKey } from "@ll/shared";
+import { reportsApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { addDays, zonedToUtc } from "./bookings.js";
 
 export const SIGNAL_KEYS = reportsApi.SIGNAL_KEYS;
-export type { SignalKey };
+export type SignalKey = reportsApi.SignalKey;
 
 /** The one extra key: the full day a client looked at, `full_day_views@YYYY-MM-DD` (count only), so the tile can name the day. */
 const FULL_DAY_PREFIX = "full_day_views@";

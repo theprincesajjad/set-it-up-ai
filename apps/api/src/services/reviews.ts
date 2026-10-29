@@ -22,7 +22,7 @@
  */
 import { and, count, desc, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { appointments, cateringEvents, merchantMembers, merchantStaff, merchants, orders, pushTokens, redemptions, reviewRequests, rewards, tiffinDeliveries, tiffinSubscriptions, users } from "@ll/db";
-import { BRAND, FEATURE_KEYS, restaurantWebApi, whatsappApi, type FeatureKey, reviewsApi } from "@ll/shared";
+import { BRAND, restaurantWebApi, reviewsApi, whatsappApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomCode, randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, featureLocked, notFound } from "../lib/errors.js";
@@ -34,6 +34,7 @@ import { ensureMember } from "./ledger.js";
 import { canSendTransactional, getSession, sendWhatsApp, sendWhatsAppNotification } from "./whatsapp.js";
 import { writeAudit } from "./admin-audit.js";
 import { isOptedOut, sendSms } from "./opt-out.js";
+import { recordSignal } from "./signals.js"; // phase-pro: p4
 
 type Merchant = typeof merchants.$inferSelect;
 type Request = typeof reviewRequests.$inferSelect;
@@ -68,15 +69,9 @@ export async function consentedChannels(ctx: AppContext, merchant: Merchant, use
 }
 
 // ---- phase-pro: p4 ----
-const APPOINTMENT_REVIEW_KEY = "booking.review_requests";
-
-/**
- * Whether the shop's plan includes automatic review requests after a visit. TODO(P1): P1 adds `booking.review_requests`
- * to plans.ts on `plus`; until it lands this falls back to "any paid plan" so the feature works on Pro.
- */
+/** Whether the shop's plan (or live trial) includes automatic review requests after a visit. */
 export async function appointmentReviewsAvailable(ctx: AppContext, merchant: Merchant): Promise<boolean> {
-  if ((FEATURE_KEYS as readonly string[]).includes(APPOINTMENT_REVIEW_KEY)) return isFeatureOn(ctx.db, merchant, APPOINTMENT_REVIEW_KEY as FeatureKey);
-  return merchant.plan !== "free";
+  return isFeatureOn(ctx.db, merchant, "booking.review_requests");
 }
 
 /** True when `sourceId` is one of this shop's appointments (the request came from a visit, not an order). */
@@ -85,9 +80,6 @@ async function isAppointmentSource(ctx: AppContext, merchantId: string, sourceId
   const [a] = await ctx.db.select({ id: appointments.id }).from(appointments).where(and(eq(appointments.id, sourceId), eq(appointments.merchantId, merchantId))).limit(1);
   return !!a;
 }
-
-/** The P6 counter. TODO(P6): swap for `recordSignal` from ./signals.js when it lands. */
-async function recordReviewSignal(_ctx: AppContext, _merchantId: string, _key: "reviews_requested" | "reviews_google"): Promise<void> {}
 
 /** P1 calls this when the trial starts (and when Pro is bought): turn the requests on or off. */
 export async function setReviewRequestsMode(ctx: AppContext, merchantId: string, mode: reviewsApi.ReviewRequestsMode): Promise<void> {
@@ -249,7 +241,7 @@ export async function sendDueReviewRequests(ctx: AppContext, opts: { immediateFo
     const channel = await deliver(ctx, merchant, req, visit);
     if (!channel) continue;
     await ctx.db.update(reviewRequests).set({ sentAt: now, channel }).where(eq(reviewRequests.id, req.id));
-    if (visit) await recordReviewSignal(ctx, merchant.id, "reviews_requested"); // phase-pro: p4
+    if (visit) await recordSignal(ctx, merchant.id, "reviews_requested"); // phase-pro: p4
     sent++;
   }
   return sent;
@@ -336,7 +328,7 @@ export async function markGoogleOpened(ctx: AppContext, token: string): Promise<
   const { req, merchant } = await byToken(ctx, token);
   if (!req.googleClickedAt) {
     const [first] = await ctx.db.update(reviewRequests).set({ googleClickedAt: ctx.now() }).where(and(eq(reviewRequests.id, req.id), isNull(reviewRequests.googleClickedAt))).returning({ id: reviewRequests.id });
-    if (first && (await isAppointmentSource(ctx, merchant.id, req.orderId))) await recordReviewSignal(ctx, merchant.id, "reviews_google"); // phase-pro: p4
+    if (first && (await isAppointmentSource(ctx, merchant.id, req.orderId))) await recordSignal(ctx, merchant.id, "reviews_google"); // phase-pro: p4
   }
   return { ok: true };
 }

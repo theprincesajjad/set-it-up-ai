@@ -56,7 +56,7 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
   const res = await page.goto("/for-nail-techs");
   // Prerendered: served from the static output, never rendered per request.
   expect(res!.headers()["cache-control"] ?? "").not.toMatch(/no-store|private/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your whole hustle. One link.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Fill your calendar. Keep clients coming back.");
   await expect(page.locator("[data-solo-trade=nails][data-trade=nails]")).toHaveCount(1);
   await expect(page.getByRole("img", { name: "The booking flow, as a client sees it" })).toBeVisible();
   // The awning is Warm-only; the solo pages have none, and no gradient on any block.
@@ -66,27 +66,28 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
   await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === "ll_src")?.value).toBe("nail-techs");
   await expect(page.locator("#start input[name=src]")).toHaveValue("nail-techs");
   // The price under the button is a real link to the price block.
-  const price = page.getByRole("link", { name: /\$0 to start, then \$39 a month/ });
+  const price = page.getByRole("link", { name: /Free to start, with 14 days of Pro/ });
   await expect(price).toHaveAttribute("href", "#plans");
   await price.click();
   await expect(page.locator("#plans")).toBeInViewport();
-  await expect(page.locator("#plans [data-plan=monthly]")).toContainText("$39");
-  await expect(page.locator("#plans [data-plan=yearly]")).toContainText("$390");
+  await expect(page.locator("#plans [data-plan=monthly]")).toContainText(/\$\d+\/month/);
+  await expect(page.locator("#plans [data-plan=yearly]")).toContainText(/first year/);
+  await expect(page.locator("#plans [data-plan=studio]")).toHaveCount(1);
   await expect(page.locator("#plans").getByRole("link", { name: /Compare with Fresha/ })).toHaveAttribute("href", "/pricing#booking-apps");
   // Deposits are optional, never the lead: not in the hero copy or the trust row; the booking flow says so on its details step.
   await expect(page.locator(".sl-copy")).not.toContainText(/deposit/i);
   await expect(page.locator(".sl-app").nth(2)).toContainText("Deposits are optional");
-  await expect(page.locator("#plans")).toContainText("Deposits optional.");
+  await expect(page.locator("#start")).toContainText("Deposits are optional");
   await expect(page.locator("#plans [data-plan=monthly]")).toContainText("Pro");
   // The three jobs, in the control order.
   expect(await page.locator("[data-job]").evaluateAll((els) => els.map((e) => e.getAttribute("data-job")))).toEqual(["book", "remind", "noshow"]);
-  await expect(page.locator("[data-job=noshow]")).toContainText("$20 deposit only if you want.");
+  await expect(page.locator("[data-job=noshow]")).toContainText("Optional $20 deposit per service.");
   // The owner's week: the dashboard numbers are real text (they count up in CSS only), the best day is Saturday.
   await expect(page.locator("#week .sl-stat").first()).toContainText("31");
   await expect(page.locator("#week .sl-dash")).toContainText("+23% vs last week");
   await expect(page.locator("#week .sl-bars .best")).toContainText("S");
-  await expect(page.locator("#bookings")).toContainText("11 booked this week");
-  await expect(page.locator("#promos")).toContainText("Sent to 112 regulars");
+  await expect(page.locator("#bookings")).toContainText("11 bookings this week");
+  await expect(page.locator("#promos")).toContainText("Sent to 112 clients");
   // The comparison table, the FAQ and the twelve-field wizard are off the page.
   await expect(page.locator("table")).toHaveCount(0);
   await expect(page.locator("input[type=password]")).toHaveCount(0);
@@ -97,9 +98,9 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
 
 test("the other looks of the nail page swap the words, the photos and the sign-up preset", async ({ page }) => {
   for (const [trade, hook, chip, vertical, photo, nav] of [
-    ["brows", "Your whole hustle. One link.", "Brows", "brows_lashes", "brows-", "Brow techs"],
-    ["lashes", "Your whole hustle. One link.", "Lashes", "brows_lashes", "lashes-", "Lash techs"],
-    ["makeup", "Your dates, booked for you.", "Makeup", "makeup", "lashes-", null],
+    ["brows", "Fill your calendar. Keep clients coming back.", "Brows", "brows_lashes", "brows-", "Brow techs"],
+    ["lashes", "Fill your calendar. Keep clients coming back.", "Lashes", "brows_lashes", "lashes-", "Lash techs"],
+    ["makeup", "Bookings for every trial and event.", "Makeup", "makeup", "lashes-", null],
   ] as const) {
     await page.goto(`/for-nail-techs?trade=${trade}`);
     await expect(page).toHaveURL(new RegExp(`/for-nail-techs\\?trade=${trade}$`));
@@ -118,7 +119,7 @@ test("the other looks of the nail page swap the words, the photos and the sign-u
 
 test("barber page: one link for the shop, the barber preset, and the comparison on /pricing", async ({ page }) => {
   await page.goto("/for-barbers");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("One link for the whole shop.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bookings and walk-ins, in one place.");
   await expect(page.locator("[data-variant=control]")).toHaveCount(1);
   await expect(page.locator("[data-trade=barber]")).toHaveCount(1);
   await expect(page.locator("#start").getByRole("radio", { name: "Barber" })).toBeChecked();
@@ -137,7 +138,7 @@ test("barber page: one link for the shop, the barber preset, and the comparison 
 
 test("groomer page and home chips", async ({ page }) => {
   await page.goto("/for-groomers");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Vaccines checked.");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Grooming bookings,");
   await expect(page.locator("[data-solo-trade=groom][data-trade=pet]")).toHaveCount(1);
   await expect(page.locator(".sl-work img")).toHaveAttribute("src", "/marketing/groom-900.webp");
   expect(await page.locator(".sl-work img").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0 && /groom-900\.avif$/.test(i.currentSrc))).toBe(true);
@@ -149,10 +150,10 @@ test("groomer page and home chips", async ({ page }) => {
 
 test("an ad URL's ?v= renders the researched challengers (no test running: any variant of the look), and an unknown id falls back", async ({ page }) => {
   for (const [url, variant, hook, jobs] of [
-    ["/for-nail-techs?v=yours", "yours", "Your clients stay yours.", ["book", "yours", "noshow"]],
-    ["/for-nail-techs?trade=brows&v=privacy", "privacy", "Your area, not your door.", ["private", "book", "noshow"]],
-    ["/for-barbers?v=price", "price", "No per-chair charge. Ever.", ["book", "yours", "line"]],
-    ["/for-groomers?v=yours", "yours", "Your clients stay yours.", ["book", "yours", "noshow"]],
+    ["/for-nail-techs?v=yours", "yours", "Your clients. Your business.", ["book", "yours", "noshow"]],
+    ["/for-nail-techs?trade=brows&v=privacy", "privacy", "Your area, not your address.", ["private", "book", "noshow"]],
+    ["/for-barbers?v=price", "price", "One flat price for every chair.", ["book", "yours", "line"]],
+    ["/for-groomers?v=yours", "yours", "Your clients. Your business.", ["book", "yours", "noshow"]],
   ] as const) {
     await page.goto(url);
     await expect(page.locator(`[data-variant=${variant}]`)).toHaveCount(1);
@@ -175,7 +176,7 @@ test("the three-field start leads into the sign-up wizard, prefilled", async ({ 
   await start.getByLabel("Your name or studio").fill("Mira Brow Bar");
   await start.getByRole("radio", { name: "Brows" }).check();
   await start.getByLabel("Email or mobile").fill("mira@example.com");
-  await start.getByRole("button", { name: "Get your booking link, free" }).click();
+  await start.getByRole("button", { name: "Get started free" }).click();
   await page.waitForURL(/\/signup\?/);
   const url = new URL(page.url());
   expect(Object.fromEntries(url.searchParams)).toMatchObject({ shop: "Mira Brow Bar", trade: "brows", contact: "mira@example.com", src: "nail-techs" });
@@ -187,7 +188,7 @@ test("the three-field start leads into the sign-up wizard, prefilled", async ({ 
   await page.goto("/for-barbers");
   await page.locator("#start").getByLabel("Your name or studio").fill("Corner Cuts");
   await page.locator("#start").getByLabel("Email or mobile").fill("(416) 555-0123");
-  await page.locator("#start").getByRole("button", { name: "Get your booking link, free" }).click();
+  await page.locator("#start").getByRole("button", { name: "Get started free" }).click();
   await page.waitForURL(/\/signup\?/);
   await expect(page.locator("[data-vertical=barber]")).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("input[type=tel]").first()).toHaveValue(/416/);
@@ -250,7 +251,7 @@ test("PoweredBy on a booking page leads to the matching landing page with src=cl
   await expect(link).toContainText("Powered by Local Loyalty");
   await link.click();
   await expect(page).toHaveURL(/\/for-nail-techs\?src=client$/);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("One link.");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Fill your calendar.");
   // The visit is counted as the client loop: the form and the cookie carry src=client.
   await expect(page.locator("#start input[name=src]")).toHaveValue("client");
   await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === "ll_src")?.value).toBe("client");

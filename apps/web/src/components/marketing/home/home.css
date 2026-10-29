@@ -161,6 +161,11 @@
 .hm-door-cta { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 15px; font-weight: 650; }
 .hm-door-cta svg { width: 16px; height: 16px; }
 
+.hm-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 24px; font-size: 15px; }
+.hm-chips span { font-weight: 650; margin-inline-end: 8px; }
+.hm-chips a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; color: var(--foreground); text-decoration: none; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.hm-chips a:hover { background: var(--muted); }
+
 /* ---------- Pricing ---------- */
 .hm-plans { display: grid; gap: 16px; width: min(100%, 1120px); margin-inline: auto; }
 @media (min-width: 980px) { .hm-plans { grid-template-columns: repeat(3, 1fr); } }

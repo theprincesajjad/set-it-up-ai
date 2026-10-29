@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { featureInterest, featureOverrides, featureRollouts, merchantAddOns, merchants, services } from "@ll/db";
-import { FEATURE_KEYS, FEATURES, bookableCalendarLimit, isFeatureEnabled, type FeatureKey, type PlanId, type RestaurantTier, type RolloutStage } from "@ll/shared";
+import { FEATURE_KEYS, FEATURES, PLAN_IDS, bookableCalendarLimit, isFeatureEnabled, type FeatureKey, type PlanId, type RestaurantTier, type RolloutStage } from "@ll/shared";
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
 import { rowsOf } from "../lib/sql.js";
@@ -11,7 +11,17 @@ type Merchant = Pick<typeof merchants.$inferSelect, "id" | "plan" | "betaOptIn">
   vertical?: string | null;
   /** phase-solo A: on an annual subscription (site.builder needs it). Missing = not entitled. */
   annualSiteEntitled?: boolean;
+  /** phase-pro P1: merchants.trial_plan, set while the 14-day trial is live (the trial job clears it at trial_ends_at). Missing = none. */
+  trialPlan?: string | null;
 };
+
+/**
+ * phase-pro P1: the plan a live trial gives this shop, or null. merchants.trial_plan is set only while the trial is live: the trial
+ * job (jobs/billing-trial.ts) clears it at trial_ends_at on the app clock, so feature checks need no clock of their own.
+ */
+export function trialPlanOf(m: { trialPlan?: string | null }): PlanId | null {
+  return m.trialPlan && (PLAN_IDS as readonly string[]).includes(m.trialPlan) ? (m.trialPlan as PlanId) : null;
+}
 
 /** Active add-on ids per merchant (merchant_add_ons.status = active). */
 export async function activeAddOns(db: DbOrTx, merchantIds: string[]): Promise<Map<string, string[]>> {
@@ -77,7 +87,7 @@ export async function getMerchantFeatures(db: DbOrTx, merchant: Merchant): Promi
   const out = {} as Record<FeatureKey, FeatureState>;
   for (const key of FEATURE_KEYS) {
     const stage = stageOf(inputs, key);
-    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, vertical: merchant.vertical, addOns: inputs.addOns.get(merchant.id), annualSiteEntitled: merchant.annualSiteEntitled, stage, betaOptIn: merchant.betaOptIn, override: inputs.overrides.get(`${merchant.id}:${key}`) ?? null });
+    const enabled = isFeatureEnabled(key, { plan: merchant.plan, restaurantTier: merchant.restaurantTier, trialPlan: trialPlanOf(merchant), vertical: merchant.vertical, addOns: inputs.addOns.get(merchant.id), annualSiteEntitled: merchant.annualSiteEntitled, stage, betaOptIn: merchant.betaOptIn, override: inputs.overrides.get(`${merchant.id}:${key}`) ?? null });
     const lockedReason = enabled ? null : stage === "hidden" || (stage === "beta" && !merchant.betaOptIn) ? "rollout" : "plan";
     out[key] = { key, enabled, stage, minPlan: FEATURES[key].minPlan, lockedReason };
   }
@@ -132,7 +142,7 @@ export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: rea
   for (const m of list) {
     const on = new Set<FeatureKey>();
     for (const key of keys) {
-      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, vertical: m.vertical, addOns: inputs.addOns.get(m.id), annualSiteEntitled: m.annualSiteEntitled, stage: stageOf(inputs, key), betaOptIn: m.betaOptIn, override: inputs.overrides.get(`${m.id}:${key}`) ?? null })) on.add(key);
+      if (isFeatureEnabled(key, { plan: m.plan, restaurantTier: m.restaurantTier, trialPlan: trialPlanOf(m), vertical: m.vertical, addOns: inputs.addOns.get(m.id), annualSiteEntitled: m.annualSiteEntitled, stage: stageOf(inputs, key), betaOptIn: m.betaOptIn, override: inputs.overrides.get(`${m.id}:${key}`) ?? null })) on.add(key);
     }
     out.set(m.id, on);
   }
@@ -142,7 +152,7 @@ export async function enabledFeaturesFor(db: DbOrTx, list: Merchant[], keys: rea
 /** Same as enabledFeaturesFor, when only merchant ids are at hand. */
 export async function enabledFeaturesByMerchantId(db: DbOrTx, ids: string[], keys: readonly FeatureKey[]): Promise<Map<string, Set<FeatureKey>>> {
   if (!ids.length) return new Map();
-  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn, restaurantTier: merchants.restaurantTier, vertical: merchants.vertical, annualSiteEntitled: merchants.annualSiteEntitled }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
+  const rows = await db.select({ id: merchants.id, plan: merchants.plan, betaOptIn: merchants.betaOptIn, restaurantTier: merchants.restaurantTier, vertical: merchants.vertical, annualSiteEntitled: merchants.annualSiteEntitled, trialPlan: merchants.trialPlan }).from(merchants).where(inArray(merchants.id, [...new Set(ids)]));
   return enabledFeaturesFor(db, rows, keys);
 }
 
@@ -242,11 +252,11 @@ export async function isAnyFeatureOn(db: DbOrTx, merchant: Merchant, keys: reado
 }
 
 /**
- * The bookable-calendar cap for a shop (phase solo: FREE_BOOKABLE_CALENDARS on Free, none on paid plans). An admin override that turns
+ * The bookable-calendar cap for a shop (Free 1, Pro and the trial 2, Studio and up none: bookableCalendarLimit). An admin override that turns
  * booking.appointments on for a Free shop is a pilot of the full calendar (the seeded salons, early pilots): no cap. null = no cap.
  */
-export async function calendarLimitFor(db: DbOrTx, m: { id: string; plan: PlanId; restaurantTier?: RestaurantTier | null }): Promise<number | null> {
-  const max = bookableCalendarLimit(m.plan, m.restaurantTier);
+export async function calendarLimitFor(db: DbOrTx, m: { id: string; plan: PlanId; restaurantTier?: RestaurantTier | null; trialPlan?: string | null }): Promise<number | null> {
+  const max = bookableCalendarLimit(m.plan, m.restaurantTier, trialPlanOf(m));
   if (max == null) return null;
   const [pilot] = await db
     .select({ enabled: featureOverrides.enabled })

@@ -18,13 +18,15 @@ import {
   PLAN_RANK,
   PLATFORM_PAYMENT_FEE_BPS,
   SMS_OVERAGE_CENTS,
-  bookableCalendarLimit,
-  foundingSoloConfig,
-  foundingSoloSpotsLeft,
-  isFoundingSoloEligible,
+  firstYearPriceConfig,
+  firstYearPriceShown,
+  firstYearPriceSpotsLeft,
+  isFirstYearPriceEligible,
   isPlanAvailable,
   promoAllowance,
+  trialDaysLeft,
   type BillingInterval,
+  type PaidPlanId,
   type PlanId,
   type PromoAllowance,
   type billingApi,
@@ -36,7 +38,8 @@ import { featureLocked } from "../lib/errors.js";
 import { getPayments } from "../providers/payments.js";
 import { subscriptionPeriodEnd } from "../providers/paymentsStripe.js";
 import { iso } from "./commerceShared.js";
-import { calendarLimitFor, getRolloutStages } from "./features.js";
+import { calendarLimitFor, getRolloutStages, trialPlanOf } from "./features.js";
+import { endTrialOnSubscribe } from "./trial.js";
 import { smsAllowance, smsOverage } from "./text-allowance.js";
 
 type Merchant = typeof merchants.$inferSelect;
@@ -70,10 +73,10 @@ export async function currentSubscription(ctx: AppContext, merchantId: string): 
 export async function billingOverview(ctx: AppContext, merchant: Merchant): Promise<billingApi.BillingOverviewResponse> {
   const stages = await getRolloutStages(ctx.db);
   const sub = await currentSubscription(ctx, merchant.id);
-  const [usage, foundingSolo] = await Promise.all([planUsage(ctx, merchant, sub), foundingSoloFor(ctx, merchant)]);
+  const [usage, firstYearPrice] = await Promise.all([planUsage(ctx, merchant, sub), firstYearPriceFor(ctx, merchant)]);
   return {
     usage,
-    foundingSolo,
+    firstYearPrice,
     plan: merchant.plan,
     restaurantTier: merchant.restaurantTier ?? null,
     subscription: sub ? subscriptionDto(sub) : null,
@@ -97,19 +100,24 @@ export async function billingOverview(ctx: AppContext, merchant: Merchant): Prom
   };
 }
 
-function priceIdFor(ctx: AppContext, plan: "plus" | "pro", interval: "month" | "year"): string | undefined {
+export function priceIdFor(ctx: AppContext, plan: PaidPlanId, interval: "month" | "year"): string | undefined {
   const p = ctx.config.stripe.prices;
   if (plan === "plus") return interval === "year" ? p.plusAnnual : p.plusMonthly;
+  if (plan === "studio") return interval === "year" ? p.studioAnnual : p.studioMonthly;
   return interval === "year" ? p.proAnnual : p.proMonthly;
 }
 
-function planForPrice(ctx: AppContext, priceId: string | undefined | null): PlanId | null {
+export function planForPrice(ctx: AppContext, priceId: string | undefined | null): PlanId | null {
   if (!priceId) return null;
   const p = ctx.config.stripe.prices;
   if (priceId === p.plusMonthly || priceId === p.plusAnnual) return "plus";
+  if (priceId === p.studioMonthly || priceId === p.studioAnnual) return "studio";
   if (priceId === p.proMonthly || priceId === p.proAnnual) return "pro";
   return null;
 }
+
+/** A paid plan id from Stripe metadata, or null. */
+const paidPlanOf = (v: unknown): PaidPlanId | null => (v === "plus" || v === "studio" || v === "pro" ? v : null);
 
 export async function ensureCustomer(ctx: AppContext, merchant: Merchant): Promise<string> {
   if (merchant.stripeCustomerId) return merchant.stripeCustomerId;
@@ -127,17 +135,17 @@ export async function startCheckout(ctx: AppContext, merchant: Merchant, body: z
   if (live && !live.cancelAtPeriodEnd) throw conflict(`You're already on ${PLANS[live.plan].name}. Use Manage billing to change plans.`);
   const customerId = await ensureCustomer(ctx, merchant);
   const p = PLANS[body.plan];
-  // Founding solo price: an annual Pro checkout for a beauty pro or barbershop while spots last. The coupon takes the
-  // first annual invoice down to the founding price; it renews at the list price.
-  const founding = body.plan === "plus" && body.interval === "year" ? await foundingSoloFor(ctx, merchant) : null;
-  const foundingOn = !!founding?.eligible && p.annualPriceCents > founding.priceCents;
-  const couponId = foundingOn ? await getPayments(ctx).foundingSoloCouponId(p.annualPriceCents - founding!.priceCents) : undefined;
+  // First-year price: an annual Pro checkout while spots last. The coupon takes the first annual invoice down to the first-year
+  // price; it renews at the list price.
+  const firstYear = body.plan === "plus" && body.interval === "year" ? await firstYearPriceFor(ctx, merchant) : null;
+  const firstYearOn = !!firstYear?.eligible && p.annualPriceCents > firstYear.priceCents;
+  const couponId = firstYearOn ? await getPayments(ctx).firstYearCouponId(p.annualPriceCents - firstYear!.priceCents) : undefined;
   const s = await getPayments(ctx).createSubscriptionCheckout({
     customerId,
     merchantId: merchant.id,
     plan: body.plan,
     interval: body.interval,
-    ...(foundingOn ? { couponId, metadata: { founding_solo: "1" } } : {}),
+    ...(firstYearOn ? { couponId, metadata: { first_year_price: "1" } } : {}),
     priceId: priceIdFor(ctx, body.plan, body.interval),
     unitAmountCents: body.interval === "year" ? p.annualPriceCents : p.priceCents,
     productName: `${p.name} plan`,
@@ -205,6 +213,8 @@ export async function recomputePlan(ctx: AppContext, merchantId: string): Promis
     if (before.plan !== plan) await audit(ctx, merchantId, "billing.plan_changed", { from: before.plan, to: plan });
     if (before.annualSiteEntitled !== annualSiteEntitled) await audit(ctx, merchantId, "billing.annual_site_entitlement", { entitled: annualSiteEntitled });
   }
+  // phase-pro P1: a live paid subscription ends the trial at once (nothing to cancel: the trial is only a flag).
+  if (plan !== "free") await endTrialOnSubscribe(ctx, merchantId, plan);
   return plan;
 }
 
@@ -254,15 +264,15 @@ export async function onCheckoutCompleted(ctx: AppContext, session: Obj): Promis
   const customerId = idOf(session.customer);
   const merchant = await merchantFor(ctx, { merchant_id: session.metadata?.merchant_id ?? session.client_reference_id }, customerId);
   if (!merchant || !subId) return;
-  const plan = (session.metadata?.plan === "pro" ? "pro" : "plus") as PlanId;
+  const plan: PlanId = paidPlanOf(session.metadata?.plan) ?? "plus";
   const interval = session.metadata?.interval === "year" ? "year" : "month";
   if (customerId && merchant.stripeCustomerId !== customerId) {
     await ctx.db.update(merchants).set({ stripeCustomerId: customerId }).where(eq(merchants.id, merchant.id));
   }
-  // The founding solo price took a spot (counted by merchants.founding_solo).
-  if (session.metadata?.founding_solo === "1" && !merchant.foundingSolo) {
+  // The first-year price took a spot (counted by merchants.founding_solo; founding_solo is the older sessions' metadata).
+  if ((session.metadata?.first_year_price === "1" || session.metadata?.founding_solo === "1") && !merchant.foundingSolo) {
     await ctx.db.update(merchants).set({ foundingSolo: true }).where(eq(merchants.id, merchant.id));
-    await audit(ctx, merchant.id, "billing.founding_solo", { subscriptionId: subId });
+    await audit(ctx, merchant.id, "billing.first_year_price", { subscriptionId: subId });
   }
   await ctx.db
     .insert(subscriptions)
@@ -276,7 +286,7 @@ export async function onSubscriptionEvent(ctx: AppContext, sub: Obj, type: strin
   const merchant = await merchantFor(ctx, sub.metadata, customerId);
   if (!merchant) return;
   const item = sub.items?.data?.[0];
-  const plan: PlanId = (["plus", "pro"].includes(sub.metadata?.plan) ? sub.metadata.plan : planForPrice(ctx, item?.price?.id)) ?? "plus";
+  const plan: PlanId = paidPlanOf(sub.metadata?.plan) ?? planForPrice(ctx, item?.price?.id) ?? "plus";
   const interval = (item?.price?.recurring?.interval ?? sub.metadata?.interval) === "year" ? "year" : "month";
   const status = type === "customer.subscription.deleted" ? "canceled" : mapStatus(String(sub.status));
   const values = {
@@ -302,7 +312,7 @@ export async function onBillingInvoiceFailed(ctx: AppContext, invoice: Obj): Pro
   if (row) await recomputePlan(ctx, row.merchantId);
 }
 
-// ---- phase-solo: A: plan usage, promo allowance, founding solo price ----
+// ---- phase-solo: A: plan usage, promo allowance (the founding solo price became the first-year price, phase-pro P1) ----
 const addInterval = (d: Date, interval: BillingInterval, n: number) => {
   const out = new Date(d);
   if (interval === "year") out.setUTCFullYear(out.getUTCFullYear() + n);
@@ -322,13 +332,14 @@ export function billingPeriodStart(now: Date, sub: Pick<Subscription, "interval"
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }
 
-/** The shop's promo allowance this billing period (4 a month on Pro, 48 a year on annual, none on Free). */
+/** The shop's promo allowance this billing period (Pro 4 a month or 48 a year, Studio 8 or 96, the trial 4, none on Free). */
 export async function promoAllowanceFor(ctx: AppContext, merchant: Merchant, sub?: Subscription | null): Promise<PromoAllowance> {
   const live = sub === undefined ? await currentSubscription(ctx, merchant.id) : sub;
   return promoAllowance({
     plan: merchant.plan,
     restaurantTier: merchant.restaurantTier,
     interval: live ? (live.interval === "year" ? "year" : "month") : null,
+    trialPlan: trialPlanOf(merchant),
     sentCount: merchant.promosSentCount,
     sentPeriodStart: merchant.promosSentPeriodStart,
     periodStart: billingPeriodStart(ctx.now(), live),
@@ -388,26 +399,38 @@ export async function planUsage(ctx: AppContext, merchant: Merchant, sub?: Subsc
     texts: { includedPerMonth: included, used: merchant.smsCreditsUsed, remaining: Math.max(0, included - merchant.smsCreditsUsed), overageTexts: over.texts, overageCents: over.cents, overageCentsEach: SMS_OVERAGE_CENTS },
     promos: await promoAllowanceFor(ctx, merchant, live),
     annualSiteEntitled: merchant.annualSiteEntitled,
+    trial: trialDto(ctx, merchant),
+    trialUsed: merchant.trialUsed,
+    trialEndedAt: !trialPlanOf(merchant) && merchant.trialUsed && merchant.plan === "free" && merchant.trialEndsAt ? merchant.trialEndsAt.toISOString() : null,
   };
 }
 
-/** Shops that took the founding solo price. */
-export async function foundingSoloTaken(ctx: AppContext): Promise<number> {
+/** phase-pro P1: the live trial as the billing page and the Today card read it, or null. */
+export function trialDto(ctx: AppContext, merchant: Pick<Merchant, "trialPlan" | "trialEndsAt">): billingApi.TrialDto | null {
+  const plan = trialPlanOf(merchant);
+  if (!plan || !merchant.trialEndsAt) return null;
+  return { plan, endsAt: merchant.trialEndsAt.toISOString(), daysLeft: trialDaysLeft(merchant.trialEndsAt, ctx.now()) };
+}
+
+/** Shops that took the first-year price (merchants.founding_solo). */
+export async function firstYearPriceTaken(ctx: AppContext): Promise<number> {
   const [r] = await ctx.db.select({ n: sql<number>`count(*)::int` }).from(merchants).where(eq(merchants.foundingSolo, true));
   return Number(r?.n ?? 0);
 }
 
-/** The founding solo price, for one shop or (merchant null) for the public pricing page. Config: FOUNDING_SOLO_* env. */
-export async function foundingSoloFor(ctx: AppContext, merchant: Pick<Merchant, "vertical" | "foundingSolo"> | null): Promise<billingApi.FoundingSoloDto> {
-  const cfg = foundingSoloConfig(process.env);
-  const taken = cfg.enabled ? await foundingSoloTaken(ctx) : 0;
+/**
+ * The first-year price of annual Pro, for one shop or (merchant null) for the public pricing page. Config: FIRST_YEAR_PRICE_* env.
+ * The spots left decide `shown` and `eligible` but are never returned (founder: keep the counter internal).
+ */
+export async function firstYearPriceFor(ctx: AppContext, merchant: Pick<Merchant, "vertical" | "foundingSolo"> | null): Promise<billingApi.FirstYearPriceDto> {
+  const cfg = firstYearPriceConfig(process.env);
+  const taken = cfg.enabled ? await firstYearPriceTaken(ctx) : 0;
+  const spotsLeft = firstYearPriceSpotsLeft(taken, cfg);
   return {
-    enabled: cfg.enabled,
+    shown: firstYearPriceShown(cfg, spotsLeft),
     priceCents: cfg.priceCents,
-    renewsAtCents: PLANS.plus.annualPriceCents,
-    slots: cfg.slots,
-    spotsLeft: foundingSoloSpotsLeft(taken, cfg),
-    eligible: merchant ? isFoundingSoloEligible(merchant, taken, cfg) : false,
+    listPriceCents: PLANS.plus.annualPriceCents,
+    eligible: merchant ? isFirstYearPriceEligible({ vertical: merchant.vertical, used: merchant.foundingSolo }, taken, cfg) : false,
     taken: !!merchant?.foundingSolo,
   };
 }

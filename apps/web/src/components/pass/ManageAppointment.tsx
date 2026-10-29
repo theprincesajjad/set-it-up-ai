@@ -38,7 +38,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
     if (mode !== "move" || !serviceIds.length) return;
     let cancelled = false;
     browserApi.public
-      .bookingAvailability(slug, { serviceIds, staffId: appt.staffId ?? "any", from: days[0]!, to: days[days.length - 1]! })
+      .bookingAvailability(slug, { serviceIds, addOnIds: appt.items.flatMap((i) => (i.kind === "add_on" && i.addOnId ? [i.addOnId] : [])) /* phase-pro: P5 */, staffId: appt.staffId ?? "any", from: days[0]!, to: days[days.length - 1]! })
       .then((r) => {
         if (cancelled) return;
         setAv(r);
@@ -128,7 +128,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
           <li key={`${i.name}${idx}`} className="flex items-start justify-between gap-3 py-3">
             <div className="min-w-0">
               <p className="text-body-strong text-fg">{i.name}</p>
-              <p className="text-meta text-fg-muted">{durationText(t as never, i.durationMin)}{appt.staffName ? ` · ${appt.staffName}` : ""}{appt.petName ? ` · ${t("bk.next.for", { pet: appt.petName })}` : ""}</p>
+              <p className="text-meta text-fg-muted">{i.kind === "add_on" ? `${t("addon.sheet.tag")} · ` : "" /* phase-pro: P5 */}{durationText(t as never, i.durationMin)}{appt.staffName ? ` · ${appt.staffName}` : ""}{appt.petName ? ` · ${t("bk.next.for", { pet: appt.petName })}` : ""}</p>
             </div>
             {rx ? null : <p className="shrink-0 text-body tabular-nums text-fg">{money(i.priceCents)}</p>}
           </li>

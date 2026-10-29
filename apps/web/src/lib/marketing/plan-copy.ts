@@ -7,28 +7,23 @@
  * the solo pages and the barber page's per-chair variant.
  * No page may type a plan name, a price or a paid feature itself: read `marketingPlans()`, `planLine()`, `proHighlights()` or `planVars()`.
  * Never call the first-year price "founding". Dollar outcomes are illustrative, never promised.
- * Placeholders: {free} {pro} {monthly} {yearly} {firstYear} {studio} {studioMonthly} {studioYearly} {trial} {promos}.
+ * Placeholders: {free} {pro} {monthly} {yearly} {firstYear} {studio} {studioMonthly} {studioYearly} {trial} {promos} {studioPromos}.
  */
-import * as Shared from "@ll/shared";
-import { ANNUAL_INCLUDES_WEBSITE, PLANS, PROMOS_PER_MONTH_PLUS, type Plan } from "@ll/shared";
+import { ANNUAL_INCLUDES_WEBSITE, FIRST_YEAR_PRICE, PLANS, PROMOS_PER_MONTH_PLUS, PROMOS_PER_MONTH_STUDIO, TRIAL_DAYS } from "@ll/shared";
 import { fill, moneyShort } from "./text";
 
-/**
- * Billing constants the Pro workstream adds to plans.ts (TRIAL_DAYS, FIRST_YEAR_PRICE, the `studio` plan), read when present so this
- * file compiles on either side of that change; the fallbacks are the founder's numbers (Oct 29).
- */
-const S = Shared as unknown as { TRIAL_DAYS?: number; FIRST_YEAR_PRICE?: { enabled: boolean; priceCents: number } };
-const STUDIO: Plan = (PLANS as Record<string, Plan>)["studio"] ?? PLANS.pro;
+/** Studio ($59 a month, $590 a year, plan id `studio`): founder packaging, Oct 29. */
+const STUDIO = PLANS.studio;
 
 /** Who the page speaks to: a shop running loyalty (home) or a solo pro taking bookings (nail, barber, groomer pages). */
 export type PlanAudience = "shop" | "solo";
 
 /** Marketing numbers that are not list prices, from plans.ts. */
 export const PLAN_MARKETING = {
-  /** Every new shop gets this many days of Pro, no card needed. */
-  trialDays: S.TRIAL_DAYS ?? 14,
-  /** Pro's price for the first year on annual billing (then the list annual price); null when the offer is off. */
-  proFirstYearCents: S.FIRST_YEAR_PRICE ? (S.FIRST_YEAR_PRICE.enabled ? S.FIRST_YEAR_PRICE.priceCents : null) : 19900,
+  /** Every new shop gets this many days of Pro, no card needed (TRIAL_DAYS). */
+  trialDays: TRIAL_DAYS,
+  /** Pro's price for the first year on annual billing (FIRST_YEAR_PRICE, then the list annual price); null when the offer is off. */
+  proFirstYearCents: FIRST_YEAR_PRICE.enabled ? FIRST_YEAR_PRICE.priceCents : null,
 };
 
 export const PLAN_COPY = {
@@ -67,8 +62,8 @@ export const PLAN_COPY = {
   studio: {
     tagline: { solo: "For teams and shops with chairs.", shop: "For teams with more than one person." },
     features: {
-      solo: ["Everything in {pro}", "Unlimited chairs and team members", "Payouts for your team", "Tools at the till"],
-      shop: ["Everything in {pro}", "Unlimited team members", "Payouts for your team", "Tools at the till"],
+      solo: ["Everything in {pro}", "Unlimited chairs, no per-chair charge", "A walk-in line clients join from their phone", "Payouts and chair rent for your team", "{studioPromos} promos a month"],
+      shop: ["Everything in {pro}", "Unlimited team members", "Order-ahead and pickup times", "POS auto-award, webhooks and the API", "{studioPromos} promos a month"],
     },
     yearly: "or {studioYearly} a year",
     cta: "Start free",
@@ -106,6 +101,7 @@ export function planVars(): Record<string, string | number> {
     studioYearly: moneyShort(studio.annualPriceCents),
     trial: PLAN_MARKETING.trialDays,
     promos: PROMOS_PER_MONTH_PLUS,
+    studioPromos: PROMOS_PER_MONTH_STUDIO,
   };
 }
 

@@ -426,9 +426,9 @@ export class StripePayments implements PaymentsProvider {
     });
   }
 
-  async foundingSoloCouponId(amountOffCents: number): Promise<string> {
-    return this.coupon(`founding_solo_${amountOffCents}`, {
-      name: "Founding pro: first year",
+  async firstYearCouponId(amountOffCents: number): Promise<string> {
+    return this.coupon(`first_year_${amountOffCents}`, {
+      name: "First-year price",
       amount_off: amountOffCents,
       currency: "cad",
       duration: "once",

@@ -27,10 +27,12 @@ The code reads the price ids from env vars. Without them it falls back to an inl
 
 | Product name | Interval | Amount (CAD) | Price lookup key | Env var |
 | --- | --- | --- | --- | --- |
-| Local Loyalty Plus | monthly | 39.00 | `plus_monthly` | `STRIPE_PRICE_PLUS_MONTHLY` |
-| Local Loyalty Plus | yearly | 390.00 | `plus_annual` | `STRIPE_PRICE_PLUS_ANNUAL` |
-| Local Loyalty Pro | monthly | 99.00 | `pro_monthly` | `STRIPE_PRICE_PRO_MONTHLY` |
-| Local Loyalty Pro | yearly | 990.00 | `pro_annual` | `STRIPE_PRICE_PRO_ANNUAL` |
+| Local Loyalty Pro (id `plus`) | monthly | 29.00 | `plus_monthly` | `STRIPE_PRICE_PLUS_MONTHLY` |
+| Local Loyalty Pro (id `plus`) | yearly | 290.00 | `plus_annual` | `STRIPE_PRICE_PLUS_ANNUAL` |
+| Local Loyalty Studio | monthly | 59.00 | `studio_monthly` | `STRIPE_PRICE_STUDIO_MONTHLY` |
+| Local Loyalty Studio | yearly | 590.00 | `studio_annual` | `STRIPE_PRICE_STUDIO_ANNUAL` |
+| Local Loyalty Service (id `pro`) | monthly | 99.00 | `pro_monthly` | `STRIPE_PRICE_PRO_MONTHLY` |
+| Local Loyalty Service (id `pro`) | yearly | 990.00 | `pro_annual` | `STRIPE_PRICE_PRO_ANNUAL` |
 
 Recurring, flat rate, licensed usage, no trial. Copy each `price_...` id into the env var. Lookup keys on these are only for your own reference; the app uses the ids.
 
@@ -63,6 +65,7 @@ Created automatically on first use by id, so only pre-create if you want to see 
 | --- | --- | --- | --- |
 | `founding_year_one` | 50 | repeating, 12 months | Applied at Checkout for merchants with the founding offer |
 | `founding_lifetime` | 25 | forever | Phase two of the subscription schedule |
+| `first_year_9100` | $91.00 off (amount, CAD) | once | The first-year price of annual Pro (`FIRST_YEAR_PRICE`, $199 instead of $290 for year one, first 200 shops). The id carries the amount off, so changing `FIRST_YEAR_PRICE_CENTS` makes a new coupon. Its name, "First-year price", is what the shop sees on Checkout and the invoice |
 
 If you pre-create, use these exact ids. Do not delete them while subscriptions use them.
 
@@ -146,6 +149,8 @@ Signing secrets: copy each endpoint's `whsec_...`. Both must be accepted by the 
 | `STRIPE_WEBHOOK_SECRET` | `whsec_...` of the webhook endpoint(s) (see issue 1) | Yes |
 | `STRIPE_PRICE_PLUS_MONTHLY` | `price_...` | Recommended |
 | `STRIPE_PRICE_PLUS_ANNUAL` | `price_...` | Recommended |
+| `STRIPE_PRICE_STUDIO_MONTHLY` | `price_...` | Recommended |
+| `STRIPE_PRICE_STUDIO_ANNUAL` | `price_...` | Recommended |
 | `STRIPE_PRICE_PRO_MONTHLY` | `price_...` | Recommended |
 | `STRIPE_PRICE_PRO_ANNUAL` | `price_...` | Recommended |
 | `STRIPE_DIRECT_CHARGES` | `1` or `true` to honour `chargeMode=direct`. Leave unset at launch. | No |
@@ -213,7 +218,7 @@ Stripe Tax setup (test mode first, then live; registrations are per mode):
    - **GST-only provinces and territories** (Alberta, Yukon, NWT, Nunavut): 5% from the federal registration, nothing extra.
    - **British Columbia PST 7%, Saskatchewan PST 6%, Manitoba RST 7%, Quebec QST 9.975%**: provincial registrations are separate (BC, SK, MB through the province, Quebec through Revenu Quebec) and each has its own non-resident or small-supplier threshold; for software sold to businesses the rules differ again. Ask your accountant before adding them. Until a province is registered, Stripe charges only the 5% GST there.
    - US states: out of scope for this launch; leave unregistered.
-3. Pre-created prices (`STRIPE_PRICE_PLUS_*`, `STRIPE_PRICE_PRO_*` and the restaurant lookup-key prices in section 2) need **Tax behavior: Exclusive** and the product tax code set by hand. A price with no tax behaviour makes Checkout fail while automatic tax is on.
+3. Pre-created prices (`STRIPE_PRICE_PLUS_*`, `STRIPE_PRICE_STUDIO_*`, `STRIPE_PRICE_PRO_*` and the restaurant lookup-key prices in section 2) need **Tax behavior: Exclusive** and the product tax code set by hand. A price with no tax behaviour makes Checkout fail while automatic tax is on.
 4. Customer portal (section 6): leave "update billing information" on, so customers can correct their address.
 5. Run checklist L. Then set `STRIPE_AUTOMATIC_TAX=1` in the API env and redeploy. Turning it off again only affects new checkouts.
 

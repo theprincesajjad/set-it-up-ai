@@ -59,7 +59,7 @@ export default function ReviewSettingsPage() {
   }
 
   return (
-    <div className="flex max-w-[860px] flex-col gap-6 pb-20" data-testid="review-settings">
+    <div className="flex max-w-215 flex-col gap-6 pb-20" data-testid="review-settings">
       <PageTitle title={t("revreq.title")} subtitle={t("revreq.sub")} />
       {state.error && !d ? <Banner tone="danger">{t("revreq.loadError")}</Banner> : null}
       {d ? (

@@ -33,7 +33,7 @@ export default function Appointment() {
   const days = bookingLogic.nextDays(torontoToday(), 14);
   const avail = useQuery({
     queryKey: ["appointments", "move", id, mode],
-    queryFn: () => api.appointments.availability(a!.merchant.slug, { serviceIds: a!.items.map((i) => i.serviceId).filter((x): x is string => !!x), staffId: a!.staffId ?? "any", from: days[0]!, to: days[days.length - 1]! }),
+    queryFn: () => api.appointments.availability(a!.merchant.slug, { serviceIds: a!.items.map((i) => i.serviceId).filter((x): x is string => !!x), addOnIds: a!.items.flatMap((i) => (i.kind === "add_on" && i.addOnId ? [i.addOnId] : [])) /* phase-pro: P5 */, staffId: a!.staffId ?? "any", from: days[0]!, to: days[days.length - 1]! }),
     enabled: mode === "move" && !!a,
     retry: false,
   });
@@ -95,7 +95,7 @@ export default function Appointment() {
       {note ? <Banner variant={note.variant}>{note.text}</Banner> : null}
       <View>
         {a.items.map((i, k) => (
-          <InfoRow key={`${i.name}${k}`} label={`${i.name} · ${bookingLogic.durationText(t as never, i.durationMin)}${a.staffName ? ` · ${a.staffName}` : ""}`} value={a.reminderText ? "" : money(i.priceCents)} />
+          <InfoRow key={`${i.name}${k}`} label={i.kind === "add_on" ? `${t("addon.sheet.tag")}: ${i.name} · ${bookingLogic.durationText(t as never, i.durationMin)}` /* phase-pro: P5 */ : `${i.name} · ${bookingLogic.durationText(t as never, i.durationMin)}${a.staffName ? ` · ${a.staffName}` : ""}`} value={a.reminderText ? "" : money(i.priceCents)} />
         ))}
         {a.reminderText ? null : <InfoRow strong label={a.tax.applies ? t("bk.totalLabel") : t("bk.totalPlain")} value={money(a.totalCents)} />}
       </View>

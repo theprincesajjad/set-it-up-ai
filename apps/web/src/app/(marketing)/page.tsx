@@ -60,6 +60,16 @@ function Outcome({ i, children }: { i: number; children: React.ReactNode }) {
       </div>
       <figure className="hm-row-art" role="img" aria-label={r.label}>
         {children}
+        {r.floats.map((x, k) => (
+          <span key={x.b} className={`hm-float glass-sheet ${k ? "hm-float-b" : "hm-float-a"}`} aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`/icons3d/${x.icon}@2x.png`} alt="" width={32} height={32} loading="lazy" decoding="async" />
+            <span>
+              <b>{x.b}</b>
+              <small>{x.s}</small>
+            </span>
+          </span>
+        ))}
       </figure>
     </div>
   );
@@ -225,6 +235,14 @@ export default function Home() {
               </li>
             ))}
           </ul>
+          <nav aria-label={copy.solo.chipsLabel} className="hm-chips">
+            <span>{copy.solo.chipsLabel}</span>
+            {copy.solo.chips.map((c) => (
+              <Link key={c.href} href={c.href} prefetch={false}>
+                {c.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </section>
 

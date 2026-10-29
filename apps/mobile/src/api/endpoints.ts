@@ -109,8 +109,8 @@ export function createEndpoints(c: ApiClient) {
     /** Appointments (booking.appointments): book a stylist and a time, with a deposit or a card on file. */
     appointments: {
       services: (slug: string) => c.get<appointmentsApi.PublicServicesResponse>(`/v1/public/shops/${enc(slug)}/services`, { auth: "optional" }),
-      availability: (slug: string, q: { serviceIds: string[]; staffId: string; from: string; to: string }) =>
-        c.get<appointmentsApi.AvailabilityResponse>(`/v1/public/shops/${enc(slug)}/availability`, { query: { serviceIds: q.serviceIds.join(","), staffId: q.staffId, from: q.from, to: q.to }, auth: "optional" }),
+      availability: (slug: string, q: { serviceIds: string[]; staffId: string; from: string; to: string; addOnIds?: string[] }) =>
+        c.get<appointmentsApi.AvailabilityResponse>(`/v1/public/shops/${enc(slug)}/availability`, { query: { serviceIds: q.serviceIds.join(","), staffId: q.staffId, from: q.from, to: q.to, ...(q.addOnIds?.length ? { addOnIds: q.addOnIds.join(",") } : {}) }, auth: "optional" }), // phase-pro: P5 addOnIds
       mine: () => c.get<appointmentsApi.MyAppointmentsResponse>("/v1/me/appointments"),
       get: (id: string) => c.get<appointmentsApi.MyAppointmentResponse>(`/v1/me/appointments/${enc(id)}`),
       book: (body: appointmentsApi.CreateMyAppointmentBody) => c.post<appointmentsApi.CreateMyAppointmentResponse>("/v1/me/appointments", body),

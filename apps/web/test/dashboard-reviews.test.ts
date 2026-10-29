@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { firstName, looksLikeLink } from "./reviews";
+import { firstName, looksLikeLink } from "@/lib/dashboard/reviews";
 
 describe("review request helpers", () => {
   it("takes the first word of a name and falls back when there is none", () => {

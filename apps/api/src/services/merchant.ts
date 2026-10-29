@@ -23,6 +23,7 @@ import {
   FEATURE_KEYS,
   FEATURES,
   PLAN_IDS,
+  trialDaysLeft,
   VERTICAL_TEMPLATES,
   addressVisibilityOf,
   defaultVisibility,
@@ -465,6 +466,8 @@ export async function merchantFeaturesResponse(db: DbOrTx, m: Merchant): Promise
       lockedReason: states[k].lockedReason,
     })),
     plansAvailable: Object.fromEntries(PLAN_IDS.map((p) => [p, isPlanAvailable(p, stages)])) as Record<PlanId, boolean>,
+    // phase-pro P1: the live trial (trial_plan is set only while it is live).
+    trial: m.trialPlan && m.trialEndsAt ? { plan: m.trialPlan as PlanId, endsAt: m.trialEndsAt.toISOString(), daysLeft: trialDaysLeft(m.trialEndsAt) } : null,
   };
 }
 

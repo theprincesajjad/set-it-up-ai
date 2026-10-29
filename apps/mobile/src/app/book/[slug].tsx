@@ -1,4 +1,4 @@
-import { bookingLogic, type appointmentsApi } from "@ll/shared";
+import { appointmentsApi as apptApi, bookingLogic, type appointmentsApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Check, CreditCard } from "lucide-react-native";
@@ -12,7 +12,7 @@ import { dayToDate, torontoToday } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { disp, useTheme } from "../../theme";
-import { Banner, Button, Chip, EmptyState, ErrorState, hairline, LockedFeature, Screen, SkeletonList, Store, Text, TextField, useToast, WarmCard } from "../../ui";
+import { Banner, Button, Chip, EmptyState, ErrorState, hairline, LockedFeature, Screen, SkeletonList, Store, SwitchRow, Text, TextField, useToast, WarmCard } from "../../ui";
 
 type Slot = { startsAt: string; staffId: string };
 const DAYS = 14;
@@ -33,7 +33,8 @@ export default function Book() {
   const online = useOnline();
   const q = useQuery({ queryKey: ["appointments", "services", slug], queryFn: () => api.appointments.services(slug!), enabled: !!slug, retry: false, staleTime: 60_000 });
   const data = q.data;
-  const [step, setStep] = useState<"services" | "time" | "pay">("services");
+  const [step, setStep] = useState<"services" | "addons" | "time" | "pay">("services"); // phase-pro: P5 "addons"
+  const [addOnIds, setAddOnIds] = useState<string[]>([]); // phase-pro: P5
   const [staffId, setStaffId] = useState<string | null>(null);
   const [category, setCategory] = useState("all");
   const [ids, setIds] = useState<string[]>([]);
@@ -68,7 +69,7 @@ export default function Book() {
     setLoadingTimes(true);
     setError(null);
     try {
-      const base = { serviceIds: ids, from: days[0]!, to: days[days.length - 1]! };
+      const base = { serviceIds: ids, addOnIds, from: days[0]!, to: days[days.length - 1]! }; // phase-pro: P5 addOnIds
       const [mine, any] = await Promise.all([api.appointments.availability(slug, { ...base, staffId: staffId ?? "any" }), staffId ? api.appointments.availability(slug, { ...base, staffId: "any" }) : Promise.resolve(null)]);
       setAv(mine);
       setAnyAv(any);
@@ -83,7 +84,7 @@ export default function Book() {
   useEffect(() => {
     if (step === "time") void loadTimes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, ids.join(","), staffId]);
+  }, [step, ids.join(","), addOnIds.join(","), staffId]);
 
   const afterReturn = async () => {
     if (!booked) return;
@@ -115,7 +116,13 @@ export default function Book() {
   if (!data.services.length) return <Screen back title={t("bk.title")}><EmptyState icon={Store} title={t("bk.noServices")} /></Screen>;
 
   const staffName = staffId ? (data.staff.find((s) => s.id === staffId)?.name ?? "") : "";
-  const sel = bookingLogic.summarize(data.services, ids, staffId);
+  // ---- phase-pro: P5 ---- add-ons offered with the picked services (only a Pro shop's payload carries them)
+  const offeredAddOns = [...new Map(data.services.filter((s) => ids.includes(s.id)).flatMap((s) => s.addOns ?? []).map((a) => [a.id, a] as const)).values()];
+  const pickedAddOns = offeredAddOns.filter((a) => addOnIds.includes(a.id));
+  const extra = apptApi.addOnTotals(pickedAddOns);
+  const baseSel = bookingLogic.summarize(data.services, ids, staffId);
+  const sel = { ...baseSel, durationMin: baseSel.durationMin + extra.durationMin, priceCents: baseSel.priceCents + extra.priceCents };
+  // ---- end phase-pro: P5 ----
   const takesCards = data.policy.takesCards;
   const deposit = takesCards ? sel.depositCents : 0;
   const fee = takesCards ? data.policy.noShowFeeCents : 0;
@@ -133,7 +140,7 @@ export default function Book() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api.appointments.book({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: data?.shop.pharmacy ? null : notes.trim() || null });
+      const r = await api.appointments.book({ serviceIds: ids, addOnIds: pickedAddOns.map((a) => a.id) /* phase-pro: P5 */, staffId, startsAt: slot.startsAt, notes: data?.shop.pharmacy ? null : notes.trim() || null });
       setBooked(r);
       if (r.confirmed) router.replace(`/appointments/${r.appointment.id}`);
       else setStep("pay");
@@ -167,15 +174,48 @@ export default function Book() {
     );
   }
 
+  // ---- phase-pro: P5 ---- "Add anything?": the add-ons as switches, "+$10 · +15 min"
+  if (step === "addons") {
+    return (
+      <Screen
+        back
+        onBack={() => setStep("services")}
+        title={t("addon.book.title")}
+        subtitle={t("addon.book.sub")}
+        footer={
+          <View style={{ gap: 8 }}>
+            <Text variant="meta" color="fgMuted">{t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) })}{pickedAddOns.length ? ` · ${t("addon.book.count", { n: pickedAddOns.length })}` : ""}</Text>
+            {!(data.shop.pharmacy && sel.priceCents <= 0) ? <Text style={disp(22, 800, 26)}>{bookingLogic.totalText(t as never, data, sel, money)}</Text> : null}
+            <Button size="lg" fullWidth onPress={() => { setSlot(null); setStep("time"); }}>{t("bk.chooseTime")}</Button>
+          </View>
+        }
+      >
+        <WarmCard>
+          {offeredAddOns.map((a, i) => (
+            <SwitchRow
+              key={a.id}
+              label={pick(a).name}
+              description={a.durationMin > 0 ? t("addon.plusPriceTime", { price: money(a.priceCents), duration: dur(a.durationMin) }) : t("addon.plusPrice", { price: money(a.priceCents) })}
+              value={addOnIds.includes(a.id)}
+              onValueChange={(on) => setAddOnIds((cur) => (on ? [...cur, a.id] : cur.filter((x) => x !== a.id)))}
+              divider={i < offeredAddOns.length - 1}
+            />
+          ))}
+        </WarmCard>
+      </Screen>
+    );
+  }
+  // ---- end phase-pro: P5 ----
+
   // ---- time
   if (step === "time") {
     const cta = deposit > 0 ? t("bk.cta.deposit", { amount: money(deposit) }) : needsCard ? t("bk.cta.card") : t("bk.cta.free");
     return (
       <Screen
         back
-        onBack={() => setStep("services")}
+        onBack={() => setStep(offeredAddOns.length ? "addons" : "services") /* phase-pro: P5 */}
         title={t("bk.time.title")}
-        subtitle={t("bk.time.sub", { services: data.services.filter((s) => ids.includes(s.id)).map((s) => pick(s).name).join(", "), staff: staffName || t("bk.anyone").toLowerCase(), duration: dur(av?.blockMin ?? sel.durationMin) })}
+        subtitle={t("bk.time.sub", { services: [...data.services.filter((s) => ids.includes(s.id)), ...pickedAddOns].map((s) => pick(s).name).join(", "), staff: staffName || t("bk.anyone").toLowerCase(), duration: dur(av?.blockMin ?? sel.durationMin) })}
         footer={
           <View style={{ gap: 8 }}>
             <Text variant="meta" color="fgMuted">{slot ? `${when(slot.startsAt)} – ${time(endsAt(slot))}${slot.staffId ? ` · ${data.staff.find((s) => s.id === slot.staffId)?.name ?? staffName}` : ""}` : t("bk.chooseTime")}</Text>
@@ -244,7 +284,7 @@ export default function Book() {
             </View>
             {ids.length && deposit > 0 ? <Text variant="meta" color="fgMuted">{t("bk.depositHold", { amount: money(deposit) })}</Text> : null}
           </View>
-          <Button size="lg" fullWidth disabled={!ids.length} onPress={() => setStep("time")}>{t("bk.chooseTime")}</Button>
+          <Button size="lg" fullWidth disabled={!ids.length} onPress={() => { setAddOnIds((cur) => cur.filter((id) => offeredAddOns.some((a) => a.id === id))); setStep(offeredAddOns.length ? "addons" : "time"); }}>{t(offeredAddOns.length ? "addon.book.next" : "bk.chooseTime") /* phase-pro: P5 */}</Button>
         </View>
       }
     >

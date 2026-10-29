@@ -34,6 +34,7 @@ import { writeAudit } from "./admin-audit.js";
 import { getMerchantFeatures } from "./features.js";
 import { isOptedOut, sendSms } from "./opt-out.js";
 import { pathOf, sendSoloNudge, soloSetup } from "./onboarding-solo.js";
+import { startTrialOnLinkLive } from "./trial.js"; // phase-pro: p1
 
 type Merchant = typeof merchants.$inferSelect;
 const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
@@ -196,7 +197,12 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
   const mk = (key: LegacyStepKey) => ({ key, label: t(locale, rx && key === "first_stamp" ? "ob.step.first_sale" : key === "trade_setup" && family ? (`ob.step.trade.${family}` as MessageKey) : STEP_KEYS[key], { target }), done: done[key], detail: detail[key] });
   // phase-solo B: solo pros and appointment-led storefronts get the six booking-link cards instead.
   const path = pathOf(m);
-  const solo = path === "storefront" ? null : await soloSetup(ctx, m, locale, marked, ms, (key, data) => recordMilestone(db, merchantId, key, now, data));
+  const solo = path === "storefront" ? null : await soloSetup(ctx, m, locale, marked, ms, async (key, data) => {
+    const created = await recordMilestone(db, merchantId, key, now, data);
+    // phase-pro P1: the link is live, so the 14-day Pro trial starts (every vertical, one per shop).
+    if (created && key === "booking_link_live") await startTrialOnLinkLive(ctx, merchantId);
+    return created;
+  });
   const steps = solo ? solo.steps : coreFor(m.vertical).map(mk);
   const later = solo ? solo.later : LATER.map(mk);
   const current = steps.find((s) => !s.done)?.key ?? "done";

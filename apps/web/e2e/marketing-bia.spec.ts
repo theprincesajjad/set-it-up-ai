@@ -60,16 +60,15 @@ test.describe("landing", () => {
     const y = async (loc: ReturnType<Page["locator"]>) => (await loc.first().boundingBox())!.y;
     const order = [
       page.getByRole("heading", { level: 1 }),
-      page.getByRole("region", { name: "Where do you fit?" }),
       page.getByRole("region", { name: "The network today" }),
-      page.getByRole("heading", { name: "live on your counter this week." }),
-      page.getByRole("heading", { name: "one card for the whole street." }),
-      page.getByRole("heading", { name: "a program that fits, ready on day one." }),
-      page.getByRole("heading", { name: /paying delivery apps up to 29%/ }),
-      page.getByRole("heading", { name: "what you won’t pay." }),
-      page.getByRole("heading", { name: "show your board what the street event did." }),
-      page.getByRole("heading", { name: "the honest answers." }),
-      page.getByRole("heading", { name: "we’ll come to you." }),
+      page.getByRole("heading", { name: "Live at your counter today." }),
+      page.getByRole("heading", { name: "Built to bring customers back." }),
+      page.getByRole("region", { name: "Where do you fit?" }),
+      page.getByRole("heading", { name: "Simple, transparent pricing." }),
+      page.getByRole("heading", { name: "How we compare." }),
+      page.getByRole("heading", { name: "Frequently asked questions" }),
+      page.getByRole("heading", { name: "Prefer a hand getting set up?" }),
+      page.getByRole("heading", { name: "Start bringing customers back." }),
     ];
     const ys: number[] = [];
     for (const l of order) ys.push(await y(l));
@@ -77,8 +76,11 @@ test.describe("landing", () => {
 
     const router = page.getByRole("region", { name: "Where do you fit?" });
     await expect(router.getByRole("link", { name: /Start free/ })).toHaveAttribute("href", "/signup");
+    await expect(router.getByRole("link", { name: /See booking/ })).toHaveAttribute("href", "/for-nail-techs");
     await expect(router.getByRole("link", { name: /See restaurant plans/ })).toHaveAttribute("href", "/for-restaurants");
-    await expect(router.getByRole("link", { name: /See the BIA report/ })).toHaveAttribute("href", "/for-bias");
+    await expect(router.getByRole("link", { name: /See the BIA page/ })).toHaveAttribute("href", "/for-bias");
+    // Calls to action down the page (landing v4): every one carries data-cta.
+    for (const c of ["hero", "how", "afterhero", "outcomes", "pricing", "final"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
 
     await expect(page.locator("form")).toHaveCount(1);
     const text = await visibleText(page);

@@ -80,7 +80,7 @@
 .sl-hero-grid { display: grid; gap: 40px; align-items: center; }
 @media (min-width: 1140px) { .sl-hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 576px); gap: 32px; min-height: calc(100svh - 84px); } }
 .sl-copy { display: grid; gap: 22px; align-content: center; }
-.sl-h1 { font-size: clamp(44px, 5.4vw, 76px); font-weight: 750; letter-spacing: -0.038em; line-height: 1; text-wrap: balance; }
+.sl-h1 { font-size: clamp(42px, 4.6vw, 66px); font-weight: 750; letter-spacing: -0.038em; line-height: 1; text-wrap: balance; }
 .sl-h1 span { display: block; }
 .sl-h1 em { font-style: normal; color: var(--trade); }
 .sl-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
@@ -353,7 +353,7 @@
 .sl-pro-demo img { width: 30px; height: 30px; flex: none; }
 .sl-pro-demo b { display: block; font-weight: 650; }
 .sl-pro-demo small { display: block; color: var(--muted-foreground); }
-.sl-pro-note { margin-top: 14px; }
+.sl .sl-pro-note { margin-top: 16px; }
 .sl-plan { padding: 28px; border-radius: 24px; display: flex; flex-direction: column; gap: 10px; }
 .sl-plan-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 26px; }
 .sl-plan .name { font-size: 17px; font-weight: 650; }

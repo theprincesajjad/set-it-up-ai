@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Linking, Pressable, StyleSheet, View } from "react-native";
 import { usePhase2, useProfile, useWallet } from "../../features/customer/queries";
 import { useRestaurantMine } from "../../features/restaurant/queries";
+import { WaitlistRow } from "../../features/customer/WaitlistRow"; // phase-pro: p2
 import { useLocale } from "../../lib/i18n";
 import { maskPhone } from "../../lib/phone";
 import { useSession } from "../../state/session";
@@ -61,6 +62,7 @@ export default function You() {
       <Section title={t("sh.you.yourCard")}>
         <ListRow leadingIcon={Gift} title={t("sh.you.rewards")} subtitle={t("sh.you.rewardsSub")} chevron onPress={() => router.push("/rewards")} />
         {phase2.enabled ? <ListRow leadingIcon={Ticket} title={t("sh.you.orders")} chevron onPress={() => router.push("/orders")} /> : null}
+        <WaitlistRow />{/* phase-pro: p2: "Waiting for a spot" */}
         {restaurant.tiffinEnabled ? <ListRow leadingIcon={UtensilsCrossed} title={t("rest.tiffin.mine")} subtitle={t("rest.you.tiffin.sub")} chevron onPress={() => router.push("/tiffin")} /> : null}
         {restaurant.eventsEnabled ? <ListRow leadingIcon={Users} title={t("rest.events.title")} subtitle={t("rest.you.events.sub")} chevron onPress={() => router.push("/events")} /> : null}
         <ListRow leadingIcon={Wallet} title={t("sh.you.walletPass")} chevron onPress={() => router.push("/card")} divider={!!referralShop} />

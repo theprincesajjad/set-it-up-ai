@@ -10,6 +10,7 @@ import { NewAppointmentSheet } from "@/components/dashboard/calendar/NewAppointm
 import { WalkInSheet } from "@/components/dashboard/calendar/WalkInSheet";
 import { useAppointments } from "@/components/dashboard/calendar/useAppointments";
 import { useIsDesktop } from "@/components/dashboard/calendar/useIsDesktop";
+import { WaitlistChip } from "@/components/dashboard/calendar/WaitlistChip"; // phase-pro: p2
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { EmptyState, PageHeader, Segmented, SidePanel, ToolbarButton } from "@/components/dashboard/kit";
 import { ListError } from "@/components/dashboard/ListStates";
@@ -243,6 +244,7 @@ function Calendar() {
         </div>
       ) : null}
 
+      {view === "day" ? <WaitlistChip date={date} /> : null}{/* phase-pro: p2: the day's freed slots and what the waitlist did */}
       {appts.error && !appts.items.length ? <ListError title="We could not load this day." detail={appts.error} onRetry={appts.reload} /> : null}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <CalendarDay

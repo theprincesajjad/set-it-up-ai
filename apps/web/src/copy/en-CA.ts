@@ -203,6 +203,7 @@ export const copy = {
           body: "Visits, new customers and rewards, compared with the same day last week.",
           points: ["A comparison on every number", "Your busiest hours at a glance", "A short list of what needs you today"],
           label: "The Today screen: visits, stamps, rewards and new customers, with what needs attention",
+          floats: [{ icon: "calendar_week", b: "+26 visits", s: "against last Wednesday" }, { icon: "regulars", b: "6 rewards waiting", s: "Tell the counter before the rush" }],
         },
         {
           id: "pass",
@@ -210,6 +211,7 @@ export const copy = {
           body: "Customers add your card to Apple Wallet or Google Wallet. Nothing to download, nothing to lose.",
           points: ["Your colours and your reward", "Updates the moment a stamp is given", "Works on any phone"],
           label: "A customer's stamp card on an iPhone: 9 of 10 stamps, one to go for a free drink",
+          floats: [{ icon: "stamp_card", b: "Stamp added", s: "9 of 10, one to go" }, { icon: "pass", b: "In Apple Wallet", s: "No app to download" }],
         },
         {
           id: "promos",
@@ -217,6 +219,7 @@ export const copy = {
           body: "Double stamps on a slow afternoon, a birthday treat or a new menu item, sent to customers who opted in.",
           points: ["Ready-made templates", "Only to customers who opted in"],
           label: "Composing a promo: a template, the customers it goes to, and when it runs",
+          floats: [],
         },
         {
           id: "map",
@@ -224,6 +227,7 @@ export const copy = {
           body: "Your business appears on the local map that every member uses, next to the other independents on your street.",
           points: ["A free listing on the map", "Members discover businesses near them", "You only ever see your own customers"],
           label: "The member map on an iPhone: nearby businesses as pins, and a list below",
+          floats: [{ icon: "pin_area", b: "On the local map", s: "Shown to members nearby" }, { icon: "shops", b: "Your street, together", s: "Independents side by side" }],
         },
       ],
       cta: "Start free",
@@ -800,7 +804,7 @@ export const copy = {
     /** The price cards read lib/marketing/plan-copy.ts (the one place plans are described); only the heading and the link live here. */
     price: {
       title: "Simple, transparent pricing.",
-      sub: "Start free. Move to a paid plan only when it pays for itself.",
+      sub: "Start free. Add a paid plan when you need more.",
       compare: "Compare with Fresha, Booksy and Square",
     },
     start: {
@@ -892,7 +896,7 @@ export const copy = {
         jobs: {
           book: { title: "Clients book themselves.", body: "Trials, bridal and events at their own lengths." },
           remind: { title: "Automatic reminders.", body: "The day before, with the address." },
-          regulars: { title: "Clients come back sooner.", body: "A stamp card and a note before the date." },
+          regulars: { title: "Clients come back sooner.", body: "A stamp card and a pre-event note." },
           noshow: { title: "Fewer no-shows.", body: "Reminders on. Optional {deposit} deposit per service." },
           yours: { title: "Your clients stay yours.", body: "No marketplace, no commission, no new-client fees." },
           private: { title: "Share your area, not your address.", body: "Your address is sent after they book." },

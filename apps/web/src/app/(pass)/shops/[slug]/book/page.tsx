@@ -4,6 +4,7 @@ import { translator } from "@ll/shared";
 import { BookFlow } from "@/components/pass/BookFlow";
 import { PoweredBy } from "@/components/pass/PoweredBy";
 import { PageFrame } from "@/components/restaurant/PageFrame";
+import { Banner } from "@/components/ui/Banner"; // phase-pro: p3
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
@@ -63,9 +64,27 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
     );
   }
   const me = await getMe();
+  // ---- phase-pro: p3 ---- a book-again link (?rebook=<nudge id>): the booking opens on their usual service and stylist, with "Welcome back, Ayesha".
+  const rebook = one(sp.rebook);
+  let welcome: { firstName: string | null; serviceId: string | null; staffId: string | null } | null = null;
+  if (rebook) {
+    try {
+      welcome = await publicServerApi().public.rebookWelcome(slug, rebook);
+      if (welcome && !welcome.firstName && !welcome.serviceId) welcome = null; // not a real link
+    } catch {
+      welcome = null; // a stale or mistyped link still opens the normal booking page
+    }
+  }
+  const first = (me?.user.name ?? welcome?.firstName ?? "").trim().split(/\s+/)[0] || null;
+  // ---- end phase-pro: p3 ----
   return (
     <PageFrame locale={locale} trade={shop.vertical}>
-      <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service), staff: one(sp.staff), pet: one(sp.pet) }} meName={me?.user.name ?? null} />
+      {rebook && welcome ? (
+        <Banner tone="info" title={first ? t("rb.book.welcome", { name: first }) : t("rb.book.welcomeNoName")}>
+          {t("rb.book.welcomeSub")}
+        </Banner>
+      ) : null}
+      <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service) ?? welcome?.serviceId ?? undefined, staff: one(sp.staff) ?? welcome?.staffId ?? undefined, pet: one(sp.pet), rebook: rebook && welcome ? rebook : undefined }} meName={me?.user.name ?? null} />
       {/* slot: PoweredBy (phase-solo E): on every step of the booking flow, including the confirmation. */}
       <PoweredBy locale={locale} vertical={shop.vertical} show={shop.poweredBy} />
     </PageFrame>

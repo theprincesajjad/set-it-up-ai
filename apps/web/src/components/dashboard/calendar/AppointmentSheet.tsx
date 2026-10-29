@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
-import { Dot, type DotTone } from "@/components/dashboard/kit";
+import { Dot, Tag, type DotTone } from "@/components/dashboard/kit"; // phase-pro: P5 Tag
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Banner } from "@/components/ui/Banner";
@@ -17,6 +17,7 @@ import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { formatDate } from "@/lib/format";
 import { useMessageCustomer } from "@/components/dashboard/inbox/useMessageCustomer";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { WaitlistChip } from "@/components/dashboard/calendar/WaitlistChip"; // phase-pro: p2
 
 
 type Appt = appointmentsApi.AppointmentDto;
@@ -92,7 +93,18 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
         </div>
       ) : null}
       <ul className="divide-y divide-line border-y border-line">
-        {appt.items.map((i, idx) => (
+        {appt.items.map((i, idx) => i.kind === "add_on" ? (
+          // ---- phase-pro: P5 ---- an add-on sits under its service, indented, with its extra time
+          <li key={`${i.name}${idx}`} className="flex items-center justify-between gap-3 py-2 ps-4" data-testid="sheet-add-on">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <Tag>{t("addon.sheet.tag")}</Tag>
+              <span className="min-w-0 text-body text-fg">{i.name}</span>
+              {i.durationMin ? <span className="text-meta text-fg-muted">{t("addon.plusTime", { duration: duration(i.durationMin) })}</span> : null}
+            </div>
+            <p className="shrink-0 text-body tabular text-fg">{t("addon.plusPrice", { price: money(i.priceCents) })}</p>
+          </li>
+          // ---- end phase-pro: P5 ----
+        ) : (
           <li key={`${i.name}${idx}`} className="flex items-start justify-between gap-3 py-2.5">
             <div className="min-w-0">
               <p className="text-body-strong text-fg">{i.name}</p>
@@ -223,7 +235,7 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
           toast({ message: "Appointment cancelled", tone: "success" });
           await onChanged();
         }}
-      />
+      >{cancel ? <WaitlistChip appt={appt} /> : null}</ConfirmDialog>{/* phase-pro: p2: "Offer this slot to the waitlist" */}
       <RescheduleDialog open={moving} onClose={() => setMoving(false)} appt={appt} staff={staff} manager={role !== "staff"} onSaved={async () => { setMoving(false); toast({ message: "Appointment moved", tone: "success" }); await onChanged(); }} />
     </div>
   );

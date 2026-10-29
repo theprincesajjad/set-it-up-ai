@@ -2,6 +2,7 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { RETENTION, SERVICE_STARTERS, type appointmentsApi } from "@ll/shared";
+import { AddOnsEditor } from "@/components/dashboard/calendar/AddOnsEditor"; // phase-pro: P5
 import { PolicyCard } from "@/components/dashboard/calendar/PolicyCard";
 import { ServiceEditor } from "@/components/dashboard/calendar/ServiceEditor";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
@@ -90,6 +91,7 @@ function Services() {
           </span>
         }
       />
+      {!repair && !pharmacy && enabled("booking.appointments") ? <AddOnsEditor services={list.data?.items ?? []} manager={manager} /> /* phase-pro: P5 */ : null}
       {!repair && !pharmacy && enabled("booking.appointments") && manager ? <PolicyCard /> : null}
       {pharmacy ? (
         <div className="grid gap-6 md:grid-cols-2" data-testid="pharmacy-keep">

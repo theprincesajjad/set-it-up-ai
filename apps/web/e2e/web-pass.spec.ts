@@ -104,7 +104,7 @@ test("quote approval with typed signature and deposit (dev fake payment)", async
 
 test("marketing pages render with live data", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: "Your regulars already walk this street." })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Turn first visits into regulars." })).toBeVisible();
   await page.screenshot({ path: shot("12-home"), fullPage: false });
   await page.goto("/pricing");
   await expect(page.getByRole("heading", { level: 1, name: "free loyalty. flat prices for the rest." })).toBeVisible();

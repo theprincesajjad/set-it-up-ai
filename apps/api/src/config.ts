@@ -83,7 +83,7 @@ export interface Config {
   phone: { authToken?: string };
   /** TIFFIN_PAD=1 lets tiffin subscribers pay by pre-authorized debit (Stripe acss_debit). */
   tiffin?: { padEnabled?: boolean };
-  stripe: { secretKey?: string; webhookSecret?: string; prices: { plusMonthly?: string; plusAnnual?: string; proMonthly?: string; proAnnual?: string };
+  stripe: { secretKey?: string; webhookSecret?: string; prices: { plusMonthly?: string; plusAnnual?: string; studioMonthly?: string; studioAnnual?: string; proMonthly?: string; proAnnual?: string };
     /** STRIPE_DIRECT_CHARGES: honour merchants.chargeMode = "direct" (merchant of record). Default on (phase solo); set 0 to force destination. */
     directCharges?: boolean;
     /** STRIPE_AUTOMATIC_TAX: Stripe Tax collects GST/HST on our own subscription checkouts (needs Stripe Tax registrations). Default off. */
@@ -214,6 +214,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       prices: {
         plusMonthly: env.STRIPE_PRICE_PLUS_MONTHLY,
         plusAnnual: env.STRIPE_PRICE_PLUS_ANNUAL,
+        // phase-pro P1: Studio ($59 / $590). Without them checkout uses an inline CAD price from PLANS.studio.
+        studioMonthly: env.STRIPE_PRICE_STUDIO_MONTHLY,
+        studioAnnual: env.STRIPE_PRICE_STUDIO_ANNUAL,
         proMonthly: env.STRIPE_PRICE_PRO_MONTHLY,
         proAnnual: env.STRIPE_PRICE_PRO_ANNUAL,
       },
