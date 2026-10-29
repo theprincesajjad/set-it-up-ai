@@ -31,7 +31,7 @@ Reports.
 | opted in, can text | consent, subscribed | In tables and hints. The legal consent text itself is never reworded here. |
 | balance history | ledger | Also "payment history" for what a customer paid. |
 | text | SMS | "Text" in every sentence a person reads. "SMS" stays in plan lists and developer pages. |
-| Café & Retail, Service, Restaurant Starter, Restaurant Growth, Restaurant Pro | Plus, Pro, Growth tier, tier | Name the plan, never its internal id. |
+| Pro, Service, Restaurant Starter, Restaurant Growth, Restaurant Pro | Plus, Café & Retail (the old name), Growth tier, tier | Name the plan, never its internal id. **Pro** is the $39 plan (renamed from "Café & Retail" on Oct 29, 2026; its id stays `plus`). The $99 plan is **Service** (id `pro`): never call it Pro. Say "Restaurant Pro" in full for the restaurant tier. In hi, ur and pa, keep "Pro" in Latin script, like the other plan names. |
 | early access, live | beta, GA | |
 | your kind of shop | your trade, vertical | "Trade" is a design-system word (trade colour), not a word for people. |
 | once N shops have joined | network-gated, network-wide | Why a feature is not open yet, in plain words. |
@@ -193,7 +193,7 @@ Rules: honest reason, real number, no price as headline, no "Upgrade". One sente
 | `soon.tickets` | **Service tickets.** Track every repair from drop-off to pickup, with photos and status updates. |
 | `soon.quotes` | **Quote approvals.** Send a quote; your customer approves it on their phone. No more phone tag. |
 | `soon.invoices` | **Invoices.** Send the final bill and get paid in the app. Customers earn points automatically. |
-| `soon.sms` | **SMS campaigns.** Text your opted-in regulars. 500 texts a month included with Café & Retail. |
+| `soon.sms` | **SMS campaigns.** Text your opted-in regulars. 500 texts a month included with Pro. |
 | `soon.automations` | **Automations.** "We miss you" and "Your reward is ready" messages that send themselves. |
 | `soon.boost` | **Boost a promo.** Show your offer to people near your street. Always labelled Sponsored. |
 | `soon.beta` | In beta. Try it early and tell us what you think. |
@@ -308,7 +308,7 @@ title so it's recognisable. Deep link in the payload.
 | `push.networkBonus` | Transactional | Neighbourhood bonus | You visited 3 shops on {street}. +{n} pts at {shop}. | `ll://rewards` |
 | `push.campaignProgress` | Transactional | {campaign}: {visited} of {goal} | {remaining} more shops to be entered in the draw. | `ll://campaign/{id}` |
 | `push.promo` | Promotional (consent) | {shop} | {offerTitle}. Ends {endDay}. | `ll://promo/{id}` |
-| `push.nearby` (Phase 2) | Promotional (consent + Café & Retail) | {shop} · {distance} away | {offerTitle} | `ll://promo/{id}` |
+| `push.nearby` (Phase 2) | Promotional (consent + Pro) | {shop} · {distance} away | {offerTitle} | `ll://promo/{id}` |
 | `push.orderReady` | Transactional | Your order is ready | {shop}: show code {orderCode} at the counter. | `ll://order/{id}` |
 | `push.quoteReady` | Transactional | Quote from {shop} | {item}: {total}. Tap to review and approve. | `ll://quote/{token}` |
 | `push.ticketUpdate` | Transactional | {shop} | {item}: {statusLabel}. | `ll://ticket/{id}` |
@@ -391,7 +391,7 @@ Voice rules for this group:
 - Promos go by app and email, never by text. Say it once, on the promo screen and in the reminder
   preferences ("Offers never come by text").
 - Texts stay near one segment. The nudge texts (`ob.solo.nudge.*`) carry one link and one ask.
-- No "Upgrade". Name the plan: "See Café & Retail".
+- No "Upgrade". Name the plan: "See Pro".
 
 | Group | Keys | Where it shows |
 | --- | --- | --- |
@@ -441,4 +441,4 @@ Written by the copy writer to the glossary; nobody fluent has read them yet.
 7. **Reminder and Instagram wording** (`webpush.prompt.*`, `ig.card.*`): the iPhone steps name the buttons as the
    system shows them in each language; confirm against a phone set to that language.
 8. **Urdu RTL screens**: read the three screenshots (setup, inbox, client profile at 390) for clipped
-   Nastaliq, mixed-direction lines (amounts, links, "Café & Retail") and number placement.
+   Nastaliq, mixed-direction lines (amounts, links, "Pro") and number placement.
