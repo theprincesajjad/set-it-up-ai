@@ -1,15 +1,18 @@
 import { Star } from "lucide-react";
+import type { SitePreset } from "@ll/shared";
+import { copy } from "@/copy/en-CA";
+import { cn } from "@/lib/cn";
 import { MHeading, MSection } from "./Section";
 
 /**
- * The built-in website, shown as three presets with a sample pro's data. Flat colour blocks only (no gradient), tokens for every
- * colour. TODO(G): use the real preset names and renders when the site builder lands.
+ * The built-in website, shown as the builder's three presets (Studio, Portfolio, Shopfront: SITE_PRESET_DEFS in @ll/shared) with a
+ * sample pro's data. Flat colour blocks only (no gradient), tokens for every colour. Names come from the builder's own copy.
  */
-const PRESETS = [
-  { key: "clean", name: "Clean", page: "bg-card text-foreground", band: "bg-tile-mint text-tile-mint-foreground", button: "bg-primary text-primary-foreground", radius: "rounded-card" },
-  { key: "bold", name: "Bold", page: "bg-forest text-forest-foreground", band: "bg-tile-butter text-tile-butter-foreground", button: "bg-card text-foreground", radius: "rounded-[6px]" },
-  { key: "soft", name: "Soft", page: "bg-tile-rose text-tile-rose-foreground", band: "bg-card text-foreground", button: "bg-foreground text-background", radius: "rounded-[24px]" },
-] as const;
+const PRESETS: readonly { key: SitePreset; page: string; band: string; button: string; radius: string; align: string }[] = [
+  { key: "studio", page: "bg-card text-foreground", band: "bg-tile-mint text-tile-mint-foreground", button: "bg-primary text-primary-foreground", radius: "rounded-card", align: "" },
+  { key: "portfolio", page: "bg-tile-rose text-tile-rose-foreground", band: "bg-card text-foreground", button: "bg-foreground text-background", radius: "rounded-[24px]", align: "items-center text-center" },
+  { key: "shopfront", page: "bg-forest text-forest-foreground", band: "bg-tile-butter text-tile-butter-foreground", button: "bg-card text-foreground", radius: "rounded-[6px]", align: "" },
+];
 
 const SERVICES: [string, string][] = [
   ["Gel manicure", "$55"],
@@ -31,10 +34,10 @@ export function PresetsBand({ eyebrow, title, sub, sample, siteName, book, revie
                 <span className="size-2 rounded-full bg-border" />
                 <span className="ms-2 truncate text-[11px] text-muted-foreground">mira.ca</span>
               </div>
-              <div className={`flex flex-col gap-3 p-5 ${p.page}`}>
+              <div className={cn("flex flex-col gap-3 p-5", p.page, p.align)} data-preset={p.key}>
                 <p className="display text-title">{siteName}</p>
                 <span className={`inline-flex h-9 w-fit items-center rounded-full px-4 text-[13px] font-semibold ${p.button}`}>{book}</span>
-                <ul className={`divide-y divide-border px-3 text-[13px] ${p.band} ${p.radius}`}>
+                <ul className={cn("w-full divide-y divide-border px-3 text-start text-[13px]", p.band, p.radius)}>
                   {SERVICES.map(([n, pr]) => (
                     <li key={n} className="flex justify-between py-2.5">
                       <span>{n}</span>
@@ -48,7 +51,7 @@ export function PresetsBand({ eyebrow, title, sub, sample, siteName, book, revie
                 </p>
               </div>
             </div>
-            <p className="mt-3 text-meta-strong text-foreground">{p.name}</p>
+            <p className="mt-3 text-meta-strong text-foreground">{copy.siteBuilder.presets[p.key].name}</p>
           </li>
         ))}
       </ul>

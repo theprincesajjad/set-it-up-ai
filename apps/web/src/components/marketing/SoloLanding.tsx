@@ -11,7 +11,7 @@ import { SoloHero } from "@/components/marketing/SoloHero";
 import { SoloSignup } from "@/components/marketing/SoloSignup";
 import { copy } from "@/copy/en-CA";
 import { LocaleScope } from "@/lib/i18n";
-import { SAMPLE_SERVICES, SOLO_PAGES, type NailTrade, type SoloPageId } from "@/lib/marketing/solo";
+import { SAMPLE_SERVICES, SOLO_PAGES, soloVertical, type NailTrade, type SoloPageId } from "@/lib/marketing/solo";
 
 /** Hero keys per page and trade. Written out so each key stays a literal MessageKey. */
 const HERO = {
@@ -26,6 +26,8 @@ const CTA = { nail: "mkt.solo.nail.cta", barber: "mkt.solo.barber.cta", groom: "
 const JOBS_TITLE = { nail: "mkt.solo.jobs.nailTitle", barber: "mkt.solo.jobs.barberTitle", groom: "mkt.solo.jobs.groomTitle" } as const;
 const SCREEN = { nail: "booking", barber: "line", groom: "pet" } as const;
 const ARTS = { nail: ["nails", "brows_lashes"], barber: ["barber", "stamp_card"], groom: ["groomer", "calendar_week"] } as const;
+/** The nail page's hero objects follow ?trade= (a brow tech sees her own tools first). */
+const NAIL_ARTS = { nails: ["nails", "deposit"], brows: ["brows_lashes", "deposit"], lashes: ["brows_lashes", "calendar_week"], makeup: ["makeup", "deposit"] } as const;
 
 /**
  * One landing page from the eight blocks of solo-pro-launch.md 5.3: hero, three jobs, regulars, privacy (nail page only), plans,
@@ -38,7 +40,8 @@ export function SoloLanding({ id, locale, trade = "nails" }: { id: SoloPageId; l
   const P = C[id];
   const key = id === "nail" ? trade : id;
   const h = HERO[key];
-  const signup = `/signup?vertical=${page.vertical}&src=${page.src}`;
+  const vertical = soloVertical(id, trade);
+  const signup = `/signup?vertical=${vertical}&src=${page.src}`;
   const services = SAMPLE_SERVICES[key];
   return (
     <LocaleScope locale={locale}>
@@ -53,16 +56,16 @@ export function SoloLanding({ id, locale, trade = "nails" }: { id: SoloPageId; l
           secondaryLabel={t("mkt.solo.ctaPlans")}
           trust={t("mkt.solo.trust")}
           caption={t("mkt.solo.sample")}
-          trade={page.trade}
+          trade={vertical}
           screen={SCREEN[id]}
           sampleName={page.sampleName}
           services={services}
-          arts={[...ARTS[id]]}
+          arts={[...(id === "nail" ? NAIL_ARTS[trade] : ARTS[id])]}
         />
         {/* 2. Three jobs */}
         <JobsRow eyebrow={t("mkt.solo.jobs.eyebrow")} title={t(JOBS_TITLE[id])} jobs={P.jobs} />
         {/* 3. Regulars, with the client-loop line */}
-        <RegularsBand eyebrow={t("mkt.solo.regulars.eyebrow")} title={t("mkt.solo.regulars.title")} sub={t("mkt.solo.regulars.sub")} points={P.regulars} loop={t("mkt.solo.regulars.loop")} locale={locale} vertical={page.vertical} />
+        <RegularsBand eyebrow={t("mkt.solo.regulars.eyebrow")} title={t("mkt.solo.regulars.title")} sub={t("mkt.solo.regulars.sub")} points={P.regulars} loop={t("mkt.solo.regulars.loop")} locale={locale} vertical={vertical} />
         {/* 4. Privacy (home studios: the nail page only) */}
         {id === "nail" ? <PrivacyBand eyebrow={t("mkt.solo.privacy.eyebrow")} title={t("mkt.solo.privacy.title")} sub={t("mkt.solo.privacy.sub")} points={C.nail.privacy} before={C.nail.privacyBefore} beforeLine={C.nail.privacyBeforeLine} after={C.nail.privacyAfter} afterLine={C.nail.privacyAfterLine} /> : null}
         {/* 5. Plans */}
@@ -82,7 +85,7 @@ export function SoloLanding({ id, locale, trade = "nails" }: { id: SoloPageId; l
           <div className="grid gap-12 md:grid-cols-2">
             <MHeading eyebrow={t("mkt.solo.form.eyebrow")} title={t("mkt.solo.form.title")} sub={t("mkt.solo.form.sub")} className="mb-0!" />
             <div className="rounded-sheet bg-card p-6 shadow-card md:p-8">
-              <SoloSignup vertical={page.vertical} src={page.src} />
+              <SoloSignup vertical={vertical} src={page.src} />
               <a href={signup} className="mt-4 inline-flex min-h-11 items-center text-meta text-muted-foreground underline underline-offset-2">
                 {C.fullPage}
               </a>

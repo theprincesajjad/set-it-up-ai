@@ -21,11 +21,13 @@ export interface ShopBrief {
   brandColor: string | null;
   phone: string | null;
   vertical: string;
+  /** Show the "Powered by" line (Free shops only; the API computes it with showsPoweredBy). */
+  poweredBy: boolean;
 }
 
 /** The shop header every restaurant page needs. Throws ApiError (404) for unknown shops. */
 export async function loadShopBrief(slug: string): Promise<ShopBrief> {
   const s = await publicServerApi().public.shop(slug);
   const m = s.merchant;
-  return { id: m.id, name: m.name, slug: m.slug, logoUrl: m.logoUrl ?? null, brandColor: m.brandColor ?? null, phone: m.phone ?? s.locations[0]?.phone ?? null, vertical: m.vertical };
+  return { id: m.id, name: m.name, slug: m.slug, logoUrl: m.logoUrl ?? null, brandColor: m.brandColor ?? null, phone: m.phone ?? s.locations[0]?.phone ?? null, vertical: m.vertical, poweredBy: s.poweredBy !== false };
 }

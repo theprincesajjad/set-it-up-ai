@@ -53,7 +53,7 @@ export default async function ManageAppointmentPage({ params, searchParams }: Pr
     <PageFrame locale={locale} trade={shop?.vertical}>
       <ManageAppointment initial={appointment} slug={slug} pay={pay} />
       {/* slot: PoweredBy (phase-solo E): the confirmation and manage page. */}
-      <PoweredBy locale={locale} vertical={shop?.vertical} />
+      <PoweredBy locale={locale} vertical={shop?.vertical} show={shop?.poweredBy ?? false} />
     </PageFrame>
   );
 }

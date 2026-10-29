@@ -17,8 +17,8 @@ test("nail page: hero, trade swap, inline sign-up preset", async ({ page }) => {
   await expect(page.locator("[data-solo-trade=nails]")).toHaveCount(1);
   // The sign-up is inline and the trade is already picked.
   const start = page.locator("#start");
-  await expect(start.getByRole("radio", { name: "Salon" })).toHaveAttribute("aria-checked", "true");
-  await expect(start.getByRole("link", { name: "Prefer the full sign-up page?" })).toHaveAttribute("href", "/signup?vertical=salon&src=nail-techs");
+  await expect(start.getByRole("radio", { name: "Nail tech" })).toHaveAttribute("aria-checked", "true");
+  await expect(start.getByRole("link", { name: "Prefer the full sign-up page?" })).toHaveAttribute("href", "/signup?vertical=nails&src=nail-techs");
   // The source is remembered for sign-up.
   await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === "ll_src")?.value).toBe("nail-techs");
   // Privacy block is on this page only, with no licensing talk.
@@ -28,10 +28,13 @@ test("nail page: hero, trade swap, inline sign-up preset", async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   if (SHOTS) await page.screenshot(shot("nail-1440")!);
 
-  for (const [trade, text] of [["brows", "brow tech"], ["lashes", "lash tech"], ["makeup", "makeup"]] as const) {
+  for (const [trade, text, chip, vertical] of [["brows", "brow tech", "Brows & lashes", "brows_lashes"], ["lashes", "lash tech", "Brows & lashes", "brows_lashes"], ["makeup", "makeup", "Makeup artist", "makeup"]] as const) {
     await page.goto(`/for-nail-techs?trade=${trade}`);
     await expect(page.getByRole("heading", { level: 1 })).toContainText(text);
     await expect(page.locator(`[data-solo-trade=${trade}]`)).toHaveCount(1);
+    // The inline sign-up is preset to the trade's own vertical.
+    await expect(page.locator("#start").getByRole("radio", { name: chip })).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator("#start").getByRole("link", { name: "Prefer the full sign-up page?" })).toHaveAttribute("href", `/signup?vertical=${vertical}&src=nail-techs`);
   }
   await page.goto("/for-nail-techs?trade=nonsense");
   await expect(page.locator("[data-solo-trade=nails]")).toHaveCount(1);

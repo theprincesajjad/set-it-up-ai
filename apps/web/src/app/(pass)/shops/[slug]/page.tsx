@@ -387,7 +387,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       ) : null}
 
       {/* slot: PoweredBy (phase-solo E) */}
-      {POWERED_BY_TRADES.includes(m.vertical) ? <PoweredBy locale={locale} vertical={m.vertical} className={!membership && joinInfo ? "pb-16" : undefined} /> : null}
+      {POWERED_BY_TRADES.includes(m.vertical) ? <PoweredBy locale={locale} vertical={m.vertical} show={shop.poweredBy !== false} className={!membership && joinInfo ? "pb-16" : undefined} /> : null}
 
       {!membership && joinInfo && !rest ? (
         <StickyJoin label={t("auth.join.joinShop", { shop: LOCALES[locale].dir === "rtl" ? `\u2068${m.name}\u2069` : m.name })} />

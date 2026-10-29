@@ -4,8 +4,7 @@ import { SignupWizard } from "@/components/auth/SignupWizard";
 
 /**
  * The sign-up form inline on a landing page, with the trade preset (`vertical`) and where the owner came from (`src`).
- * The wizard only takes the vertical today, so `src` is kept for 30 days in the `ll_src` cookie for the sign-up to read.
- * TODO(B): read `ll_src` (or a `src` prefill) when the shop is created.
+ * `src` is kept for 30 days in the `ll_src` cookie; SignupWizard reads it and the API stores it on the `signed_up` milestone.
  */
 export function SoloSignup({ vertical, src }: { vertical: string; src: string }) {
   useEffect(() => {

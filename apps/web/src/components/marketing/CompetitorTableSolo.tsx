@@ -1,9 +1,8 @@
-import { FEES, PLANS } from "@ll/shared";
+import { FEES, FREE_REMINDER_SMS_PER_MONTH, PLANS } from "@ll/shared";
 import { SOLO_COMPETITORS, SOLO_ROWS, type SoloCell, type SoloRow } from "@/lib/marketing/competitors-solo";
 import { formatAsOf } from "@/lib/marketing/sources";
 import { fill, moneyShort } from "@/lib/marketing/text";
 import { MHeading, MSection } from "./Section";
-import { SOLO_FREE_TEXTS } from "./PlanStrip";
 
 export interface SoloCompareCopy {
   eyebrow: string;
@@ -20,7 +19,7 @@ const ASOF = "2026-10-28";
 
 /** Our cells: every number from PLANS and FEES, so a price change shows here without an edit. */
 function usCells(c: SoloCompareCopy): Record<SoloRow | "chairs", string> {
-  const vars = { plus: moneyShort(PLANS.plus.priceCents), fee: String(FEES.depositInvoiceBps / 100), free: SOLO_FREE_TEXTS, paid: PLANS.plus.smsPerMonth };
+  const vars = { plus: moneyShort(PLANS.plus.priceCents), fee: String(FEES.depositInvoiceBps / 100), free: FREE_REMINDER_SMS_PER_MONTH, paid: PLANS.plus.smsPerMonth };
   return Object.fromEntries(Object.entries(c.us).map(([k, v]) => [k, fill(v, vars)])) as Record<SoloRow | "chairs", string>;
 }
 

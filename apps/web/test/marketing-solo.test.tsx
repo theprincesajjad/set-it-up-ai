@@ -1,9 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { PLANS } from "@ll/shared";
+import { PLANS, showsPoweredBy } from "@ll/shared";
 import { CompetitorTableSolo } from "@/components/marketing/CompetitorTableSolo";
 import { PlanStrip } from "@/components/marketing/PlanStrip";
-import { PoweredBy, poweredByHref, showsPoweredBy } from "@/components/pass/PoweredBy";
+import { PoweredBy, poweredByHref } from "@/components/pass/PoweredBy";
 import { copy } from "@/copy/en-CA";
 import { SOLO_COMPETITORS, SOLO_ROWS } from "@/lib/marketing/competitors-solo";
 import { nailTrade } from "@/lib/marketing/solo";
@@ -58,11 +58,12 @@ describe("PoweredBy", () => {
     expect(poweredByHref("salon")).toBe("/for-nail-techs?src=client");
     expect(renderToStaticMarkup(<PoweredBy locale="en" vertical="barber" />)).toContain('href="/for-barbers?src=client"');
   });
-  it("is hidden on paid plans", () => {
+  it("is hidden on paid plans (the API computes showsPoweredBy and pages pass the public shop's poweredBy as `show`)", () => {
     expect(showsPoweredBy("free")).toBe(true);
-    expect(showsPoweredBy(null)).toBe(true);
     expect(showsPoweredBy("plus")).toBe(false);
-    expect(renderToStaticMarkup(<PoweredBy locale="en" vertical="salon" plan="pro" />)).toBe("");
+    expect(showsPoweredBy("pro")).toBe(false);
+    expect(renderToStaticMarkup(<PoweredBy locale="en" vertical="salon" show={showsPoweredBy("pro")} />)).toBe("");
+    expect(renderToStaticMarkup(<PoweredBy locale="en" vertical="nails" show={showsPoweredBy("free")} />)).toContain('href="/for-nail-techs?src=client"');
   });
 });
 

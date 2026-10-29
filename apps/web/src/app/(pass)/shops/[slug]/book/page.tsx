@@ -67,7 +67,7 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
     <PageFrame locale={locale} trade={shop.vertical}>
       <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service), staff: one(sp.staff), pet: one(sp.pet) }} meName={me?.user.name ?? null} />
       {/* slot: PoweredBy (phase-solo E): on every step of the booking flow, including the confirmation. */}
-      <PoweredBy locale={locale} vertical={shop.vertical} />
+      <PoweredBy locale={locale} vertical={shop.vertical} show={shop.poweredBy} />
     </PageFrame>
   );
 }

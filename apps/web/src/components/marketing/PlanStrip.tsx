@@ -1,11 +1,8 @@
 import { Check } from "lucide-react";
-import { PLANS } from "@ll/shared";
+import { FREE_REMINDER_SMS_PER_MONTH, PLANS } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { fill, moneyShort } from "@/lib/marketing/text";
 import { MHeading, MSection } from "./Section";
-
-/** Texts a Free account can send each month (founder decision, Oct 28). TODO(A): read it from plans.ts when A reports the constant. */
-export const SOLO_FREE_TEXTS = 30;
 
 export interface PlanStripCopy {
   eyebrow: string;
@@ -22,7 +19,7 @@ export interface PlanStripCopy {
 export function PlanStrip({ c }: { c: PlanStripCopy }) {
   const plus = PLANS.plus;
   const monthsPaid = Math.round(plus.annualPriceCents / plus.priceCents);
-  const vars = { freeTexts: SOLO_FREE_TEXTS, texts: plus.smsPerMonth.toLocaleString("en-CA"), months: monthsPaid };
+  const vars = { freeTexts: FREE_REMINDER_SMS_PER_MONTH, texts: plus.smsPerMonth.toLocaleString("en-CA"), months: monthsPaid };
   const cards = [
     { key: "free", name: c.free, price: moneyShort(0), per: "", items: c.lists.free },
     { key: "monthly", name: plus.name, price: moneyShort(plus.priceCents), per: c.monthly, items: c.lists.paid },

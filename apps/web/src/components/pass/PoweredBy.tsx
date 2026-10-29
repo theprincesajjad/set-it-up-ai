@@ -8,21 +8,16 @@ export function poweredByHref(vertical?: string | null): string {
   return `${page}?src=client`;
 }
 
-/** Trades that take bookings: the shop page and pass card show the line only for these. */
-export const POWERED_BY_TRADES: readonly string[] = ["salon", "barber", "spa", "pet"];
-
-/** Paid plans never show the line. `plan` is whatever the page knows about the shop; unknown means Free. */
-export function showsPoweredBy(plan?: string | null): boolean {
-  return !plan || plan === "free";
-}
+/** Trades that take bookings: the shop page shows the line only for these (the booking and confirmation pages show it for every trade). */
+export const POWERED_BY_TRADES: readonly string[] = ["nails", "brows_lashes", "makeup", "salon", "barber", "spa", "pet"];
 
 /**
  * The client loop (solo-pro-launch.md 5.3): one quiet line on the booking page, the confirmation and the pass. It links to the landing page
- * that matches the shop's trade with `?src=client`, and is hidden on paid plans.
- * TODO(A): the public shop response does not carry the plan yet; pages pass `plan` as soon as it does.
+ * that matches the shop's trade with `?src=client`, and is hidden on paid plans: pages pass `show` from the public shop response's
+ * `poweredBy` (showsPoweredBy in @ll/shared plans.ts, computed by the API).
  */
-export function PoweredBy({ locale, vertical, plan, className, source }: { locale: Locale; vertical?: string | null; plan?: string | null; className?: string; /** "preview" keeps it from being a live link on the marketing page. */ source?: "preview" }) {
-  if (!showsPoweredBy(plan)) return null;
+export function PoweredBy({ locale, vertical, show = true, className, source }: { locale: Locale; vertical?: string | null; /** False on paid plans (`PublicShopResponse.poweredBy`). */ show?: boolean; className?: string; /** "preview" keeps it from being a live link on the marketing page. */ source?: "preview" }) {
+  if (!show) return null;
   const t = translator(locale);
   const line = (
     <>

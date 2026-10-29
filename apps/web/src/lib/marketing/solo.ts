@@ -21,7 +21,7 @@ export interface SoloPageConfig {
   path: string;
   /** The `src` carried to sign-up so we know which page the owner came from. */
   src: string;
-  /** TODO(B): nail and brow verticals once B adds them; salon is the closest today. */
+  /** The sign-up vertical (the nail page swaps it per `?trade=`: soloVertical). */
   vertical: Vertical;
   /** The same string `data-trade` uses on the shell. */
   trade: Vertical;
@@ -30,10 +30,18 @@ export interface SoloPageConfig {
 }
 
 export const SOLO_PAGES: Record<SoloPageId, SoloPageConfig> = {
-  nail: { id: "nail", path: "/for-nail-techs", src: "nail-techs", vertical: "salon", trade: "salon", sampleName: "Mira Beauty Studio" },
+  nail: { id: "nail", path: "/for-nail-techs", src: "nail-techs", vertical: "nails", trade: "nails", sampleName: "Mira Beauty Studio" },
   barber: { id: "barber", path: "/for-barbers", src: "barbers", vertical: "barber", trade: "barber", sampleName: "Corner Cuts" },
   groom: { id: "groom", path: "/for-groomers", src: "groomers", vertical: "pet", trade: "pet", sampleName: "Pawfect Grooming" },
 };
+
+/** The vertical a nail-page trade signs up as (brows and lashes share one). */
+export const NAIL_TRADE_VERTICAL: Record<NailTrade, Vertical> = { nails: "nails", brows: "brows_lashes", lashes: "brows_lashes", makeup: "makeup" };
+
+/** The sign-up vertical and the trade colour for a page (and, on the nail page, its `?trade=`). */
+export function soloVertical(id: SoloPageId, trade: NailTrade = "nails"): Vertical {
+  return id === "nail" ? NAIL_TRADE_VERTICAL[trade] : SOLO_PAGES[id].vertical;
+}
 
 /** `?trade=` on the nail page. Anything else is the nail default. */
 export function nailTrade(v: string | string[] | undefined): NailTrade {
