@@ -1,212 +1,345 @@
-import { ArrowRight, Check, MapPin } from "lucide-react";
+import { ArrowRight, Check, Plus } from "lucide-react";
 import type { Metadata } from "next";
-import { categoryLabels, type MapCategoryId } from "@ll/design-tokens";
-import { BRAND } from "@ll/shared";
-import { AudienceRouter } from "@/components/marketing/AudienceRouter";
-import { BiaBand } from "@/components/marketing/BiaBand";
-import { ChipLink } from "@/components/marketing/ChipLink";
+import Link from "next/link";
+import type { MapCategoryId } from "@ll/design-tokens";
+import { BRAND, FEES } from "@ll/shared";
 import { CompetitorTable } from "@/components/marketing/CompetitorTable";
 import { ContactForm } from "@/components/marketing/ContactForm";
-import { Faq } from "@/components/marketing/Faq";
 import { LiveProof } from "@/components/marketing/LiveProof";
-import { JoinScreen, PhoneFrame } from "@/components/marketing/Mocks";
-import { HeroArt } from "@/components/marketing/HeroArt";
-import { Showcase } from "@/components/marketing/Showcase";
-import { TradeChips } from "@/components/marketing/TradeChips";
-import { WARM } from "@/components/marketing/warm-copy";
-import { RestaurantBand } from "@/components/marketing/RestaurantBand";
-import { MHeading, MSection } from "@/components/marketing/Section";
-import { VerticalTemplates } from "@/components/marketing/VerticalTemplates";
-import { Button } from "@/components/ui/Button";
+import { IPhone } from "@/components/marketing/device/IPhone";
+import { CounterPhone, CounterTablet, MapPhone, PassPhone, PromoMock, TodayDesktop, TodayPhone } from "@/components/marketing/home/mocks";
+import "@/components/marketing/home/home.css";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { copy } from "@/copy/en-CA";
+import { marketingPlans, planLine, planVars } from "@/lib/marketing/plan-copy";
+import { fill } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
 
 export const revalidate = 300;
 
+const L = copy.landing;
+
 export const metadata: Metadata = {
-  title: { absolute: `${BRAND.name}: free loyalty for independent shops` },
-  description: "Free forever, no fee on loyalty. Unlimited locations. A loyalty program for your shop, shared with every shop on your block. Sign up and give your first stamp in about 5 minutes.",
+  title: { absolute: `${BRAND.name}: ${L.meta.title}` },
+  description: L.meta.description,
   alternates: { canonical: "/" },
 };
 
-const L = copy.landing;
+/** Plan and fee fills for the home copy: names and prices from lib/marketing/plan-copy.ts (PLANS), the order fee from FEES. */
+const VARS = { ...planVars(), orderFee: Number((FEES.orderBpsFree / 100).toFixed(2)) };
+const f = (s: string) => fill(s, VARS);
 
-const NETWORK_OBJECTS: MapCategoryId[] = ["coffee", "bakery", "eat", "shops", "beauty", "repair"];
-const NETWORK_TONES = ["bg-tile-peach", "bg-tile-mint", "bg-tile-rose", "bg-tile-sky", "bg-tile-lilac", "bg-tile-butter"];
+const ROUTER_ART: MapCategoryId[] = ["coffee", "beauty", "eat", "all"];
+
+function Primary({ href = "/signup", cta, children, className }: { href?: string; cta: string; children: React.ReactNode; className?: string }) {
+  return (
+    <Link href={href} prefetch={false} className={className ? `hm-btn ${className}` : "hm-btn"} data-cta={cta}>
+      {children}
+      <ArrowRight aria-hidden strokeWidth={2.4} />
+    </Link>
+  );
+}
+
+/** One outcome row: the words on one side, the product on the other (sides alternate from md). */
+function Outcome({ i, children }: { i: number; children: React.ReactNode }) {
+  const r = L.outcomes.rows[i]!;
+  const points = r.id === "promos" ? [...r.points, planLine("promoAllowance")] : r.points;
+  return (
+    <div className={i % 2 ? "hm-row hm-row-flip" : "hm-row"} id={`outcome-${r.id}`}>
+      <div className="hm-row-copy">
+        <h3 className="hm-h3">{r.title}</h3>
+        <p className="hm-body">{r.body}</p>
+        <ul className="hm-checks">
+          {points.map((p) => (
+            <li key={p}>
+              <Check aria-hidden strokeWidth={2.6} />
+              {p}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <figure className="hm-row-art" role="img" aria-label={r.label}>
+        {children}
+      </figure>
+    </div>
+  );
+}
 
 /**
- * Landing, in the order of docs/research/landing-and-network.md §4.2: hero, who-are-you router, live proof, how it works,
- * network, kind of shop, restaurant band, named comparison, BIA band, FAQ, book a visit. One form, one conversion goal.
+ * The home page, landing v4 (scratchpad diagnosis: "Turn first visits into regulars"): the promise and the product (the Clear Today screen
+ * and the customer's pass on an iPhone), four facts with a button, live network counts, how it works beside the counter, four outcome
+ * rows with real-screen mocks, where-do-you-fit, the two plans (lib/marketing/plan-copy.ts), the dated comparison, questions, a visit,
+ * and the closing ask; on phones a sticky bar keeps the button in reach. Static (re-generated every 5 minutes for the live counts),
+ * CSS-only motion, no client script of its own beyond the visit form.
  */
 export default function Home() {
   const waUrl = whatsappUrl(L.book.whatsappText);
-  // The last words of the headline are set in terracotta ("this street.").
-  const m = /^(.*?)(\s*this street\.?)$/.exec(L.heroTitle);
-  const heroHead = m ? `${m[1]} ` : L.heroTitle;
-  const heroTail = m ? (m[2] ?? "").trim() : "";
+  const plans = marketingPlans("shop");
   return (
-    <>
-      {/* 1. Hero: outcome headline, one verb, a friction line, and a picture that is the product (Mobbin: Beside, Faire, Airtasker). */}
-      <section className="overflow-hidden">
-        <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 pt-10 pb-12 md:grid-cols-[1fr_1fr] md:gap-12 md:px-8 md:pt-16 md:pb-16">
-          <div>
-            <p className="[--i:0] mkt-rise inline-flex items-center gap-2 rounded-full bg-tile-peach px-4 py-2 text-meta-strong text-tile-peach-foreground">
-              <MapPin aria-hidden className="size-4" strokeWidth={2} />
-              {L.heroEyebrow}
-            </p>
-            <h1 className="[--i:1] display mkt-rise mt-6 text-mkt-lg text-balance md:text-mkt-xl">
-              {heroHead}
-              {heroTail ? <span className="text-primary-text">{heroTail}</span> : null}
-            </h1>
-            <p className="[--i:2] mkt-rise mt-6 max-w-[34rem] text-[18px] leading-[1.55] text-muted-foreground">{L.heroSub}</p>
-            <p className="[--i:2] mkt-rise mt-2 max-w-[34rem] text-body text-muted-foreground">{L.heroLine}</p>
-            <div className="[--i:3] mkt-rise mt-9 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" href="/signup" iconStart={ArrowRight}>
-                Get started free
-              </Button>
-              <Button size="lg" variant="secondary" href="#book">
-                Book a visit
-              </Button>
-            </div>
-            <ul className="[--i:4] mkt-rise mt-6 flex flex-wrap gap-x-5 gap-y-2 text-meta text-muted-foreground">
-              {L.heroTrust.split(" · ").map((t) => (
-                <li key={t} className="inline-flex items-center gap-1.5">
-                  <Check aria-hidden className="size-4 text-forest" strokeWidth={2.5} />
-                  {t}
-                </li>
-              ))}
-            </ul>
+    <div className="hm">
+      {/* 1. Hero */}
+      <section className="hm-hero" aria-labelledby="hm-title">
+        <div className="hm-wrap hm-hero-copy">
+          <h1 className="hm-h1" id="hm-title">
+            <span>{L.hero.title[0]}</span> <span>{L.hero.title[1]}</span>
+          </h1>
+          <p className="hm-lede">{L.hero.sub}</p>
+          <div className="hm-ctas">
+            <Primary cta="hero">{L.hero.primary}</Primary>
+            <a className="hm-btn2" href="#how" data-cta="how">
+              {L.hero.secondary}
+            </a>
           </div>
-          <HeroArt caption={WARM.heroCaption} />
-        </div>
-        <div className="mx-auto max-w-[1200px] px-4 pt-4 pb-10 md:px-8">
-          <TradeChips label={WARM.madeFor} />
-          {/* phase-solo E: one row of chips to the solo-pro landing pages. */}
-          <nav aria-label={copy.solo.chipsLabel} className="mt-5 flex flex-wrap items-center gap-2.5">
-            <span className="display me-2 text-title text-foreground">{copy.solo.chipsLabel}</span>
-            {copy.solo.chips.map((c) => (
-              <ChipLink key={c.href} href={c.href}>
-                {c.label}
-              </ChipLink>
+          <ul className="hm-trust">
+            {L.hero.trust.map((t) => (
+              <li key={t}>
+                <Check aria-hidden strokeWidth={2.6} />
+                {t}
+              </li>
             ))}
-          </nav>
+          </ul>
+        </div>
+        <div className="hm-wrap">
+          <div className="hm-stage" role="img" aria-label={L.hero.stageLabel}>
+            <div className="hm-window">
+              <TodayDesktop />
+            </div>
+            <IPhone className="hm-hero-phone" status="light">
+              <PassPhone />
+            </IPhone>
+          </div>
+          <p className="hm-caption">{L.hero.caption}</p>
         </div>
       </section>
 
-      {/* 2. Who are you? */}
-      <AudienceRouter />
+      {/* 2. Facts and the first ask */}
+      <section className="hm-facts" aria-label={L.facts.label}>
+        <div className="hm-wrap hm-facts-in">
+          <ul>
+            {L.facts.items.map((x) => (
+              <li key={x.line}>
+                <b>{f(x.value)}</b>
+                <span>{x.line}</span>
+              </li>
+            ))}
+          </ul>
+          <Primary cta="afterhero">{L.facts.cta}</Primary>
+        </div>
+      </section>
 
-      {/* 3. Live proof: real counts, hidden until the network passes 10 shops. */}
+      {/* 3. Live proof: real counts, hidden until the network passes 10 businesses. */}
       <LiveProof />
 
-      {/* 4. How it works, with times. */}
-      <MSection id="how">
-        <div className="grid items-center gap-14 md:grid-cols-[1fr_1fr]">
+      {/* 4. How it works, beside the counter */}
+      <section className="hm-sec hm-white" id="how" aria-labelledby="hm-how">
+        <div className="hm-wrap hm-how">
           <div>
-            <MHeading eyebrow={L.how.eyebrow} title={L.how.title} className="mb-10!" />
-            <ol className="flex flex-col gap-4">
+            <h2 className="hm-h2" id="hm-how">
+              {L.how.title}
+            </h2>
+            <p className="hm-lede">{L.how.sub}</p>
+            <ol className="hm-steps">
               {L.how.steps.map((s, i) => (
-                <li key={s.t} className="mkt-lift flex gap-4 rounded-card bg-card p-5 shadow-card">
-                  <span className={`display flex size-11 shrink-0 items-center justify-center rounded-[14px] text-title tabular-nums ${["bg-tile-peach text-tile-peach-foreground", "bg-tile-mint text-tile-mint-foreground", "bg-tile-butter text-tile-butter-foreground"][i % 3]}`}>{i + 1}</span>
+                <li key={s.t}>
+                  <span className="hm-step-n">{i + 1}</span>
                   <div>
-                    <h3 className="text-headline text-foreground">{s.t}</h3>
-                    <p className="mt-1.5 text-body text-muted-foreground">{s.b}</p>
+                    <h3>{s.t}</h3>
+                    <p>{s.b}</p>
                   </div>
                 </li>
               ))}
             </ol>
           </div>
-          <div className="flex justify-center">
-            <PhoneFrame height={440}>
-              <JoinScreen />
-            </PhoneFrame>
+          <figure className="hm-how-art" role="img" aria-label={L.how.label}>
+            <div className="hm-tablet">
+              <div className="hm-tablet-screen">
+                <CounterTablet />
+              </div>
+            </div>
+            <IPhone className="hm-how-phone">
+              <CounterPhone />
+            </IPhone>
+          </figure>
+        </div>
+      </section>
+
+      {/* 5. Outcomes, each with the real screen */}
+      <section className="hm-sec" id="product" aria-labelledby="hm-product">
+        <div className="hm-wrap">
+          <div className="hm-head hm-center">
+            <h2 className="hm-h2" id="hm-product">
+              {L.outcomes.title}
+            </h2>
+            <p className="hm-lede">{L.outcomes.sub}</p>
+          </div>
+          <div className="hm-rows">
+            <Outcome i={0}>
+              <IPhone className="hm-row-phone">
+                <TodayPhone />
+              </IPhone>
+            </Outcome>
+            <Outcome i={1}>
+              <IPhone className="hm-row-phone" status="light">
+                <PassPhone />
+              </IPhone>
+            </Outcome>
+            <Outcome i={2}>
+              <PromoMock />
+            </Outcome>
+            <Outcome i={3}>
+              <IPhone className="hm-row-phone">
+                <MapPhone />
+              </IPhone>
+            </Outcome>
+          </div>
+          <div className="hm-ctarow">
+            <Primary cta="outcomes">{L.outcomes.cta}</Primary>
+            <a className="hm-link" href="#pricing" data-cta="seepricing">
+              {L.outcomes.pricing}
+            </a>
           </div>
         </div>
-      </MSection>
+      </section>
 
-      {/* The product, as the shop sees it. */}
-      <Showcase />
-
-      {/* 5. The network: one image, three lines. */}
-      <MSection tone="butter">
-        <div className="grid items-center gap-14 md:grid-cols-2">
-          {/* The category objects are the only illustration: every kind of shop, one card. */}
-          <ul aria-label="Kinds of shop on the card" className="order-2 grid grid-cols-3 gap-3 md:order-1">
-            {NETWORK_OBJECTS.map((c, i) => (
-              <li key={c} className={`mkt-lift flex flex-col items-center gap-2 rounded-tile px-2 py-6 ${NETWORK_TONES[i]}`}>
-                <CategoryIcon category={c} size={64} />
-                <span className="display text-meta-strong lowercase text-foreground">{categoryLabels[c]}</span>
+      {/* 6. Where do you fit? */}
+      <section className="hm-sec hm-white" aria-label={L.router.label}>
+        <div className="hm-wrap">
+          <div className="hm-head">
+            <h2 className="hm-h2">{L.router.title}</h2>
+            <p className="hm-lede">{L.router.sub}</p>
+          </div>
+          <ul className="hm-doors">
+            {L.router.items.map((d, i) => (
+              <li key={d.href}>
+                <Link href={d.href} prefetch={false} className="hm-door">
+                  <CategoryIcon category={ROUTER_ART[i]} size={56} />
+                  <span className="hm-door-k">{d.eyebrow}</span>
+                  <span className="hm-door-t">{d.title}</span>
+                  <span className="hm-door-b">{d.body}</span>
+                  <span className="hm-door-cta">
+                    {d.cta}
+                    <ArrowRight aria-hidden strokeWidth={2.2} />
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
-          <div className="order-1 md:order-2">
-            <MHeading eyebrow={L.network.eyebrow} title={L.network.title} sub={L.network.sub} className="mb-8!" />
-            <ul className="flex flex-col divide-y divide-border border-y border-border text-body text-foreground">
-              {L.network.points.map((t) => (
-                <li key={t} className="py-4">
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
-      </MSection>
+      </section>
 
-      {/* 6. Verticals, with a restaurants chip that leaves for the restaurant page. */}
-      <MSection id="verticals">
-        <MHeading eyebrow={L.verticals.eyebrow} title={L.verticals.title} sub={L.verticals.sub} />
-        <VerticalTemplates />
-      </MSection>
+      {/* 7. Pricing: every word from lib/marketing/plan-copy.ts, every number from PLANS */}
+      <section className="hm-sec" id="pricing" aria-labelledby="hm-pricing">
+        <div className="hm-wrap">
+          <div className="hm-head hm-center">
+            <h2 className="hm-h2" id="hm-pricing">
+              {L.pricing.title}
+            </h2>
+            <p className="hm-lede">{f(L.pricing.sub)}</p>
+          </div>
+          <div className="hm-plans">
+            {plans.map((p) => (
+              <div key={p.key} data-plan={p.key} className={p.key === "monthly" ? "hm-plan hm-plan-pro" : "hm-plan"}>
+                <div className="hm-plan-h">
+                  <span className="hm-plan-name">{p.name}</span>
+                  {p.badge ? <span className="hm-badge">{p.badge}</span> : null}
+                </div>
+                <span className="hm-plan-price">
+                  {p.price}
+                  {p.per ? <small>{p.per}</small> : null}
+                </span>
+                {p.yearly ? <span className="hm-plan-yearly">{p.yearly.line}</span> : null}
+                <span className="hm-plan-tag">{p.tagline}</span>
+                <ul>
+                  {p.features.map((x) => (
+                    <li key={x}>
+                      <Check aria-hidden strokeWidth={2.6} />
+                      {x}
+                    </li>
+                  ))}
+                </ul>
+                <Primary cta="pricing" className={p.key === "monthly" ? "hm-btn-inv" : undefined}>
+                  {p.cta}
+                </Primary>
+              </div>
+            ))}
+          </div>
+          <p className="hm-plans-note">
+            <span>{planLine("noteShop")}</span>
+            <Link href="/pricing" prefetch={false}>
+              {L.pricing.all}
+            </Link>
+            <span>
+              {L.pricing.restaurants}{" "}
+              <Link href="/for-restaurants" prefetch={false}>
+                {L.pricing.restaurantsLink}
+              </Link>
+            </span>
+          </p>
+        </div>
+      </section>
 
-      {/* 7. Restaurant band: the paying wedge. */}
-      <RestaurantBand />
-
-      {/* 8. Free means free: named competitors with dates and sources. */}
+      {/* 8. How we compare: named, dated, sourced */}
       <CompetitorTable />
 
-      {/* Testimonials: omitted until a pilot shop gives a real quote (never fake quotes or logos). */}
-
-      {/* 9. BIA band: one metric, labelled sample data. */}
-      <BiaBand />
-
-      {/* 10. FAQ */}
-      <MSection>
-        <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
-          <MHeading eyebrow={L.faqEyebrow} title={L.faqTitle} className="mb-0!" />
-          <Faq items={[...L.faq]} />
-        </div>
-      </MSection>
-
-      {/* 11. Book a visit: the single conversion goal. */}
-      <MSection tone="peach" id="book">
-        <div className="grid gap-12 md:grid-cols-2">
+      {/* 9. Questions */}
+      <section className="hm-sec" aria-labelledby="hm-faq">
+        <div className="hm-wrap hm-faq">
+          <h2 className="hm-h2" id="hm-faq">
+            {L.faqTitle}
+          </h2>
           <div>
-            <MHeading eyebrow={L.book.eyebrow} title={L.book.title} sub={L.book.sub} className="mb-8!" />
+            {L.faq.map((q) => (
+              <details key={q.q}>
+                <summary>
+                  {q.q}
+                  <Plus aria-hidden strokeWidth={2} />
+                </summary>
+                <p>{f(q.a)}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 10. A hand getting set up */}
+      <section className="hm-sec hm-white" id="book" aria-labelledby="hm-book">
+        <div className="hm-wrap hm-book">
+          <div>
+            <h2 className="hm-h2" id="hm-book">
+              {L.book.title}
+            </h2>
+            <p className="hm-lede">{L.book.sub}</p>
             {waUrl ? (
-              <Button variant="secondary" size="lg" href={waUrl} className="rounded-full!">
+              <a className="hm-btn2" href={waUrl}>
                 {L.book.whatsapp}
-              </Button>
+              </a>
             ) : null}
           </div>
-          <div className="rounded-sheet bg-card p-6 shadow-card md:p-8">
+          <div className="hm-book-form">
             <ContactForm kind="visit" />
           </div>
         </div>
-      </MSection>
+      </section>
 
-      {/* 12. The closing ask: the same verb as the nav and the hero (Mobbin: OpenTable closing band, The Leap). */}
-      <MSection tone="brand" className="py-14 md:py-20">
-        <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-          <div className="max-w-2xl">
-            <h2 className="display text-mkt-md text-balance md:text-mkt-lg">{WARM.cta.title}</h2>
-            <p className="mt-4 text-[17px] leading-[1.55]">{WARM.cta.sub}</p>
+      {/* 11. The closing ask */}
+      <section className="hm-final" aria-labelledby="hm-final">
+        <div className="hm-wrap hm-final-in">
+          <div>
+            <h2 className="hm-h2" id="hm-final">
+              {L.final.title}
+            </h2>
+            <p>{L.final.sub}</p>
           </div>
-          <Button size="lg" variant="inverse" href="/signup" iconStart={ArrowRight} className="shrink-0">
-            {WARM.cta.primary}
-          </Button>
+          <Primary cta="final" className="hm-btn-inv">
+            {L.final.cta}
+          </Primary>
         </div>
-      </MSection>
-    </>
+      </section>
+
+      {/* Phones: the button in reach (hidden over the hero and the closing band where the browser has scroll-driven animation). */}
+      <div className="hm-sticky">
+        <Primary cta="sticky">{L.sticky}</Primary>
+      </div>
+    </div>
   );
 }

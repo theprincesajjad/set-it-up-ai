@@ -283,6 +283,18 @@ export const merchants = pgTable(
     /** Took the founding solo annual price (FOUNDING_SOLO); counts against its slots. */
     foundingSolo: boolean("founding_solo").notNull().default(false),
     // ---- end phase-solo: A ----
+    // ---- phase-pro: p4 (0037_pro_p4) ----
+    /** Google review request after every completed visit: "off" | "on". Set on by the trial start (P1) and by the owner in Settings, Reviews. */
+    reviewRequestsMode: text("review_requests_mode").notNull().default("off"),
+    // ---- end phase-pro: p4 ----
+    // ---- phase-pro: p6 (0038_pro_p6) ----
+    /** The owner's weekly goal in booked dollars (cents); null = none set. */
+    weeklyGoalCents: integer("weekly_goal_cents"),
+    /** Day the weekly report goes out, shop time: 0 = Sunday ... 6 = Saturday. */
+    weeklyReportWeekday: smallint("weekly_report_weekday").notNull().default(0),
+    /** Hour (0 to 23, shop time) the weekly report goes out. */
+    weeklyReportHour: smallint("weekly_report_hour").notNull().default(18),
+    // ---- end phase-pro: p6 ----
     /** WhatsApp Business phone number (E.164) connected for this shop. */
     whatsappNumber: text("whatsapp_number"),
     whatsappCreditsUsed: integer("whatsapp_credits_used").notNull().default(0),
@@ -298,6 +310,10 @@ export const merchants = pgTable(
     tipPresets: jsonb("tip_presets").$type<number[]>().notNull().default([15, 20, 25]),
     /** Send rebooking nudges automatically (service.rebooking). Off = the owner taps Send. */
     rebookAuto: boolean("rebook_auto").notNull().default(false),
+    // ---- phase-pro: p3 ----
+    /** Rebooking mode: "review" (the owner sends from the due list), "auto" (daily send on Pro, Studio and trial) or "off". rebookAuto follows it. */
+    rebookingMode: text("rebooking_mode").notNull().default("review"),
+    // ---- end phase-pro: p3 ----
     /** Rolling drop-off slots: slot length, drop-offs per slot, days kept open. */
     dropoffSlotMinutes: integer("dropoff_slot_minutes").notNull().default(30),
     dropoffCapacity: integer("dropoff_capacity").notNull().default(3),
@@ -1469,6 +1485,10 @@ export const rebookingNudges = pgTable(
     until: ts("until"),
     /** Set when the customer booked or paid for the service after this nudge. */
     convertedAt: ts("converted_at"),
+    // ---- phase-pro: p3 ----
+    /** The appointment a client booked from this nudge's link (or, failing the link, within 7 days of it). channel is sms | push | web_push | email. */
+    bookedAppointmentId: uuid("booked_appointment_id"),
+    // ---- end phase-pro: p3 ----
     createdAt: createdAt(),
   },
   (t) => [index("rebooking_nudges_merchant_idx").on(t.merchantId, t.userId, t.serviceId, t.createdAt)],
@@ -3537,3 +3557,42 @@ export const experimentEnds = pgTable("experiment_ends", {
   reason: text("reason").notNull(),
 });
 // ---- end landing A/B ----
+
+// ---- phase-pro: p6 ----
+/**
+ * Counters behind the weekly report and the upgrade moments (docs/business/pro-value.md 3.2 P6). One row per shop, Monday-start week
+ * (shop time) and key; written only through recordSignal() in apps/api/src/services/signals.ts. No personal data.
+ */
+export const merchantSignals = pgTable(
+  "merchant_signals",
+  {
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    /** The shop-local Monday of the week. */
+    periodStart: date("period_start", { mode: "string" }).notNull(),
+    key: text("key").notNull(),
+    count: integer("count").notNull().default(0),
+    amountCents: integer("amount_cents").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.merchantId, t.periodStart, t.key] })],
+);
+// ---- end phase-pro: p6 ----
+
+// ---- phase-pro: p5 (0038_pro_p5) ----
+/**
+ * Add-ons at booking (docs/business/pro-value.md §3.2 P5). An add-on is a `services` row with kind "add_on" (price, extra minutes,
+ * active). These rows say which services offer it; an add-on with no rows here is offered with every service.
+ */
+export const serviceAddOns = pgTable(
+  "service_add_ons",
+  {
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    serviceId: uuid("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+    addOnId: uuid("add_on_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+    sort: integer("sort").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.serviceId, t.addOnId] }), index("service_add_ons_merchant_idx").on(t.merchantId, t.addOnId)],
+);
+/** An appointment line that is an add-on: same shape as AppointmentItemRow, with `kind: "add_on"` (a missing kind is a service). */
+export type AppointmentAddOnItemRow = AppointmentItemRow & { kind?: "service" | "add_on" };
+// ---- end phase-pro: p5 ----

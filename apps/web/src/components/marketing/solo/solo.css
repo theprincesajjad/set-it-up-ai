@@ -26,10 +26,9 @@
 .sl .num { font-variant-numeric: tabular-nums; }
 
 /* Display type: Inter, heavy and tight; clamp()ed so 390 and 1440 both land. */
-.sl-d2 { font-weight: 800; letter-spacing: -0.03em; line-height: 1.02; font-size: clamp(34px, 4.6vw, 64px); text-wrap: balance; }
+.sl-d2 { font-weight: 750; letter-spacing: -0.032em; line-height: 1.04; font-size: clamp(32px, 4.2vw, 56px); text-wrap: balance; }
+.sl-d3 { font-weight: 750; letter-spacing: -0.028em; line-height: 1.08; font-size: clamp(26px, 2.8vw, 38px); text-wrap: balance; }
 .sl-lede { font-size: clamp(17px, 1.4vw, 21px); line-height: 1.45; color: var(--muted-foreground); max-width: 36rem; text-wrap: pretty; }
-.sl-eyebrow { width: fit-content; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; letter-spacing: 0.01em; color: var(--sl-trade-ink); background: var(--trade-tint); padding: 6px 12px; border-radius: 999px; }
-.sl-eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--trade); }
 .sl-head { display: grid; gap: 14px; margin-bottom: clamp(28px, 3.5vw, 48px); max-width: 52rem; }
 .sl-sec { padding-block: clamp(56px, 7vw, 104px); }
 /* Below the fold: the browser skips styling, laying out and painting a section (and its animations) until it is near the viewport. */
@@ -40,8 +39,30 @@
 .sl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 0 26px; border-radius: 999px; font-weight: 650; font-size: 17px; border: 0; cursor: pointer; white-space: nowrap; background: var(--primary); color: var(--primary-foreground); box-shadow: var(--ll-shadow-card); text-decoration: none; }
 .sl-btn:hover { background: var(--primary-hover); }
 .sl-btn:focus-visible, .sl a:focus-visible, .sl-form input:focus-visible, .sl-chip:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
-.sl-btn svg { width: 18px; height: 18px; flex: none; }
-[dir="rtl"] .sl-btn svg { transform: scaleX(-1); }
+.sl-btn svg, .sl-link svg { width: 18px; height: 18px; flex: none; }
+[dir="rtl"] .sl-btn svg, [dir="rtl"] .sl-link svg { transform: scaleX(-1); }
+/* Secondary: white with a strong hairline, same height as the primary. */
+.sl-btn2 { display: inline-flex; align-items: center; justify-content: center; min-height: 56px; padding: 0 24px; border-radius: 999px; font-weight: 650; font-size: 17px; white-space: nowrap; background: var(--card); color: var(--foreground); box-shadow: inset 0 0 0 1px var(--border-strong); text-decoration: none; }
+.sl-btn2:hover { background: var(--muted); }
+.sl-btn2:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.sl-btn-inv { background: var(--card); color: var(--foreground); }
+.sl-btn-inv:hover { background: var(--muted); }
+.sl-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 16px; font-weight: 600; color: var(--foreground); text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 4px; }
+.sl-link:hover { text-decoration-color: var(--foreground); }
+/* A call-to-action row under a block. */
+.sl-ctarow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: clamp(28px, 3vw, 40px); }
+.sl-ctarow.sl-center { justify-content: center; }
+/* The band before the prices: ink, one line and one white button. */
+.sl-band { background: var(--primary); color: var(--primary-foreground); padding-block: clamp(40px, 5vw, 64px); }
+.sl-band-in { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; }
+.sl-band p { margin-top: 8px; font-size: 17px; opacity: 0.86; }
+/* Phones: the button stays in reach (scroll-driven where the browser has it: hidden over the hero and at the form). */
+.sl-sticky { position: fixed; z-index: 60; inset-inline: 0; bottom: 0; display: flex; gap: 8px; padding: 10px var(--sl-gutter) calc(10px + env(safe-area-inset-bottom)); background: var(--card); box-shadow: 0 -1px 0 var(--border), 0 -8px 24px color-mix(in srgb, var(--foreground) 8%, transparent); }
+.sl-sticky a { min-height: 48px; font-size: 16px; padding-inline: 16px; }
+.sl-sticky .sl-btn { flex: 1.4; }
+.sl-sticky .sl-btn2 { flex: 1; }
+@media (min-width: 900px) { .sl-sticky { display: none; } }
+@media (max-width: 899.98px) { .sl { padding-bottom: 76px; } }
 
 /* ---------- Nav: one floating glass capsule ---------- */
 .sl-nav { position: sticky; top: 12px; z-index: 50; margin: 12px auto 0; width: min(100% - 2 * var(--sl-gutter), var(--sl-max)); }
@@ -59,15 +80,16 @@
 .sl-hero-grid { display: grid; gap: 40px; align-items: center; }
 @media (min-width: 1140px) { .sl-hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 576px); gap: 32px; min-height: calc(100svh - 84px); } }
 .sl-copy { display: grid; gap: 22px; align-content: center; }
-.sl-h1 { font-size: clamp(48px, 6vw, 88px); font-weight: 850; letter-spacing: -0.045em; line-height: 0.95; text-wrap: balance; }
+.sl-h1 { font-size: clamp(44px, 5.4vw, 76px); font-weight: 750; letter-spacing: -0.038em; line-height: 1; text-wrap: balance; }
 .sl-h1 span { display: block; }
 .sl-h1 em { font-style: normal; color: var(--trade); }
-.sl-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.sl-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 /* The price is a plain text link to the price block, not a second button (mock flaw 3). */
-.sl-price-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 16px; font-weight: 550; color: var(--foreground); text-decoration: none; }
+.sl-price-link { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: fit-content; min-height: 44px; margin-block: -10px -8px; font-size: 15px; font-weight: 550; color: var(--muted-foreground); text-decoration: none; }
+.sl-price-link u { color: var(--foreground); }
 .sl-price-link u { text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 3px; }
 .sl-price-link:hover u { text-decoration-color: var(--foreground); }
-.sl-proof { font-size: 13px; color: var(--muted-foreground); margin-top: -18px; }
+.sl-proof { font-size: 13px; color: var(--muted-foreground); margin-top: -8px; }
 .sl-trust { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; font-weight: 550; color: var(--muted-foreground); padding: 0; margin: 0; list-style: none; }
 .sl-trust li { display: inline-flex; align-items: center; gap: 7px; }
 .sl-trust svg, .sl-ready svg { width: 16px; height: 16px; color: var(--success); flex: none; }
@@ -78,7 +100,7 @@
  * In both, no card ever overlaps the phone's screen (mock flaw 2): their max width is the gutter beside the phone.
  */
 .sl-stage { container-type: inline-size; }
-.sl-stage-in { --ph: 0.74; --phw: calc(390px * var(--ph)); --phh: calc(844px * var(--ph)); position: relative; width: min(100%, 576px); margin-inline: auto; display: grid; gap: 16px; justify-items: center; padding-bottom: 8px; }
+.sl-stage-in { --ph: 0.72; --phw: calc(411px * var(--ph)); --phh: calc(870px * var(--ph)); position: relative; width: min(100%, 576px); margin-inline: auto; display: grid; gap: 16px; justify-items: center; padding-bottom: 8px; }
 .sl-lead { display: flex; align-items: flex-end; gap: 12px; justify-self: stretch; }
 .sl-work { position: relative; flex: none; width: 112px; aspect-ratio: 4 / 5; border-radius: 22px; overflow: hidden; box-shadow: var(--ll-shadow-card); background: var(--muted); }
 .sl-work img, .sl-cover img, .sl-pass-wrap img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -101,7 +123,7 @@
 .sl-steps li:first-child i::after { opacity: 1; }
 
 @container (min-width: 540px) {
-  .sl-stage-in { --ph: 0.82; display: block; height: calc(var(--phh) + 64px); padding: 0; }
+  .sl-stage-in { --ph: 0.78; display: block; height: calc(var(--phh) + 64px); padding: 0; }
   .sl-stage-in .sl-phone { position: absolute; inset-inline-end: 8px; top: 8px; }
   .sl-lead { display: contents; }
   .sl-work { position: absolute; inset-inline-start: 0; top: 150px; width: min(300px, calc(100% - var(--phw) + 40px)); border-radius: var(--sl-r-card); }
@@ -113,11 +135,8 @@
   .sl-steps { position: absolute; bottom: 0; inset-inline-end: 8px; width: var(--phw); }
 }
 
-/* Phone frame: a picture of the client's booking page, 390 x 844 scaled by --ph. Forced light. */
-.sl-phone { width: var(--phw); height: var(--phh); border-radius: calc(54px * var(--ph)); background: var(--foreground); padding: calc(10px * var(--ph)); box-shadow: var(--lg-shadow-lg); position: relative; flex: none; z-index: 2; }
-.sl-screen { position: relative; width: 100%; height: 100%; border-radius: calc(44px * var(--ph)); background: var(--background); overflow: hidden; }
-.sl-island { position: absolute; inset-inline-start: 50%; top: calc(14px * var(--ph)); translate: -50% 0; width: calc(120px * var(--ph)); height: calc(34px * var(--ph)); border-radius: 999px; background: var(--foreground); z-index: 5; }
-[dir="rtl"] .sl-island { translate: 50% 0; }
+/* Phone: the shared iPhone frame (components/marketing/device), scaled by --ph; the booking page inside is laid out at 393 x 852. */
+.sl-phone.ip { --s: var(--ph); z-index: 2; }
 .sl-app { position: absolute; inset: 0; font-size: calc(15px * var(--ph)); padding: calc(64px * var(--ph)) calc(18px * var(--ph)) calc(20px * var(--ph)); display: flex; flex-direction: column; gap: calc(12px * var(--ph)); }
 .sl-app + .sl-app { visibility: hidden; }
 .sl-row { display: flex; align-items: center; gap: calc(12px * var(--ph)); padding: calc(12px * var(--ph)) calc(14px * var(--ph)); background: var(--card); border-radius: calc(14px * var(--ph)); box-shadow: inset 0 0 0 1px var(--border); }
@@ -157,11 +176,14 @@
 
 /* ---------- 2. Facts: one quiet strip of four numbers ---------- */
 .sl-facts { padding-block: clamp(8px, 2vw, 24px) clamp(24px, 4vw, 48px); }
-.sl-facts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+.sl-facts-in { display: grid; gap: 16px; align-items: center; padding: 16px; border-radius: 24px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+@media (min-width: 1000px) { .sl-facts-in { grid-template-columns: 1fr auto; padding: 12px 12px 12px 8px; } }
+.sl-facts ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px 8px; grid-template-columns: 1fr 1fr; }
 @media (min-width: 820px) { .sl-facts ul { grid-template-columns: repeat(4, 1fr); } }
-.sl-facts li { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
-.sl-facts b { font-size: clamp(24px, 2.2vw, 32px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
-.sl-facts span { font-size: 14px; font-weight: 550; color: var(--muted-foreground); line-height: 1.2; }
+.sl-facts li { display: grid; gap: 2px; padding: 4px 12px; }
+@media (min-width: 820px) { .sl-facts li + li { box-shadow: inset 1px 0 0 var(--border); } [dir="rtl"] .sl-facts li + li { box-shadow: inset -1px 0 0 var(--border); } }
+.sl-facts b { font-size: clamp(24px, 2.2vw, 30px); font-weight: 750; letter-spacing: -0.035em; line-height: 1.1; }
+.sl-facts span { font-size: 14px; font-weight: 500; color: var(--muted-foreground); line-height: 1.3; }
 
 /* Shared: centred section heads, two-column sections, chips, rows, sums. */
 .sl-head.sl-center { margin-inline: auto; text-align: center; justify-items: center; }
@@ -314,15 +336,24 @@
 .sl-mark i { border-radius: 50%; background: var(--card); display: block; }
 
 /* ---------- 8. Price: three numbers, the middle one inverted ---------- */
-.sl-plans { display: grid; gap: 12px; }
-@media (min-width: 820px) { .sl-plans { grid-template-columns: repeat(3, 1fr); } }
-.sl-plan { padding: 26px 26px 24px; border-radius: 24px; display: grid; gap: 8px; align-content: start; }
-.sl-plan .name { font-size: 14px; font-weight: 650; color: var(--muted-foreground); }
-.sl-plan .price { font-size: clamp(44px, 4vw, 60px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; }
-.sl-plan .price small { font-size: 16px; font-weight: 550; letter-spacing: 0; color: var(--muted-foreground); margin-inline-start: 6px; }
-.sl-plan .what { font-size: 15px; line-height: 1.45; }
+.sl-plans { display: grid; gap: 16px; width: min(100%, 880px); margin-inline: auto; }
+@media (min-width: 760px) { .sl-plans { grid-template-columns: 1fr 1fr; } }
+.sl-plan { padding: 28px; border-radius: 24px; display: flex; flex-direction: column; gap: 10px; }
+.sl-plan-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 26px; }
+.sl-plan .name { font-size: 17px; font-weight: 650; }
+.sl-badge { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 650; background: var(--card); color: var(--foreground); }
+.sl-plan .price { font-size: clamp(44px, 4vw, 56px); font-weight: 750; letter-spacing: -0.04em; line-height: 1; margin-top: 4px; }
+.sl-plan .price small { font-size: 16px; font-weight: 550; letter-spacing: 0; color: var(--muted-foreground); margin-inline-start: 4px; }
+.sl-plan .yearly { font-size: 14px; color: var(--muted-foreground); margin-top: -2px; }
+.sl-plan .what { font-size: 16px; font-weight: 600; line-height: 1.4; margin-top: 8px; }
+.sl-plan ul { list-style: none; margin: 0 0 8px; padding: 14px 0 0; display: grid; gap: 10px; font-size: 15px; box-shadow: inset 0 1px 0 var(--border); }
+.sl-plan li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.35; }
+.sl-plan li svg { width: 16px; height: 16px; margin-top: 2px; color: var(--success); flex: none; }
+.sl-plan > .sl-btn { margin-top: auto; width: 100%; }
 .sl-plan.featured { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--lg-shadow-lg); }
-.sl-plan.featured .name, .sl-plan.featured .price small { color: inherit; opacity: 0.86; }
+.sl-plan.featured .price small, .sl-plan.featured .yearly, .sl-plan.featured .sl-note { color: inherit; opacity: 0.8; }
+.sl-plan.featured ul { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--primary-foreground) 22%, transparent); }
+.sl-plan.featured li svg { color: inherit; }
 .sl-plans-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 16px; margin-top: 14px; font-size: 14px; color: var(--muted-foreground); }
 .sl-plans-note a { display: inline-flex; align-items: center; min-height: 44px; color: var(--foreground); font-weight: 550; text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 3px; }
 
@@ -410,6 +441,12 @@
   .sl-result .sl-n { animation-delay: 1.3s; }
   .sl-notif { animation: sl-notif 8s ease-in-out infinite; animation-delay: calc(var(--n) * 2.2s); }
   @keyframes sl-notif { 0%, 4% { opacity: 0; transform: translateY(-14px) scale(0.98); } 10%, 100% { opacity: 1; transform: none; } }
+
+  /* The phone bar: out of the way over the hero and at the start form, where the page's own buttons are in view. */
+  @supports (animation-timeline: scroll()) {
+    .sl-sticky { animation: sl-sticky linear both; animation-timeline: scroll(root); }
+    @keyframes sl-sticky { 0%, 3% { transform: translateY(110%); visibility: hidden; } 6%, 86% { transform: none; visibility: visible; } 92%, 100% { transform: translateY(110%); visibility: hidden; } }
+  }
 
   /* Regulars: the fourth stamp fills, the tick scales in, every 6 s. */
   .sl-stamps i.fresh::after { animation: sl-stamp 6s ease-in-out infinite; }

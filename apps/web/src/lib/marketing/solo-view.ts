@@ -1,11 +1,11 @@
 /**
  * Everything one solo landing variant shows, worked out on the server from copy.solo (en-CA), the trade data in solo.ts and the
- * plan numbers in @ll/shared (PLANS, FEES): prices and fees are never typed into the page. English only, like the rest of the
+ * plan words and numbers in plan-copy.ts (which reads PLANS): prices and plan features are never typed into the page. English only, like the rest of the
  * marketing copy; the page renders it statically.
  */
-import { FEES, PLANS, PROMOS_PER_MONTH_PLUS } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
 import { landingVariant, type JobId } from "./landing-variants";
+import { marketingPlans, planLine, planVars } from "./plan-copy";
 import { fill, moneyShort } from "./text";
 import { SAMPLE_DEPOSIT_CENTS, SAMPLE_SERVICES, SHOWN_SERVICES, SOLO_PAGES, SOLO_PHOTOS, soloKey, soloVertical, type NailTrade, type SoloKey, type SoloPageId } from "./solo";
 
@@ -33,19 +33,12 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
     return { name: s.name.replace(/ \((small|large) dog\)$/, ""), minutes: `${s.minutes} min`, price: `${s.from ? "from " : ""}${moneyShort(s.priceCents)}`, cents: s.priceCents };
   });
   const booked = services[1]!;
-  const plus = PLANS.plus;
   const vars = {
-    pro: plus.name,
+    ...planVars(),
     deposit: moneyShort(SAMPLE_DEPOSIT_CENTS),
     area: T.area,
     client: T.client,
     service: booked.name,
-    free: moneyShort(0),
-    monthly: moneyShort(plus.priceCents),
-    promos: PROMOS_PER_MONTH_PLUS,
-    texts: plus.smsPerMonth.toLocaleString("en-CA"),
-    months: Math.round(plus.annualPriceCents / plus.priceCents),
-    fee: String(FEES.depositInvoiceBps / 100),
   };
   const f = (s: string) => fill(s, vars);
   const goal = STAMP_GOAL[key];
@@ -71,7 +64,8 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
       lede: f(V.lede),
       cta: V.cta,
       trust: "trust" in T ? T.trust : C.hero.trust,
-      price: f(C.hero.price),
+      price: planLine("priceLine"),
+      proof: `${V.eyebrow}. ${C.hero.proof}`,
       policy: V.policy ?? { title: C.hero.policyTitle, body: C.hero.policyBody },
       booked: f(C.hero.booked),
       bookedCard: C.hero.bookedCard,
@@ -81,7 +75,7 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
     /** The owner's week: sample counts, the comparison with last week, the bars per day and the next client. */
     week: { ...C.week, upNext: { label: C.week.upNext, ...upNext } },
     bookings: { ...C.bookings, done: fill(C.bookings.done, { when: C.hero.bookedWhen }) },
-    promos: { ...C.promos, allowance: f(C.promos.allowance) },
+    promos: { ...C.promos, allowance: planLine("promoAllowance") },
     /** The three job cards in the variant's order. */
     jobs: V.jobs.map((j) => {
       const card = (T.jobs as Partial<Record<JobId, { title: string; body: string }>>)[j];
@@ -90,15 +84,8 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
     }),
     notes: T.notes.map(f),
     card: fill(C.regulars.card, { client: T.client, have: goal - 1, goal }),
-    price: {
-      title: f(C.price.title),
-      plans: [
-        { key: "free", name: f(C.price.free.name), price: moneyShort(0), per: "", what: f(C.price.free.what) },
-        { key: "monthly", name: f(C.price.monthly.name), price: moneyShort(plus.priceCents), per: C.price.monthly.per, what: f(C.price.monthly.what) },
-        { key: "yearly", name: f(C.price.yearly.name), price: moneyShort(plus.annualPriceCents), per: C.price.yearly.per, what: f(C.price.yearly.what) },
-      ],
-      note: f(C.price.note),
-    },
+    /** The two plan cards and the note under them: lib/marketing/plan-copy.ts, the one place the plans are described. */
+    price: { title: C.price.title, sub: C.price.sub, plans: marketingPlans("solo"), note: planLine("noteSolo") },
   };
 }
 

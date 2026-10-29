@@ -1,16 +1,16 @@
 import { preload } from "react-dom";
 import { photoSrcSet, type NailTrade, type SoloPageId } from "@/lib/marketing/solo";
 import { soloView } from "@/lib/marketing/solo-view";
-import { Bookings, Facts, Jobs, PriceBlock, Promos, Regulars, Week } from "./solo/Blocks";
+import { Bookings, CtaBand, Facts, Jobs, PriceBlock, Promos, Regulars, StickyCta, Week } from "./solo/Blocks";
 import { Hero, WORK_SIZES } from "./solo/Hero";
 import { SoloNav } from "./solo/Nav";
 import { Start } from "./solo/Start";
 import "./solo/solo.css";
 
 /**
- * One solo-pro landing page, v3 (product-led, few words; docs/marketing/landing-pages.md): the hook and the phone, four facts, the
- * owner's week, every booking on one calendar, a promo in one tap, regulars, the variant's three jobs, three prices, and the
- * three-field start. Server-rendered and static: English copy from copy.solo, the trade's photos from public/marketing, CSS-only
+ * One solo-pro landing page, v4 (product-led, professional voice; docs/marketing/landing-pages.md): the hook and the phone, four facts
+ * with a button, the owner's week, every booking in one calendar, promos, regulars, the variant's three tool cards, a call-to-action
+ * band, two plan cards (lib/marketing/plan-copy.ts) and the three-field start; on phones a sticky bar keeps the button in reach. Server-rendered and static: English copy from copy.solo, the trade's photos from public/marketing, CSS-only
  * motion, and no script except the start form's source field.
  * `trade` only applies to the nail page (`?trade=brows|lashes|makeup`, served by the static /for-nail-techs/[trade] route).
  */
@@ -30,9 +30,11 @@ export function SoloLanding({ id, trade = "nails", variant }: { id: SoloPageId; 
         <Promos v={v} />
         <Regulars v={v} />
         <Jobs v={v} />
+        <CtaBand />
         <PriceBlock v={v} />
         <Start v={v} />
       </main>
+      <StickyCta />
     </div>
   );
 }

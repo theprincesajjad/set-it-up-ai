@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { copy } from "@/copy/en-CA";
 import type { JobId } from "@/lib/marketing/landing-variants";
 import type { SoloView } from "@/lib/marketing/solo-view";
-import { Check, Mark, Obj, Photo, Plus, n } from "./parts";
+import { Arrow, Check, Mark, Obj, Photo, Plus, n } from "./parts";
 
 const C = copy.solo;
 
@@ -22,11 +22,63 @@ function Count({ to, prefix = "" }: { to: number; prefix?: string }) {
   );
 }
 
-/** A quiet strip: four numbers a tech can check. */
+/**
+ * Calls to action between the blocks (landing v4): the primary button to the start form and a quiet link to the prices. `id` is the
+ * beacon's name for the button (data-cta, lower-case letters, 10 at most: the API drops anything else).
+ */
+export function CtaRow({ id, center }: { id: string; center?: boolean }) {
+  return (
+    <div className={center ? "sl-ctarow sl-center" : "sl-ctarow"}>
+      <a className="sl-btn" href="#start" data-cta={id}>
+        {C.cta.primary}
+        <Arrow />
+      </a>
+      <a className="sl-link" href="#plans" data-cta="seepricing">
+        {C.cta.pricing}
+      </a>
+    </div>
+  );
+}
+
+/** The band before the prices: one line, one button. */
+export function CtaBand() {
+  return (
+    <section className="sl-band" aria-labelledby="sl-band">
+      <div className="sl-wrap sl-band-in">
+        <div>
+          <h2 className="sl-d3" id="sl-band">
+            {C.cta.band.title}
+          </h2>
+          <p>{C.cta.band.sub}</p>
+        </div>
+        <a className="sl-btn sl-btn-inv" href="#start" data-cta="prepricing">
+          {C.cta.primary}
+          <Arrow />
+        </a>
+      </div>
+    </section>
+  );
+}
+
+/** Phones only: a bar pinned to the bottom with the primary button and the prices (CSS hides it at the top and at the form). */
+export function StickyCta() {
+  return (
+    <div className="sl-sticky">
+      <a className="sl-btn" href="#start" data-cta="sticky">
+        {C.cta.primary}
+      </a>
+      <a className="sl-btn2" href="#plans" data-cta="seepricing">
+        {C.cta.pricing}
+      </a>
+    </div>
+  );
+}
+
+/** Right under the hero: four numbers a pro can check, and the button. */
 export function Facts({ v }: { v: SoloView }) {
   return (
     <section className="sl-facts" aria-label={C.facts.label}>
-      <div className="sl-wrap">
+      <div className="sl-wrap sl-facts-in">
         <ul>
           {v.facts.map((x) => (
             <li key={x.value}>
@@ -35,6 +87,10 @@ export function Facts({ v }: { v: SoloView }) {
             </li>
           ))}
         </ul>
+        <a className="sl-btn" href="#start" data-cta="afterhero">
+          {C.cta.primary}
+          <Arrow />
+        </a>
       </div>
     </section>
   );
@@ -50,7 +106,6 @@ export function Week({ v }: { v: SoloView }) {
     <section className="sl-sec" id="week" aria-labelledby="sl-week">
       <div className="sl-wrap">
         <div className="sl-head sl-center">
-          <p className="sl-eyebrow">{W.eyebrow}</p>
           <h2 className="sl-d2" id="sl-week">
             {W.title}
           </h2>
@@ -110,6 +165,7 @@ export function Week({ v }: { v: SoloView }) {
           </div>
           <figcaption className="sl-note">{W.sample}</figcaption>
         </figure>
+        <CtaRow id="week" center />
       </div>
     </section>
   );
@@ -123,7 +179,6 @@ export function Bookings({ v }: { v: SoloView }) {
     <section className="sl-sec sl-sec-white" id="bookings" aria-labelledby="sl-bookings">
       <div className="sl-wrap sl-two">
         <div className="sl-head">
-          <p className="sl-eyebrow">{B.eyebrow}</p>
           <h2 className="sl-d2" id="sl-bookings">
             {B.title}
           </h2>
@@ -202,7 +257,6 @@ export function Promos({ v }: { v: SoloView }) {
     <section className="sl-sec" id="promos" aria-labelledby="sl-promos">
       <div className="sl-wrap">
         <div className="sl-head sl-center">
-          <p className="sl-eyebrow">{P.eyebrow}</p>
           <h2 className="sl-d2" id="sl-promos">
             {P.title}
           </h2>
@@ -252,6 +306,7 @@ export function Promos({ v }: { v: SoloView }) {
             </p>
           </div>
         </figure>
+        <CtaRow id="promos" center />
       </div>
     </section>
   );
@@ -269,7 +324,6 @@ export function Regulars({ v }: { v: SoloView }) {
     <section className="sl-sec sl-sec-white" id="regulars" aria-labelledby="sl-reg">
       <div className="sl-wrap">
         <div className="sl-head">
-          <p className="sl-eyebrow">{R.eyebrow}</p>
           <h2 className="sl-d2" id="sl-reg">
             {R.title}
           </h2>
@@ -461,7 +515,6 @@ export function Jobs({ v }: { v: SoloView }) {
     <section className="sl-sec" id="jobs" aria-labelledby="sl-jobs">
       <div className="sl-wrap">
         <div className="sl-head">
-          <p className="sl-eyebrow">{J.eyebrow}</p>
           <h2 className="sl-d2" id="sl-jobs">
             {J.title}
           </h2>
@@ -482,26 +535,46 @@ export function Jobs({ v }: { v: SoloView }) {
   );
 }
 
-/** Block 7: three numbers, one line each, read from PLANS; the comparison lives on /pricing. */
+/** The prices: two cards from lib/marketing/plan-copy.ts (words) and PLANS (numbers); the comparison lives on /pricing. */
 export function PriceBlock({ v }: { v: SoloView }) {
   return (
     <section className="sl-sec sl-sec-white" id="plans" aria-labelledby="sl-plans">
       <div className="sl-wrap">
         <div className="sl-head sl-center">
-          <p className="sl-eyebrow">{C.price.eyebrow}</p>
           <h2 className="sl-d2" id="sl-plans">
             {v.price.title}
           </h2>
+          <p className="sl-lede">{v.price.sub}</p>
         </div>
         <div className="sl-plans">
           {v.price.plans.map((p) => (
             <div key={p.key} data-plan={p.key} className={p.key === "monthly" ? "sl-plan featured" : "sl-plan card-clear"}>
-              <span className="name">{p.name}</span>
+              <div className="sl-plan-h">
+                <span className="name">{p.name}</span>
+                {p.badge ? <span className="sl-badge">{p.badge}</span> : null}
+              </div>
               <span className="price num">
                 {p.price}
                 {p.per ? <small>{p.per}</small> : null}
               </span>
-              <span className="what">{p.what}</span>
+              {p.yearly ? (
+                <span className="yearly" data-plan="yearly">
+                  {p.yearly.line}
+                </span>
+              ) : null}
+              <span className="what">{p.tagline}</span>
+              <ul>
+                {p.features.map((x) => (
+                  <li key={x}>
+                    <Check />
+                    {x}
+                  </li>
+                ))}
+              </ul>
+              {p.yearly?.extra ? <span className="sl-note">{p.yearly.extra}</span> : null}
+              <a className={p.key === "monthly" ? "sl-btn sl-btn-inv" : "sl-btn"} href="#start" data-cta="plans">
+                {p.cta}
+              </a>
             </div>
           ))}
         </div>

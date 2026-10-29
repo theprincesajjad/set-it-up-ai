@@ -34,3 +34,6 @@ export * as inboxApi from "./inbox.js";
 export * as siteApi from "./site.js";
 // ---- landing A/B ----
 export * as experimentsApi from "./experiments.js";
+// ---- phase-pro: p4 ----
+export * as reviewsApi from "./reviews.js";
+// ---- end phase-pro: p4 ----

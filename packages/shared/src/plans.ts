@@ -253,6 +253,8 @@ export const FEATURE_KEYS = [
   "booking.walkin_queue",
   "staff.payouts",
   "memberships.recurring",
+  // phase-pro P5: add-ons at booking (pro-value.md §2.2); P1 owns the plan lines around it.
+  "booking.add_ons",
   // Grocers and halal butchers (docs/research/grocers.md): sold inside Pro, no pack.
   "grocery.flyer",
   "grocery.counter_preorders",
@@ -396,6 +398,7 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     f("booking.walkin_queue", "Walk-in line", "A live line for walk-ins: join from a phone or a tablet at the door, a wait estimate, a text when next, and the barber picks who is next.", "plus", 2, 100),
     f("staff.payouts", "Barber payouts and chair rental", "Per-barber services, tips, commission, rent and take-home for the week, and a renter who sees only their own clients.", "plus", 2, 100),
     f("memberships.recurring", "Memberships", "Monthly and fixed-term memberships billed automatically to the card on file, with freezes, renewal notices and Ontario-compliant cancellation.", "plus", 2, 100),
+    f("booking.add_ons", "Add-ons at booking", "Extras clients add when they book (nail art, removal, a French tip), with the price and the time blocked for you.", "plus", 2, 100),
     ...[
     f("grocery.flyer", "Weekly flyer", "Weekly deals on your shop page, by text and as WhatsApp copy, tied to Diwali, Eid and Lunar New Year.", "plus", 2, 100),
     f("grocery.counter_preorders", "Butcher counter pre-orders", "Pre-orders by weight with deposits, pick-up hours, a weigh-in at the scale and qurbani bookings for Eid al-Adha.", "plus", 2, 100),

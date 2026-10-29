@@ -1,5 +1,6 @@
 import { copy } from "@/copy/en-CA";
 import type { SoloView } from "@/lib/marketing/solo-view";
+import { IPhone } from "../device/IPhone";
 import { Arrow, Check, Obj, Photo, n } from "./parts";
 
 const H = copy.solo.hero;
@@ -21,7 +22,6 @@ export function Hero({ v }: { v: SoloView }) {
     <section className="sl-hero" aria-labelledby="sl-hook">
       <div className="sl-wrap sl-hero-grid">
         <div className="sl-copy">
-          <p className="sl-eyebrow sl-rise">{v.hero.eyebrow}</p>
           <h1 className="sl-h1" id="sl-hook">
             <span>{v.hero.hook[0]}</span>{" "}
             <span className="sl-i1">
@@ -34,13 +34,14 @@ export function Hero({ v }: { v: SoloView }) {
               {v.hero.cta}
               <Arrow />
             </a>
-            <a className="sl-price-link" href="#plans">
-              {v.hero.price}
-              <span aria-hidden>·</span>
-              <u>{H.priceLink}</u>
+            <a className="sl-btn2" href="#week" data-cta="how">
+              {copy.solo.cta.how}
             </a>
           </div>
-          <p className="sl-proof sl-rise sl-i3">{H.proof}</p>
+          <a className="sl-price-link sl-rise sl-i3" href="#plans">
+            {v.hero.price}
+            <u>{H.priceLink}</u>
+          </a>
           <ul className="sl-trust sl-rise sl-i4">
             {v.hero.trust.map((x) => (
               <li key={x}>
@@ -49,6 +50,7 @@ export function Hero({ v }: { v: SoloView }) {
               </li>
             ))}
           </ul>
+          <p className="sl-proof sl-rise sl-i4">{v.hero.proof}</p>
         </div>
 
         <div className="sl-stage">
@@ -80,9 +82,7 @@ export function Hero({ v }: { v: SoloView }) {
               </div>
             </div>
 
-            <div className="sl-phone">
-              <div className="sl-screen">
-                <span className="sl-island" />
+            <IPhone className="sl-phone" screenClassName="sl-screen">
                 {/* 1. Pick a service */}
                 <div className={`sl-app ${n(0)}`}>
                   <div className="sl-cover">
@@ -190,8 +190,7 @@ export function Hero({ v }: { v: SoloView }) {
                     <span className="sl-wallet">{H.wallet}</span>
                   </div>
                 </div>
-              </div>
-            </div>
+            </IPhone>
             <ul className="sl-steps">
               {H.steps.map((s, i) => (
                 <li key={s} className={n(i)}>

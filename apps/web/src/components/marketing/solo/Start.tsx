@@ -17,10 +17,10 @@ export function Start({ v }: { v: SoloView }) {
     <section className="sl-sec sl-sec-white" id="start" aria-labelledby="sl-start">
       <div className="sl-wrap sl-start-grid">
         <div className="sl-head">
-          <p className="sl-eyebrow">{S.eyebrow}</p>
           <h2 className="sl-d2" id="sl-start">
             {S.title}
           </h2>
+          <p className="sl-lede">{S.sub}</p>
           <ul className="sl-ready">
             {S.ready.map((r) => (
               <li key={r.b}>

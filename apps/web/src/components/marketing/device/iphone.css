@@ -1,0 +1,70 @@
+/*
+ * iPhone frame for marketing mocks (components/marketing/device/IPhone.tsx). Geometry in points of a 6.1" iPhone 15/16 Pro:
+ * body 411 x 870 with a 64 corner radius, a 9 pt bezel (a 2.5 pt titanium band, then black glass), the screen 393 x 852 with a 55 radius,
+ * the Dynamic Island 126 x 37 at 11 from the top, the status bar 54 tall, the home indicator 139 x 5 at 8 from the bottom.
+ * Every length is multiplied by --s, so one variable scales the whole phone. Colours are tokens only. Forced light inside.
+ */
+.ip {
+  --s: 0.75;
+  --ip-ti: color-mix(in oklab, var(--muted-foreground) 55%, var(--card));
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: calc(411px * var(--s));
+  height: calc(870px * var(--s));
+  padding: calc(9px * var(--s));
+  border-radius: calc(64px * var(--s));
+  background: var(--foreground);
+  box-shadow:
+    inset 0 0 0 calc(2.5px * var(--s)) var(--ip-ti),
+    inset 0 0 0 calc(3.5px * var(--s)) var(--foreground),
+    var(--lg-shadow-lg);
+}
+.ip-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(55px * var(--s));
+  overflow: hidden;
+  background: var(--background);
+  isolation: isolate;
+}
+/* The real-size canvas: mocks inside are written at 393 x 852 and scale with the frame. --ph is 1 here for mocks that size by it. */
+.ip-canvas {
+  --ph: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 393px;
+  height: 852px;
+  transform: scale(var(--s));
+  transform-origin: 0 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+/* Status bar: the time centred in the left ear, the three icons in the right ear (each ear is (393 - 126) / 2 wide). */
+.ip-status { position: absolute; inset: 0 0 auto 0; height: 54px; z-index: 20; color: var(--foreground); pointer-events: none; }
+.ip-status-light { color: var(--card); }
+.ip-time { position: absolute; top: 18px; left: 0; width: 133px; text-align: center; font-size: 17px; line-height: 22px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; direction: ltr; }
+.ip-icons { position: absolute; top: 22px; right: 0; width: 133px; display: flex; align-items: center; justify-content: center; gap: 6px; direction: ltr; }
+.ip-icons svg { fill: currentColor; display: block; }
+.ip-signal { width: 18px; height: 12px; }
+.ip-wifi { width: 16px; height: 12px; }
+.ip-battery { position: relative; width: 25px; height: 12px; border-radius: 4px; box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent); padding: 2px; margin-inline-end: 3px; }
+.ip-battery i { display: block; width: 100%; height: 100%; border-radius: 2px; background: currentColor; }
+.ip-battery::after { content: ""; position: absolute; right: -3px; top: 4px; width: 1.5px; height: 4px; border-radius: 0 1px 1px 0; background: color-mix(in srgb, currentColor 45%, transparent); }
+
+.ip-island { position: absolute; z-index: 21; top: 11px; left: 133.5px; width: 126px; height: 37px; border-radius: 19px; background: var(--foreground); }
+.ip-status-light ~ .ip-island { background: var(--foreground); }
+.ip-home { position: absolute; z-index: 21; bottom: 8px; left: 127px; width: 139px; height: 5px; border-radius: 3px; background: var(--foreground); }
+
+/* Side buttons: action and volume on the left, side button on the right. */
+.ip-btn { position: absolute; width: calc(3px * var(--s)); border-radius: calc(2px * var(--s)); background: var(--ip-ti); }
+.ip-btn-action, .ip-btn-up, .ip-btn-down { left: calc(-2.5px * var(--s)); }
+.ip-btn-action { top: calc(124px * var(--s)); height: calc(34px * var(--s)); }
+.ip-btn-up { top: calc(186px * var(--s)); height: calc(62px * var(--s)); }
+.ip-btn-down { top: calc(262px * var(--s)); height: calc(62px * var(--s)); }
+.ip-btn-power { right: calc(-2.5px * var(--s)); top: calc(222px * var(--s)); height: calc(100px * var(--s)); }
