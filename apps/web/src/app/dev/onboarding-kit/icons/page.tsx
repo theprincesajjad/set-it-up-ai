@@ -23,8 +23,8 @@ export default async function IconSheet({ searchParams }: { searchParams: Promis
             {names.map((n) => (
               <li key={n} className="flex flex-col items-center gap-2 rounded-r4 p-2" data-icon={n}>
                 <div className="flex items-end gap-3">
-                  <Icon3d name={n} size={96} trade={trade} />
-                  <Icon3d name={n} size={48} trade={trade} />
+                  <Icon3d name={n} size={96} trade={trade} surface="canvas" />
+                  <Icon3d name={n} size={48} trade={trade} surface="canvas" />
                 </div>
                 <span className="text-meta text-muted-foreground">{n}</span>
               </li>
@@ -38,8 +38,8 @@ export default async function IconSheet({ searchParams }: { searchParams: Promis
           {ICON3D_SCENES.map((n) => (
             <li key={n} className="flex flex-col items-center gap-2 p-2" data-icon={n}>
               <div className="flex items-end gap-4">
-                <Icon3d name={n} size={240} trade={trade} />
-                <Icon3d name={n} size={120} trade={trade} />
+                <Icon3d name={n} size={240} trade={trade} surface="canvas" />
+                <Icon3d name={n} size={120} trade={trade} surface="canvas" />
               </div>
               <span className="text-meta text-muted-foreground">{n}</span>
             </li>

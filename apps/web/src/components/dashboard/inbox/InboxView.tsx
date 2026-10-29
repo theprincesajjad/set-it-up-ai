@@ -82,7 +82,7 @@ export function InboxView() {
       {!list.data && !list.error ? <div className="mx-4 mb-4 h-40 animate-pulse rounded-r4 bg-bg-subtle" aria-hidden /> : null}
       {list.data && !items.length ? (
         <div className="flex flex-col items-center gap-2 px-6 pb-8 pt-4 text-center" data-testid="inbox-empty">
-          <Icon3d name="inbox_quiet" size={140} trade={detail.merchant.vertical} />
+          <Icon3d name="inbox_quiet" size={160} trade={detail.merchant.vertical} />
           <p className="text-headline text-fg">{t("inbox.empty.title")}</p>
           <p className="text-meta text-fg-muted">{t("inbox.empty.body")}</p>
         </div>
@@ -111,7 +111,7 @@ export function InboxView() {
                   </span>
                   {c.unread ? <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-r2 bg-primary px-1.5 text-caption text-primary-foreground tabular" aria-label={`${c.unread}`}>{c.unread}</span> : null}
                 </span>
-                <span className="text-caption text-fg-muted">{t(c.channel === "instagram" ? "inbox.from.instagram" : c.channel === "sms" ? "inbox.from.sms" : c.channel === "email" ? "inbox.from.email" : "inbox.from.in_app")}{c.handle ? ` · @${c.handle}` : ""}</span>
+                <span className="text-caption text-fg-muted">{t(c.channel === "instagram" ? "inbox.from.instagram" : c.channel === "sms" ? "inbox.from.sms" : c.channel === "email" ? "inbox.from.email" : "inbox.from.in_app")}{c.handle ? <> · <bdi dir="ltr">@{c.handle}</bdi></> : null}</span>
               </span>
             </button>
           </li>
@@ -212,7 +212,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
               <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
             </button>
             <span className="truncate">{c.displayName}</span>
-            {c.handle ? <span className="truncate text-meta font-normal text-fg-muted">@{c.handle}</span> : null}
+            {c.handle ? <bdi dir="ltr" className="truncate text-meta font-normal text-fg-muted">@{c.handle}</bdi> : null}
           </span>
         }
         action={

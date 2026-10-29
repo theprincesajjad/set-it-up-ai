@@ -237,6 +237,7 @@ function ClearTabBar({ items, hasMore, label, moreLabel, pathname }: { items: Na
   return (
     <nav
       aria-label={label}
+      data-tabbar=""
       data-lens=""
       data-lens-r="32"
       data-lens-bezel="24"
@@ -266,7 +267,7 @@ function BottomBar({ items, hasMore, label, moreLabel, pathname }: { items: NavI
   const { setOpenMobile } = useSidebar();
   const cell = "flex min-h-11 flex-col items-center justify-center gap-0.5 text-caption focus-visible:focus-ring";
   return (
-    <nav aria-label={label} className="fixed inset-x-0 bottom-0 z-raised flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
+    <nav aria-label={label} data-tabbar="" className="fixed inset-x-0 bottom-0 z-raised flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
       {items.map((i) => {
         const active = isNavActive(pathname, i, items);
         return (

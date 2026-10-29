@@ -29,7 +29,8 @@ export function PhoneFrame({ children, version, label, className }: { children: 
 
 /**
  * Desktop: a sticky 300 x 620 phone frame, 24 from the top, in the right rail (it sits on the end edge, so in Urdu it moves to the left).
- * Phones: a bottom sheet opened from a glass pill (the only glass in onboarding, because it is chrome).
+ * Phones: a bottom sheet opened from a glass pill (the only glass in onboarding, because it is chrome). Inside a shell with a phone tab bar
+ * (`data-tabbar`) the pill sits above it, 16 clear of the bar, like the toast.
  */
 export function LivePreview({ children, version, pillLabel, frameLabel, closeLabel, className }: LivePreviewProps) {
   const [open, setOpen] = useState(false);
@@ -45,7 +46,7 @@ export function LivePreview({ children, version, pillLabel, frameLabel, closeLab
         <PhoneFrame version={version} label={frameLabel}>{children}</PhoneFrame>
       </aside>
       <div className="lg:hidden">
-        <button type="button" onClick={() => setOpen(true)} className="glass-lite fixed bottom-6 end-4 z-sticky inline-flex h-11 items-center gap-2 rounded-full px-4 text-body font-[550] text-foreground focus-visible:focus-ring">
+        <button type="button" onClick={() => setOpen(true)} data-preview-pill className="glass-lite fixed bottom-[calc(24px+env(safe-area-inset-bottom))] end-4 z-sticky inline-flex [:root:has([data-tabbar])_&]:max-md:bottom-[calc(96px+env(safe-area-inset-bottom))] h-11 items-center gap-2 rounded-full px-4 text-body font-[550] text-foreground focus-visible:focus-ring">
           <Eye aria-hidden className="size-4" />
           {pillLabel}
         </button>

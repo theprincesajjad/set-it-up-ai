@@ -112,16 +112,20 @@ objects.barber = (L, o = {}) => {
   L.circle3([0, -3.15, 8], FRONT, UP, 0.9, N.shade);
 };
 objects.groomer = (L) => {
-  L.shadow(0, 0, 11, 3.6);
-  // slicker brush standing on its handle: handle, then a pad with pins on its face
-  L.box(-1.6, -1.3, 0, 3.2, 2.6, 8, N.shade && { lit: "n2", mid: "n2", shade: "n3" }, 1.3);
-  L.box(-6.4, -1.7, 7, 12.8, 3.4, 9.4, N, 3);
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) frontDot(L, -3.6 + c * 1.8, -1.75, 9.4 + r * 1.8, 0.5, INK.lit);
-  // the bow, accent, lying at the front
-  L.prism([[4, -6.4], [10.6, -9.4], [10.6, -3.4]], 0, 2, A, 0.9);
-  L.prism([[4, -6.4], [-2.6, -9.4], [-2.6, -3.4]], 0, 2, A, 0.9);
-  L.cyl(4, -6.4, 0, 1.8, 2.9, A);
-};objects.cafe = (L) => {
+  // A paddle brush lying flat, bristles up, and the accent bow standing in front of its handle: a grooming table, seen from above.
+  L.shadow(1, 0, 13, 4.2);
+  L.box(-11, -5.4, 0, 12, 10.8, 2.6, N, 3.4); // the pad
+  L.box(-9.8, -4.2, 2.6, 9.6, 8.4, 0.7, { lit: "n2", mid: "n3", shade: "n3" }, 2.6); // the cushion
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) topDot(L, -8.4 + c * 2.3, -2.9 + r * 2.0, 3.35, 0.55, INK.lit); // the pins
+  L.box(1, -1.5, 0.5, 11, 3, 2, N, 1.4); // the handle
+  // the bow: two loops and a knot, upright in the x-z plane at the front
+  extrudeXZ(L, [[4.6, 6], [-0.8, 9.6], [-0.8, 2.4]], -6.6, 1.2, A, A.lit);
+  extrudeXZ(L, [[4.6, 6], [10, 9.6], [10, 2.4]], -6.6, 1.2, A, A.mid);
+  extrudeXZ(L, circleXZ(4.6, 6, 1.7, 16), -6.9, 1.2, A, A.lit);
+  extrudeXZ(L, [[3.6, 4.8], [5.6, 4.8], [7.2, 0.6], [5.6, 0.6]], -6.4, 0.8, A, A.mid); // a tail
+};
+
+objects.cafe = (L) => {
   L.shadow(0, 0, 12, 4.4);
   L.cyl(0, 0, 0, 11, 1.1, N);
   L.ring3([8.4, 0, 6.8], FRONT, UP, 4.6, 2.3, N.shade);
@@ -146,13 +150,17 @@ objects.bakery = (L) => {
 };
 
 objects.butcher = (L) => {
-  L.shadow(0, 0, 12, 4.2);
-  L.box(-9.5, -6, 0, 19, 12, 8, N, 1.8);
-  // cleaver standing in the block: steel blade with a hole, accent handle
-  extrudeXZ(L, [[-5.4, 8], [5.6, 8], [5.6, 17.4], [-5.4, 17.4]], -1, 1, N, N.lit);
-  frontRect(L, -5.4, -1.05, 16.4, 11, 1, N.mid, 0.2);
-  L.circle3([3, -1.05, 13.4], FRONT, UP, 1, N.shade);
-  extrudeXZ(L, [[-1.2, 17.4], [1.8, 17.4], [1.8, 24.6], [-1.2, 24.6]], -0.4, 2, A, A.lit);
+  // A cleaver in profile on a chopping board: the wide blade with its hole and a dark edge, the accent handle reaching out to the right.
+  L.shadow(0, 0, 14, 4.4);
+  L.box(-12, -6, 0, 24, 12, 2.6, N, 2); // the board
+  const blade = [[-11, 2.6], [3.4, 2.6], [3.4, 15], [-10.2, 15], [-11, 14.2]];
+  extrudeXZ(L, blade, -1, 1.1, N, N.lit, circleXZ(-7.8, 11.8, 1.3, 16));
+  frontRect(L, -11, -1.05, 2.6, 14.4, 1.6, N.shade, 0.2); // the sharpened edge
+  frontRect(L, -11, -1.05, 14.1, 14.4, 0.9, N.mid, 0.2); // the spine
+  extrudeXZ(L, [[3.4, 11.2], [5.2, 11.2], [5.2, 14.4], [3.4, 14.4]], -1.2, 1.4, N, N.mid); // the bolster
+  extrudeXZ(L, [[5.2, 11], [13.6, 11.4], [14.4, 12.8], [13.6, 14.2], [5.2, 14.6]], -1.4, 1.8, A, A.lit); // the handle
+  frontDot(L, 8, -1.45, 12.8, 0.5, ON.lit);
+  frontDot(L, 11.2, -1.45, 12.8, 0.5, ON.lit);
 };
 
 objects.pet_shop = (L) => {

@@ -9,6 +9,8 @@
   --i3d-a3: color-mix(in srgb, var(--i3d-accent) 64%, #1D1D1F);
   display: inline-block; flex: none; overflow: visible;
 }
+/* Straight on the light canvas: the lit tone lifts to white so the top faces stay visible (dark mode below wins). */
+.i3d[data-surface="canvas"] { --i3d-n1: #FFFFFF; }
 /* Clear graphite dark: the body tones swap, the accent lifts, the shadow turns white. */
 :root[data-theme="dark"] .i3d {
   --i3d-n1: #3A3A3C; --i3d-n2: #2C2C2E; --i3d-n3: #1C1C1E; --i3d-ik: #F2F2F7; --i3d-on: #1A1208;

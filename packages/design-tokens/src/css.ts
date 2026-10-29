@@ -230,6 +230,9 @@ function clearScopedVars(theme: "light" | "dark", indent = "  "): string[] {
     `${indent}--ll-color-chrome: ${clearGlass[theme].fill};`,
     `${indent}--ll-color-overlay: ${clearExtra[theme].scrim};`,
     `${indent}--ll-color-focus-ring: ${r.ring};`,
+    // Loading skeletons: Clear's muted fill with a card-coloured shimmer (Warm's sand tones showed through under Clear before).
+    `${indent}--ll-color-skeleton: ${r.muted};`,
+    `${indent}--ll-color-skeleton-highlight: ${r.card};`,
   ];
 }
 

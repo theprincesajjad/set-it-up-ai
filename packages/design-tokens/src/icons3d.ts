@@ -50,7 +50,9 @@ export const ICON3D_SHADE = 0.36;
 
 /** The neutral body, from the Clear tokens. */
 export const icon3dNeutral = {
-  light: { lit: "#F2F2F7", mid: "#D2D2D7", shade: "#AEAEB4", ink: ICON3D_INK, onAccent: "#FFFFFF", shadow: ICON3D_INK, shadowOpacity: 0.08 },
+  // canvasLit: on the #F2F2F7 canvas (not a white card) the lit body tone would equal the background and the top faces would vanish, so an
+  // object placed straight on the canvas (`Icon3d surface="canvas"`) lifts its lit tone to white. Mid and shade stay.
+  light: { lit: "#F2F2F7", canvasLit: "#FFFFFF", mid: "#D2D2D7", shade: "#AEAEB4", ink: ICON3D_INK, onAccent: "#FFFFFF", shadow: ICON3D_INK, shadowOpacity: 0.08 },
   dark: { lit: "#3A3A3C", mid: "#2C2C2E", shade: "#1C1C1E", ink: "#F2F2F7", onAccent: "#1A1208", shadow: "#FFFFFF", shadowOpacity: 0.06 },
 } as const;
 
@@ -93,6 +95,8 @@ export function icons3dCss(): string {
   lines.push(`  display: inline-block; flex: none; overflow: visible;`);
   lines.push(`}`);
   const darkBody = `  --i3d-n1: ${D.lit}; --i3d-n2: ${D.mid}; --i3d-n3: ${D.shade}; --i3d-ik: ${D.ink}; --i3d-on: ${D.onAccent};\n  --i3d-sh: ${D.shadow}; --i3d-so: ${D.shadowOpacity / 3}; --i3d-accent: var(--i3d-accent-d);`;
+  lines.push(`/* Straight on the light canvas: the lit tone lifts to white so the top faces stay visible (dark mode below wins). */`);
+  lines.push(`.i3d[data-surface="canvas"] { --i3d-n1: ${L.canvasLit}; }`);
   lines.push(`/* Clear graphite dark: the body tones swap, the accent lifts, the shadow turns white. */`);
   lines.push(`:root[data-theme="dark"] .i3d {\n${darkBody}\n}`);
   lines.push(`/* Warm follows the device. */`);

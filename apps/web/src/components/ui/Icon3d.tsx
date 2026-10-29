@@ -11,6 +11,8 @@ export interface Icon3dProps {
   trade?: string | null;
   /** An explicit accent colour (wins over `trade`). */
   accent?: string;
+  /** "canvas" when the object sits straight on the page canvas rather than on a white card: the lit tone lifts to white. */
+  surface?: "card" | "canvas";
   className?: string;
 }
 
@@ -19,7 +21,7 @@ export interface Icon3dProps {
  * One sprite serves every trade colour: the accent is set through `--i3d-accent` and the lit, mid and shade tones are derived with color-mix in
  * icons3d.css; dark mode swaps the body tones. For 40 px and up only; 16 to 24 px glyphs stay Lucide.
  */
-export function Icon3d({ name, size = 64, trade, accent, className }: Icon3dProps) {
+export function Icon3d({ name, size = 64, trade, accent, surface, className }: Icon3dProps) {
   const scene = isIcon3dScene(name);
   const vb = scene ? ICON3D_VIEWBOX.scene : ICON3D_VIEWBOX.object;
   const height = scene ? Math.round((size * vb.h) / vb.w) : size;
@@ -38,6 +40,7 @@ export function Icon3d({ name, size = 64, trade, accent, className }: Icon3dProp
       aria-hidden="true"
       focusable="false"
       data-icon3d={name}
+      data-surface={surface === "canvas" ? "canvas" : undefined}
       data-fam={accent || inherit ? undefined : trade ? icon3dFamily(trade) : undefined}
       style={style}
     >

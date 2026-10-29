@@ -103,7 +103,7 @@ export function PromoPicker({ standalone }: { /** On its own page under a page t
         {pick ? (
           <div className="flex flex-col gap-3 rounded-r4 border border-border p-4" data-testid="promo-editor">
             <div className="flex items-start gap-3">
-              <Icon3d name="megaphone" size={48} trade={detail.merchant.vertical} className="shrink-0" />
+              <Icon3d name="megaphone" size={40} trade={detail.merchant.vertical} className="shrink-0" />
               <p className="text-meta text-fg">{t("promo.audience", { n: d?.audience.regulars ?? 0 })}</p>
             </div>
             <TextField label={t("promo.fieldTitle")} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />

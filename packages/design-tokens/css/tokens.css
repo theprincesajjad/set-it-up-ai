@@ -2116,6 +2116,8 @@
   --ll-color-chrome: rgba(255, 255, 255, 0.58);
   --ll-color-overlay: rgba(0, 0, 0, 0.16);
   --ll-color-focus-ring: #0071E3;
+  --ll-color-skeleton: #EBEBED;
+  --ll-color-skeleton-highlight: #FFFFFF;
   --trade-tint: #F7E5E1;
   --trade-nav: #F8E7E4;
 }
@@ -2227,6 +2229,8 @@
   --ll-color-chrome: rgba(84, 84, 92, 0.52);
   --ll-color-overlay: rgba(0, 0, 0, 0.5);
   --ll-color-focus-ring: #4DA3FF;
+  --ll-color-skeleton: #2C2C2E;
+  --ll-color-skeleton-highlight: #1C1C1E;
   --trade-tint: #40312F;
   --trade-nav: #514648;
 }
