@@ -957,6 +957,14 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
         createdAt: new Date(o.at.getTime() + 2 * 3600_000),
       });
     }
+    // Top up when the sample above hit repeat guests (it depends on how many orders fall in the seeded window on the day the seed runs):
+    // ask other guests until n distinct, answered with a 5 and no comment. No random draws here, so the rest of the seed is unchanged.
+    for (const o of done) {
+      if (asked.size >= n) break;
+      if (asked.has(o.userId)) continue;
+      asked.add(o.userId);
+      reviewRows.push({ merchantId: sh.id, userId: o.userId, orderId: o.id, channel: "sms", token: `rv-${sh.s.slug}-${tokenN++}`, rating: 5, feedback: null, sentAt: new Date(o.at.getTime() + 2 * 3600_000), clickedAt: new Date(o.at.getTime() + 3 * 3600_000), createdAt: new Date(o.at.getTime() + 2 * 3600_000) });
+    }
   }
   // Deterministic, unanswered review links for demos and the e2e specs (apps/web/e2e/restaurant-messaging.spec.ts):
   // /r/demo-review-sarson-5 (answer with 5 stars) and /r/demo-review-sarson-low (answer with 1-3). Sarson Dhaba has a Google link.

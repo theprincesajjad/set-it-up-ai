@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { featureInterest, featureOverrides, featureRollouts, merchantAddOns, merchants } from "@ll/db";
+import { featureInterest, featureOverrides, featureRollouts, merchantAddOns, merchants, services } from "@ll/db";
 import { FEATURE_KEYS, FEATURES, isFeatureEnabled, type FeatureKey, type PlanId, type RolloutStage } from "@ll/shared";
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
@@ -203,9 +203,19 @@ const CUSTOMER_FEATURE_KEYS = {
 export async function customerFeaturesFor(db: DbOrTx, list: Merchant[]): Promise<Map<string, CustomerFeatures>> {
   const out = new Map<string, CustomerFeatures>();
   const on = await enabledFeaturesFor(db, list, Object.values(CUSTOMER_FEATURE_KEYS));
+  // Appointments are on for every Free shop since phase solo (one calendar free), so the "Book" entry point also needs something to
+  // book: at least one active appointment service. Without this a café or a grocer would show a Book button that leads nowhere.
+  const maybeBooking = list.filter((m) => on.get(m.id)?.has("booking.appointments")).map((m) => m.id);
+  const bookable = new Set(
+    maybeBooking.length
+      ? (await db.selectDistinct({ merchantId: services.merchantId }).from(services).where(and(inArray(services.merchantId, maybeBooking), eq(services.kind, "appointment"), eq(services.active, true)))).map((r) => r.merchantId)
+      : [],
+  );
   for (const m of list) {
     const set = on.get(m.id) ?? new Set<FeatureKey>();
-    out.set(m.id, Object.fromEntries(Object.entries(CUSTOMER_FEATURE_KEYS).map(([k, key]) => [k, set.has(key)])) as unknown as CustomerFeatures);
+    const row = Object.fromEntries(Object.entries(CUSTOMER_FEATURE_KEYS).map(([k, key]) => [k, set.has(key)])) as unknown as CustomerFeatures;
+    if (row.appointments && !bookable.has(m.id)) row.appointments = false;
+    out.set(m.id, row);
   }
   return out;
 }
