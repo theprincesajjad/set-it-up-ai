@@ -40,10 +40,18 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      // French (fr-CA) legal pages for Law 25: /legal/privacy?lang=fr is served by the static /legal/fr/privacy page (src/lib/legal.ts).
-      { source: "/legal/:doc(privacy|rewards)", has: [{ type: "query", key: "lang", value: "fr" }], destination: "/legal/fr/:doc" },
-    ];
+    return {
+      // Before the filesystem: /for-nail-techs is a page of its own, so an afterFiles rewrite would never be tried.
+      beforeFiles: [
+        // The nail page's other looks (?trade=brows|lashes|makeup) are prerendered at /for-nail-techs/[trade]; the public URL keeps the query.
+        { source: "/for-nail-techs", has: [{ type: "query", key: "trade", value: "(?<trade>brows|lashes|makeup)" }], destination: "/for-nail-techs/:trade" },
+      ],
+      afterFiles: [
+        // French (fr-CA) legal pages for Law 25: /legal/privacy?lang=fr is served by the static /legal/fr/privacy page (src/lib/legal.ts).
+        { source: "/legal/:doc(privacy|rewards)", has: [{ type: "query", key: "lang", value: "fr" }], destination: "/legal/fr/:doc" },
+      ],
+      fallback: [],
+    };
   },
   async headers() {
     return [

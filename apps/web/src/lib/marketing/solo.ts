@@ -88,5 +88,60 @@ export const SAMPLE_SERVICES: Record<NailTrade | "barber" | "groom", SoloService
   ],
 };
 
-/** Sample appointment times on the hero phone (day label and clock). */
-export const SAMPLE_SLOTS = ["Sat 10:00 am", "Sat 11:30 am", "Sat 1:00 pm", "Sun 10:00 am"] as const;
+/** One landing variant: the nail page's four `?trade=` looks, the barber page and the groomer page (copy.solo.trades has the words). */
+export type SoloKey = NailTrade | "barber" | "groom";
+
+/** The variant a page renders. */
+export function soloKey(id: SoloPageId, trade: NailTrade = "nails"): SoloKey {
+  return id === "nail" ? trade : id;
+}
+
+/** The sample deposit everywhere on the page ($20): the free plan's default ask. */
+export const SAMPLE_DEPOSIT_CENTS = 2000;
+
+/** Which three of SAMPLE_SERVICES the phone and the demos show; the second one is the service booked through the page (the DM asks for it). */
+export const SHOWN_SERVICES: Record<SoloKey, [number, number, number]> = { nails: [0, 1, 3], brows: [1, 0, 2], lashes: [0, 1, 2], makeup: [0, 1, 2], barber: [0, 1, 2], groom: [2, 0, 3] };
+
+/**
+ * A photo in public/marketing (Pexels licence, docs/marketing/photo-credits.md): AVIF first, WebP fallback, the widths in the file names.
+ * `w`/`h` are the intrinsic size of the smallest file (for the aspect ratio); `pos` is the crop focus.
+ */
+export interface SoloPhoto {
+  stem: string;
+  widths: readonly number[];
+  w: number;
+  h: number;
+  pos?: string;
+}
+
+const P = (stem: string, widths: readonly number[], w: number, h: number, pos?: string): SoloPhoto => ({ stem, widths, w, h, pos });
+const NAILS_RED = P("nails-red", [800], 800, 1000, "50% 40%");
+const NAILS_SALON = P("nails-salon", [800], 800, 600, "50% 45%");
+const NAILS_WIDE = P("nails-wide", [1000, 1600], 1000, 625, "72% 50%");
+const BROWS = P("brows", [900, 1400], 900, 1125, "50% 45%");
+const BROWS_WIDE = P("brows-wide", [1000, 1600], 1000, 625, "60% 50%");
+const LASHES = P("lashes", [900, 1400], 900, 1125, "55% 50%");
+const LASHES_WIDE = P("lashes-wide", [1000, 1600], 1000, 625, "60% 50%");
+const BARBER = P("barber-hero", [900, 1400], 900, 1125, "45% 40%");
+const BARBER_CROP = P("barber-crop", [800], 800, 1000, "50% 35%");
+const BARBER_WIDE = P("barber-wide", [1000, 1600], 1000, 625, "60% 45%");
+const GROOM = P("groom", [900], 900, 1125, "50% 45%");
+
+/**
+ * The photos of each variant: `work` stands behind the hero phone (the trade's own work, where the mock had a pink disc), `cover`
+ * heads the sample booking page on the phone, `band` sits behind the stamp card. Makeup has no photo of its own yet and uses the
+ * lash close-up; the groomer page has one photo (a groomed schnauzer), cropped three ways.
+ */
+export const SOLO_PHOTOS: Record<SoloKey, { work: SoloPhoto; cover: SoloPhoto; band: SoloPhoto }> = {
+  nails: { work: NAILS_RED, cover: NAILS_SALON, band: NAILS_WIDE },
+  brows: { work: BROWS, cover: LASHES_WIDE, band: BROWS_WIDE },
+  lashes: { work: LASHES, cover: BROWS_WIDE, band: LASHES_WIDE },
+  makeup: { work: LASHES, cover: BROWS_WIDE, band: LASHES_WIDE },
+  barber: { work: BARBER, cover: BARBER_CROP, band: BARBER_WIDE },
+  groom: { work: GROOM, cover: { ...GROOM, pos: "50% 30%" }, band: { ...GROOM, pos: "50% 60%" } },
+};
+
+/** `/marketing/<stem>-<w>.<ext> <w>w, ...` */
+export function photoSrcSet(p: SoloPhoto, ext: "avif" | "webp"): string {
+  return p.widths.map((w) => `/marketing/${p.stem}-${w}.${ext} ${w}w`).join(", ");
+}

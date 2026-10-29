@@ -34,13 +34,16 @@ function Cell({ cell }: { cell: SoloCell }) {
   );
 }
 
-/** Us against Fresha, Booksy and Square Appointments. Every competitor cell carries the date it was read and a currency or source note. `chairs` adds the four-chair row (barber page). */
-export function CompetitorTableSolo({ c, chairs }: { c: SoloCompareCopy; chairs?: boolean }) {
+/**
+ * Us against Fresha, Booksy and Square Appointments. Every competitor cell carries the date it was read and a currency or source note.
+ * `chairs` adds the four-chair row. Lives on /pricing (#booking-apps); the solo landing pages link to it from their price block.
+ */
+export function CompetitorTableSolo({ c, chairs, id = "compare" }: { c: SoloCompareCopy; chairs?: boolean; id?: string }) {
   const rows: (SoloRow | "chairs")[] = chairs ? [...SOLO_ROWS, "chairs"] : [...SOLO_ROWS];
   const us = usCells(c);
   const get = (id: (typeof SOLO_COMPETITORS)[number], r: SoloRow | "chairs"): SoloCell => (r === "chairs" ? id.fourChairs : id.cells[r]);
   return (
-    <MSection id="compare">
+    <MSection id={id} className="scroll-mt-20">
       <MHeading eyebrow={c.eyebrow} title={c.title} sub={c.sub} />
       {/* Phones: one block per row. Wider: the table. */}
       <div className="flex flex-col gap-3 md:hidden">

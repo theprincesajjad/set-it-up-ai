@@ -1,14 +1,17 @@
 import { ImageResponse } from "next/og";
 import { rolesV3 } from "@ll/design-tokens";
-import { BRAND, en } from "@ll/shared";
+import { BRAND } from "@ll/shared";
+import { copy } from "@/copy/en-CA";
 import { ogFonts } from "@/lib/og";
 
 export const SOLO_OG_SIZE = { width: 1200, height: 630 } as const;
 
 type Page = "nail" | "barber" | "groom";
-const TITLE = { nail: en["mkt.solo.nail.title"], barber: en["mkt.solo.barber.title"], groom: en["mkt.solo.groom.title"] } as const;
-const KICKER = { nail: en["mkt.solo.nail.eyebrow"], barber: en["mkt.solo.barber.eyebrow"], groom: en["mkt.solo.groom.eyebrow"] } as const;
-const CTA = { nail: en["mkt.solo.nail.cta"], barber: en["mkt.solo.barber.cta"], groom: en["mkt.solo.groom.cta"] } as const;
+const T = copy.solo.trades;
+/** The page's hook, as on the hero (landing v2). */
+const TITLE = { nail: T.nails.hook.join(" "), barber: T.barber.hook.join(" "), groom: T.groom.hook.join(" ") } as const;
+const KICKER = { nail: T.nails.eyebrow, barber: T.barber.eyebrow, groom: T.groom.eyebrow } as const;
+const CTA = { nail: copy.solo.hero.cta, barber: copy.solo.hero.cta, groom: copy.solo.hero.cta } as const;
 
 /** One social card per landing page: flat paper, the headline in the display face, the call to action. No gradient, no photo. Literal colours come from the light v3 roles. */
 export async function soloOgImage(page: Page) {

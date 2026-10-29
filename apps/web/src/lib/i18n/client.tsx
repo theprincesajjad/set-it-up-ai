@@ -1,8 +1,8 @@
 "use client";
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import { createContext, use, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { browserApi } from "@/lib/api/browser";
-import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTranslation, t as translate, withRtlMark, type Locale, type LocaleInfo, type MessageKey, type TranslationsJson, type Vars } from "@ll/shared";
+import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTranslation, withRtlMark, type Locale, type LocaleInfo, type MessageKey, type Messages, type TranslationsJson, type Vars } from "@ll/shared";
+import { catalogNow, loadCatalog, translateWith, useCatalog } from "./catalog";
 
 export const LOCALE_COOKIE = "ll_lang";
 
@@ -34,7 +34,8 @@ interface LocaleValue {
 
 const Ctx = createContext<LocaleValue | null>(null);
 
-function buildValue(locale: Locale, setLocale: (next: Locale) => void): LocaleValue {
+function buildValue(locale: Locale, messages: Messages, setLocale: (next: Locale) => void): LocaleValue {
+  const translate = (l: Locale, key: MessageKey, vars?: Vars) => translateWith(messages, l, key, vars);
   return {
     locale,
     info: LOCALES[locale],
@@ -81,16 +82,24 @@ export function rememberLocale(locale: Locale) {
  */
 export function saveProfileLocale(locale: Locale, opts: { explicit?: boolean } = {}): Promise<boolean> {
   if (locale === "en" && !opts.explicit) return Promise.resolve(false);
-  return browserApi.me.updateProfile({ locale }).then(
-    () => true,
-    () => false,
-  );
+  // Loaded on use: the API client is not needed to render a translated page, and LocaleProvider is on every one of them.
+  return import("@/lib/api/browser")
+    .then(({ browserApi }) => browserApi.me.updateProfile({ locale }))
+    .then(
+      () => true,
+      () => false,
+    );
 }
 
-const ENGLISH = buildValue("en", () => undefined);
+/** The English value for components outside a scope, built once the English catalogue is in. */
+let english: { messages: Messages; value: LocaleValue } | null = null;
+function englishValue(messages: Messages): LocaleValue {
+  if (english?.messages !== messages) english = { messages, value: buildValue("en", messages, () => undefined) };
+  return english.value;
+}
 
 /** Mounted by LocaleScope (server). Client components read it with `useLocale()`. */
-export function LocaleProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
+export function LocaleProvider({ locale, catalogHref, children }: { locale: Locale; /** The versioned /i18n/<locale> URL LocaleScope preloads. */ catalogHref?: string; children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -111,7 +120,9 @@ export function LocaleProvider({ locale, children }: { locale: Locale; children:
     [router, pathname, params],
   );
 
-  const value = useMemo<LocaleValue>(() => buildValue(locale, setLocale), [locale, setLocale]);
+  // Only this scope's language is downloaded (lib/i18n/catalog.ts), never all four.
+  const messages = useCatalog(locale, catalogHref);
+  const value = useMemo<LocaleValue>(() => buildValue(locale, messages, setLocale), [locale, messages, setLocale]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
@@ -126,5 +137,7 @@ export function useLocale(): LocaleValue {
  * English, with a no-op `setLocale`, when there is no scope.
  */
 export function useLocaleOrEnglish(): LocaleValue {
-  return useContext(Ctx) ?? ENGLISH;
+  const v = useContext(Ctx);
+  // React's `use()` may be called conditionally: English is only loaded when there is no scope.
+  return v ?? englishValue(catalogNow("en") ?? use(loadCatalog("en")));
 }

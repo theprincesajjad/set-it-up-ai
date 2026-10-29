@@ -1,0 +1,197 @@
+import { copy } from "@/copy/en-CA";
+import type { SoloView } from "@/lib/marketing/solo-view";
+import { Arrow, Check, Obj, Photo, n } from "./parts";
+
+const H = copy.solo.hero;
+
+/** Hero photo slots: the work photo is 300 px wide beside the phone and 112 px above it on phones; the phone's cover is about 280. */
+export const WORK_SIZES = "(min-width: 572px) 300px, 112px";
+export const COVER_SIZES = "290px";
+
+/**
+ * Block 1: the hook on the start side, and on the end side the client's booking page on a big phone running the four-screen flow
+ * (pick, time, deposit, booked) with the three moments beside it. The stage is one picture for assistive tech (role="img").
+ */
+export function Hero({ v }: { v: SoloView }) {
+  const [s1, s2, s3] = v.services;
+  const initial = v.trade.studio[0];
+  const T = v.trade;
+  return (
+    <section className="sl-hero" aria-labelledby="sl-hook">
+      <div className="sl-wrap sl-hero-grid">
+        <div className="sl-copy">
+          <p className="sl-eyebrow sl-rise">{T.eyebrow}</p>
+          <h1 className="sl-h1" id="sl-hook">
+            <span>{T.hook[0]}</span>{" "}
+            <span className="sl-i1">
+              <em>{T.hook[1]}</em>
+            </span>
+          </h1>
+          <p className="sl-lede sl-rise sl-i2">{v.hero.lede}</p>
+          <div className="sl-ctas sl-rise sl-i3">
+            <a className="sl-btn" href="#start">
+              {H.cta}
+              <Arrow />
+            </a>
+            <a className="sl-price-link" href="#plans">
+              {v.hero.price}
+              <span aria-hidden>·</span>
+              <u>{H.priceLink}</u>
+            </a>
+          </div>
+          <ul className="sl-trust sl-rise sl-i4">
+            {("trust" in T ? T.trust : H.trust).map((x) => (
+              <li key={x}>
+                <Check />
+                {x}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="sl-stage">
+          <div className="sl-stage-in" role="img" aria-label={H.stageLabel}>
+            <div className="sl-lead">
+              <div className="sl-work">
+                <Photo photo={v.photos.work} sizes={WORK_SIZES} priority />
+              </div>
+              <div className="sl-float sl-dm glass-sheet">
+                <p className="sl-bubble">{T.dm}</p>
+              </div>
+            </div>
+            <div className="sl-float sl-dep glass-sheet">
+              <span className="ic">
+                <Obj name="deposit" />
+              </span>
+              <div>
+                <b>{v.hero.depositCard}</b>
+                <small>{v.hero.depositCardLine}</small>
+              </div>
+            </div>
+            <div className="sl-float sl-rem glass-sheet">
+              <span className="ic">
+                <Obj name="bell" />
+              </span>
+              <div>
+                <b>{H.reminderCard}</b>
+                <small>{H.reminderCardLine}</small>
+              </div>
+            </div>
+
+            <div className="sl-phone">
+              <div className="sl-screen">
+                <span className="sl-island" />
+                {/* 1. Pick a service */}
+                <div className={`sl-app ${n(0)}`}>
+                  <div className="sl-cover">
+                    <Photo photo={v.photos.cover} sizes={COVER_SIZES} eager />
+                  </div>
+                  <div className="sl-who">
+                    <span className="sl-avatar">{initial}</span>
+                    <div>
+                      <b>{T.studio}</b>
+                      <small>{T.area}</small>
+                    </div>
+                  </div>
+                  {[s1!, s2!, s3!].map((s) => (
+                    <div key={s.name} className={s === s2 ? "sl-row on" : "sl-row"}>
+                      <div>
+                        <b>{s.name}</b>
+                        <small>{s.minutes}</small>
+                      </div>
+                      <span className="price num">{s.price}</span>
+                    </div>
+                  ))}
+                  <div className="sl-cta">{H.pickTime}</div>
+                </div>
+                {/* 2. Pick a time */}
+                <div className={`sl-app ${n(1)}`}>
+                  <div className="sl-who">
+                    <span className="sl-avatar">{initial}</span>
+                    <div>
+                      <b>{T.studio}</b>
+                      <small>
+                        {s2!.name} · {s2!.minutes}
+                      </small>
+                    </div>
+                  </div>
+                  {H.days.map((d, di) => (
+                    <div key={d} className="contents">
+                      <div className="sl-hd">
+                        {d} <small>{H.open.replace("{n}", String(H.slots[di]!.length))}</small>
+                      </div>
+                      <div className="sl-slots">
+                        {H.slots[di]!.map((t) => (
+                          <span key={t} className={di === 0 && t === H.picked ? "sl-slot on" : "sl-slot"}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="sl-policy">
+                    <b>{v.hero.policyTitle}</b>
+                    {H.policyBody}
+                  </div>
+                  <div className="sl-cta">{v.hero.bookPay}</div>
+                </div>
+                {/* 3. The deposit */}
+                <div className={`sl-app ${n(2)}`}>
+                  <div className="sl-who">
+                    <span className="sl-avatar">{initial}</span>
+                    <div>
+                      <b>{T.studio}</b>
+                      <small>{H.when}</small>
+                    </div>
+                  </div>
+                  <div className="sl-row">
+                    <div>
+                      <b>{s2!.name}</b>
+                      <small>{H.totalToday}</small>
+                    </div>
+                    <span className="price num">{s2!.price.replace(/^from /, "")}</span>
+                  </div>
+                  <div className="sl-pay">
+                    <div className="l">
+                      <span>{H.depositNow}</span>
+                      <b className="num">{v.deposit}</b>
+                    </div>
+                    <div className="l">
+                      <span>{H.atVisit}</span>
+                      <b className="num">{v.rest}</b>
+                    </div>
+                    <div className="big num">{v.deposit}</div>
+                    <div className="apple">{H.pay}</div>
+                  </div>
+                </div>
+                {/* 4. Booked */}
+                <div className={`sl-app ${n(3)}`}>
+                  <div className="sl-done">
+                    <span className="sl-tick">
+                      <Check width={3.5} />
+                    </span>
+                    <h4>{v.hero.booked}</h4>
+                    <p>
+                      {s2!.name} · {H.bookedWhen}
+                      <br />
+                      {v.hero.bookedLine}
+                    </p>
+                    <span className="sl-wallet">{H.wallet}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ul className="sl-steps">
+              {H.steps.map((s, i) => (
+                <li key={s} className={n(i)}>
+                  <i />
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

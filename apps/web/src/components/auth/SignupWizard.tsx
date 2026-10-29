@@ -49,13 +49,13 @@ function cookieSrc(): string | undefined {
 export interface SignupWizardProps {
   signedInName?: string | null;
   /** From the sales assistant's link or a landing page (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
-  prefill?: { shop?: string; vertical?: string; phone?: string; plan?: string; src?: string; interval?: "year" };
+  prefill?: { shop?: string; vertical?: string; phone?: string; email?: string; plan?: string; src?: string; interval?: "year" };
 }
 
 export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
   const router = useRouter();
   const { t, locale } = useLocaleOrEnglish();
-  const [account, setAccount] = useState({ email: "", password: "" });
+  const [account, setAccount] = useState({ email: prefill?.email ?? "", password: "" });
   const [shop, setShop] = useState({ name: prefill?.shop ?? "", vertical: prefill?.vertical ?? "", address: "", postal: "", sells: "" });
   // "Where do you work?": a nail, brow or makeup pro usually works from home; everyone else starts at "A shop or salon". Once the owner picks, we keep it.
   const [work, setWork] = useState<Work>(prefill?.vertical && SOLO_ONLY_VERTICALS.includes(prefill.vertical) ? "home" : "shop");

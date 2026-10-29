@@ -10,10 +10,14 @@ import "./globals.css";
 /** UI + body. The opsz axis gives Clear its display cut on titles (font-optical-sizing: auto); Warm reads the same file. */
 /** UI + body (docs/design/foundations.md "Type"). Variable names are what @ll/design-tokens/theme.css reads. */
 const inter = Inter({ subsets: ["latin"], axes: ["opsz"], variable: "--font-inter", display: "swap" });
-/** Page titles, card titles and big numbers (Main Street Warm). Variable weight, so 600 and 800 are one file; Latin only, hi/ur/pa headings fall to the Noto faces below. */
-const fraunces = Fraunces({ subsets: ["latin", "latin-ext"], axes: ["opsz"], variable: "--font-fraunces", display: "swap" });
-/** The wordmark only (font-wordmark). */
-const bricolage = Bricolage_Grotesque({ subsets: ["latin"], axes: ["opsz", "wdth"], variable: "--font-bricolage", display: "swap" });
+/**
+ * Page titles, card titles and big numbers (Main Street Warm). Variable weight, so 600 and 800 are one file; Latin only, hi/ur/pa headings fall to the Noto faces below.
+ * Warm only: Clear (the default) sets font-display to Inter, so these are not preloaded; a Warm page fetches them when it draws them.
+ * Preloading them cost every Clear page about 250 KB on the critical path (landing v2 perf pass).
+ */
+const fraunces = Fraunces({ subsets: ["latin", "latin-ext"], axes: ["opsz"], variable: "--font-fraunces", display: "swap", preload: false });
+/** The wordmark only (font-wordmark), Warm only like Fraunces. */
+const bricolage = Bricolage_Grotesque({ subsets: ["latin"], axes: ["opsz", "wdth"], variable: "--font-bricolage", display: "swap", preload: false });
 
 /**
  * Hindi, Urdu and Punjabi (packages/shared locales.ts `fonts`). Only the CSS variables are set here, on <html>; a face downloads when a glyph of its

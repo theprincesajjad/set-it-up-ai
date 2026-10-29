@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { FEES, PLANS, campaignsApi, foundingSoloConfig, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
 import { ArtTiles } from "@/components/marketing/HeroArt";
 import { ChipLink } from "@/components/marketing/ChipLink";
+import { CompetitorTableSolo } from "@/components/marketing/CompetitorTableSolo";
 import { Faq } from "@/components/marketing/Faq";
 import { ScrollTo } from "@/components/marketing/ScrollTo";
 import { MSection } from "@/components/marketing/Section";
@@ -100,6 +101,9 @@ export default async function PricingPage({ searchParams }: Props) {
           {fill(P.openNote, { target: String(PLUS_TARGET) })}{activeShops !== null ? ` ${activeShops} shops have joined so far.` : ""} Your loyalty program never moves to a paid plan.
         </p>
       </section>
+
+      {/* The full comparison with the booking apps, moved here from the solo landing pages (their price block links to it). */}
+      <CompetitorTableSolo c={{ ...copy.solo.compare, brand: "Local Loyalty" }} chairs id="booking-apps" />
 
       <TradeRows />
 

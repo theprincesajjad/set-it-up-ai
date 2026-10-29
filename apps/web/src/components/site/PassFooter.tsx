@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { BRAND } from "@ll/shared";
-import { LocaleScope } from "@/lib/i18n";
+// Direct import: the "@/lib/i18n" barrel also brings the client LanguageSwitcher into every page that renders this.
+import { LocaleScope } from "@/lib/i18n/LocaleScope";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { LogoMark } from "./Brand";
 
 /** Public pages: the shop is the hero; our brand only appears here, quietly. In the visitor's language (?lang= → cookie → Accept-Language). */
-export async function PassFooter() {
+export async function PassFooter({ lazyCatalog }: { /** Inside the root 404 (in every page's tree): do not preload the catalogue. */ lazyCatalog?: boolean } = {}) {
   const [locale, t] = await Promise.all([getLocale(), getT()]);
   return (
-    <LocaleScope locale={locale}>
+    <LocaleScope locale={locale} lazyCatalog={lazyCatalog}>
       <footer className="mx-auto mt-12 flex w-full max-w-[480px] flex-col items-center gap-2 border-t border-line px-4 pt-6 pb-10 text-center">
         <Link href="/for-shoppers" className="inline-flex items-center gap-2 text-meta text-fg-muted hover:text-fg">
           <LogoMark size={16} />
