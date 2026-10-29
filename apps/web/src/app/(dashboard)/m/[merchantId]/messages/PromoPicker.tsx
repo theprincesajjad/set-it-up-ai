@@ -21,7 +21,7 @@ import { formatMoney } from "@/lib/format";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
-export function PromoPicker() {
+export function PromoPicker({ standalone }: { /** On its own page under a page title that already says what it is. */ standalone?: boolean } = {}) {
   const { api, base, detail } = useMerchant();
   const { t, locale, date } = useLocaleOrEnglish();
   const toast = useToast();
@@ -64,7 +64,7 @@ export function PromoPicker() {
     <SurfaceCard as="section" aria-labelledby="promo-picker" data-testid="promo-picker">
       <CardHead id="promo-picker" title={t("promo.title")} action={counter ? <Badge tone="neutral"><span data-testid="promo-counter">{counter}</span></Badge> : null} />
       <div className="flex flex-col gap-4 px-4 pb-4">
-        <p className="text-meta text-fg-muted">{t("promo.subtitle")}</p>
+        {standalone ? null : <p className="text-meta text-fg-muted">{t("promo.subtitle")}</p>}
         {d?.offer ? (
           <PlanLine href={`${base}/billing`} linkLabel={t("promo.planCta", { plan: d.offer.name })}>
             {t("promo.planLine", { plan: d.offer.name, count: PROMOS_PER_MONTH_PLUS })} {t("people.perMonth", { price: formatMoney(PLANS.plus.priceCents) })}

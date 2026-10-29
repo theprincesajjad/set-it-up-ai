@@ -100,11 +100,11 @@ export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen:
                 >
                   <td className="px-4 py-3 max-md:p-0">
                     <span className="flex items-center gap-3">
-                      <Avatar name={r.name ?? r.phone ?? "?"} id={r.userId} size={32} />
+                      <Avatar name={r.name ?? "?"} id={r.userId} size={32} />
                       <span className="min-w-0">
-                        <span className="block truncate text-body-strong text-fg">{r.name ?? r.phone ?? "—"}</span>
+                        <span className="block truncate text-body-strong text-fg">{r.name ? <bdi>{r.name}</bdi> : <bdi dir="ltr">{r.phone ?? "—"}</bdi>}</span>
                         <span className="block truncate text-caption text-fg-muted tabular">
-                          {r.phone}
+                          <bdi dir="ltr">{r.phone}</bdi>
                           {r.dueForVisit ? ` · ${t("people.seg.due")}` : ""}
                           {r.noShows12m >= 2 ? ` · ${t("people.seg.no_show_twice")}` : ""}
                         </span>

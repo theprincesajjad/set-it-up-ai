@@ -84,7 +84,7 @@ function InstagramCard() {
   }
   return (
     <SurfaceCard as="section" aria-labelledby="ig-card" data-testid="instagram-card">
-      <CardHead id="ig-card" title={t("ig.card.title")} action={s?.mode === "off" ? <Badge>{t("ig.card.coming")}</Badge> : s?.connected ? <Badge tone="success">@{s.username}</Badge> : null} />
+      <CardHead id="ig-card" title={t("ig.card.title")} action={s?.mode === "off" ? <Badge>{t("ig.card.coming")}</Badge> : s?.connected ? <Badge tone="success"><bdi>@{s.username}</bdi></Badge> : null} />
       <div className="flex flex-col gap-3 px-4 pb-4 sm:flex-row sm:items-start">
         <Icon3d name="instagram_mark" size={64} trade={detail.merchant.vertical} className="shrink-0" />
         <div className="flex min-w-0 flex-col gap-2">
@@ -97,7 +97,7 @@ function InstagramCard() {
               {s.connected ? (
                 <>
                   <span className="text-meta text-fg">{t("ig.card.connected", { username: s.username ?? "" })}</span>
-                  <a className="inline-flex min-h-11 items-center text-meta text-link underline underline-offset-4" href={`${base}/inbox?c=`}>{t("inbox.title")}</a>
+                  <a className="inline-flex min-h-11 items-center text-meta text-link underline underline-offset-4" href={`${base}/inbox`}>{t("inbox.title")}</a>
                   <Button size="sm" variant="secondary" loading={busy} onClick={disconnect}>{t("ig.card.disconnect")}</Button>
                 </>
               ) : (
@@ -122,7 +122,10 @@ function ChannelCard() {
         <p className="text-body text-fg">{t("people.settings.body")}</p>
         <ol className="flex flex-wrap gap-2 text-meta text-fg" aria-label={t("people.settings.title")}>
           {[t("people.reach.push"), t("people.reach.webPush"), t("people.reach.email"), t("people.reach.text")].map((r, i) => (
-            <li key={r} className="inline-flex h-8 items-center rounded-full bg-bg-subtle px-3">{`${i + 1}. ${r}`}</li>
+            <li key={r} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-bg-subtle px-3">
+              <span className="tabular text-fg-muted">{i + 1}</span>
+              {r}
+            </li>
           ))}
         </ol>
         {usage.data ? <p className="text-meta text-fg-muted tabular">{t("people.settings.texts", { used: usage.data.used, limit: usage.data.allowance })}</p> : null}

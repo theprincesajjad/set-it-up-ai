@@ -12,7 +12,7 @@ export default function RegularsPromosPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageTitle title={t("promo.title")} subtitle={t("promo.subtitle")} />
-      <PromoPicker />
+      <PromoPicker standalone />
     </div>
   );
 }

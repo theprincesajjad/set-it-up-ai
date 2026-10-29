@@ -690,6 +690,14 @@ export async function listClients(ctx: AppContext, merchantId: string, q: inboxA
   const yearAgo = new Date(now.getTime() - YEAR_MS);
   const monthAgo = new Date(now.getTime() - 30 * 86_400_000);
   const staffId = forcedStaffId ?? q.staffId ?? null;
+  // A client booked by phone at the desk or online is a customer of the shop even before a first stamp: give them a membership
+  // (no consent, no welcome bonus) so they show here and have a profile.
+  const orphans = await ctx.db
+    .selectDistinct({ userId: appointmentsT.userId })
+    .from(appointmentsT)
+    .where(and(eq(appointmentsT.merchantId, merchantId), isNotNull(appointmentsT.userId), sql`not exists (select 1 from merchant_members mm where mm.merchant_id = ${appointmentsT.merchantId} and mm.user_id = ${appointmentsT.userId})`))
+    .limit(500);
+  for (const o of orphans) await ensureMember(ctx, ctx.db as never, { merchantId, userId: o.userId!, joinedVia: "web", skipWelcomeBonus: true }).catch(() => undefined);
   const [members, appts] = await Promise.all([
     ctx.db
       .select({ id: merchantMembers.id, userId: merchantMembers.userId, balance: merchantMembers.balance, createdAt: merchantMembers.createdAt, name: users.name, phone: users.phone, email: users.email })

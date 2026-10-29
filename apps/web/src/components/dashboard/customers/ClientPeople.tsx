@@ -80,14 +80,18 @@ export function ClientPeople({ memberId, layout }: { memberId: string; layout: "
         )}
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" className="h-10 rounded-full px-4" loading={message.busy} onClick={() => message.open({ memberId })} data-testid="profile-message">
-            <MessageCircle aria-hidden className="size-4" />
-            {t("people.message")}
-            {p.unread ? <span className="ms-1 rounded-r2 bg-primary px-1.5 text-caption text-primary-foreground tabular">{p.unread}</span> : null}
+            <span className="inline-flex items-center gap-1.5">
+              <MessageCircle aria-hidden className="size-4" />
+              {t("people.message")}
+              {p.unread ? <span className="ms-1 rounded-r2 bg-primary px-1.5 text-caption text-primary-foreground tabular">{p.unread}</span> : null}
+            </span>
           </Button>
           {p.bookAgain ? (
             <Button variant="secondary" size="sm" className="h-10 rounded-full px-4" onClick={async () => { await navigator.clipboard?.writeText(p.bookAgain!.link).catch(() => undefined); toast({ message: t("people.linkCopied"), tone: "success" }); }} title={p.bookAgain.label}>
-              <RotateCcw aria-hidden className="size-4" />
-              {t("people.bookAgain")}
+              <span className="inline-flex items-center gap-1.5">
+                <RotateCcw aria-hidden className="size-4" />
+                {t("people.bookAgain")}
+              </span>
             </Button>
           ) : null}
         </div>
@@ -121,7 +125,7 @@ export function ClientPeople({ memberId, layout }: { memberId: string; layout: "
         )}
       </Section>
 
-      <Section title={t("people.channel")} description={reach}>
+      <Section title={t("people.settings.title")} description={`${t("people.channel")}: ${reach}`}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Select
             label={t("people.channel")}

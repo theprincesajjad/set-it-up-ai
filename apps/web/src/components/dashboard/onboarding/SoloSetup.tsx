@@ -25,6 +25,10 @@ type Checklist = merchantApi.OnboardingChecklist;
 type Solo = merchantApi.SoloSetupDto;
 type T = ReturnType<typeof useLocale>["t"];
 
+/** The card's name in the owner's language (the API sends English labels for some steps). */
+const LABELLED = new Set(["your_link", "services", "hours", "privacy", "share", "invite", "staff", "profile", "loyalty", "instagram_connect", "site", "promos"]);
+const stepLabel = (t: T, s: { key: string; label: string }) => (LABELLED.has(s.key) ? t(`ob.solo.step.${s.key}` as Parameters<T>[0]) : s.label);
+
 export function SoloSetup({ checklist, onChange, footer }: { checklist: Checklist; onChange: (c: Checklist) => void; footer?: ReactNode }) {
   const { t } = useLocale();
   const { base, detail, merchantId } = useMerchant();
@@ -51,7 +55,7 @@ export function SoloSetup({ checklist, onChange, footer }: { checklist: Checklis
   };
   const api = useMemo(() => soloApi(merchantId), [merchantId]);
   const trade = detail.merchant.vertical;
-  const rail: SetupStep[] = checklist.steps.map((s) => ({ id: s.key, title: s.label, time: SOLO_STEP_SECONDS[s.key] ? t("ob.solo.seconds", { n: SOLO_STEP_SECONDS[s.key]! }) : undefined, state: s.key === key ? "current" : s.done ? "done" : "todo", onSelect: () => go(s.key) }));
+  const rail: SetupStep[] = checklist.steps.map((s) => ({ id: s.key, title: stepLabel(t, s), time: SOLO_STEP_SECONDS[s.key] ? t("ob.solo.seconds", { n: SOLO_STEP_SECONDS[s.key]! }) : undefined, state: s.key === key ? "current" : s.done ? "done" : "todo", onSelect: () => go(s.key) }));
   const shared = checklist.steps.find((s) => s.key === "share")?.done;
 
   return (
@@ -98,7 +102,7 @@ function LaterList({ steps, current, onPick, t, className }: { steps: merchantAp
         {steps.map((s) => (
           <li key={s.key}>
             <button type="button" aria-current={s.key === current ? "step" : undefined} onClick={() => onPick(s.key)} className="flex min-h-11 w-full items-center justify-between gap-3 rounded-r2 text-start text-body font-[550] text-foreground focus-visible:focus-ring md:min-h-9">
-              <span className={s.key === current ? "text-foreground" : "text-muted-foreground"}>{s.label}</span>
+              <span className={s.key === current ? "text-foreground" : "text-muted-foreground"}>{stepLabel(t, s)}</span>
               {s.done ? <span className="text-meta text-muted-foreground">{t("ob.solo.done")}</span> : null}
             </button>
           </li>

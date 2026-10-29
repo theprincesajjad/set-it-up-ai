@@ -121,10 +121,11 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
 function NudgeToggle({ checklist, onChange }: { checklist: merchantApi.OnboardingChecklist; onChange: (c: merchantApi.OnboardingChecklist) => void }) {
   const { api, role } = useMerchant();
   const act = useAction();
+  const { t } = useLocale();
   if (role !== "owner" || checklist.activatedAt) return null;
   return (
     <p className="text-caption text-fg-muted">
-      Setup reminders by text: {checklist.nudgesOn ? "on" : "off"}.{" "}
+      {checklist.nudgesOn ? t("ob.solo.nudge.on") : t("ob.solo.nudge.off")}{" "}
       <button
         type="button"
         disabled={act.busy}
@@ -134,7 +135,7 @@ function NudgeToggle({ checklist, onChange }: { checklist: merchantApi.Onboardin
           if (r) onChange(r);
         }}
       >
-        {checklist.nudgesOn ? "Stop reminders" : "Turn on"}
+        {checklist.nudgesOn ? t("ob.solo.nudge.stop") : t("ob.solo.nudge.start")}
       </button>
     </p>
   );

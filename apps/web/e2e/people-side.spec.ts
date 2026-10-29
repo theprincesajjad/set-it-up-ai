@@ -57,13 +57,13 @@ const at = (d: Date, h: number) => {
 };
 
 /** A client with a finished visit (with a visit note) and a booked one, by phone. */
-async function clientWithVisits(shop: Awaited<ReturnType<typeof owner>>, name: string, phone = `+1${newPhone()}`) {
+async function clientWithVisits(shop: Awaited<ReturnType<typeof owner>>, name: string, phone = `+1${newPhone()}`, shift = 0) {
   const staff = (await call<{ items: { userId: string; name: string }[] }>("GET", `${shop.base}/appointments/staff`, undefined, shop.token)).items;
   const services = (await call<{ items: { id: string; name: string; active: boolean }[] }>("GET", `${shop.base}/services`, undefined, shop.token)).items.filter((s) => s.active);
-  const past = await call<{ id: string }>("POST", `${shop.base}/appointments`, { customer: { phone, name }, staffId: staff[0]!.userId, serviceIds: [services[0]!.id], startsAt: at(days(-21), 11), force: true }, shop.token);
+  const past = await call<{ id: string }>("POST", `${shop.base}/appointments`, { customer: { phone, name }, staffId: staff[0]!.userId, serviceIds: [services[0]!.id], startsAt: at(days(-21 + shift), 11 + shift), force: true }, shop.token);
   await call("POST", `${shop.base}/appointments/${past.id}/status`, { status: "completed" }, shop.token);
   await call("PUT", `${shop.base}/appointments/${past.id}/visit-note`, { visitNote: "Thin natural arch, sensitive skin: aloe after" }, shop.token);
-  const next = await call<{ id: string }>("POST", `${shop.base}/appointments`, { customer: { phone, name }, staffId: staff[0]!.userId, serviceIds: [services[services.length > 1 ? 1 : 0]!.id], startsAt: at(days(6), 14), force: true }, shop.token);
+  const next = await call<{ id: string }>("POST", `${shop.base}/appointments`, { customer: { phone, name }, staffId: staff[0]!.userId, serviceIds: [services[services.length > 1 ? 1 : 0]!.id], startsAt: at(days(6 + shift), 14 + shift), force: true }, shop.token);
   return { phone, pastId: past.id, nextId: next.id, staff: staff[0]!, service: services[0]! };
 }
 
@@ -230,4 +230,29 @@ test("6: Instagram reads coming until switched on; with the stub, a DM becomes a
   const ig = appts.items.find((a) => a.source === "instagram");
   expect(ig?.clientNote).toContain("@maya.chen");
   expect(ig?.conversationId).toBeTruthy();
+});
+
+test("screens in Urdu at 1440 and 390: customers, a profile, the inbox, promos and the Instagram card", async ({ page }) => {
+  const arch = await owner("arch-and-thread");
+  await clientWithVisits(arch, "Zara Ali", undefined, 2);
+  await signIn(page, "owner+arch-and-thread@example.com", `/m/${arch.id}/customers?lang=ur`);
+  for (const w of [1440, 390]) {
+    await page.setViewportSize({ width: w, height: w === 390 ? 844 : 900 });
+    await page.goto(`/m/${arch.id}/customers?lang=ur`);
+    await expect(page.getByTestId("clients-list")).toBeVisible();
+    await page.screenshot({ path: shot(`customers-${w}-ur`), fullPage: true });
+    await page.getByTestId("clients-list").getByRole("row", { name: /Zara Ali/ }).first().click();
+    await expect(page.getByTestId("client-people").getByTestId("next-visit")).toBeVisible();
+    await page.screenshot({ path: shot(`profile-${w}-ur`), fullPage: true });
+    await page.goto(`/m/${arch.id}/inbox?lang=ur`);
+    await expect(page.getByTestId("inbox-list").getByRole("button").first()).toBeVisible();
+    await page.screenshot({ path: shot(`inbox-${w}-ur`), fullPage: true });
+    await page.goto(`/m/${arch.id}/messages/promos?lang=ur`);
+    await expect(page.locator("[data-testid^=promo-tpl-]").first()).toBeVisible();
+    await page.locator("[data-testid^=promo-tpl-]").first().click();
+    await page.screenshot({ path: shot(`promos-${w}-ur`), fullPage: true });
+    await page.goto(`/m/${arch.id}/settings?tab=messages&lang=ur`);
+    await expect(page.getByTestId("instagram-card").getByText(/@|Connect|Coming/).first()).toBeVisible();
+    await page.screenshot({ path: shot(`settings-messages-${w}-ur`), fullPage: true });
+  }
 });

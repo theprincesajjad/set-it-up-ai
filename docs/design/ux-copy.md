@@ -372,3 +372,70 @@ Printed with the QR kit (A6, back of the stand or a separate card):
 | `misc.standSub` | earn points at {shop} and every shop on {street} |
 | `misc.standTrust` | No app needed · Free · Takes 30 seconds |
 | `misc.standFallback` | No phone camera? Just tell us your number. |
+
+## 13. Solo pros, inbox, promos, site
+
+Source of truth for the strings is `packages/shared/src/i18n/messages/en.ts` (the `phase-solo` blocks);
+hi, ur and pa follow the [translation glossary](../engineering/translation-glossary.md). The marketing
+pages for solo pros (`mkt.solo.*` in `apps/web/src/copy/en-CA.ts`) are English-only; their keys exist in
+all four catalogues so the type stays whole.
+
+Voice rules for this group:
+
+- Talk to one person who works alone or with a small team. "Your link", "your regulars", "your clients".
+  Trade words (client, regulars, chair) are fine inside the solo tools; Today, Customers and Reports keep "customer".
+- The address is never in a headline. Say what the client sees and when they get the address: "Clients
+  see your area, not your door. The address goes out after they book."
+- Say where a message goes before it is sent: "Goes to their app", "Sent by email". Say why when it
+  changed: "Your texts for this month are used up, so this went by email or waits in their app."
+- Promos go by app and email, never by text. Say it once, on the promo screen and in the reminder
+  preferences ("Offers never come by text").
+- Texts stay near one segment. The nudge texts (`ob.solo.nudge.*`) carry one link and one ask.
+- No "Upgrade". Name the plan: "See Café & Retail".
+
+| Group | Keys | Where it shows |
+| --- | --- | --- |
+| `su.*` | shop name, "Where do you work?", postal code, phone, errors, trade chips | Solo signup |
+| `ob.solo.*` | six setup cards, activation card, "move" tiles, d1/d3/d7/d14/d25 nudges | `/m/:id/setup`, Home, owner texts and email |
+| `inbox.*` | filters, empty state, send, "Sent by", Instagram read-only, "Create booking" | Owner inbox |
+| `inbox.me.*`, `inbox.n.*` | the client's messages page, the message notification | Client pass |
+| `people.*` | client profile, filters, visit note, intake question, reach channel, "Book again" | Customers, client profile |
+| `promo.*`, `promo.tpl.*` | allowance counter, audience, send, 63 seasonal templates | Promo picker |
+| `webpush.*`, `people.pref.*` | reminder prompt, iPhone steps, "How shops reach you" | Client pass, settings |
+| `ig.card.*` | Instagram card, coming soon, connect, disconnect | Messages settings |
+| `site.*`, `shell.nav.site` | public website labels, lapse banner | Built-in website |
+| `bk.privacy.*`, `shop.byAppt`, `shop.area`, `shop.travels`, `bk.msg.*` | area rule, "by appointment", confirmation and reminder texts with the address | Booking page, confirmation |
+| `ob.solo.share.*` | bio steps, text yourself the link, QR, paste a Linktree, Fresha or Booksy link | Share step |
+
+The English was reviewed against sections 0 to 3 in this pass. Changes: "your trade" became "your
+kind of work" (`ob.solo.services.body`), "Stamps are added at the till by themselves" became "...
+automatically" (`ob.solo.pos.body`), and "Add your team; each gets their own column and PIN" became two
+sentences (`ob.solo.staff.body`).
+
+### Needs a native speaker (hi, ur, pa)
+
+Written by the copy writer to the glossary; nobody fluent has read them yet.
+
+1. **Promo templates** (`promo.tpl.*`, 126 strings per language). Check festival names and spellings
+   (Eid, Diwali, Karva Chauth, Ramadan, Eid al-Adha, Thanksgiving, Halloween), that "Saturdays go first"
+   and "double stamps" read like a shop owner talking, and that no template reads as a religious
+   greeting from a shop of another faith. Hindi uses loanwords for Western days (मदर्स डे, फ़ादर्स डे).
+2. **The invite message** (`ob.solo.invite.message`, and the copy of it in `ob.solo.nudge.d3.body`). It is sent
+   from the owner's own phone. It opens with a neutral "Hello" (हेलो, ہیلو, ਹੈਲੋ) on purpose; confirm that
+   is right for a regular's phone, and that the register is friendly without being familiar.
+3. **Owner texts that must fit one segment** (`ob.solo.nudge.d1` to `d25`, `bk.msg.text24`, `text2`,
+   `textBooked`, `textStop`). Hindi, Urdu and Punjabi take more characters than English; shorten if a
+   carrier splits them. STOP stays Latin.
+4. **Gender on the owner's side**: "मैं ... करता/करती हूँ" and the Urdu and Punjabi slash forms in `su.where.mobile`,
+   `ob.solo.hours.working`, `ob.solo.services.addAll`, `ob.solo.invite.later`. A native speaker may prefer
+   a neutral rewording.
+5. **Words for the trades** (`su.chip.*`, `mkt.solo.*`): "नेल टेक", "ब्रो और लैश", "ग्रूमर", "बार्बर" and the
+   Urdu and Punjabi equivalents are what people say in a salon; check against the words a client would
+   use. Instagram is spelled in the local script where a label has no other script (inbox filter, source
+   list) and in Latin inside sentences.
+6. **Inbox status words** (`inbox.sentBy.*`, `inbox.via.*`, `people.status.*`): tense and gender must agree
+   with the thing described ("नहीं आए", "کرسی پر ہیں", "ਕੁਰਸੀ ਤੇ ਹਨ").
+7. **Reminder and Instagram wording** (`webpush.prompt.*`, `ig.card.*`): the iPhone steps name the buttons as the
+   system shows them in each language; confirm against a phone set to that language.
+8. **Urdu RTL screens**: read the three screenshots (setup, inbox, client profile at 390) for clipped
+   Nastaliq, mixed-direction lines (amounts, links, "Café & Retail") and number placement.

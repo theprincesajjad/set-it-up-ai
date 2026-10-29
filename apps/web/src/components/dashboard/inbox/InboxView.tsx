@@ -101,13 +101,13 @@ export function InboxView() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline justify-between gap-2">
-                  <span className={cn("truncate text-body", c.unread ? "font-semibold text-fg" : "text-fg")}>{c.displayName}</span>
+                  <span className={cn("truncate text-body", c.unread ? "font-semibold text-fg" : "text-fg")}><bdi>{c.displayName}</bdi></span>
                   <span className="shrink-0 text-caption text-fg-muted tabular">{stamp(c.lastMessageAt)}</span>
                 </span>
                 <span className="flex items-center justify-between gap-2">
                   <span className="truncate text-meta text-fg-muted">
                     {c.lastMessage?.direction === "out" ? `${t("inbox.you")}: ` : ""}
-                    {c.lastMessage?.body}
+                    <bdi>{c.lastMessage?.body}</bdi>
                   </span>
                   {c.unread ? <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-r2 bg-primary px-1.5 text-caption text-primary-foreground tabular" aria-label={`${c.unread}`}>{c.unread}</span> : null}
                 </span>
@@ -217,8 +217,10 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
         }
         action={
           <Button size="sm" variant="secondary" onClick={createBooking} data-testid="create-booking">
-            <CalendarPlus aria-hidden className="size-4" />
-            {t("inbox.createBooking")}
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarPlus aria-hidden className="size-4" />
+              {t("inbox.createBooking")}
+            </span>
           </Button>
         }
       />
@@ -241,7 +243,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
                 <p key={m.id} className="text-center text-caption text-fg-muted">{m.body}</p>
               ) : (
                 <div key={m.id} className={cn("flex max-w-4/5 flex-col", m.direction === "out" ? "ms-auto items-end" : "me-auto items-start")}>
-                  <p className={cn("whitespace-pre-wrap rounded-r5 px-3.5 py-2 text-body", m.direction === "out" ? "bg-primary text-primary-foreground" : "bg-bg-subtle text-fg")}>{m.body}</p>
+                  <p dir="auto" className={cn("whitespace-pre-wrap rounded-r5 px-3.5 py-2 text-body", m.direction === "out" ? "bg-primary text-primary-foreground" : "bg-bg-subtle text-fg")}>{m.body}</p>
                   <p className="mt-0.5 text-caption text-fg-muted">
                     {time(m.createdAt)}
                     {m.direction === "out" && m.channel ? ` · ${t(`inbox.via.${m.channel === "instagram" ? "in_app" : m.channel}` as "inbox.via.push")}` : ""}
