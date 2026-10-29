@@ -8,7 +8,8 @@
  *     wallet pass, the customer directory and basic reports. No fee on loyalty,
  *     unlimited members. (Unlimited staff and locations are kept free per the
  *     founder's earlier instruction; whether they stay free is an open question.)
- *  2. Everything else is on Pro ($39), Service ($99) or the restaurant pack. Trade tools
+ *  2. Everything else is on Pro (id plus), Studio, Service (id pro) or the restaurant pack (docs/business/pro-value.md
+ *     §2.2: Pro is the money features for one person, Studio adds the shop with chairs and the till). Trade tools
  *     ship "ga": a new shop subscribes and uses them at once (founder decision 2026-10-27).
  *     Only network-wide extras (FeatureDef.networkGated: sponsored promos and listings, map pins,
  *     BIA campaigns, nearby push) ship "hidden" until the network has 100 shops; an admin
@@ -22,10 +23,11 @@
  *     regardless of a merchant's plan.
  */
 
-export const PLAN_IDS = ["free", "plus", "pro"] as const;
+export const PLAN_IDS = ["free", "plus", "studio", "pro"] as const;
 export type PlanId = (typeof PLAN_IDS)[number];
 
-export const PLAN_RANK: Record<PlanId, number> = { free: 0, plus: 1, pro: 2 };
+/** Each plan includes everything below it: Service (pro) includes Studio, Studio includes Pro (plus). */
+export const PLAN_RANK: Record<PlanId, number> = { free: 0, plus: 1, studio: 2, pro: 3 };
 
 export interface Plan {
   id: PlanId;
@@ -41,6 +43,10 @@ export interface Plan {
 
 /** The fee on online orders for Free shops, in basis points. Defined first so the Free blurb and FEES cannot disagree. */
 const ORDER_BPS_FREE = 150;
+/** phase-pro P1: counts the blurbs quote, defined before PLANS so the copy and the rules cannot disagree (exported below). */
+const PRO_CALENDARS = 2;
+const PROMOS_PRO = 4;
+const PROMOS_STUDIO = 8;
 
 export const PLANS: Record<PlanId, Plan> = {
   free: {
@@ -56,18 +62,27 @@ export const PLANS: Record<PlanId, Plan> = {
   plus: {
     id: "plus",
     name: "Pro",
-    priceCents: 3900,
-    annualPriceCents: 39000,
-    blurb: "Unlimited bookable calendars, 4 promos a month to your regulars, rebooking nudges, VIP levels, email and text marketing, POS auto-award, customer exports, order-ahead, and class schedules with packs and memberships.",
-    bestFor: ["Cafés", "Bakeries", "Retail", "Grocers", "Salons", "Barbers", "Yoga & fitness studios"],
-    smsPerMonth: 500,
+    priceCents: 2900,
+    annualPriceCents: 29000,
+    blurb: `The money features for one person: a waitlist that fills cancelled slots, rebooking and win-back that run themselves, a Google review request after every visit, add-ons at booking and your week in money every Sunday. ${PRO_CALENDARS} bookable calendars, ${PROMOS_PRO} promos a month and no badge.`,
+    bestFor: ["Nail techs", "Lash and brow artists", "Barbers", "Hairstylists", "Groomers", "One-room studios"],
+    smsPerMonth: 300,
+  },
+  studio: {
+    id: "studio",
+    name: "Studio",
+    priceCents: 5900,
+    annualPriceCents: 59000,
+    blurb: `Everything in Pro for a shop with chairs: unlimited bookable calendars with no per-chair charge, the walk-in line, payouts and chair rent, ${PROMOS_STUDIO} promos a month, order-ahead and pickup slots, POS auto-award, webhooks and the API.`,
+    bestFor: ["Barbershops", "Salons", "Cafés", "Bakeries", "Grocers", "Dog daycares"],
+    smsPerMonth: 1000,
   },
   pro: {
     id: "pro",
     name: "Service",
     priceCents: 9900,
     annualPriceCents: 99000,
-    blurb: "Everything in Pro, plus service tickets, quote approvals, deposits, invoices and scheduling.",
+    blurb: "Everything in Studio, plus service tickets, quote approvals, deposits, invoices and scheduling.",
     bestFor: ["Repair", "Auto", "Alterations", "Print shops"],
     smsPerMonth: 1500,
   },
@@ -246,6 +261,9 @@ export const FEATURE_KEYS = [
   "booking.pickup_slots",
   "booking.appointments",
   "service.rebooking",
+  // phase-pro P1: the money features for one person (pro-value.md §2.2). P2 waitlist, P4 review requests.
+  "booking.waitlist",
+  "booking.review_requests",
   // Built-in website builder (workstream G): Pro on the annual plan only (FeatureDef.requiresAnnual).
   "site.builder",
   // Yoga, pilates, boxing, dance and women-only studios (docs/research/fitness-studios.md): sold inside Pro, no pack.
@@ -255,6 +273,10 @@ export const FEATURE_KEYS = [
   "memberships.recurring",
   // phase-pro P5: add-ons at booking (pro-value.md §2.2); P1 owns the plan lines around it.
   "booking.add_ons",
+  // phase-pro P6: the weekly money report and goal (pro-value.md §3.2 P6); P1 owns the plan lines around it.
+  "insights.weekly",
+  // phase-pro P2: the waitlist that fills cancelled slots (pro-value.md §3.2 P2); P1 owns the plan lines around it.
+  "booking.waitlist",
   // Grocers and halal butchers (docs/research/grocers.md): sold inside Pro, no pack.
   "grocery.flyer",
   "grocery.counter_preorders",
@@ -383,31 +405,35 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     network(f("promos.push_nearby", "Nearby push promos", "Push offers to network members near your shop.", "plus", 2, 100)),
     f("customers.csv_export", "CSV export", "Export your customers and activity.", "plus", 2, 100),
     f("customers.csv_import", "Import & migrate", "Bring members from another loyalty app.", "plus", 2, 100),
-    f("integrations.pos_auto_award", "POS auto-award", "Award points automatically from Square, Clover and more.", "plus", 2, 100),
-    f("integrations.webhooks", "Webhooks & API", "Outgoing webhooks, Zapier/Make and the merchant REST API.", "plus", 2, 100),
+    f("integrations.pos_auto_award", "POS auto-award", "Award points automatically from Square, Clover and more.", "studio", 2, 100),
+    f("integrations.webhooks", "Webhooks & API", "Outgoing webhooks, Zapier/Make and the merchant REST API.", "studio", 2, 100),
     f("reports.advanced", "Advanced reports", "Cohorts, retention, network overlap.", "plus", 2, 100),
-    f("orders.order_ahead", "Order-ahead", "Menu, pickup time and in-app checkout.", "plus", 2, 100),
-    f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "plus", 2, 100),
+    f("orders.order_ahead", "Order-ahead", "Menu, pickup time and in-app checkout.", "studio", 2, 100),
+    f("orders.pickup_status", "Pickup status", "'Ready' push and SMS notifications.", "studio", 2, 100),
     f("payments.in_app", "In-app payments", "Card payments via Stripe. No platform fee on online orders; 1% on deposits and invoices.", "plus", 2, 100),
-    f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "plus", 2, 100),
-    // Free for one bookable calendar (FREE_BOOKABLE_CALENDARS, solo-pro-launch.md §3.1); unlimited calendars on Pro. Not FREE_FOREVER (phase 2): the calendar cap is its only gate.
-    { ...f("booking.appointments", "Appointments", "Calendar, services and prices, online booking, deposits, reminders and no-show protection. One bookable calendar on Free, unlimited on Pro.", "free", 2), freeForVerticals: ["pharmacy"] as const },
+    f("booking.pickup_slots", "Pickup slots", "Customers pick a pickup time.", "studio", 2, 100),
+    // Free for one bookable calendar (FREE_BOOKABLE_CALENDARS, solo-pro-launch.md §3.1); two on Pro, unlimited on Studio (bookableCalendarLimit). Not FREE_FOREVER (phase 2): the calendar cap is its only gate.
+    { ...f("booking.appointments", "Appointments", "Calendar, services and prices, online booking, deposits, reminders and no-show protection. One bookable calendar on Free, two on Pro, as many as you need on Studio.", "free", 2), freeForVerticals: ["pharmacy"] as const },
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
+    f("booking.waitlist", "Waitlist that fills cancelled slots", "When a slot opens, the first client waiting is offered it by their best channel with a two-hour hold. On Free you see the list; on Pro it offers the slot for you.", "plus", 2, 100),
+    f("booking.review_requests", "Google review requests", "A review request two hours after every visit, by the client's best channel, with the same ask for every rating.", "plus", 2, 100),
     { ...f("site.builder", "Website", "A website built from your bookings, services, prices, loyalty, promos, reviews and map pin, with AI copy, hosting and one .ca domain. Included with the annual plan.", "plus", 2), requiresAnnual: true },
     f("booking.classes", "Classes", "Class schedule with capacity and waitlist, drop-ins, class packs and intro offers, late-cancel fees and door check-in for yoga, pilates, boxing, dance and women-only studios.", "plus", 2, 100),
-    f("booking.walkin_queue", "Walk-in line", "A live line for walk-ins: join from a phone or a tablet at the door, a wait estimate, a text when next, and the barber picks who is next.", "plus", 2, 100),
-    f("staff.payouts", "Barber payouts and chair rental", "Per-barber services, tips, commission, rent and take-home for the week, and a renter who sees only their own clients.", "plus", 2, 100),
+    f("booking.walkin_queue", "Walk-in line", "A live line for walk-ins: join from a phone or a tablet at the door, a wait estimate, a text when next, and the barber picks who is next.", "studio", 2, 100),
+    f("staff.payouts", "Barber payouts and chair rental", "Per-barber services, tips, commission, rent and take-home for the week, and a renter who sees only their own clients.", "studio", 2, 100),
     f("memberships.recurring", "Memberships", "Monthly and fixed-term memberships billed automatically to the card on file, with freezes, renewal notices and Ontario-compliant cancellation.", "plus", 2, 100),
     f("booking.add_ons", "Add-ons at booking", "Extras clients add when they book (nail art, removal, a French tip), with the price and the time blocked for you.", "plus", 2, 100),
+    f("insights.weekly", "Weekly report", "Your week in money: what was booked, how it compares with last week, what the waitlist and reminders brought back, and a goal, every Sunday.", "plus", 2, 100),
+    f("booking.waitlist", "Waitlist that fills cancelled slots", "Clients ask for a spot on a full day. When someone cancels, the first match is offered the slot by their best channel with a two-hour hold. On Free you see the list; nobody is told automatically.", "plus", 2, 100),
     ...[
-    f("grocery.flyer", "Weekly flyer", "Weekly deals on your shop page, by text and as WhatsApp copy, tied to Diwali, Eid and Lunar New Year.", "plus", 2, 100),
-    f("grocery.counter_preorders", "Butcher counter pre-orders", "Pre-orders by weight with deposits, pick-up hours, a weigh-in at the scale and qurbani bookings for Eid al-Adha.", "plus", 2, 100),
-    f("grocery.pantry_reminders", "Pantry reminders", "A text when a member who asked is about to run out of a bulk staple such as a 20 lb bag of atta.", "plus", 2, 100),
-    f("grocery.whatsapp_orders", "WhatsApp list orders", "Answer WhatsApp order lists inside the 24 hour window and turn them into pick-up orders with a pay link.", "plus", 2, 100),
+    f("grocery.flyer", "Weekly flyer", "Weekly deals on your shop page, by text and as WhatsApp copy, tied to Diwali, Eid and Lunar New Year.", "studio", 2, 100),
+    f("grocery.counter_preorders", "Butcher counter pre-orders", "Pre-orders by weight with deposits, pick-up hours, a weigh-in at the scale and qurbani bookings for Eid al-Adha.", "studio", 2, 100),
+    f("grocery.pantry_reminders", "Pantry reminders", "A text when a member who asked is about to run out of a bulk staple such as a 20 lb bag of atta.", "studio", 2, 100),
+    f("grocery.whatsapp_orders", "WhatsApp list orders", "Answer WhatsApp order lists inside the 24 hour window and turn them into pick-up orders with a pay link.", "studio", 2, 100),
     ].map((d): FeatureDef => ({ ...d, vertical: "grocery" })),
     ...[
     f("pets.profiles", "Pets and groom rebooking", "Pets under the owner with breed, size and coat, vaccine expiry dates with a photo of the certificate, a groom cadence per pet and a reminder text when a pet is due.", "plus", 2, 100),
-    f("pets.daycare", "Daycare check-in", "A day count against capacity and dogs per staff, a check-in that stops expired vaccines, prepaid packs and late-pickup minutes.", "plus", 2, 100),
+    f("pets.daycare", "Daycare check-in", "A day count against capacity and dogs per staff, a check-in that stops expired vaccines, prepaid packs and late-pickup minutes.", "studio", 2, 100),
     f("pets.food_cards", "Pet food cards", "A buy-12-get-1 card per brand and bag size that cannot be redeemed early, and a text before a bag runs out.", "plus", 2, 100),
     f("pets.report_cards", "Report cards", "A text with a private photo page after a groom or a daycare day.", "plus", 2, 100),
     ].map((d): FeatureDef => ({ ...d, vertical: "pet" })),
@@ -479,6 +505,8 @@ export interface FeatureContext {
   addOns?: readonly string[];
   /** On an annual paid subscription (merchants.annual_site_entitled), for FeatureDef.requiresAnnual features. */
   annualSiteEntitled?: boolean;
+  /** phase-pro P1: the plan of a live trial (liveTrialPlan), null or missing when there is none or it has ended. */
+  trialPlan?: PlanId | null;
 }
 
 /**
@@ -496,7 +524,7 @@ export function isFeatureEnabled(key: FeatureKey, ctx: FeatureContext): boolean 
   if (def.pack === "restaurant") {
     if (!ctx.restaurantTier) return false;
     if (RESTAURANT_TIER_RANK[ctx.restaurantTier] < RESTAURANT_TIER_RANK[def.packTier!] && !unlockedByAddOn(key, ctx)) return false;
-  } else if (PLAN_RANK[effectivePlan(ctx.plan, ctx.restaurantTier)] < PLAN_RANK[def.minPlan] && !(ctx.vertical && def.freeForVerticals?.includes(ctx.vertical))) return false;
+  } else if (PLAN_RANK[effectivePlan(ctx.plan, ctx.restaurantTier, ctx.trialPlan)] < PLAN_RANK[def.minPlan] && !(ctx.vertical && def.freeForVerticals?.includes(ctx.vertical))) return false;
   if (def.requiresAnnual && !(ANNUAL_INCLUDES_WEBSITE && ctx.annualSiteEntitled)) return false;
   if (ctx.stage === "beta") return ctx.betaOptIn === true;
   return true;
@@ -508,9 +536,15 @@ function unlockedByAddOn(key: FeatureKey, ctx: FeatureContext): boolean {
   return ctx.addOns.some((id) => ADD_ON_UNLOCKS[id as AddOnId]?.includes(key));
 }
 
-/** Any restaurant tier includes everything in Pro (ordering, promos, marketing, POS sync). */
-export function effectivePlan(plan: PlanId, restaurantTier?: RestaurantTier | null): PlanId {
-  return restaurantTier && PLAN_RANK[plan] < PLAN_RANK.plus ? "plus" : plan;
+/**
+ * The plan a shop gets features for. Any restaurant tier includes everything in Studio (ordering, pickup, promos, marketing,
+ * POS sync: what "everything in Pro" meant before Studio split off). A live trial (`trialPlan`, from liveTrialPlan) lifts the
+ * shop to at least the trial's plan; pass it only while the trial is live.
+ */
+export function effectivePlan(plan: PlanId, restaurantTier?: RestaurantTier | null, trialPlan?: PlanId | null): PlanId {
+  let p = restaurantTier && PLAN_RANK[plan] < PLAN_RANK.studio ? "studio" : plan;
+  if (trialPlan && PLAN_RANK[p] < PLAN_RANK[trialPlan]) p = trialPlan;
+  return p;
 }
 
 /** Is the paid plan itself purchasable yet? True once any feature on it is GA. */
@@ -529,8 +563,12 @@ export type FeatureOffer =
   | { kind: "network"; unlockAtMerchants: number }
   | { kind: "restaurant"; tier: RestaurantTier; name: string; priceCents: number }
   /** interval "year": only the annual subscription unlocks it (FeatureDef.requiresAnnual); priceCents is then the annual price. */
-  | { kind: "plan"; plan: "plus" | "pro"; name: string; priceCents: number; interval?: "year" }
+  | { kind: "plan"; plan: PaidPlanId; name: string; priceCents: number; interval?: "year" }
   | { kind: "free" };
+
+/** The plans a shop can subscribe to. */
+export type PaidPlanId = Exclude<PlanId, "free">;
+export const PAID_PLAN_IDS: readonly PaidPlanId[] = ["plus", "studio", "pro"];
 
 export function featureOffer(key: FeatureKey): FeatureOffer {
   const d = FEATURES[key];
@@ -541,20 +579,23 @@ export function featureOffer(key: FeatureKey): FeatureOffer {
   }
   if (d.minPlan === "free") return { kind: "free" };
   const plan = PLANS[d.minPlan];
-  if (d.requiresAnnual) return { kind: "plan", plan: d.minPlan as "plus" | "pro", name: plan.name, priceCents: plan.annualPriceCents, interval: "year" };
-  return { kind: "plan", plan: d.minPlan as "plus" | "pro", name: plan.name, priceCents: plan.priceCents };
+  if (d.requiresAnnual) return { kind: "plan", plan: d.minPlan as PaidPlanId, name: plan.name, priceCents: plan.annualPriceCents, interval: "year" };
+  return { kind: "plan", plan: d.minPlan as PaidPlanId, name: plan.name, priceCents: plan.priceCents };
 }
 
 // ---- phase-solo: A ----
 // Solo pro packaging (docs/business/solo-pro-launch.md §3, docs/business/pricing.md "Solo pro packaging"). Other
 // workstreams read these; never hard-code the numbers.
 
-/** Bookable calendars (staff with online booking hours) on Free. Paid plans and restaurant tiers: unlimited. */
+/** Bookable calendars (staff with online booking hours) on Free. */
 export const FREE_BOOKABLE_CALENDARS = 1;
+/** phase-pro P1: bookable calendars on Pro (one person and an apprentice). Studio, Service and restaurant tiers: unlimited. */
+export const PRO_BOOKABLE_CALENDARS = PRO_CALENDARS;
 
-/** Bookable calendars a plan allows; null = unlimited. */
-export function bookableCalendarLimit(plan: PlanId, restaurantTier?: RestaurantTier | null): number | null {
-  return effectivePlan(plan, restaurantTier) === "free" ? FREE_BOOKABLE_CALENDARS : null;
+/** Bookable calendars a plan allows (Free 1, Pro 2, Studio and up unlimited); null = unlimited. A live trial counts as its plan. */
+export function bookableCalendarLimit(plan: PlanId, restaurantTier?: RestaurantTier | null, trialPlan?: PlanId | null): number | null {
+  const p = effectivePlan(plan, restaurantTier, trialPlan);
+  return p === "free" ? FREE_BOOKABLE_CALENDARS : p === "plus" ? PRO_BOOKABLE_CALENDARS : null;
 }
 
 /** Texts a month on Free, reserved for transactional texts (confirmations, reminders); after that the reminder goes by email. */
@@ -564,9 +605,12 @@ export const FREE_REMINDER_SMS_PER_MONTH = PLANS.free.smsPerMonth;
 export const SMS_OVERAGE_CENTS = 4;
 
 /** Promos to your regulars (app push and email, no texts) on Pro monthly; unused promos do not roll over. */
-export const PROMOS_PER_MONTH_PLUS = 4;
-/** Promos on the annual plan, used whenever the shop likes within the subscription year. */
-export const PROMOS_PER_YEAR_ANNUAL = 48;
+export const PROMOS_PER_MONTH_PLUS = PROMOS_PRO;
+/** Promos on annual Pro, used whenever the shop likes within the subscription year. */
+export const PROMOS_PER_YEAR_ANNUAL = PROMOS_PRO * 12;
+/** phase-pro P1: promos on Studio (and Service, which includes it) monthly, and on annual. */
+export const PROMOS_PER_MONTH_STUDIO = PROMOS_STUDIO;
+export const PROMOS_PER_YEAR_STUDIO_ANNUAL = PROMOS_STUDIO * 12;
 
 /** The annual paid plan includes the built-in website (feature "site.builder", one .ca domain). */
 export const ANNUAL_INCLUDES_WEBSITE = true;
@@ -581,6 +625,8 @@ export interface PromoAllowanceInput {
   restaurantTier?: RestaurantTier | null;
   /** The active paid subscription's interval; null/undefined on Free. */
   interval?: BillingInterval | null;
+  /** phase-pro P1: a live trial's plan (liveTrialPlan); the trial counts as that plan, monthly. */
+  trialPlan?: PlanId | null;
   /** merchants.promos_sent_count and merchants.promos_sent_period_start. */
   sentCount: number;
   sentPeriodStart: Date | string | null;
@@ -600,64 +646,121 @@ export interface PromoAllowance {
 
 /** How many promos a shop can still send this billing period. One answer for the API (send gate) and the UI (counter). */
 export function promoAllowance(m: PromoAllowanceInput): PromoAllowance {
-  const paid = effectivePlan(m.plan, m.restaurantTier) !== "free";
-  const period: BillingInterval | null = paid ? (m.interval === "year" ? "year" : "month") : null;
-  const limit = period === "year" ? PROMOS_PER_YEAR_ANNUAL : period === "month" ? PROMOS_PER_MONTH_PLUS : 0;
+  const plan = effectivePlan(m.plan, m.restaurantTier, m.trialPlan);
+  const period: BillingInterval | null = plan !== "free" ? (m.interval === "year" ? "year" : "month") : null;
+  const studio = PLAN_RANK[plan] >= PLAN_RANK.studio;
+  const limit = period === "year" ? (studio ? PROMOS_PER_YEAR_STUDIO_ANNUAL : PROMOS_PER_YEAR_ANNUAL) : period === "month" ? (studio ? PROMOS_PER_MONTH_STUDIO : PROMOS_PER_MONTH_PLUS) : 0;
   const start = new Date(m.periodStart);
   const sentStart = m.sentPeriodStart ? new Date(m.sentPeriodStart) : null;
   const used = sentStart && sentStart.getTime() >= start.getTime() ? Math.max(0, m.sentCount) : 0;
   return { limit, used, remaining: Math.max(0, limit - used), period, periodStart: start.toISOString() };
 }
 
-/** Trades the founding solo price is for (beauty pros and barbershops). Vertical ids from verticals.ts (nails, brows_lashes, makeup land with workstream B). */
+/** Beauty pros and barbershops (solo-pro-launch.md). Vertical ids from verticals.ts. FIRST_YEAR_PRICE_VERTICALS=solo narrows the first-year price to them. */
 export const SOLO_VERTICALS = ["nails", "brows_lashes", "makeup", "salon", "barber"] as const;
 
-export interface FoundingSoloConfig {
-  /** Founder proposal, not yet confirmed (solo-pro-launch.md §8.3): on by default, FOUNDING_SOLO_ENABLED=false turns it off. */
+/**
+ * phase-pro P1 · The first-year price (founder decision, Oct 29 2026): the first 200 shops on annual Pro pay $199 for year
+ * one, then the list price (PLANS.plus.annualPriceCents). The UI shows it as a struck-through price ("$290 → $199 first
+ * year") and never names it; the spots counter stays internal (admin and the API's eligibility check, not the pages).
+ * It replaces the founding solo offer; merchants.founding_solo still marks the shops that took it.
+ */
+export interface FirstYearPriceConfig {
+  /** On by default; FIRST_YEAR_PRICE_ENABLED=false turns it off without a release. */
   enabled: boolean;
-  /** First-year annual price in cents (CAD); renews at PLANS.plus.annualPriceCents. */
+  /** Year-one price of annual Pro in cents (CAD). */
   priceCents: number;
+  /** Shops that can take it. */
   slots: number;
-  verticals: readonly string[];
+  /** Trades it is for; null = every shop. */
+  verticals: readonly string[] | null;
 }
 
-/** Founding solo price: the first 200 beauty pros and barbershops on the annual plan pay $290 for year one, then $390. */
-export const FOUNDING_SOLO: FoundingSoloConfig = { enabled: true, priceCents: 29000, slots: 200, verticals: SOLO_VERTICALS };
+export const FIRST_YEAR_PRICE: FirstYearPriceConfig = { enabled: true, priceCents: 19900, slots: 200, verticals: null };
 
 /**
- * The founding config with env overrides (FOUNDING_SOLO_ENABLED, FOUNDING_SOLO_PRICE_CENTS, FOUNDING_SOLO_SLOTS), so the
- * founder can change or strike the offer without a release. Pass process.env (API or a server component).
+ * The first-year price with env overrides (FIRST_YEAR_PRICE_ENABLED, FIRST_YEAR_PRICE_CENTS, FIRST_YEAR_PRICE_SLOTS,
+ * FIRST_YEAR_PRICE_VERTICALS as a comma list or "solo" for SOLO_VERTICALS). Pass process.env (API or a server component).
  */
-export function foundingSoloConfig(env: Record<string, string | undefined> = {}): FoundingSoloConfig {
-  const off = /^(0|false|off|no)$/i.test(env.FOUNDING_SOLO_ENABLED?.trim() ?? "");
+export function firstYearPriceConfig(env: Record<string, string | undefined> = {}): FirstYearPriceConfig {
+  const off = /^(0|false|off|no)$/i.test(env.FIRST_YEAR_PRICE_ENABLED?.trim() ?? "");
   const int = (v: string | undefined, d: number) => {
     const n = Number(v);
     return v != null && v.trim() !== "" && Number.isInteger(n) && n >= 0 ? n : d;
   };
+  const v = env.FIRST_YEAR_PRICE_VERTICALS?.trim();
+  const verticals = !v ? FIRST_YEAR_PRICE.verticals : v.toLowerCase() === "solo" ? SOLO_VERTICALS : v.split(",").map((x) => x.trim()).filter(Boolean);
   return {
-    enabled: FOUNDING_SOLO.enabled && !off,
-    priceCents: int(env.FOUNDING_SOLO_PRICE_CENTS, FOUNDING_SOLO.priceCents),
-    slots: int(env.FOUNDING_SOLO_SLOTS, FOUNDING_SOLO.slots),
-    verticals: FOUNDING_SOLO.verticals,
+    enabled: FIRST_YEAR_PRICE.enabled && !off,
+    priceCents: int(env.FIRST_YEAR_PRICE_CENTS, FIRST_YEAR_PRICE.priceCents),
+    slots: int(env.FIRST_YEAR_PRICE_SLOTS, FIRST_YEAR_PRICE.slots),
+    verticals,
   };
 }
 
-/** Spots left on the founding solo price, given how many shops already took it (merchants.founding_solo). */
-export function foundingSoloSpotsLeft(taken: number, cfg: FoundingSoloConfig = FOUNDING_SOLO): number {
+/** Is the first-year price on offer at all (enabled, cheaper than the list price, spots left)? What the public pages show. */
+export function firstYearPriceShown(cfg: FirstYearPriceConfig, spotsLeft: number): boolean {
+  return cfg.enabled && cfg.priceCents < PLANS.plus.annualPriceCents && spotsLeft > 0;
+}
+
+/** Spots left at the first-year price, given how many shops already took it (merchants.founding_solo). Internal only. */
+export function firstYearPriceSpotsLeft(taken: number, cfg: FirstYearPriceConfig = FIRST_YEAR_PRICE): number {
   return cfg.enabled ? Math.max(0, cfg.slots - Math.max(0, taken)) : 0;
 }
 
-/** Can this shop take the founding price on an annual Pro checkout? */
-export function isFoundingSoloEligible(
-  m: { vertical: string | null | undefined; foundingSolo?: boolean },
+/** Can this shop take the first-year price on an annual Pro checkout? `used`: it already took it once. */
+export function isFirstYearPriceEligible(
+  m: { vertical: string | null | undefined; used?: boolean },
   taken: number,
-  cfg: FoundingSoloConfig = FOUNDING_SOLO,
+  cfg: FirstYearPriceConfig = FIRST_YEAR_PRICE,
 ): boolean {
-  if (!cfg.enabled || m.foundingSolo) return false;
-  return !!m.vertical && cfg.verticals.includes(m.vertical) && foundingSoloSpotsLeft(taken, cfg) > 0;
+  if (!cfg.enabled || m.used || cfg.priceCents >= PLANS.plus.annualPriceCents) return false;
+  if (cfg.verticals && !(m.vertical && cfg.verticals.includes(m.vertical))) return false;
+  return firstYearPriceSpotsLeft(taken, cfg) > 0;
 }
+
 /** "Powered by Local Loyalty" shows on the booking and shop pages of Free shops only (solo-pro-launch.md §3.2). */
-export function showsPoweredBy(plan: PlanId, restaurantTier?: RestaurantTier | null): boolean {
-  return effectivePlan(plan, restaurantTier) === "free";
+export function showsPoweredBy(plan: PlanId, restaurantTier?: RestaurantTier | null, trialPlan?: PlanId | null): boolean {
+  return effectivePlan(plan, restaurantTier, trialPlan) === "free";
 }
 // ---- end phase-solo: A ----
+
+// ---- phase-pro: p1 ----
+// The 14-day Pro trial (pro-value.md §2.2): no card, starts the day the booking link goes live, one per shop. A flag on the
+// merchant (trial_plan, trial_ends_at), not a Stripe object, so there is nothing to cancel.
+
+/** Length of the trial. */
+export const TRIAL_DAYS = 14;
+/** The plan a trial gives. */
+export const TRIAL_PLAN: PaidPlanId = "plus";
+/** Texts during the trial; past this the reminder goes by email, as on Free. */
+export const TRIAL_SMS_CAP = 100;
+/** The day the Today card and the billing page say "three days left" (pro-value.md §5.3). */
+export const TRIAL_REMINDER_DAYS_LEFT = 3;
+
+export interface TrialFields {
+  trialPlan?: string | null;
+  trialEndsAt?: Date | string | null;
+}
+
+/** A trial is live while trial_ends_at is in the future. */
+export function trialActive(m: TrialFields, now: Date = new Date()): boolean {
+  if (!m.trialPlan || !m.trialEndsAt) return false;
+  return new Date(m.trialEndsAt).getTime() > now.getTime();
+}
+
+/** The live trial's plan, or null: what effectivePlan, isFeatureEnabled and the caps take as `trialPlan`. */
+export function liveTrialPlan(m: TrialFields, now: Date = new Date()): PlanId | null {
+  return trialActive(m, now) && (PLAN_IDS as readonly string[]).includes(m.trialPlan!) ? (m.trialPlan as PlanId) : null;
+}
+
+/** Whole days left, rounded up (13 days and an hour is 14); 0 once it has ended. */
+export function trialDaysLeft(endsAt: Date | string, now: Date = new Date()): number {
+  return Math.max(0, Math.ceil((new Date(endsAt).getTime() - now.getTime()) / 86_400_000));
+}
+
+/** When a trial started at `start` ends. */
+export function trialEndsAt(start: Date): Date {
+  return new Date(start.getTime() + TRIAL_DAYS * 86_400_000);
+}
+// ---- end phase-pro: p1 ----

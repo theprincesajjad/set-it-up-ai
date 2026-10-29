@@ -40,8 +40,8 @@ export function CtaRow({ id, center }: { id: string; center?: boolean }) {
   );
 }
 
-/** The band before the prices: one line, one button. */
-export function CtaBand() {
+/** The band before the prices: one line, the trial as the button. */
+export function CtaBand({ v }: { v: SoloView }) {
   return (
     <section className="sl-band" aria-labelledby="sl-band">
       <div className="sl-wrap sl-band-in">
@@ -49,12 +49,54 @@ export function CtaBand() {
           <h2 className="sl-d3" id="sl-band">
             {C.cta.band.title}
           </h2>
-          <p>{C.cta.band.sub}</p>
+          <p>{v.hero.price}</p>
         </div>
         <a className="sl-btn sl-btn-inv" href="#start" data-cta="prepricing">
-          {C.cta.primary}
+          {v.trialCta}
           <Arrow />
         </a>
+      </div>
+    </section>
+  );
+}
+
+/** The Pro money features: the waitlist, rebooking, reviews and the weekly report, each with an illustrative sample (plan-copy.ts). */
+export function ProFeatures({ v }: { v: SoloView }) {
+  const P = v.pro;
+  return (
+    <section className="sl-sec sl-sec-white" id="pro" aria-labelledby="sl-pro">
+      <div className="sl-wrap">
+        <div className="sl-head">
+          <h2 className="sl-d2" id="sl-pro">
+            {P.title}
+          </h2>
+          <p className="sl-lede">{P.sub}</p>
+        </div>
+        <div className="sl-pro">
+          {P.items.map((x, i) => (
+            <article key={x.id} className="sl-pro-card card-clear" data-pro={x.id}>
+              <div className="sl-pro-demo" aria-hidden>
+                <Obj name={["calendar_week", "regulars", "top", "price_tag"][i]!} size={30} />
+                <div>
+                  <b>{x.sample}</b>
+                  <small>{x.sampleLine}</small>
+                </div>
+              </div>
+              <h3>{x.title}</h3>
+              <p>{x.body}</p>
+            </article>
+          ))}
+        </div>
+        <p className="sl-note sl-pro-note">{P.caption}</p>
+        <div className="sl-ctarow">
+          <a className="sl-btn" href="#start" data-cta="pro">
+            {P.cta}
+            <Arrow />
+          </a>
+          <a className="sl-link" href="#plans" data-cta="seepricing">
+            {C.cta.pricing}
+          </a>
+        </div>
       </div>
     </section>
   );
@@ -558,8 +600,14 @@ export function PriceBlock({ v }: { v: SoloView }) {
                 {p.per ? <small>{p.per}</small> : null}
               </span>
               {p.yearly ? (
-                <span className="yearly" data-plan="yearly">
-                  {p.yearly.line}
+                <span className="yearly" data-plan={p.key === "monthly" ? "yearly" : undefined}>
+                  {p.yearly.was ? (
+                    <>
+                      {p.yearly.or} <s>{p.yearly.was}</s> <b>{p.yearly.now}</b> {p.yearly.label}
+                    </>
+                  ) : (
+                    p.yearly.line
+                  )}
                 </span>
               ) : null}
               <span className="what">{p.tagline}</span>
@@ -571,7 +619,6 @@ export function PriceBlock({ v }: { v: SoloView }) {
                   </li>
                 ))}
               </ul>
-              {p.yearly?.extra ? <span className="sl-note">{p.yearly.extra}</span> : null}
               <a className={p.key === "monthly" ? "sl-btn sl-btn-inv" : "sl-btn"} href="#start" data-cta="plans">
                 {p.cta}
               </a>

@@ -4,7 +4,7 @@
  */
 import { and, desc, eq, gte, inArray, isNull, lt, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { auditLogs, ledgerTransactions, loyaltyPrograms, merchantMembers, merchants, neighbourhoods, promos, redemptions, rewards, users, visits, type DbOrTx } from "@ll/db";
-import { reportsApi } from "@ll/shared";
+import { reportsApi, type appointmentsApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest } from "../lib/errors.js";
 import { getMerchantFeatures } from "./features.js";
@@ -13,6 +13,7 @@ import { countActiveMembers, iso } from "./merchant.js";
 import { memberRhythms, shopDate } from "./member-stats.js";
 import { localDate } from "./messaging.js";
 import { localDayStart } from "./staff.js";
+import { addOnTicketReport } from "./add-ons.js"; // phase-pro P5
 
 type Merchant = typeof merchants.$inferSelect;
 const DAY = 86400000;
@@ -95,7 +96,7 @@ async function metrics(db: DbOrTx, merchantId: string, from: Date, to: Date): Pr
   };
 }
 
-export async function overview(ctx: AppContext, merchant: Merchant, q: reportsApi.RangeQuery): Promise<reportsApi.OverviewReport> {
+export async function overview(ctx: AppContext, merchant: Merchant, q: reportsApi.RangeQuery): Promise<reportsApi.OverviewReport & appointmentsApi.AddOnTicketReport> {
   const r = resolveRange(ctx, q);
   const len = r.to.getTime() - r.from.getTime();
   const now = ctx.now();
@@ -107,7 +108,10 @@ export async function overview(ctx: AppContext, merchant: Merchant, q: reportsAp
       .from(visits)
       .where(and(eq(visits.merchantId, merchant.id), gte(visits.createdAt, new Date(now.getTime() - 30 * DAY)), lte(visits.createdAt, now))),
   ]);
-  return { range: rangeOut(r), current, previous, activeMembers30d: num(last30[0]?.n), pointsLiability: await pointsLiability(ctx.db, merchant.id), scope: merchant.vertical === "pharmacy" ? "front_store" : "all" };
+  // ---- phase-pro: P5 ---- average ticket and add-on attach rate over completed appointments in the range
+  const ticket = await addOnTicketReport(ctx.db, merchant.id, r.from, r.to);
+  // ---- end phase-pro: P5 ----
+  return { range: rangeOut(r), current, previous, activeMembers30d: num(last30[0]?.n), pointsLiability: await pointsLiability(ctx.db, merchant.id), scope: merchant.vertical === "pharmacy" ? "front_store" : "all", ...ticket };
 }
 
 /**

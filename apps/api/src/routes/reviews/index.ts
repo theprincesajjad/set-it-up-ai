@@ -2,7 +2,7 @@
  * Review requests: public rating page by token, merchant list, stats and settings.
  */
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { restaurantWebApi, whatsappApi } from "@ll/shared";
+import { restaurantWebApi, reviewsApi, whatsappApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
@@ -36,6 +36,23 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
       const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
       return svc.saveReviewSettings(ctx, s.merchant, s.user.id, parse(whatsappApi.reviewSettingsBody, req.body));
     });
+
+    // ---- phase-pro: p4 (appointment review requests: Settings, Reviews and the checkout success line) ----
+    app.get("/merchants/:merchantId/reviews/appointments/settings", async (req: Req) => {
+      const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+      return svc.appointmentReviewSettings(ctx, s.merchant);
+    });
+
+    app.put("/merchants/:merchantId/reviews/appointments/settings", async (req: Req) => {
+      const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+      return svc.saveAppointmentReviewSettings(ctx, s.merchant, s.user.id, parse(reviewsApi.appointmentReviewSettingsBody, req.body));
+    });
+
+    app.get("/merchants/:merchantId/reviews/appointments/:appointmentId", async (req: FastifyRequest<{ Params: { merchantId: string; appointmentId: string } }>) => {
+      const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+      return svc.appointmentReviewStatus(ctx, s.merchant, req.params.appointmentId);
+    });
+    // ---- end phase-pro: p4 ----
 
     type ReviewReq = FastifyRequest<{ Params: { merchantId: string; reviewId: string } }>;
     app.post("/merchants/:merchantId/reviews/:reviewId/handled", async (req: ReviewReq) => {

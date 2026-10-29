@@ -41,13 +41,12 @@ describe("plans", () => {
       "promos.push_nearby",
       "customers.csv_export",
       "customers.csv_import",
-      "integrations.pos_auto_award",
-      "integrations.webhooks",
       "reports.advanced",
-      "orders.order_ahead",
-      "orders.pickup_status",
       "payments.in_app",
-      "booking.pickup_slots",
+      "booking.waitlist",
+      "booking.review_requests",
+      "booking.add_ons",
+      "insights.weekly",
     ];
     for (const k of plus) {
       expect(FEATURES[k].minPlan, k).toBe("plus");
@@ -55,13 +54,15 @@ describe("plans", () => {
       expect(FEATURES[k].unlockAtMerchants, k).toBe(k === "promos.push_nearby" ? 100 : 0);
       expect(isFeatureEnabled(k, { plan: "free", stage: "ga" }), k).toBe(false);
       expect(isFeatureEnabled(k, { plan: "plus", stage: "ga" }), k).toBe(true);
-      // Pro includes Plus.
+      // Studio and Service include Pro.
+      expect(isFeatureEnabled(k, { plan: "studio", stage: "ga" }), k).toBe(true);
       expect(isFeatureEnabled(k, { plan: "pro", stage: "ga" }), k).toBe(true);
     }
     for (const k of ["service.tickets", "service.quote_approval", "service.deposits", "service.invoices", "booking.dropoff_scheduling", "staff.permissions"] as const) {
       expect(FEATURES[k].minPlan).toBe("pro");
       expect(FEATURES[k].defaultStage).toBe("ga");
       expect(isFeatureEnabled(k, { plan: "plus", stage: "ga" })).toBe(false);
+      expect(isFeatureEnabled(k, { plan: "studio", stage: "ga" })).toBe(false);
     }
     // Every paid trade tool ships live (founder decision 2026-10-27); only network-wide extras ship hidden. Outside PAID_FEATURES: FREE_FOREVER + the platform perks lever + phase 3 are outside PAID_FEATURES.
     for (const k of PAID_FEATURES) expect(FEATURES[k].defaultStage).toBe(FEATURES[k].networkGated ? "hidden" : "ga");
@@ -69,7 +70,8 @@ describe("plans", () => {
       // booking.appointments is free (one calendar) but not free forever: it is phase 2, gated only by the calendar cap.
       ["ads.map_pin", "ads.sponsored_listing", "ads.sponsored_promo", "booking.appointments", "campaigns.neighbourhood", "network.perks"].sort(),
     );
-    expect(PLANS.plus.priceCents).toBe(3900);
+    expect(PLANS.plus.priceCents).toBe(2900);
+    expect(PLANS.studio.priceCents).toBe(5900);
     expect(PLANS.pro.priceCents).toBe(9900);
   });
   it("treats network perks as a platform lever, not a merchant feature", () => {
@@ -84,9 +86,9 @@ describe("plans", () => {
   it("hides paid features until rolled out", () => {
     expect(isFeatureEnabled("orders.order_ahead", { plan: "pro", stage: "hidden" })).toBe(false);
     expect(isFeatureEnabled("orders.order_ahead", { plan: "free", stage: "ga" })).toBe(false);
-    expect(isFeatureEnabled("orders.order_ahead", { plan: "plus", stage: "ga" })).toBe(true);
-    expect(isFeatureEnabled("orders.order_ahead", { plan: "plus", stage: "beta" })).toBe(false);
-    expect(isFeatureEnabled("orders.order_ahead", { plan: "plus", stage: "beta", betaOptIn: true })).toBe(true);
+    expect(isFeatureEnabled("orders.order_ahead", { plan: "studio", stage: "ga" })).toBe(true);
+    expect(isFeatureEnabled("orders.order_ahead", { plan: "studio", stage: "beta" })).toBe(false);
+    expect(isFeatureEnabled("orders.order_ahead", { plan: "studio", stage: "beta", betaOptIn: true })).toBe(true);
     expect(isPlanAvailable("plus", {})).toBe(true);
     expect(isPlanAvailable("plus", { "orders.order_ahead": "hidden" })).toBe(true);
   });
@@ -138,7 +140,9 @@ describe("restaurant pack", () => {
     expect(isFeatureEnabled("restaurant.kds", { plan: "free", stage: "ga", restaurantTier: "growth" })).toBe(false);
     expect(isFeatureEnabled("restaurant.kds", { plan: "free", stage: "ga", restaurantTier: "pro" })).toBe(true);
     expect(isFeatureEnabled("orders.order_ahead", { plan: "free", stage: "ga", restaurantTier: "starter" })).toBe(true);
-    expect(effectivePlan("free", "starter")).toBe("plus");
+    // A restaurant tier includes Studio (ordering, pickup and POS sync moved there from Pro).
+    expect(effectivePlan("free", "starter")).toBe("studio");
+    expect(effectivePlan("plus", "starter")).toBe("studio");
     expect(effectivePlan("pro", "starter")).toBe("pro");
     for (const k of RESTAURANT_FEATURES) expect(FEATURES[k].defaultStage).toBe("ga");
   });
@@ -175,9 +179,11 @@ describe("trade tools self-serve (founder decision 2026-10-27)", () => {
     const on = (k: FeatureKey, ctx: Omit<Parameters<typeof isFeatureEnabled>[1], "stage">) => isFeatureEnabled(k, { ...ctx, stage: stage(k) });
     expect(on("booking.appointments", { plan: "plus" })).toBe(true);
     expect(on("booking.classes", { plan: "plus" })).toBe(true);
-    expect(on("booking.walkin_queue", { plan: "plus" })).toBe(true);
-    expect(on("pets.daycare", { plan: "plus", vertical: "pet" })).toBe(true);
-    expect(on("pets.daycare", { plan: "plus", vertical: "cafe" })).toBe(false);
+    expect(on("booking.walkin_queue", { plan: "studio" })).toBe(true);
+    expect(on("booking.walkin_queue", { plan: "plus" })).toBe(false);
+    expect(on("pets.daycare", { plan: "studio", vertical: "pet" })).toBe(true);
+    expect(on("pets.daycare", { plan: "studio", vertical: "cafe" })).toBe(false);
+    expect(on("pets.profiles", { plan: "plus", vertical: "pet" })).toBe(true);
     expect(on("orders.order_ahead", { plan: "free", restaurantTier: "starter" })).toBe(true);
     expect(on("restaurant.tiffin", { plan: "free", restaurantTier: "starter" })).toBe(false);
     expect(on("restaurant.tiffin", { plan: "free", restaurantTier: "growth" })).toBe(true);
@@ -196,9 +202,11 @@ describe("trade tools self-serve (founder decision 2026-10-27)", () => {
 describe("featureOffer: the plan, price and checkout a locked feature points at", () => {
   it("names the real plan for each kind of feature", () => {
     expect(featureOffer("booking.appointments")).toEqual({ kind: "free" });
-    expect(featureOffer("promos.basic")).toMatchObject({ kind: "plan", plan: "plus", name: "Pro", priceCents: 3900 });
+    expect(featureOffer("promos.basic")).toMatchObject({ kind: "plan", plan: "plus", name: "Pro", priceCents: 2900 });
     expect(featureOffer("promos.basic")).not.toHaveProperty("interval");
-    expect(featureOffer("site.builder")).toEqual({ kind: "plan", plan: "plus", name: "Pro", priceCents: 39000, interval: "year" });
+    expect(featureOffer("site.builder")).toEqual({ kind: "plan", plan: "plus", name: "Pro", priceCents: 29000, interval: "year" });
+    expect(featureOffer("booking.waitlist")).toMatchObject({ kind: "plan", plan: "plus", name: "Pro", priceCents: 2900 });
+    expect(featureOffer("booking.walkin_queue")).toMatchObject({ kind: "plan", plan: "studio", name: "Studio", priceCents: 5900 });
     expect(featureOffer("service.tickets")).toMatchObject({ kind: "plan", plan: "pro", name: "Service", priceCents: 9900 });
     // Tiffin and catering are Growth ($199), not Starter ($99); banquet is Pro ($349).
     expect(featureOffer("restaurant.tiffin")).toMatchObject({ kind: "restaurant", tier: "growth", priceCents: 19900 });

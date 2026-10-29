@@ -39,6 +39,7 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import { HoursCard, NumbersCard, NeedsYouCard, QuickActionsCard, UpNextCard } from "./TodayCards";
 import { StreetCard } from "./StreetCard";
+import { ThisWeekTile } from "./ThisWeekTile"; // phase-pro: p6
 import { useThemeStyle } from "@/components/ui/ThemeStyle";
 
 /** Clear: the page header's glass secondary (ClearKit GlassButton, default size). */
@@ -263,6 +264,8 @@ export function TodayPage() {
           </>
         }
       />
+
+      {manager ? <ThisWeekTile /> : null /* phase-pro: p6 (TODO(P1): mount TrialCard here) */}
 
       {err && !needs.length && !today.data && !restaurant.data ? <ErrorLine message={err} onRetry={() => { void today.reload(); void restaurant.reload(); }} /> : null}
 

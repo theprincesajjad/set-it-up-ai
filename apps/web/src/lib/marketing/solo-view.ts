@@ -5,7 +5,7 @@
  */
 import { copy } from "@/copy/en-CA";
 import { landingVariant, type JobId } from "./landing-variants";
-import { marketingPlans, planLine, planVars } from "./plan-copy";
+import { marketingPlans, planLine, planNote, planVars, proHighlights } from "./plan-copy";
 import { fill, moneyShort } from "./text";
 import { SAMPLE_DEPOSIT_CENTS, SAMPLE_SERVICES, SHOWN_SERVICES, SOLO_PAGES, SOLO_PHOTOS, soloKey, soloVertical, type NailTrade, type SoloKey, type SoloPageId } from "./solo";
 
@@ -85,7 +85,10 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
     notes: T.notes.map(f),
     card: fill(C.regulars.card, { client: T.client, have: goal - 1, goal }),
     /** The two plan cards and the note under them: lib/marketing/plan-copy.ts, the one place the plans are described. */
-    price: { title: C.price.title, sub: C.price.sub, plans: marketingPlans("solo"), note: planLine("noteSolo") },
+    price: { title: C.price.title, sub: C.price.sub, plans: marketingPlans("solo"), note: planNote("solo") },
+    /** The Pro money features (waitlist, rebooking, reviews, the weekly report), from plan-copy.ts. */
+    pro: proHighlights(),
+    trialCta: planLine("trialCta"),
   };
 }
 

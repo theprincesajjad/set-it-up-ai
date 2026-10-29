@@ -211,7 +211,12 @@ export interface ServiceSettingsDto {
 export const REBOOK_STATES = ["due", "late", "snoozed"] as const;
 export const rebookingQuery = z.object({ state: z.enum(REBOOK_STATES).default("due") });
 export const rebookingActionBody = z.object({ snoozeDays: z.number().int().min(1).max(180).default(14) });
-export const rebookingSettingsBody = z.object({ auto: z.boolean() });
+// ---- phase-pro: p3 ----
+export const REBOOKING_MODES = ["review", "auto", "off"] as const;
+export type RebookingMode = (typeof REBOOKING_MODES)[number];
+/** `auto` is kept for older callers (true = "auto", false = "review"); `mode` wins when both are sent. */
+export const rebookingSettingsBody = z.object({ auto: z.boolean().optional(), mode: z.enum(REBOOKING_MODES).optional() }).refine((b) => b.auto !== undefined || b.mode !== undefined, { message: "Send a mode" });
+// ---- end phase-pro: p3 ----
 export const rebookRuleBody = z.object({ rebookAfterDays: z.number().int().min(1).max(730).nullable() });
 
 // ---------------------------------------------------------------------------
@@ -499,7 +504,8 @@ export interface RebookingRowDto {
   rebookAfterDays: number;
   dueOn: string;
   daysLate: number;
-  channel: "sms" | "push";
+  /** The rung that will reach them first: app push, web push, email, then text (phase-pro p3 widened it). */
+  channel: "sms" | "push" | "web_push" | "email";
   language: string;
   state: "due" | "late" | "snoozed";
   /** False when the customer has not agreed to messages from the shop (or has no phone or app). */
@@ -509,9 +515,36 @@ export interface RebookingRowDto {
 export interface RebookingResponse {
   items: RebookingRowDto[];
   counts: { due: number; late: number; snoozed: number };
-  settings: { auto: boolean };
-  stats: { dueThisWeek: number; sentLast30: number; sentSms: number; sentPush: number; bookedWithin7Days: number; nudgedCount: number; optedOut: number };
+  settings: RebookingSettings;
+  stats: { dueThisWeek: number; sentLast30: number; sentSms: number; sentPush: number; sentEmail: number; bookedWithin7Days: number; nudgedCount: number; optedOut: number };
 }
+
+// ---- phase-pro: p3 ----
+export interface RebookingSettings {
+  /** True when the mode is "auto" and the plan includes it. */
+  auto: boolean;
+  /** What is in force: "auto" shows as "review" while the plan does not include it. */
+  mode: RebookingMode;
+  /** False on Free: the switch is locked and the plan line shows. */
+  canAuto: boolean;
+}
+export interface RebookingWindowResults {
+  sent: number;
+  booked: number;
+  amountCents: number;
+}
+/** "This month: 31 reminded · 9 rebooked · $495": week is the last 7 days, month is the shop's calendar month. */
+export interface RebookingResultsResponse {
+  week: RebookingWindowResults;
+  month: RebookingWindowResults;
+}
+/** The public welcome for a book-again link: first name, service and stylist to open the booking page on. */
+export interface RebookWelcomeDto {
+  firstName: string | null;
+  serviceId: string | null;
+  staffId: string | null;
+}
+// ---- end phase-pro: p3 ----
 
 export interface RebookRuleDto {
   serviceId: string;

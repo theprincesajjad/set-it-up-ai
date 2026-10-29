@@ -9,7 +9,7 @@ import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
 import { HttpError, badRequest, notFound } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { loadMerchant, requirePermission, type StaffPermission } from "../../services/commerceShared.js";
-import { requireFeature } from "../../services/features.js";
+import { getMerchantFeatures, requireFeature } from "../../services/features.js";
 import * as invoicesSvc from "../../services/invoices.js";
 import * as quotesSvc from "../../services/quotes.js";
 import * as pickupSvc from "../../services/pickup.js";
@@ -178,8 +178,26 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   // ---------------------------------------------------------------- rebooking (service.rebooking)
   type RebookParams = MerchantParams & { userId: string; serviceId: string };
 
+  // ---- phase-pro: p3 ---- A Free shop with a calendar sees who is due, the rules and the results (the locked switch sits on this page); sending stays on Pro.
+  async function rebookReader(req: FastifyRequest, minRole: StaffRole = "staff", perm?: StaffPermission) {
+    const { merchantId } = req.params as MerchantParams;
+    const staff = await requireStaff(ctx, req, merchantId, minRole);
+    if (perm) await requirePermission(ctx, staff, perm);
+    if (!(await getMerchantFeatures(ctx.db, staff.merchant))["booking.appointments"].enabled) await requireFeature(ctx.db, staff.merchant, "service.rebooking");
+    return staff;
+  }
+
+  app.get<{ Params: MerchantParams }>("/merchants/:merchantId/rebooking/results", async (req) => {
+    const staff = await rebookReader(req);
+    return rebookingSvc.rebookingResults(ctx, staff.merchant);
+  });
+
+  /** Public: a book-again link's welcome (first name, service, stylist). The link's id is the key; nothing else about the client is returned. */
+  app.get<{ Params: { slug: string; nudgeId: string } }>("/public/shops/:slug/rebook/:nudgeId", async (req) => rebookingSvc.rebookWelcome(ctx, req.params.slug, req.params.nudgeId));
+  // ---- end phase-pro: p3 ----
+
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/rebooking", async (req) => {
-    const staff = await staffFor(req, "staff", ["service.rebooking"]);
+    const staff = await rebookReader(req); // phase-pro: p3 (was service.rebooking)
     const q = parse(serviceApi.rebookingQuery, req.query);
     return rebookingSvc.rebookingOverview(ctx, staff.merchant, q.state);
   });
@@ -208,18 +226,20 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   });
 
   app.put<{ Params: MerchantParams }>("/merchants/:merchantId/rebooking/settings", async (req) => {
-    const staff = await staffFor(req, "manager", ["service.rebooking"], "bookings.manage");
+    const staff = await rebookReader(req, "manager", "bookings.manage"); // phase-pro: p3
     const body = parse(serviceApi.rebookingSettingsBody, req.body);
-    return rebookingSvc.setAuto(ctx, staff.merchant, body.auto);
+    // phase-pro: p3 -- any mode; "auto" is checked against the plan inside setRebookingMode (402 with the Pro offer)
+    if (body.mode) return rebookingSvc.setRebookingMode(ctx, staff.merchant, body.mode);
+    return rebookingSvc.setAuto(ctx, staff.merchant, !!body.auto);
   });
 
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/rebooking/rules", async (req) => {
-    const staff = await staffFor(req, "staff", ["service.rebooking"]);
+    const staff = await rebookReader(req); // phase-pro: p3
     return { items: await rebookingSvc.listRules(ctx, staff.merchant) };
   });
 
   app.put<{ Params: MerchantParams & { serviceId: string } }>("/merchants/:merchantId/rebooking/rules/:serviceId", async (req) => {
-    const staff = await staffFor(req, "manager", ["service.rebooking"], "bookings.manage");
+    const staff = await rebookReader(req, "manager", "bookings.manage"); // phase-pro: p3
     const body = parse(serviceApi.rebookRuleBody, req.body);
     return rebookingSvc.setRule(ctx, staff.merchant, req.params.serviceId, body);
   });

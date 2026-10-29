@@ -1,13 +1,12 @@
 import { BRAND } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
 import { COMPETITORS, formatAsOf } from "@/lib/marketing/sources";
-import { PriceStrip } from "./PriceStrip";
-import { MHeading, MSection } from "./Section";
 
 export { COMPETITORS } from "@/lib/marketing/sources";
 
 /**
- * "What you won't pay": us against named, dated competitors, each cell read from the vendor's public pricing page.
+ * "How we compare" on the home page (landing v4, Clear): us against named, dated competitors, each cell read from the vendor's public
+ * pricing page. The plans themselves are the home page's price cards (lib/marketing/plan-copy.ts).
  * Every row of COMPETITORS carries `asOf` and `sourceUrl`; a unit test fails when one is older than 90 days.
  */
 export function CompetitorTable() {
@@ -16,14 +15,20 @@ export function CompetitorTable() {
   const notes = [...new Set(COMPETITORS.map((x) => x.currencyNote).filter(Boolean))];
   const get = (x: (typeof COMPETITORS)[number], row: number) => [x.monthlyFee, x.locations, x.salesFee][row]!;
   return (
-    <MSection>
-      <MHeading eyebrow={c.eyebrow} title={c.title} />
+    <section className="hm-sec hm-white" aria-labelledby="hm-compare">
+      <div className="hm-wrap">
+      <div className="hm-head">
+        <h2 className="hm-h2" id="hm-compare">
+          {c.title}
+        </h2>
+        <p className="hm-lede">{c.sub}</p>
+      </div>
       {/* Phones: one block per row, nothing wraps mid-price. Wider: the table. */}
       <div className="flex flex-col gap-3 sm:hidden">
         {c.rows.map((label, i) => (
-          <dl key={label} className="rounded-card bg-card px-5 py-4 shadow-card">
+          <dl key={label} className="card-clear px-5 py-4">
             <dt className="text-meta text-muted-foreground">{label}</dt>
-            <dd className="display mt-1 text-title text-foreground">
+            <dd className="mt-1 text-title font-semibold text-foreground">
               {BRAND.name}: {c.us[i]}
             </dd>
             {COMPETITORS.map((x) => (
@@ -34,12 +39,12 @@ export function CompetitorTable() {
           </dl>
         ))}
       </div>
-      <div className="hidden overflow-hidden rounded-sheet bg-card shadow-card sm:block">
-        <table className="w-full text-body">
+      <div className="card-clear hidden overflow-hidden sm:block">
+        <table className="w-full text-[15px] leading-6">
           <caption className="sr-only">
             {BRAND.name} compared with {COMPETITORS.map((x) => x.name).join(" and ")}, as of {formatAsOf(oldest)}
           </caption>
-          <thead className="bg-tile-mint text-meta-strong text-tile-mint-foreground">
+          <thead className="bg-muted text-meta-strong text-muted-foreground">
             <tr>
               <th scope="col" className="px-5 py-4 text-start md:px-6">
                 <span className="sr-only">Item</span>
@@ -60,7 +65,7 @@ export function CompetitorTable() {
                 <th scope="row" className="px-5 py-4 text-start font-normal text-muted-foreground md:px-6">
                   {label}
                 </th>
-                <td className="bg-tile-mint/50 px-5 py-4 text-body-strong text-tile-mint-foreground md:px-6">{c.us[i]}</td>
+                <td className="px-5 py-4 font-semibold text-foreground md:px-6">{c.us[i]}</td>
                 {COMPETITORS.map((x) => (
                   <td key={x.id} className="px-5 py-4 text-muted-foreground md:px-6">
                     {get(x, i)}
@@ -84,7 +89,7 @@ export function CompetitorTable() {
         ))}
         .
       </p>
-      <PriceStrip />
-    </MSection>
+      </div>
+    </section>
   );
 }

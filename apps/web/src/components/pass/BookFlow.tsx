@@ -31,7 +31,7 @@ const DAYS = 14;
  * card or deposit row (M2), pay the deposit or save a card, then a confirmation with a calendar file.
  * The bridal row is a quote, not a slot.
  */
-export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: { service?: string; staff?: string; pet?: string }; meName?: string | null }) {
+export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: { service?: string; staff?: string; pet?: string; rebook?: string }; meName?: string | null }) {
   const f = useFmt();
   const { t, money, date, time, pick } = f;
   const dur = (min: number) => durationText(t as never, min);
@@ -158,7 +158,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     setBusy(true);
     setBanner(null);
     try {
-      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null, intakeAnswer: !pharmacy && intakeQuestion ? intake.trim() || null : null });
+      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null, intakeAnswer: !pharmacy && intakeQuestion ? intake.trim() || null : null, rebook: initial?.rebook ?? null /* phase-pro: p3 */ });
       setBooked(r);
       if (r.confirmed) {
         setFinished(r.appointment);

@@ -21,10 +21,12 @@ import { merchantTax } from "../../services/tax.js";
 import { invoiceExtras } from "../../services/auto-estimate.js";
 import { getTicketByStatusToken, publicTicketStatus } from "../../services/tickets.js";
 import registerLanding from "./landing.js";
+import registerWaitlist from "./waitlist.js"; // phase-pro: p2
 
 export default async function register(app: FastifyInstance, ctx: AppContext): Promise<void> {
   // Landing-page A/B tests: the beacon and the ended-tests list (landing.ts).
   await registerLanding(app, ctx);
+  await registerWaitlist(app, ctx); // phase-pro: p2 (join from a full day, the Take-it link)
 
   async function merchantBySlug(slug: string) {
     const [m] = await ctx.db.select().from(merchants).where(eq(merchants.slug, slug)).limit(1);

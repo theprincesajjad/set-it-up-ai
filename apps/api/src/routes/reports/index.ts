@@ -6,6 +6,7 @@ import { parse } from "../../lib/validate.js";
 import { requireFeature } from "../../services/features.js";
 import * as svc from "../../services/reports.js";
 import { rejectMalformedIds } from "../merchant/params.js";
+import insights from "./insights.js"; // phase-pro: p6
 
 type Req = FastifyRequest<{ Params: { merchantId: string } }>;
 
@@ -14,6 +15,7 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
     rejectMalformedIds(app);
     await routes(app, ctx);
   });
+  await insights(parent, ctx); // phase-pro: p6
 }
 
 async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {

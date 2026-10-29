@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import type { FeatureKey, PlanId, RolloutStage } from "../plans.js";
+import type { TrialDto } from "./billing.js";
 import { VERTICALS, type Vertical } from "../verticals.js";
 import { THEME_STYLES, type ThemeStyle } from "../theme.js";
 import { LOCALE_CODES } from "../i18n/locales.js";
@@ -233,7 +234,7 @@ export interface OnboardingSource {
 }
 export interface OnboardingUpsell {
   moment: "none" | "preview" | "offer";
-  plan: "restaurant_starter" | "restaurant_growth" | "plus" | "pro";
+  plan: "restaurant_starter" | "restaurant_growth" | "plus" | "studio" | "pro";
   headline: string;
   body: string;
   priceLine: string;
@@ -397,6 +398,8 @@ export interface MerchantFeaturesResponse {
   features: MerchantFeature[];
   /** Whether each paid plan can be purchased yet. */
   plansAvailable: Record<PlanId, boolean>;
+  /** phase-pro P1: the live trial (features are resolved with it), or null. */
+  trial?: TrialDto | null;
 }
 
 /** POST /v1/merchants/:merchantId/features/:key/notify ("Notify me" on a coming-soon feature). No body. */

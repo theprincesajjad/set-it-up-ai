@@ -80,7 +80,7 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
             <TextField type="textarea" label={t("review.feedbackLabel")} hint={rich("review.feedbackHint", { shop: shop.name })} value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={2000} optionalLabel={false} rows={3} />
             {error ? <Banner tone="danger">{error}</Banner> : null}
             <Button type="submit" size="lg" fullWidth loading={busy} disabled={!rating}>
-              {t("review.sendPrivate")}
+              {initial.kind === "appointment" ? t("review.sendPrivateVisit", { shop: shop.name }) : t("review.sendPrivate")}{/* phase-pro: p4 */}
             </Button>
             {google}
           </form>

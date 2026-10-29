@@ -13,15 +13,19 @@
  * and the payload is identical but for the rating. Ratings of 3 or less also notify the shop,
  * who reads them first and replies in the guest's language (reply, free chai, mark handled).
  *
- * review_requests.orderId holds the completed thing's id (order, tiffin delivery or
- * catering event). There is no FK, so one table serves all three.
+ * review_requests.orderId holds the completed thing's id (order, tiffin delivery,
+ * catering event or appointment). There is no FK, so one table serves all four.
+ *
+ * phase-pro P4: a completed appointment schedules one too (Pro feature `booking.review_requests`, the shop's
+ * `review_requests_mode` on). Same 2 hour delay, 14 day re-ask window and consent ladder as orders. With no Google
+ * link the request still goes out and the page offers only the private note.
  */
 import { and, count, desc, eq, gt, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
-import { cateringEvents, merchantMembers, merchantStaff, merchants, orders, pushTokens, redemptions, reviewRequests, rewards, tiffinDeliveries, tiffinSubscriptions, users } from "@ll/db";
-import { BRAND, restaurantWebApi, whatsappApi } from "@ll/shared";
+import { appointments, cateringEvents, merchantMembers, merchantStaff, merchants, orders, pushTokens, redemptions, reviewRequests, rewards, tiffinDeliveries, tiffinSubscriptions, users } from "@ll/db";
+import { BRAND, FEATURE_KEYS, restaurantWebApi, whatsappApi, type FeatureKey, reviewsApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomCode, randomToken } from "../lib/crypto.js";
-import { HttpError, badRequest, notFound } from "../lib/errors.js";
+import { HttpError, badRequest, featureLocked, notFound } from "../lib/errors.js";
 import { decodeCursor, encodeCursor } from "./commerceShared.js";
 import { isFeatureOn, requireFeature } from "./features.js";
 import { isPharmacy } from "./pharmacy-guard.js";
@@ -63,25 +67,93 @@ export async function consentedChannels(ctx: AppContext, merchant: Merchant, use
   return out;
 }
 
-/** Create a review request for a completed order/delivery/event. Null when not applicable (feature off, no Google link, no consented channel, asked recently). */
-export async function scheduleReviewRequest(ctx: AppContext, a: { merchantId: string; userId: string; sourceId: string }): Promise<Request | null> {
+// ---- phase-pro: p4 ----
+const APPOINTMENT_REVIEW_KEY = "booking.review_requests";
+
+/**
+ * Whether the shop's plan includes automatic review requests after a visit. TODO(P1): P1 adds `booking.review_requests`
+ * to plans.ts on `plus`; until it lands this falls back to "any paid plan" so the feature works on Pro.
+ */
+export async function appointmentReviewsAvailable(ctx: AppContext, merchant: Merchant): Promise<boolean> {
+  if ((FEATURE_KEYS as readonly string[]).includes(APPOINTMENT_REVIEW_KEY)) return isFeatureOn(ctx.db, merchant, APPOINTMENT_REVIEW_KEY as FeatureKey);
+  return merchant.plan !== "free";
+}
+
+/** True when `sourceId` is one of this shop's appointments (the request came from a visit, not an order). */
+async function isAppointmentSource(ctx: AppContext, merchantId: string, sourceId: string | null): Promise<boolean> {
+  if (!sourceId) return false;
+  const [a] = await ctx.db.select({ id: appointments.id }).from(appointments).where(and(eq(appointments.id, sourceId), eq(appointments.merchantId, merchantId))).limit(1);
+  return !!a;
+}
+
+/** The P6 counter. TODO(P6): swap for `recordSignal` from ./signals.js when it lands. */
+async function recordReviewSignal(_ctx: AppContext, _merchantId: string, _key: "reviews_requested" | "reviews_google"): Promise<void> {}
+
+/** P1 calls this when the trial starts (and when Pro is bought): turn the requests on or off. */
+export async function setReviewRequestsMode(ctx: AppContext, merchantId: string, mode: reviewsApi.ReviewRequestsMode): Promise<void> {
+  await ctx.db.update(merchants).set({ reviewRequestsMode: mode, updatedAt: ctx.now() }).where(eq(merchants.id, merchantId));
+}
+// ---- end phase-pro: p4 ----
+
+async function insertRequest(ctx: AppContext, merchant: Merchant, userId: string, sourceId: string): Promise<Request | null> {
+  const now = ctx.now();
+  const [dupe] = await ctx.db
+    .select({ id: reviewRequests.id })
+    .from(reviewRequests)
+    .where(and(eq(reviewRequests.merchantId, merchant.id), or(eq(reviewRequests.orderId, sourceId), and(eq(reviewRequests.userId, userId), gt(reviewRequests.createdAt, new Date(now.getTime() - REASK_WINDOW_MS))))))
+    .limit(1);
+  if (dupe) return null;
+  const channels = await consentedChannels(ctx, merchant, userId);
+  if (!channels.length) return null;
+  const [row] = await ctx.db.insert(reviewRequests).values({ merchantId: merchant.id, userId, orderId: sourceId, channel: channels[0]!, token: randomToken(16), createdAt: now }).returning();
+  return row ?? null;
+}
+
+/** A completed appointment (phase-pro P4). Null when the shop is on Free or has the switch off, the visit isn't completed (no-show, cancelled), the client has no consented channel, or they were asked recently. */
+async function scheduleAppointmentRequest(ctx: AppContext, merchantId: string, appointmentId: string): Promise<Request | null> {
+  const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!merchant || merchant.reviewRequestsMode !== "on" || isPharmacy(merchant)) return null;
+  if (!(await appointmentReviewsAvailable(ctx, merchant))) return null;
+  const [a] = await ctx.db.select({ userId: appointments.userId, status: appointments.status }).from(appointments).where(and(eq(appointments.id, appointmentId), eq(appointments.merchantId, merchantId))).limit(1);
+  if (!a || a.status !== "completed" || !a.userId) return null;
+  return insertRequest(ctx, merchant, a.userId, appointmentId);
+}
+
+/**
+ * Create a review request for a completed order/delivery/event, or (three arguments) for a completed appointment.
+ * Null when not applicable (feature off, no Google link for an order, no consented channel, asked recently).
+ */
+export async function scheduleReviewRequest(ctx: AppContext, a: { merchantId: string; userId: string; sourceId: string }): Promise<Request | null>;
+export async function scheduleReviewRequest(ctx: AppContext, merchant: Pick<Merchant, "id">, a: { kind: "appointment"; id: string }): Promise<Request | null>;
+export async function scheduleReviewRequest(ctx: AppContext, first: { merchantId: string; userId: string; sourceId: string } | Pick<Merchant, "id">, second?: { kind: "appointment"; id: string }): Promise<Request | null> {
+  if (second) return scheduleAppointmentRequest(ctx, (first as Pick<Merchant, "id">).id, second.id);
+  const a = first as { merchantId: string; userId: string; sourceId: string };
   const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, a.merchantId)).limit(1);
   if (!merchant || !merchant.googleReviewUrl) return null;
   // Testimonials about the quality of a pharmacy's drugs or services are restricted advertising (O. Reg. 264/16 s. 29(1)(d)).
   if (isPharmacy(merchant)) return null;
   if (!(await isFeatureOn(ctx.db, merchant, "restaurant.reviews"))) return null;
-  const now = ctx.now();
-  const [dupe] = await ctx.db
-    .select({ id: reviewRequests.id })
-    .from(reviewRequests)
-    .where(and(eq(reviewRequests.merchantId, merchant.id), or(eq(reviewRequests.orderId, a.sourceId), and(eq(reviewRequests.userId, a.userId), gt(reviewRequests.createdAt, new Date(now.getTime() - REASK_WINDOW_MS))))))
-    .limit(1);
-  if (dupe) return null;
-  const channels = await consentedChannels(ctx, merchant, a.userId);
-  if (!channels.length) return null;
-  const [row] = await ctx.db.insert(reviewRequests).values({ merchantId: merchant.id, userId: a.userId, orderId: a.sourceId, channel: channels[0]!, token: randomToken(16), createdAt: now }).returning();
-  return row ?? null;
+  return insertRequest(ctx, merchant, a.userId, a.sourceId);
 }
+
+// ---- phase-pro: p4 ----
+/** Completed appointments from the last day at shops with the switch on become requests (idempotent; covers the status button as well as checkout). */
+export async function scheduleCompletedAppointmentReviews(ctx: AppContext): Promise<number> {
+  // One day back, so turning the switch on never asks about visits from earlier in the week.
+  const since = new Date(ctx.now().getTime() - 24 * 60 * 60_000);
+  const shops = await ctx.db.select({ id: merchants.id }).from(merchants).where(eq(merchants.reviewRequestsMode, "on"));
+  let n = 0;
+  for (const shop of shops) {
+    const done = await ctx.db
+      .select({ id: appointments.id })
+      .from(appointments)
+      .where(and(eq(appointments.merchantId, shop.id), eq(appointments.status, "completed"), isNotNull(appointments.userId), gte(appointments.completedAt, since)))
+      .orderBy(appointments.completedAt);
+    for (const d of done) if (await scheduleAppointmentRequest(ctx, shop.id, d.id)) n++;
+  }
+  return n;
+}
+// ---- end phase-pro: p4 ----
 
 /** Find recently completed orders, tiffin deliveries and catering events and schedule requests (idempotent). */
 export async function scheduleCompletedReviewRequests(ctx: AppContext): Promise<number> {
@@ -101,6 +173,7 @@ export async function scheduleCompletedReviewRequests(ctx: AppContext): Promise<
     ];
     for (const d of done) if (await scheduleReviewRequest(ctx, { merchantId: shop.id, userId: d.userId, sourceId: d.id })) n++;
   }
+  n += await scheduleCompletedAppointmentReviews(ctx); // phase-pro: p4
   return n;
 }
 
@@ -117,13 +190,13 @@ async function reserveSms(ctx: AppContext, merchant: Merchant): Promise<boolean>
 }
 
 /** Try the request's channel first, then the remaining consented ones. Returns the channel that worked. */
-async function deliver(ctx: AppContext, merchant: Merchant, req: Request): Promise<Channel | null> {
+async function deliver(ctx: AppContext, merchant: Merchant, req: Request, visit = false): Promise<Channel | null> {
   const [user] = await ctx.db.select().from(users).where(eq(users.id, req.userId)).limit(1);
   if (!user) return null;
   const [member] = await ctx.db.select({ id: merchantMembers.id }).from(merchantMembers).where(and(eq(merchantMembers.merchantId, merchant.id), eq(merchantMembers.userId, user.id))).limit(1);
   const url = reviewUrl(ctx, req.token);
   const firstName = user.name?.split(" ")[0];
-  const text = `${firstName ? `${firstName}, thanks` : "Thanks"} for choosing ${merchant.name}. How was it? Tell us in one tap: ${url}`;
+  const text = visit ? `${firstName ? `${firstName}, how` : "How"} was your visit to ${merchant.name}? Two taps: ${url}` : `${firstName ? `${firstName}, thanks` : "Thanks"} for choosing ${merchant.name}. How was it? Tell us in one tap: ${url}`;
   const order = await consentedChannels(ctx, merchant, user.id);
   const channels = [req.channel as Channel, ...order].filter((c, i, all) => all.indexOf(c) === i && order.includes(c));
   for (const channel of channels) {
@@ -138,12 +211,12 @@ async function deliver(ctx: AppContext, merchant: Merchant, req: Request): Promi
         return channel;
       } else if (channel === "email" && user.email) {
         const body = member ? withFooter(ctx, "email", merchant.name, text, member.id) : text;
-        await ctx.providers.email.send({ to: user.email, subject: `How was ${merchant.name}?`, text: body });
+        await ctx.providers.email.send({ to: user.email, subject: visit ? `How was your visit to ${merchant.name}?` : `How was ${merchant.name}?`, text: body });
         return channel;
       } else if (channel === "push") {
         const tokens = await ctx.db.select({ token: pushTokens.token }).from(pushTokens).where(eq(pushTokens.userId, user.id));
         if (!tokens.length) continue;
-        await ctx.providers.push.send(tokens.map((t) => ({ token: t.token, title: `How was ${merchant.name}?`, body: "Tap to rate your order.", data: { type: "review_request", url, merchantId: merchant.id } })));
+        await ctx.providers.push.send(tokens.map((t) => ({ token: t.token, title: `How was ${merchant.name}?`, body: visit ? "Tap to rate your visit." : "Tap to rate your order.", data: { type: "review_request", url, merchantId: merchant.id } })));
         return channel;
       }
     } catch {
@@ -169,10 +242,14 @@ export async function sendDueReviewRequests(ctx: AppContext, opts: { immediateFo
   for (const req of rows) {
     if (req.sentAt) continue;
     const [merchant] = await ctx.db.select().from(merchants).where(eq(merchants.id, req.merchantId)).limit(1);
-    if (!merchant || !merchant.googleReviewUrl || !(await isFeatureOn(ctx.db, merchant, "restaurant.reviews"))) continue;
-    const channel = await deliver(ctx, merchant, req);
+    if (!merchant) continue;
+    // phase-pro: p4: a request from a visit needs the switch on and the plan feature; it goes out without a Google link too.
+    const visit = await isAppointmentSource(ctx, merchant.id, req.orderId);
+    if (visit ? merchant.reviewRequestsMode !== "on" || !(await appointmentReviewsAvailable(ctx, merchant)) : !merchant.googleReviewUrl || !(await isFeatureOn(ctx.db, merchant, "restaurant.reviews"))) continue;
+    const channel = await deliver(ctx, merchant, req, visit);
     if (!channel) continue;
     await ctx.db.update(reviewRequests).set({ sentAt: now, channel }).where(eq(reviewRequests.id, req.id));
+    if (visit) await recordReviewSignal(ctx, merchant.id, "reviews_requested"); // phase-pro: p4
     sent++;
   }
   return sent;
@@ -207,7 +284,7 @@ async function byToken(ctx: AppContext, token: string): Promise<{ req: Request; 
 export async function getPublicReview(ctx: AppContext, token: string): Promise<whatsappApi.PublicReviewView> {
   const { req, merchant } = await byToken(ctx, token);
   if (!req.clickedAt) await ctx.db.update(reviewRequests).set({ clickedAt: ctx.now() }).where(eq(reviewRequests.id, req.id));
-  return { merchant: { name: merchant.name, slug: merchant.slug, logoUrl: merchant.logoUrl }, googleReviewUrl: merchant.googleReviewUrl, alreadyResponded: req.rating != null, rating: req.rating };
+  return { merchant: { name: merchant.name, slug: merchant.slug, logoUrl: merchant.logoUrl }, googleReviewUrl: merchant.googleReviewUrl, alreadyResponded: req.rating != null, rating: req.rating, kind: (await isAppointmentSource(ctx, merchant.id, req.orderId)) ? "appointment" : "order" };
 }
 
 export async function submitReview(ctx: AppContext, token: string, input: whatsappApi.ReviewSubmitBody): Promise<whatsappApi.ReviewSubmitResponse> {
@@ -256,8 +333,11 @@ async function notifyLowRating(ctx: AppContext, merchant: Merchant, req: Request
 // ---------------------------------------------------------------------------
 /** The guest tapped the Google button. Recorded once; never changes what they are shown. */
 export async function markGoogleOpened(ctx: AppContext, token: string): Promise<{ ok: true }> {
-  const { req } = await byToken(ctx, token);
-  if (!req.googleClickedAt) await ctx.db.update(reviewRequests).set({ googleClickedAt: ctx.now() }).where(eq(reviewRequests.id, req.id));
+  const { req, merchant } = await byToken(ctx, token);
+  if (!req.googleClickedAt) {
+    const [first] = await ctx.db.update(reviewRequests).set({ googleClickedAt: ctx.now() }).where(and(eq(reviewRequests.id, req.id), isNull(reviewRequests.googleClickedAt))).returning({ id: reviewRequests.id });
+    if (first && (await isAppointmentSource(ctx, merchant.id, req.orderId))) await recordReviewSignal(ctx, merchant.id, "reviews_google"); // phase-pro: p4
+  }
   return { ok: true };
 }
 
@@ -459,3 +539,51 @@ export async function saveReviewSettings(ctx: AppContext, merchant: Merchant, ac
   await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "reviews.settings", entity: "merchant", entityId: merchant.id, data: { googleReviewUrl: body.googleReviewUrl } });
   return { googleReviewUrl: body.googleReviewUrl };
 }
+
+// ---- phase-pro: p4 ----
+// ---------------------------------------------------------------------------
+// Settings, Reviews (solo shops): the Google link, the switch and the last 30 days
+// ---------------------------------------------------------------------------
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60_000;
+
+export async function appointmentReviewSettings(ctx: AppContext, merchant: Merchant): Promise<reviewsApi.AppointmentReviewSettings> {
+  const since = new Date(ctx.now().getTime() - THIRTY_DAYS_MS);
+  const [row] = await ctx.db
+    .select({
+      asked: sql<number>`count(${reviewRequests.sentAt})::int`,
+      google: sql<number>`count(${reviewRequests.googleClickedAt})::int`,
+      notes: sql<number>`count(*) filter (where ${reviewRequests.feedback} is not null and ${reviewRequests.feedback} <> '')::int`,
+    })
+    .from(reviewRequests)
+    .innerJoin(appointments, and(eq(appointments.id, reviewRequests.orderId), eq(appointments.merchantId, reviewRequests.merchantId)))
+    .where(and(eq(reviewRequests.merchantId, merchant.id), gte(reviewRequests.createdAt, since)));
+  return {
+    googleReviewUrl: merchant.googleReviewUrl,
+    mode: merchant.reviewRequestsMode === "on" ? "on" : "off",
+    available: await appointmentReviewsAvailable(ctx, merchant),
+    last30: { asked: row?.asked ?? 0, google: row?.google ?? 0, privateNotes: row?.notes ?? 0 },
+  };
+}
+
+/** Save the link and/or the switch. The link saves on any plan; turning the switch on needs the plan feature. */
+export async function saveAppointmentReviewSettings(ctx: AppContext, merchant: Merchant, actorUserId: string, input: reviewsApi.AppointmentReviewSettingsBody): Promise<reviewsApi.AppointmentReviewSettings> {
+  const body = reviewsApi.appointmentReviewSettingsBody.parse(input);
+  const set: Partial<typeof merchants.$inferInsert> = { updatedAt: ctx.now() };
+  if (body.googleReviewUrl !== undefined) set.googleReviewUrl = body.googleReviewUrl;
+  if (body.mode !== undefined) {
+    if (body.mode === "on" && !(await appointmentReviewsAvailable(ctx, merchant))) throw featureLocked("Review requests", "plan");
+    set.reviewRequestsMode = body.mode;
+  }
+  await ctx.db.update(merchants).set(set).where(eq(merchants.id, merchant.id));
+  await writeAudit(ctx.db, { actorUserId, merchantId: merchant.id, action: "reviews.appointment_settings", entity: "merchant", entityId: merchant.id, data: { mode: body.mode ?? null, googleReviewUrl: body.googleReviewUrl ?? undefined } });
+  const [fresh] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchant.id)).limit(1);
+  return appointmentReviewSettings(ctx, fresh!);
+}
+
+/** The checkout success state: is a request waiting for this visit, and when does it go out. */
+export async function appointmentReviewStatus(ctx: AppContext, merchant: Merchant, appointmentId: string): Promise<reviewsApi.AppointmentReviewStatus> {
+  const available = await appointmentReviewsAvailable(ctx, merchant);
+  const [r] = await ctx.db.select().from(reviewRequests).where(and(eq(reviewRequests.merchantId, merchant.id), eq(reviewRequests.orderId, appointmentId))).limit(1);
+  return { available, scheduled: !!r, sendAt: r ? new Date(r.createdAt.getTime() + SEND_DELAY_MS).toISOString() : null };
+}
+// ---- end phase-pro: p4 ----

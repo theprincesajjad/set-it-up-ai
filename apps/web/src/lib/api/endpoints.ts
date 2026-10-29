@@ -37,6 +37,7 @@ import { restaurantWebEndpoints } from "./restaurantWeb";
 import { adminSalesAgentEndpoints, publicSalesAgentEndpoints } from "./salesAgent";
 import { appointmentEndpoints, myAppointmentEndpoints, publicAppointmentEndpoints } from "./appointments";
 import { barberEndpoints, myBarberEndpoints, publicBarberEndpoints } from "./barber";
+import { insightsEndpoints } from "./insights"; // phase-pro: p6
 import { myPetEndpoints, petEndpoints, publicPetEndpoints } from "./pets";
 import { autoEndpoints, myAutoEndpoints } from "./auto";
 import { inboxEndpoints, myInboxEndpoints } from "./inbox";
@@ -315,6 +316,7 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     ...appointmentEndpoints(c, b),
     // Walk-in line, payouts and pay (barber.ts)
     ...barberEndpoints(c, b),
+    ...insightsEndpoints(c, b), // phase-pro: p6
     // Pets, groom rebooking, daycare and food cards (pets.ts)
     ...petEndpoints(c, b),
     // Vehicles, service reminders, tire season and wash check-in (auto.ts)

@@ -91,11 +91,12 @@ describe("grocer seasons", () => {
 
 describe("grocery features", () => {
   const defs = Object.values(FEATURES).filter((f) => f.key.startsWith("grocery."));
-  it("has four Plus features that only grocers can see", () => {
+  it("has four Studio features that only grocers can see (pro-value.md §2.2: counter tools imply a shop)", () => {
     expect(defs.map((d) => d.key).sort()).toEqual(["grocery.counter_preorders", "grocery.flyer", "grocery.pantry_reminders", "grocery.whatsapp_orders"]);
     for (const d of defs) {
       expect(d.vertical).toBe("grocery");
-      const ctx = { plan: "plus", stage: "ga", vertical: "grocery" } as never;
+      const ctx = { plan: "studio", stage: "ga", vertical: "grocery" } as never;
+      expect(isFeatureEnabled(d.key, { ...(ctx as object), plan: "plus" } as never)).toBe(false);
       expect(isFeatureEnabled(d.key, ctx)).toBe(true);
       expect(isFeatureEnabled(d.key, { ...(ctx as object), vertical: "cafe" } as never)).toBe(false);
     }

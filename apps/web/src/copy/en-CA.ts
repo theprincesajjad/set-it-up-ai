@@ -1201,7 +1201,7 @@ export type Copy = typeof copy;
  * Landing hero copy and tool-card order, per page look and variant, for A/B tests (types and the resolver:
  * lib/marketing/landing-variants.ts). "control" is what the pages render; another variant only needs an entry here.
  * Voice (landing v4): confident, plain, benefit-led, like Shopify or Square. Headlines of 2 to 6 words over two lines, a subhead of
- * 12 words at most. `{x}` fills: {free}, {monthly}, {client}, {service} (prices from lib/marketing/plan-copy.ts).
+ * 12 words at most. `{x}` fills: {client}, {service} and the plan-copy.ts fills ({free}, {pro}, {monthly}, {studio}, {studioMonthly}, {trial}).
  * `eyebrow` names the audience; the page prints it as plain text in the hero's fine print, never as a pill.
  * Control leads with the outcome (a full calendar and clients who return); `yours` (every trade), `price` (barbers only) and
  * `privacy` (tech pages) are the challengers from docs/marketing/value-props.md §2.2, each keeping its angle. Deposits are optional,
@@ -1235,8 +1235,8 @@ export const LANDING_VARIANTS = {
   makeup: { control: { eyebrow: "For makeup artists", hook: ["Bookings for every", "trial and event."], lede: "Clients book trials, bridal and events online, with automatic reminders.", cta: CTA, jobs: ORDER }, yours: yours("For makeup artists"), privacy },
   barber: {
     control: { eyebrow: "For barbershops", hook: ["Bookings and walk-ins,", "in one place."], lede: "Online booking and a live walk-in line for the whole shop.", cta: CTA, jobs: ["book", "remind", "regulars"] },
-    /** §2.2 barber lead (barbers only: per-chair pricing is a barbershop and salon concern); {monthly} comes from plan-copy.ts. */
-    price: { eyebrow: "For barbershops", hook: ["One flat price", "for every chair."], lede: "{monthly} a month for the whole shop. No commission on clients.", cta: CTA, jobs: ["book", "yours", "line"] },
+    /** §2.2 barber lead (barbers only: per-chair pricing is a barbershop and salon concern); {studio} and {studioMonthly} come from plan-copy.ts. */
+    price: { eyebrow: "For barbershops", hook: ["One flat price", "for every chair."], lede: "{studio} is {studioMonthly} a month for every chair. No commission.", cta: CTA, jobs: ["book", "yours", "line"] },
     yours: { eyebrow: "For barbershops", hook: ["Your clients.", "Your shop."], lede: "No commission, no new-client fees and no per-chair pricing.", cta: CTA, jobs: ["book", "yours", "line"] },
   },
   groom: {

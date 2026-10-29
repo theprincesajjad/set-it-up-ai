@@ -4,6 +4,7 @@ import type { AppContext } from "../../context.js";
 import { requireUser } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import { revokeAllSessions } from "../../services/auth.js";
+import registerWaitlist from "./waitlist.js"; // phase-pro: p2
 import {
   cancelRedemption,
   deleteAccount,
@@ -26,6 +27,7 @@ import {
 type MemberReq = { Params: { memberId: string } };
 
 export default async function register(app: FastifyInstance, ctx: AppContext): Promise<void> {
+  await registerWaitlist(app, ctx); // phase-pro: p2 (my waitlist)
   // ---- Profile & PIPEDA ----
   app.get("/me", async (req) => getProfile(ctx, requireUser(req).id));
 

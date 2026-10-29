@@ -353,3 +353,116 @@ export interface JoinerReturnReport {
   /** Cumulative: members whose first return visit (after the join visit) came within N days. */
   windows: { days: number; cameBack: number }[];
 }
+
+// ---- phase-pro: p6 ----
+// The weekly money report (docs/business/pro-value.md 3.2 P6 and 5.5): GET /v1/merchants/:id/insights/week, .../insights/weeks,
+// PUT .../insights/settings. Weeks run Monday to Sunday in the shop's timezone. Money is integer cents. No personal data.
+
+/** Counters other workstreams write through recordSignal() (apps/api/src/services/signals.ts). */
+export const SIGNAL_KEYS = [
+  "cancellations",
+  "waitlist_asks",
+  "waitlist_fills",
+  "full_day_views",
+  "rebook_due",
+  "rebook_sent",
+  "rebook_booked",
+  "reviews_requested",
+  "reviews_google",
+  "addons_sold",
+  "promo_bookings",
+] as const;
+export type SignalKey = (typeof SIGNAL_KEYS)[number];
+
+export const TRIAL_RECEIPT_DAYS = 14;
+export const GOAL_MAX_CENTS = 10_000_000;
+
+const weekStartSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date like 2026-11-02");
+export const insightsWeekQuery = z.object({
+  /** Any date in the week you want (shop time); the Monday of that week is used. Default: this week. */
+  start: weekStartSchema.optional(),
+  /** "1" = the 14-day totals for the trial receipt instead of one week. */
+  trial: z.enum(["1", "true"]).optional(),
+});
+export const insightsWeeksQuery = z.object({ weeks: z.coerce.number().int().min(2).max(26).default(12) });
+export const insightsSettingsBody = z
+  .object({
+    /** Cents; null clears the goal. */
+    weeklyGoalCents: z.number().int().min(0).max(GOAL_MAX_CENTS).nullable(),
+    /** 0 = Sunday ... 6 = Saturday. */
+    weeklyReportWeekday: z.number().int().min(0).max(6),
+    weeklyReportHour: z.number().int().min(0).max(23),
+  })
+  .partial();
+export type InsightsSettingsBody = z.infer<typeof insightsSettingsBody>;
+
+export interface SignalTotal {
+  count: number;
+  amountCents: number;
+}
+
+export interface WeekNumbers {
+  revenueCents: number;
+  visits: number;
+  newClients: number;
+}
+
+export interface WeekTrendPoint {
+  /** The Monday (YYYY-MM-DD). */
+  weekStart: string;
+  revenueCents: number;
+}
+
+export interface WeekInsight {
+  weekStart: string;
+  /** The Sunday (YYYY-MM-DD). */
+  weekEnd: string;
+  timezone: string;
+  /** The week is still going (it contains now). */
+  inProgress: boolean;
+  /** Where the money comes from: appointments (booked and completed) or, for shops with none, loyalty visits. */
+  source: "appointments" | "visits";
+  revenueCents: number;
+  visits: number;
+  newClients: number;
+  previous: WeekNumbers;
+  /** revenue minus last week's, in cents (negative when behind). */
+  deltaCents: number;
+  /** Null when last week was zero. */
+  deltaPct: number | null;
+  /** Mean revenue of the 4 weeks before this one. */
+  fourWeekAvgCents: number;
+  /** The highest revenue of the 8 weeks up to and including this one, and it is above zero. */
+  bestWeekOfEight: boolean;
+  signals: Record<SignalKey, SignalTotal>;
+  /** The full day people looked at most this week (a day with no openings), with how many looked. */
+  fullDay: { date: string; weekday: number; views: number } | null;
+  goal: { cents: number | null; progress: number | null; reached: boolean };
+  report: { weekday: number; hour: number };
+  /** The quietest open weekday over 8 weeks (0 = Sunday), or null with too little history. */
+  bestDayToPromote: { weekday: number; averagePerWeek: number } | null;
+  /** Promos left this period; 0 on Free. */
+  promosLeft: number;
+  /** The shop's plan includes the weekly report (Pro, Studio or the trial). */
+  paid: boolean;
+  /** The 8 weeks up to this one, oldest first. */
+  trend: WeekTrendPoint[];
+}
+
+export interface WeeksHistory {
+  weeks: (WeekNumbers & { weekStart: string; deltaCents: number })[];
+}
+
+/** `GET /insights/week?trial=1`: the 14 days the trial receipt reads (pro-value.md 5.3 and 5.4). */
+export interface TrialReceiptDto {
+  days: number;
+  bookings: number;
+  amountCents: number;
+  fills: number;
+  rebooked: number;
+  reviews: number;
+  addons: number;
+  /** Money the waitlist, the reminders and the add-ons brought in: "about {amount} you didn't have to chase". */
+  chasedCents: number;
+}
+// ---- end phase-pro: p6 ----

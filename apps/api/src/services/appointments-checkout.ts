@@ -25,8 +25,10 @@ import { markInvoicePaid, sendInvoice, voidInvoice } from "./invoices.js";
 import { findOrCreateCustomerByPhone, redeemReward } from "./ledger.js";
 import { requirePhone } from "./merchant.js";
 import { autoSetPreferred } from "./preferred-staff.js";
+import { addOnTaxable, recordAddOnsSold } from "./add-ons.js"; // phase-pro P5
 import { logGroomFromCheckout } from "./pets.js";
 import { priceLineItems } from "./quotes.js";
+import { scheduleReviewRequest } from "./reviews.js"; // phase-pro: p4
 
 type Invoice = typeof invoices.$inferSelect;
 
@@ -87,6 +89,13 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
     // A service marked "no tax" (a gift card, a product with its own rules) is billed without it.
     taxable: svcs.find((s) => s.id === i.serviceId)?.taxable ?? true,
   }));
+  // ---- phase-pro: P5 ---- an add-on line has no serviceId: its own "no tax" flag applies (totals and the tip limit include it).
+  const addOnTax = await addOnTaxable(ctx.db, merchant.id, items);
+  (items as { kind?: string; addOnId?: string | null }[]).forEach((i, n) => {
+    if (i.kind === "add_on" && i.addOnId && addOnTax.has(i.addOnId)) lines[n]!.taxable = addOnTax.get(i.addOnId);
+  });
+  const firstCheckout = !a.invoiceId;
+  // ---- end phase-pro: P5 ----
   const serviceTotal = lines.reduce((n, l) => n + l.unitPriceCents, 0);
 
   // A reward redeemed at the counter becomes a credit line (it can't earn points).
@@ -158,6 +167,8 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
   });
 
   await autoSetPreferred(ctx, userId, merchant.id, a.staffId);
+  if (firstCheckout) await recordAddOnsSold(ctx, merchant.id, items); // phase-pro P5: addons_sold for the weekly report
+  await scheduleReviewRequest(ctx, merchant, { kind: "appointment", id: a.id }).catch(() => null); // phase-pro: p4 (a Pro shop with the switch on asks for a review two hours later)
   if (counter) await markInvoicePaid(ctx, staff, invoice.id, { method: body.counterMethod, note: body.note ?? null });
   else await sendInvoice(ctx, staff, invoice.id);
 

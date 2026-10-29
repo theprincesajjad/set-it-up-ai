@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cateringEvents, merchantMembers, merchants, orders, pushTokens, reviewRequests, tiffinDeliveries, tiffinPlans, tiffinSubscriptions, users } from "@ll/db";
+import { appointments, cateringEvents, merchantMembers, merchants, orders, pushTokens, reviewRequests, tiffinDeliveries, tiffinPlans, tiffinSubscriptions, users } from "@ll/db";
 import { scheduleCompletedReviewRequests, scheduleReviewRequest, sendDueReviewRequests, SEND_DELAY_MS } from "../src/services/reviews.js";
-import { customer } from "./commerce-fixtures.js";
-import { createTestEnv, createUser, type TestEnv } from "./helpers.js";
+import { call, customer, paidMerchant } from "./commerce-fixtures.js";
+import { createTestEnv, createUser, tokenFor, type TestEnv } from "./helpers.js";
 import { connectWhatsapp, optIn, req, restaurantShop, wa } from "./restaurant-msg-fixtures.js";
 
 let env: TestEnv;
@@ -240,3 +240,135 @@ describe("merchant list, stats and settings", () => {
     expect((await req(env, shop.ownerToken, "GET", `${url}/stats`)).body.googleReviewUrl).toBeNull();
   });
 });
+
+// ---- phase-pro: p4 (appointment review requests) ----
+describe("appointments: a request after every completed visit", () => {
+  async function solo(plan: "free" | "plus" = "plus", mode: "on" | "off" = "on") {
+    const m = await paidMerchant(env, { plan, vertical: "beauty" });
+    await env.db.update(merchants).set({ reviewRequestsMode: mode, googleReviewUrl: "https://g.page/r/priya-nails/review" }).where(eq(merchants.id, m.merchant.id));
+    return m;
+  }
+  type Solo = Awaited<ReturnType<typeof solo>>;
+  async function visit(m: Solo, status: string, userId: string, startsAt = env.clock.now) {
+    const [a] = await env.db
+      .insert(appointments)
+      .values({
+        merchantId: m.merchant.id,
+        locationId: m.location.id,
+        userId,
+        staffId: m.owner.id,
+        items: [{ serviceId: null, name: "Gel set", durationMin: 60, priceCents: 6500 }],
+        startsAt,
+        endsAt: new Date(startsAt.getTime() + 3_600_000),
+        status,
+        completedAt: status === "completed" ? startsAt : null,
+      })
+      .returning();
+    return a!;
+  }
+  const requests = () => env.db.select().from(reviewRequests);
+
+  it("schedules one request per completed visit, never for a no-show or a cancelled visit, and shares the re-ask window with orders", async () => {
+    const m = await solo();
+    const c = await customer(env, { name: "Ayesha Rao" });
+    const noShow = await visit(m, "no_show", c.user.id);
+    const cancelled = await visit(m, "cancelled", c.user.id);
+    expect(await scheduleReviewRequest(env.ctx, m.merchant, { kind: "appointment", id: noShow.id })).toBeNull();
+    expect(await scheduleReviewRequest(env.ctx, m.merchant, { kind: "appointment", id: cancelled.id })).toBeNull();
+    expect(await requests()).toHaveLength(0);
+
+    const done = await visit(m, "completed", c.user.id);
+    const r = await scheduleReviewRequest(env.ctx, m.merchant, { kind: "appointment", id: done.id });
+    expect(r).toMatchObject({ merchantId: m.merchant.id, userId: c.user.id, orderId: done.id, channel: "push", sentAt: null });
+    expect(await scheduleReviewRequest(env.ctx, m.merchant, { kind: "appointment", id: done.id })).toBeNull(); // once per visit
+    expect(await scheduleCompletedReviewRequests(env.ctx)).toBe(0); // the scan agrees
+
+    // The 14-day window holds across kinds: a second visit, and an order, the same week are not asked again.
+    const again = await visit(m, "completed", c.user.id);
+    expect(await scheduleReviewRequest(env.ctx, m.merchant, { kind: "appointment", id: again.id })).toBeNull();
+    expect(await scheduleReviewRequest(env.ctx, { merchantId: m.merchant.id, userId: c.user.id, sourceId: crypto.randomUUID() })).toBeNull();
+    advance(15 * 86_400_000);
+    const later = await visit(m, "completed", c.user.id);
+    expect(await scheduleReviewRequest(env.ctx, m.merchant, { kind: "appointment", id: later.id })).toMatchObject({ orderId: later.id });
+  });
+
+  it("schedules nothing on Free or with the switch off", async () => {
+    const c = await customer(env);
+    const free = await solo("free");
+    expect(await scheduleReviewRequest(env.ctx, free.merchant, { kind: "appointment", id: (await visit(free, "completed", c.user.id)).id })).toBeNull();
+    const off = await solo("plus", "off");
+    expect(await scheduleReviewRequest(env.ctx, off.merchant, { kind: "appointment", id: (await visit(off, "completed", c.user.id)).id })).toBeNull();
+    expect(await scheduleCompletedReviewRequests(env.ctx)).toBe(0);
+    expect(await requests()).toHaveLength(0);
+  });
+
+  it("a Pro shop's checkout schedules the request and it goes out two hours later on the best channel, even with no Google link", async () => {
+    const m = await solo();
+    await env.db.update(merchants).set({ googleReviewUrl: null }).where(eq(merchants.id, m.merchant.id));
+    const c = await customer(env, { name: "Ayesha Rao" });
+    const a = await visit(m, "booked", c.user.id);
+    const r = await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/appointments/${a.id}/checkout`, { mode: "counter", counterMethod: "cash", tipCents: 0 });
+    expect(r.status).toBe(200);
+    const [req1] = await requests();
+    expect(req1).toMatchObject({ orderId: a.id, userId: c.user.id, sentAt: null });
+    const status = await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/reviews/appointments/${a.id}`);
+    expect(status.body).toMatchObject({ available: true, scheduled: true, sendAt: new Date(req1!.createdAt.getTime() + SEND_DELAY_MS).toISOString() });
+
+    expect(await sendDueReviewRequests(env.ctx)).toBe(0);
+    advance(SEND_DELAY_MS + 60_000);
+    expect(await sendDueReviewRequests(env.ctx)).toBe(1);
+    expect((await requests())[0]!.sentAt).toBeTruthy();
+
+    // The page shows the private note only (no Google link) and is marked as a visit.
+    const page = await call(env, null, "GET", `/v1/public/reviews/${req1!.token}`);
+    expect(page.body).toMatchObject({ googleReviewUrl: null, kind: "appointment" });
+    const settings = await call(env, await tokenFor(env, m.owner), "GET", `/v1/merchants/${m.merchant.id}/reviews/appointments/settings`);
+    expect(settings.body).toMatchObject({ mode: "on", available: true, googleReviewUrl: null, last30: { asked: 1, google: 0, privateNotes: 0 } });
+  });
+
+  it("a Free shop's checkout schedules nothing and the status says so", async () => {
+    const m = await solo("free");
+    const c = await customer(env);
+    const a = await visit(m, "booked", c.user.id);
+    expect((await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/appointments/${a.id}/checkout`, { mode: "counter", counterMethod: "cash", tipCents: 0 })).status).toBe(200);
+    expect(await requests()).toHaveLength(0);
+    expect((await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/reviews/appointments/${a.id}`)).body).toMatchObject({ available: false, scheduled: false, sendAt: null });
+  });
+
+  it("the status-button path is covered by the scan, and a switch turned off before the send stops it", async () => {
+    const m = await solo();
+    const c = await customer(env);
+    await visit(m, "completed", c.user.id);
+    expect(await scheduleCompletedReviewRequests(env.ctx)).toBe(1);
+    await env.db.update(merchants).set({ reviewRequestsMode: "off" }).where(eq(merchants.id, m.merchant.id));
+    advance(SEND_DELAY_MS + 1000);
+    expect(await sendDueReviewRequests(env.ctx)).toBe(0);
+  });
+
+  it("settings: the link saves on Free, the switch is locked on Free, and the numbers count the last 30 days", async () => {
+    const free = await solo("free", "off");
+    const url = `/v1/merchants/${free.merchant.id}/reviews/appointments/settings`;
+    expect((await call(env, free.ownerToken, "PUT", url, { googleReviewUrl: "https://g.page/r/new/review" })).body).toMatchObject({ googleReviewUrl: "https://g.page/r/new/review", mode: "off", available: false });
+    const locked = await call(env, free.ownerToken, "PUT", url, { mode: "on" });
+    expect(locked.status).toBe(402);
+    expect((await call(env, free.ownerToken, "PUT", url, { googleReviewUrl: "not a url" })).status).toBe(400);
+
+    const m = await solo("plus", "off");
+    const on = await call(env, m.ownerToken, "PUT", `/v1/merchants/${m.merchant.id}/reviews/appointments/settings`, { mode: "on" });
+    expect(on.body).toMatchObject({ mode: "on", available: true });
+
+    const c = await customer(env);
+    const done = await visit(m, "completed", c.user.id);
+    const r = (await scheduleReviewRequest(env.ctx, m.merchant, { kind: "appointment", id: done.id }))!;
+    advance(SEND_DELAY_MS + 1000);
+    await sendDueReviewRequests(env.ctx);
+    await call(env, null, "POST", `/v1/public/reviews/${r.token}/google-opened`);
+    await call(env, null, "POST", `/v1/public/reviews/${r.token}`, { rating: 5, feedback: "Loved it" });
+    const owner = await tokenFor(env, m.owner);
+    const s = await call(env, owner, "GET", `/v1/merchants/${m.merchant.id}/reviews/appointments/settings`);
+    expect(s.body.last30).toEqual({ asked: 1, google: 1, privateNotes: 1 });
+    advance(31 * 86_400_000);
+    expect((await call(env, await tokenFor(env, m.owner), "GET", `/v1/merchants/${m.merchant.id}/reviews/appointments/settings`)).body.last30).toEqual({ asked: 0, google: 0, privateNotes: 0 });
+  });
+});
+// ---- end phase-pro: p4 ----

@@ -208,6 +208,10 @@ export interface PublicReviewView {
   googleReviewUrl: string | null;
   alreadyResponded: boolean;
   rating: number | null;
+  // ---- phase-pro: p4 ----
+  /** Where the ask came from: an order (restaurant words) or a visit (appointment words). Older servers omit it. */
+  kind?: "order" | "appointment";
+  // ---- end phase-pro: p4 ----
 }
 
 export interface ReviewSubmitResponse {

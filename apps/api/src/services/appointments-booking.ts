@@ -18,6 +18,7 @@ import { autoSetPreferred } from "./preferred-staff.js";
 import {
   assertBookable,
   appointmentDto,
+  computeAvailability,
   expireHolds,
   getAppointment,
   guardOverlap,
@@ -30,13 +31,16 @@ import {
   type Merchant,
 } from "./appointments.js";
 import { iso, loadMerchant, money, notifyCustomer } from "./commerceShared.js";
+import { attributeBooking } from "./rebooking.js"; // phase-pro: p3
 import { deliverByLadder } from "./notifications.js";
 import { requireFeature } from "./features.js";
 import { platformFeeFor } from "./fees.js";
 import { merchantProvince } from "./tax.js";
 import { assertNoPharmacyNotes, isPharmacy } from "./pharmacy-guard.js";
+import { addOnLinesOf, publicAddOnsByService, resolveAddOns, withAddOns } from "./add-ons.js"; // phase-pro P5
 import { appointmentPaymentsReady, chargeConnectSavedMethod, createConnectPayment, refundConnectPayment, retrieveConnectPayment, savedMethodScope, chargeModeFor } from "./payments.js";
 import { getPayments } from "../providers/payments.js";
+import { waitlistOnFreedSlot } from "./waitlist.js"; // phase-pro: p2
 
 const { ACTIVE_APPOINTMENT_STATUSES, HOLD_MINUTES } = appointmentsApi;
 const MIN = 60_000;
@@ -68,6 +72,7 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
     })
     .sort((a, b) => a.name.localeCompare(b.name));
   const catName = new Map(cats.map((c) => [c.id, c.name]));
+  const addOnsBy = await publicAddOnsByService(ctx, merchant, rows.map((r) => r.id)); // phase-pro P5: only on a plan with booking.add_ons
   return {
     // A home studio or a travelling pro: no street address before booking, only the public line (phase-solo B, §2.3).
     shop: { name: merchant.name, slug: merchant.slug, timezone: merchant.timezone, address: loc && !isAddressPrivate(loc.addressVisibility) ? loc.address : null, addressVisibility: addressVisibilityOf(loc?.addressVisibility), placeLine: loc ? publicPlaceLine(loc) : null, areaLabel: loc && addressVisibilityOf(loc.addressVisibility) === "area" ? (loc.areaLabel ?? null) : null, city: loc?.city ?? null, phone: merchant.phone ?? loc?.phone ?? null, logoUrl: merchant.logoUrl, brandColor: merchant.brandColor, locationId: loc?.id ?? null, vertical: merchant.vertical, ...(isPharmacy(merchant) ? { pharmacy: true } : {}) },
@@ -87,6 +92,7 @@ export async function publicServices(ctx: AppContext, merchant: Merchant): Promi
       staffIds: assigned.filter((a) => a.serviceId === s.id).map((a) => a.userId),
       staffOverrides: assigned.filter((a) => a.serviceId === s.id && (a.durationMin !== null || a.priceCents !== null)).map((a) => ({ staffId: a.userId, durationMin: a.durationMin, priceCents: a.priceCents })),
       intakeQuestion: isPharmacy(merchant) ? null : s.intakeQuestion, // phase-solo D
+      ...(addOnsBy && !isPharmacy(merchant) ? { addOns: addOnsBy.get(s.id) ?? [] } : {}), // phase-pro P5
     })),
     staff,
   };
@@ -307,10 +313,11 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
 
   const startsAt = new Date(body.startsAt);
   const loc = await resolveLocation(ctx.db, merchant.id, body.locationId);
-  const { staffId } = await assertBookable(ctx, merchant, { serviceIds: body.serviceIds, staffId: body.staffId ?? null, startsAt, locationId: loc.id });
+  const extras = await resolveAddOns(ctx, merchant, body.serviceIds, isPharmacy(merchant) ? [] : body.addOnIds); // phase-pro P5
+  const { staffId } = await assertBookable(ctx, merchant, { serviceIds: body.serviceIds, staffId: body.staffId ?? null, startsAt, locationId: loc.id }, { extraMin: extras.extraMin });
   const svcs = await loadAppointmentServices(ctx.db, merchant.id, body.serviceIds, { requireActive: true });
   const overrides = await ctx.db.select().from(staffServices).where(and(eq(staffServices.merchantId, merchant.id), eq(staffServices.userId, staffId)));
-  const r = itemsFor(svcs, staffId, overrides);
+  const r = withAddOns(itemsFor(svcs, staffId, overrides), extras); // phase-pro P5: add-on lines, minutes and price; the deposit stays the services'.
   const rx = isPharmacy(merchant);
   // A pharmacy appointment is free to book: no deposit, no card on file, no no-show fee, no notes (a note is where health information would go).
   assertNoPharmacyNotes(merchant, body.notes);
@@ -371,6 +378,7 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
     throw err;
   }
   const [fresh] = await ctx.db.select().from(appointments).where(eq(appointments.id, row.id)).limit(1);
+  await attributeBooking(ctx, fresh!, body.rebook); // phase-pro: p3
   if (!hold) await notifyConfirmed(ctx, merchant, fresh!);
   return { appointment: (await myDtos(ctx, [fresh!]))[0]!, deposit: pay.deposit, setup: pay.setup, confirmed: !hold };
 }
@@ -538,6 +546,7 @@ export async function cancelMine(ctx: AppContext, userId: string, id: string): P
   const [row] = await ctx.db.update(appointments).set({ status: "cancelled", cancelledAt: now, cancelReason: late ? "late_cancel" : "customer", holdExpiresAt: null, updatedAt: now }).where(and(eq(appointments.id, a.id), eq(appointments.status, "booked"))).returning();
   if (!row) throw conflict("This appointment was just updated. Refresh and try again.");
   if (!late) await refundDeposit(ctx, merchant, a, "requested_by_customer");
+  await waitlistOnFreedSlot(ctx, merchant, row); // phase-pro: p2 (offer the slot to the waitlist)
   return { appointment: (await myDtos(ctx, [row]))[0]!, feeCharged: fee.charged, feeCents: fee.cents };
 }
 
@@ -552,10 +561,11 @@ export async function rescheduleMine(ctx: AppContext, userId: string, id: string
   const serviceIds = a.items.map((i) => i.serviceId).filter((s): s is string => !!s);
   if (!serviceIds.length) throw badRequest("This booking can't be moved online. Call the shop.");
   const wanted = body.staffId === undefined ? (a.requestedStaff ? a.staffId : null) : (body.staffId ?? null);
-  const { staffId } = await assertBookable(ctx, merchant, { serviceIds, staffId: wanted, startsAt, locationId: a.locationId }, { excludeAppointmentId: a.id });
+  const extras = addOnLinesOf(a.items); // phase-pro P5: the booked add-ons move with the visit
+  const { staffId } = await assertBookable(ctx, merchant, { serviceIds, staffId: wanted, startsAt, locationId: a.locationId }, { excludeAppointmentId: a.id, extraMin: extras.extraMin });
   const svcs = await loadAppointmentServices(ctx.db, merchant.id, serviceIds);
   const overrides = await ctx.db.select().from(staffServices).where(and(eq(staffServices.merchantId, merchant.id), eq(staffServices.userId, staffId)));
-  const r = itemsFor(svcs, staffId, overrides);
+  const r = withAddOns(itemsFor(svcs, staffId, overrides), extras);
   let fee = { charged: false, cents: 0 };
   if (late && a.paymentMethodId) {
     fee = await chargeFee(ctx, merchant, a, "late-change").catch((err) => {
@@ -612,6 +622,7 @@ export async function setStatus(ctx: AppContext, staff: StaffContext, id: string
   }
   if (body.status === "cancelled" && cur.depositPaidAt) await refundDeposit(ctx, merchant, cur, "requested_by_customer");
   if (body.status === "completed") await autoSetPreferred(ctx, row.userId, merchant.id, row.staffId);
+  await waitlistOnFreedSlot(ctx, merchant, row); // phase-pro: p2 (a staff cancel or a no-show frees the slot; other statuses return at once)
   return { appointment: await appointmentDto(ctx.db, (await getAppointment(ctx.db, merchant.id, id))), feeCharged: fee.charged, feeCents: fee.cents };
 }
 
@@ -714,3 +725,12 @@ async function deliverAppointmentMessage(ctx: AppContext, m: { a: Appointment; m
   });
 }
 // ---- end phase-solo: D ----
+
+// ---------------------------------------------------------------------------
+// ---- phase-pro: P5 ---- Public availability with add-ons (their minutes lengthen the slot)
+// ---------------------------------------------------------------------------
+export async function publicAvailability(ctx: AppContext, merchant: Merchant, q: z.output<typeof appointmentsApi.availabilityQuery>): Promise<appointmentsApi.AvailabilityResponse> {
+  const extras = await resolveAddOns(ctx, merchant, q.serviceIds, q.addOnIds);
+  return computeAvailability(ctx, merchant, { serviceIds: q.serviceIds, staffId: q.staffId, from: q.from, to: q.to, locationId: q.locationId }, { extraMin: extras.extraMin });
+}
+// ---- end phase-pro: P5 ----

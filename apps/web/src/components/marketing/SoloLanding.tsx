@@ -1,7 +1,7 @@
 import { preload } from "react-dom";
 import { photoSrcSet, type NailTrade, type SoloPageId } from "@/lib/marketing/solo";
 import { soloView } from "@/lib/marketing/solo-view";
-import { Bookings, CtaBand, Facts, Jobs, PriceBlock, Promos, Regulars, StickyCta, Week } from "./solo/Blocks";
+import { Bookings, CtaBand, Facts, Jobs, PriceBlock, ProFeatures, Promos, Regulars, StickyCta, Week } from "./solo/Blocks";
 import { Hero, WORK_SIZES } from "./solo/Hero";
 import { SoloNav } from "./solo/Nav";
 import { Start } from "./solo/Start";
@@ -30,7 +30,8 @@ export function SoloLanding({ id, trade = "nails", variant }: { id: SoloPageId; 
         <Promos v={v} />
         <Regulars v={v} />
         <Jobs v={v} />
-        <CtaBand />
+        <ProFeatures v={v} />
+        <CtaBand v={v} />
         <PriceBlock v={v} />
         <Start v={v} />
       </main>

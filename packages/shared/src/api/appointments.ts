@@ -25,7 +25,8 @@ export const ACTIVE_APPOINTMENT_STATUSES = ["booked", "arrived", "in_service"] a
 export const APPOINTMENT_SOURCES = ["online", "staff", "walk_in", "instagram"] as const;
 export type AppointmentSource = (typeof APPOINTMENT_SOURCES)[number];
 
-export const SERVICE_KINDS = ["appointment", "repair_line"] as const;
+/** add_on (phase-pro P5): an extra a client adds to a service at booking (nail art, removal); see ADD-ONS below. */
+export const SERVICE_KINDS = ["appointment", "repair_line", "add_on"] as const;
 export type ServiceKind = (typeof SERVICE_KINDS)[number];
 export const serviceKindSchema = z.enum(SERVICE_KINDS);
 
@@ -36,6 +37,8 @@ export const HOLD_MINUTES = 10;
 /** Default cancel/reschedule window and fee policy (merchants.cancelWindowHours / noShowFeeCents). */
 export const DEFAULT_CANCEL_WINDOW_HOURS = 24;
 export const DEFAULT_TIP_PRESETS = [15, 20, 25] as const;
+/** phase-pro P5: at most this many add-ons on one booking. */
+export const MAX_ADD_ONS_PER_BOOKING = 10;
 
 // ---------------------------------------------------------------------------
 // Services (one generic table: appointment services and the repair price list)
@@ -174,6 +177,9 @@ export const appointmentItemSchema = z.object({
   name: z.string().trim().min(1).max(160),
   durationMin: z.number().int().min(0).max(720),
   priceCents: centsSchema,
+  /** phase-pro P5: "add_on" for an add-on line (serviceId is then null and addOnId names it); omitted for a service. */
+  kind: z.enum(["service", "add_on"]).optional(),
+  addOnId: uuidSchema.nullish(),
 });
 export type AppointmentItem = z.infer<typeof appointmentItemSchema>;
 
@@ -405,6 +411,12 @@ export const availabilityQuery = z.object({
   from: isoDate,
   to: isoDate,
   locationId: uuidSchema.optional(),
+  /** phase-pro P5: add-ons picked with the services; their minutes lengthen the slot. */
+  addOnIds: z
+    .string()
+    .optional()
+    .transform((s) => (s ?? "").split(",").map((x) => x.trim()).filter(Boolean))
+    .pipe(z.array(uuidSchema).max(MAX_ADD_ONS_PER_BOOKING)),
 });
 export interface AvailabilityResponse {
   timezone: string;
@@ -434,6 +446,8 @@ export interface PublicServiceDto {
   staffOverrides: { staffId: string; durationMin: number | null; priceCents: number | null }[];
   /** phase-solo D: one optional question the shop asks at booking. */
   intakeQuestion?: string | null;
+  /** phase-pro P5: add-ons a client can pick with this service. Present only when the shop has `booking.add_ons`. */
+  addOns?: PublicAddOnDto[];
 }
 export interface PublicStaffDto {
   id: string;
@@ -474,6 +488,10 @@ export const createMyAppointmentBody = z.object({
   petId: uuidSchema.nullish(),
   /** phase-solo D: the answer to the service's intake question (optional). */
   intakeAnswer: z.string().trim().max(500).nullish(),
+  /** phase-pro P5: add-ons offered with the picked services (pro-value.md §3.2 P5). */
+  addOnIds: z.array(uuidSchema).max(MAX_ADD_ONS_PER_BOOKING).default([]),
+  /** phase-pro P3: the id in a book-again link (?rebook=), so the booking is counted under the reminder that led to it. */
+  rebook: z.string().max(40).nullish(),
 });
 export type CreateMyAppointmentBody = z.input<typeof createMyAppointmentBody>;
 
@@ -564,3 +582,90 @@ export interface IntakeQuestionsResponse {
   items: { serviceId: string; name: string; question: string | null }[];
 }
 // ---- end phase-solo: D ----
+
+// ---------------------------------------------------------------------------
+// ---- phase-pro: P5 ---- Add-ons at booking (docs/business/pro-value.md §3.2 P5)
+// An add-on is a service row with kind "add_on": a price, extra minutes, active. `offeredWith` lists the services that offer it;
+// empty means every service. Feature `booking.add_ons` (Pro): on Free they can be set up but the booking page does not offer them.
+// ---------------------------------------------------------------------------
+const addOnFields = {
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(500).nullish(),
+  priceCents: centsSchema,
+  /** Extra minutes added to the appointment (0 = no extra time). */
+  durationMin: z.number().int().min(0).max(240).default(0),
+  taxable: z.boolean().default(true),
+  active: z.boolean().default(true),
+  sort: z.number().int().min(0).max(100000).default(0),
+  translations: translationsSchema.optional(),
+  /** Services that offer it. Empty: all services. */
+  offeredWith: z.array(uuidSchema).max(200).default([]),
+};
+export const createAddOnBody = z.object(addOnFields);
+export type CreateAddOnBody = z.input<typeof createAddOnBody>;
+export const updateAddOnBody = z
+  .object({ ...addOnFields, durationMin: z.number().int().min(0).max(240), offeredWith: z.array(uuidSchema).max(200), taxable: z.boolean(), active: z.boolean(), sort: z.number().int().min(0).max(100000) })
+  .partial()
+  .refine((b) => Object.keys(b).length > 0, { message: "Nothing to change" });
+export type UpdateAddOnBody = z.input<typeof updateAddOnBody>;
+
+export interface AddOnDto {
+  id: string;
+  name: string;
+  description: string | null;
+  priceCents: number;
+  durationMin: number;
+  taxable: boolean;
+  active: boolean;
+  sort: number;
+  translations: Record<string, { name?: string; description?: string }>;
+  /** Service ids that offer it; empty = every service. */
+  offeredWith: string[];
+}
+export interface AddOnsResponse {
+  items: AddOnDto[];
+  /** The shop's plan offers add-ons on the booking page (`booking.add_ons`). */
+  offered: boolean;
+}
+
+export interface PublicAddOnDto {
+  id: string;
+  name: string;
+  description: string | null;
+  priceCents: number;
+  durationMin: number;
+  translations: Record<string, { name?: string; description?: string }>;
+}
+
+/** Average ticket and add-on attach rate over completed appointments in the report range (reports `overview`). */
+export interface AddOnTicketReport {
+  /** Mean total of completed appointments (services plus add-ons, before tax and tip). 0 when none. */
+  avgTicketCents: number;
+  /** Completed appointments with at least one add-on ÷ completed appointments (0–1). */
+  addOnAttachRate: number;
+  /** Add-on lines sold and their value on completed appointments. */
+  addOnsSold: number;
+  addOnsAmountCents: number;
+}
+
+/** Is this add-on offered with any of these services? No list = offered with every service. */
+export function addOnOfferedWith(addOn: { offeredWith: readonly string[] }, serviceIds: readonly string[]): boolean {
+  return addOn.offeredWith.length === 0 || addOn.offeredWith.some((id) => serviceIds.includes(id));
+}
+
+/** The add-ons a client can pick for these services, each once, in the shop's order. */
+export function addOnsForServices<T extends { id: string; offeredWith: readonly string[]; active?: boolean; sort?: number }>(addOns: readonly T[], serviceIds: readonly string[]): T[] {
+  if (!serviceIds.length) return [];
+  return addOns.filter((a) => a.active !== false && addOnOfferedWith(a, serviceIds)).sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+}
+
+/** Extra minutes and price of picked add-ons. */
+export function addOnTotals(picked: readonly { durationMin: number; priceCents: number }[]): { durationMin: number; priceCents: number } {
+  return picked.reduce((n, a) => ({ durationMin: n.durationMin + a.durationMin, priceCents: n.priceCents + a.priceCents }), { durationMin: 0, priceCents: 0 });
+}
+
+/** Split an appointment's lines into services and add-ons (a line without kind is a service). */
+export function splitAddOnItems<T extends { kind?: string }>(items: readonly T[]): { services: T[]; addOns: T[] } {
+  return { services: items.filter((i) => i.kind !== "add_on"), addOns: items.filter((i) => i.kind === "add_on") };
+}
+// ---- end phase-pro: P5 ----

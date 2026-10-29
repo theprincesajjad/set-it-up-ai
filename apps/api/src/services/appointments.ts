@@ -472,6 +472,8 @@ export interface AvailabilityOptions {
   excludeAppointmentId?: string;
   /** Include times that have already started (staff tools). */
   includePast?: boolean;
+  /** phase-pro P5: minutes the picked add-ons add to the slot (services/add-ons.ts). */
+  extraMin?: number;
 }
 
 const MAX_DAYS = 31;
@@ -519,7 +521,7 @@ export async function computeAvailability(
   ]);
 
   const shifts: ShiftRow[] = hours.filter((h) => eligible.includes(h.userId)).map((h) => ({ userId: h.userId, weekday: h.weekday, start: hhmmToMinutes(h.startsLocal), end: hhmmToMinutes(h.endsLocal) }));
-  const blockFor = (userId: string) => itemsFor(svcs, userId, assignments).blockMin;
+  const blockFor = (userId: string) => itemsFor(svcs, userId, assignments).blockMin + (opts.extraMin ?? 0); // phase-pro P5: add-on minutes
   const bookedMinutes = (userId: string, date: string) =>
     busy.filter((b) => b.staffId === userId && localParts(b.startsAt, tz).date === date).reduce((n, b) => n + (b.endsAt.getTime() - b.startsAt.getTime()) / MIN, 0);
 
@@ -552,7 +554,7 @@ export async function computeAvailability(
     const times = [...picks.values()].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()).map((p) => ({ startsAt: p.startsAt.toISOString(), staffId: p.staffId }));
     out.push({ date, times });
   }
-  const blockMin = q.staffId !== "any" ? blockFor(q.staffId) : itemsFor(svcs, null, assignments).blockMin;
+  const blockMin = q.staffId !== "any" ? blockFor(q.staffId) : itemsFor(svcs, null, assignments).blockMin + (opts.extraMin ?? 0); // phase-pro P5
   return { timezone: tz, blockMin, days: out };
 }
 

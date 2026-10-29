@@ -11,7 +11,8 @@ import { z } from "zod";
 import { ADD_ON_IDS, RESTAURANT_TIERS, type AddOnId, type BillingInterval, type PlanId, type PromoAllowance, type RestaurantTier } from "../plans.js";
 
 export const checkoutBody = z.object({
-  plan: z.enum(["plus", "pro"]),
+  /** plus = Pro, studio = Studio, pro = Service. */
+  plan: z.enum(["plus", "studio", "pro"]),
   interval: z.enum(["month", "year"]).default("month"),
   /** Where Stripe Checkout returns. Defaults to the merchant dashboard billing page. */
   successUrl: z.url().optional(),
@@ -64,9 +65,10 @@ export interface BillingOverviewResponse {
   plans: PlanOptionDto[];
   /** Has a Stripe customer (the portal link works). */
   hasBillingAccount: boolean;
-  /** phase-solo A: calendars, texts, promos, the annual website and the founding price for this shop. */
+  /** phase-solo A: calendars, texts, promos and the annual website for this shop. */
   usage?: PlanUsageDto;
-  foundingSolo?: FoundingSoloDto;
+  /** phase-pro P1: the first-year price of annual Pro as this shop sees it. */
+  firstYearPrice?: FirstYearPriceDto;
 }
 
 // ---- phase-solo: A ----
@@ -82,22 +84,48 @@ export interface PlanUsageDto {
   promos: PromoAllowance;
   /** On the annual plan: the website builder is included (site.builder). */
   annualSiteEntitled: boolean;
+  /** phase-pro P1: the live trial (texts.includedPerMonth is then TRIAL_SMS_CAP), or null. */
+  trial?: TrialDto | null;
+  /** phase-pro P1: the shop has used its one trial (live or ended). */
+  trialUsed?: boolean;
+  /** phase-pro P1: when the trial ended, if it ended without a paid plan (the billing page's "Pro ended {weekday}"). */
+  trialEndedAt?: string | null;
 }
 
-/** The founding solo price (FOUNDING_SOLO) as this shop sees it. GET /v1/billing/founding-solo returns the public part. */
-export interface FoundingSoloDto {
-  enabled: boolean;
+// ---- end phase-solo: A ----
+
+// ---- phase-pro: p1 ----
+/**
+ * The first-year price of annual Pro (FIRST_YEAR_PRICE): shown as a struck-through list price, never named. GET
+ * /v1/billing/first-year-price returns the public part. The spots counter stays internal: neither DTO carries it.
+ */
+export interface FirstYearPriceDto {
+  /** On offer right now (enabled, cheaper than the list price, spots left). */
+  shown: boolean;
+  /** Year-one price in cents. */
   priceCents: number;
-  /** The annual price it renews at. */
-  renewsAtCents: number;
-  slots: number;
-  spotsLeft: number;
-  /** This shop's trade qualifies, a spot is left and it has not used it (always false on the public endpoint). */
+  /** The annual list price it renews at (the struck-through number). */
+  listPriceCents: number;
+  /** This shop can take it on an annual Pro checkout (always false on the public endpoint). */
   eligible: boolean;
   /** This shop already took it. */
   taken: boolean;
 }
-// ---- end phase-solo: A ----
+
+/** A live trial: the plan it gives, when it ends and whole days left. */
+export interface TrialDto {
+  plan: PlanId;
+  endsAt: string;
+  daysLeft: number;
+}
+
+/** POST /v1/merchants/:merchantId/billing/trial: starts the one 14-day trial (409 once used, or on a paid plan). */
+export interface TrialStartResponse {
+  plan: PlanId;
+  startedAt: string;
+  endsAt: string;
+}
+// ---- end phase-pro: p1 ----
 
 export interface CheckoutResponse {
   sessionId: string;

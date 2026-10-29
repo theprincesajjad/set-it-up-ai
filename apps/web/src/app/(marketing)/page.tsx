@@ -11,7 +11,7 @@ import { CounterPhone, CounterTablet, MapPhone, PassPhone, PromoMock, TodayDeskt
 import "@/components/marketing/home/home.css";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { copy } from "@/copy/en-CA";
-import { marketingPlans, planLine, planVars } from "@/lib/marketing/plan-copy";
+import { marketingPlans, planLine, planNote, planVars } from "@/lib/marketing/plan-copy";
 import { fill } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
 
@@ -90,6 +90,7 @@ export default function Home() {
               {L.hero.secondary}
             </a>
           </div>
+          <p className="hm-trial">{planLine("priceLine")}</p>
           <ul className="hm-trust">
             {L.hero.trust.map((t) => (
               <li key={t}>
@@ -247,7 +248,17 @@ export default function Home() {
                   {p.price}
                   {p.per ? <small>{p.per}</small> : null}
                 </span>
-                {p.yearly ? <span className="hm-plan-yearly">{p.yearly.line}</span> : null}
+                {p.yearly ? (
+                  <span className="hm-plan-yearly" data-plan={p.key === "monthly" ? "yearly" : undefined}>
+                    {p.yearly.was ? (
+                      <>
+                        {p.yearly.or} <s>{p.yearly.was}</s> <b>{p.yearly.now}</b> {p.yearly.label}
+                      </>
+                    ) : (
+                      p.yearly.line
+                    )}
+                  </span>
+                ) : null}
                 <span className="hm-plan-tag">{p.tagline}</span>
                 <ul>
                   {p.features.map((x) => (
@@ -264,7 +275,7 @@ export default function Home() {
             ))}
           </div>
           <p className="hm-plans-note">
-            <span>{planLine("noteShop")}</span>
+            <span>{planNote("shop")}</span>
             <Link href="/pricing" prefetch={false}>
               {L.pricing.all}
             </Link>

@@ -89,9 +89,9 @@ describe("food cards", () => {
 });
 
 describe("plan and contract", () => {
-  it("the four features are Plus, for pet shops only, and none is free forever", () => {
+  it("the four features are paid (daycare on Studio, the rest on Pro), for pet shops only, and none is free forever", () => {
     for (const k of ["pets.profiles", "pets.daycare", "pets.food_cards", "pets.report_cards"] as const) {
-      expect(FEATURES[k]).toMatchObject({ minPlan: "plus", vertical: "pet", defaultStage: "ga" });
+      expect(FEATURES[k]).toMatchObject({ minPlan: k === "pets.daycare" ? "studio" : "plus", vertical: "pet", defaultStage: "ga" });
       expect(FREE_FOREVER).not.toContain(k);
     }
   });

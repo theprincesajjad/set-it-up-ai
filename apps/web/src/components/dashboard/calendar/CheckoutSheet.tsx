@@ -13,6 +13,7 @@ import { cn } from "@/lib/cn";
 import { duePreview, money, tipChoices } from "@/lib/dashboard/calendar";
 import { formatDate, formatPoints } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { CheckoutSuccessReviewLine } from "./CheckoutSuccessReviewLine"; // phase-pro: p4
 
 type Appt = appointmentsApi.AppointmentDto;
 type Item = appointmentsApi.AppointmentItem;
@@ -151,6 +152,7 @@ export function CheckoutSheet({
             {inv.tipCents ? <Line label="Tip" value={money(inv.tipCents)} /> : null}
           </dl>
           {result.payUrl ? <p className="break-all text-meta text-fg-muted">{result.payUrl}</p> : null}
+          <CheckoutSuccessReviewLine appointmentId={appt.id} clientName={appt.customer.name} /> {/* phase-pro: p4 */}
         </div>
       ) : (
         <div className="flex flex-col gap-5">

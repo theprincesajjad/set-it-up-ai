@@ -42,7 +42,8 @@ const ts = (name: string) => timestamp(name, { withTimezone: true });
 // ---------------------------------------------------------------------------
 export const platformRole = pgEnum("platform_role", ["none", "rep", "admin"]);
 export const staffRole = pgEnum("staff_role", ["owner", "manager", "staff", "instructor"]);
-export const planId = pgEnum("plan_id", ["free", "plus", "pro"]);
+/** phase-pro P1 (0042_pro_p1): studio sits between plus (Pro) and pro (Service). */
+export const planId = pgEnum("plan_id", ["free", "plus", "studio", "pro"]);
 export const merchantStatus = pgEnum("merchant_status", ["onboarding", "active", "paused", "closed"]);
 export const earnType = pgEnum("earn_type", ["per_dollar", "per_visit", "stamps"]);
 export const rewardType = pgEnum("reward_type", ["amount_off", "percent_off", "free_item", "custom"]);
@@ -287,7 +288,7 @@ export const merchants = pgTable(
     /** Google review request after every completed visit: "off" | "on". Set on by the trial start (P1) and by the owner in Settings, Reviews. */
     reviewRequestsMode: text("review_requests_mode").notNull().default("off"),
     // ---- end phase-pro: p4 ----
-    // ---- phase-pro: p6 (0038_pro_p6) ----
+    // ---- phase-pro: p6 (0040_pro_p6) ----
     /** The owner's weekly goal in booked dollars (cents); null = none set. */
     weeklyGoalCents: integer("weekly_goal_cents"),
     /** Day the weekly report goes out, shop time: 0 = Sunday ... 6 = Saturday. */
@@ -295,6 +296,14 @@ export const merchants = pgTable(
     /** Hour (0 to 23, shop time) the weekly report goes out. */
     weeklyReportHour: smallint("weekly_report_hour").notNull().default(18),
     // ---- end phase-pro: p6 ----
+    // ---- phase-pro: p1 (0042_pro_p1) ----
+    /** The 14-day trial (TRIAL_DAYS, no card, no Stripe object): the plan it gives while trial_ends_at is in the future. Kept after it ends. */
+    trialPlan: text("trial_plan"),
+    trialStartedAt: ts("trial_started_at"),
+    trialEndsAt: ts("trial_ends_at"),
+    /** One trial per shop: set when it starts, never cleared. */
+    trialUsed: boolean("trial_used").notNull().default(false),
+    // ---- end phase-pro: p1 ----
     /** WhatsApp Business phone number (E.164) connected for this shop. */
     whatsappNumber: text("whatsapp_number"),
     whatsappCreditsUsed: integer("whatsapp_credits_used").notNull().default(0),
@@ -3577,7 +3586,7 @@ export const merchantSignals = pgTable(
 );
 // ---- end phase-pro: p6 ----
 
-// ---- phase-pro: p5 (0038_pro_p5) ----
+// ---- phase-pro: p5 (0039_pro_p5) ----
 /**
  * Add-ons at booking (docs/business/pro-value.md §3.2 P5). An add-on is a `services` row with kind "add_on" (price, extra minutes,
  * active). These rows say which services offer it; an add-on with no rows here is offered with every service.
@@ -3593,6 +3602,79 @@ export const serviceAddOns = pgTable(
   },
   (t) => [primaryKey({ columns: [t.serviceId, t.addOnId] }), index("service_add_ons_merchant_idx").on(t.merchantId, t.addOnId)],
 );
-/** An appointment line that is an add-on: same shape as AppointmentItemRow, with `kind: "add_on"` (a missing kind is a service). */
-export type AppointmentAddOnItemRow = AppointmentItemRow & { kind?: "service" | "add_on" };
+/** An appointment line that is an add-on: `serviceId` null (so rebooking and "book again" skip it), `kind: "add_on"` and `addOnId`. */
+export type AppointmentAddOnItemRow = AppointmentItemRow & { kind?: "service" | "add_on"; addOnId?: string | null };
 // ---- end phase-pro: p5 ----
+
+// ---- phase-pro: p2 (0041_pro_p2) ----
+/**
+ * A slot that opened up (a cancellation, a no-show, or the owner's "Offer a slot"), and what the waitlist did with it
+ * (docs/business/pro-value.md §3.2 P2). status: open (not offered yet) | offered | filled | unfilled (no match, or 3 offers lapsed)
+ * | skipped (the owner turned "Offer this slot to the waitlist" off) | locked (Free: recorded for the chip, never offered).
+ */
+export const waitlistFreedSlots = pgTable(
+  "waitlist_freed_slots",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id").notNull().references(() => locations.id, { onDelete: "cascade" }),
+    staffId: uuid("staff_id").references(() => users.id, { onDelete: "set null" }),
+    startsAt: ts("starts_at").notNull(),
+    endsAt: ts("ends_at").notNull(),
+    /** The cancelled or no-show appointment that freed it (null for an owner's manual offer). */
+    freedAppointmentId: uuid("freed_appointment_id"),
+    /** cancelled | no_show | manual */
+    reason: text("reason").notNull().default("cancelled"),
+    status: text("status").notNull().default("open"),
+    /** Offers made for this slot so far (at most WAITLIST_MAX_OFFERS). */
+    offers: integer("offers").notNull().default(0),
+    filledAppointmentId: uuid("filled_appointment_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("waitlist_freed_slots_appt_uq").on(t.freedAppointmentId), index("waitlist_freed_slots_merchant_starts_idx").on(t.merchantId, t.startsAt)],
+);
+
+/** One client waiting for a spot: the service, an optional stylist, the dates and the part of the day they can do. */
+export const appointmentWaitlist = pgTable(
+  "appointment_waitlist",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id").references(() => locations.id, { onDelete: "set null" }),
+    /** The client's account (an online ask, or a client the owner added by phone or email). Null only for a name with no contact. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    customerName: text("customer_name").notNull(),
+    customerPhone: text("customer_phone"),
+    customerEmail: text("customer_email"),
+    serviceId: uuid("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+    /** null = anyone. */
+    staffId: uuid("staff_id").references(() => users.id, { onDelete: "set null" }),
+    windowStart: date("window_start", { mode: "string" }).notNull(),
+    windowEnd: date("window_end", { mode: "string" }).notNull(),
+    /** any | morning | afternoon | evening */
+    timePref: text("time_pref").notNull().default("any"),
+    /** waiting | offered | booked | expired | removed */
+    status: text("status").notNull().default("waiting"),
+    /** The held appointment row (source "waitlist", holdExpiresAt = the offer's end) while an offer is open. */
+    offeredAppointmentHoldId: uuid("offered_appointment_hold_id"),
+    offeredAt: ts("offered_at"),
+    offerExpiresAt: ts("offer_expires_at"),
+    freedSlotId: uuid("freed_slot_id").references(() => waitlistFreedSlots.id, { onDelete: "set null" }),
+    /** The secret in the "Take it" link (/w/<token>). */
+    offerToken: text("offer_token"),
+    bookedAppointmentId: uuid("booked_appointment_id"),
+    bookedAt: ts("booked_at"),
+    /** online | staff */
+    source: text("source").notNull().default("online"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("appointment_waitlist_merchant_status_idx").on(t.merchantId, t.status, t.windowStart),
+    index("appointment_waitlist_user_idx").on(t.userId),
+    uniqueIndex("appointment_waitlist_token_uq").on(t.offerToken),
+    index("appointment_waitlist_slot_idx").on(t.freedSlotId),
+  ],
+);
+// ---- end phase-pro: p2 ----

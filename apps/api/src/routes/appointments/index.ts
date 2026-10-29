@@ -17,6 +17,9 @@ import * as svc from "../../services/appointments.js";
 import * as booking from "../../services/appointments-booking.js";
 import * as checkoutSvc from "../../services/appointments-checkout.js";
 import { isOwnClientsOnly } from "../../services/barber.js";
+import registerWaitlist from "./waitlist.js"; // phase-pro: p2
+import registerAddOns from "./add-ons.js"; // phase-pro P5
+import { noteFullDays } from "../../services/signals.js"; // phase-pro: p6
 
 type MerchantParams = { merchantId: string };
 type ServiceParams = MerchantParams & { serviceId: string };
@@ -24,6 +27,8 @@ type StaffParams = MerchantParams & { userId: string };
 type ApptParams = MerchantParams & { appointmentId: string };
 
 export default async function register(app: FastifyInstance, ctx: AppContext): Promise<void> {
+  await registerWaitlist(app, ctx); // phase-pro: p2 (the owner's waitlist)
+  await registerAddOns(app, ctx); // phase-pro P5: /merchants/:id/add-ons
   async function staffFor(req: FastifyRequest, minRole: StaffRole = "staff", feature: FeatureKey = "booking.appointments", perm: "bookings.manage" | null = "bookings.manage") {
     const { merchantId } = req.params as MerchantParams;
     const staff = await requireStaff(ctx, req, merchantId, minRole);
@@ -164,7 +169,9 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const m = await shop(req.params.slug);
     const q = parse(appointmentsApi.availabilityQuery, req.query);
     reply.header("cache-control", "public, max-age=30");
-    return svc.computeAvailability(ctx, m, { serviceIds: q.serviceIds, staffId: q.staffId, from: q.from, to: q.to, locationId: q.locationId });
+    const av = await booking.publicAvailability(ctx, m, q); // phase-pro P5: add-on minutes lengthen the slot
+    await noteFullDays(ctx, m, av); // phase-pro: p6 (full_day_views signal)
+    return av;
   });
 
   // ---------------------------------------------------------------- customer

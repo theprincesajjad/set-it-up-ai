@@ -29,6 +29,8 @@ export const MILESTONE_KEYS = [
   "signed_up", "first_stamp", "members_10", "activated", "qr_printed", "staff_added", "pos_connected", "upsell_seen", "upsell_dismissed", "nudges_off", "needs_call",
   // Solo pros (onboarding-v1.md §4): the booking link takes bookings, it was shared, the first online booking by someone else, 5 and 10 of them.
   "booking_link_live", "first_share", "first_online_booking", "five_bookings", "ten_bookings", "first_promo_sent", "site_published", "instagram_connected",
+  // phase-pro P1: the 14-day Pro trial started (the day the link went live) and ended (the receipt went out).
+  "trial_started", "trial_ended",
 ] as const;
 export type MilestoneKey = (typeof MILESTONE_KEYS)[number];
 /** Nudges are stored as milestones too, one per (shop, nudge), so each is sent once. */

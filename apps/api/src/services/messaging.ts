@@ -9,6 +9,7 @@
  */
 import { and, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import {
+  appointments,
   auditLogs,
   locations,
   loyaltyPrograms,
@@ -18,6 +19,7 @@ import {
   messages,
   pushTokens,
   rewards,
+  services,
   users,
   visits,
   type DbOrTx,
@@ -98,6 +100,11 @@ export function withFooter(ctx: AppContext, channel: Channel, merchantName: stri
 interface Personal {
   name: string | null;
   balance: number;
+  // ---- phase-pro: p3 ---- the appointment win-back words: weeks since the last visit, the last service, the book-again link
+  weeks?: number;
+  service?: string;
+  link?: string;
+  // ---- end phase-pro: p3 ----
 }
 export function personalize(text: string, p: Personal, merchantName: string, terminology: string): string {
   const first = p.name?.trim().split(/\s+/)[0] ?? "";
@@ -106,7 +113,10 @@ export function personalize(text: string, p: Personal, merchantName: string, ter
     .replace(/\{\{\s*name\s*\}\}/g, p.name?.trim() || "there")
     .replace(/\{\{\s*balance\s*\}\}/g, String(p.balance))
     .replace(/\{\{\s*terminology\s*\}\}/g, terminology)
-    .replace(/\{\{\s*merchant\s*\}\}/g, merchantName);
+    .replace(/\{\{\s*merchant\s*\}\}/g, merchantName)
+    .replace(/\{\{\s*weeks\s*\}\}/g, p.weeks ? String(p.weeks) : "a few") // phase-pro: p3
+    .replace(/\{\{\s*service\s*\}\}/g, p.service ?? "visit")
+    .replace(/\{\{\s*link\s*\}\}/g, p.link ?? "");
 }
 
 /** A pharmacy's message can only be about the front store (services/pharmacy-guard.ts). Checked on create, edit, send and every automation run. */
@@ -172,6 +182,9 @@ export interface Recipient {
   userId: string;
   name: string | null;
   balance: number;
+  weeks?: number; // phase-pro: p3 (win-back words, filled by enrichWinBack)
+  service?: string;
+  link?: string;
   /** Addresses for this channel: one email/phone, or every push token. */
   to: string[];
 }
@@ -664,6 +677,49 @@ const AUTOMATION_META: Record<messagingApi.AutomationKind, { label: string; desc
   },
 };
 
+// ---- phase-pro: p3 ---- win-back in appointment words, for shops that take bookings (pro-value.md §3.2 P3)
+const WIN_BACK_APPOINTMENT = {
+  subject: "Your usual times are open at {{merchant}}",
+  body: "Hi {{first_name}}, it's been {{weeks}} weeks since your last {{service}} at {{merchant}}. Your usual times are open: {{link}}",
+};
+export const WIN_BACK_APPOINTMENT_TOKENS = /\{\{\s*(weeks|service|link)\s*\}\}/;
+
+/** Which wording a shop's win-back starts from: the appointment one when it has online booking with services, else the loyalty one. */
+export async function winBackDefaults(db: DbOrTx, merchant: Merchant, features?: Awaited<ReturnType<typeof getMerchantFeatures>>): Promise<{ variant: "appointment" | "loyalty"; subject: string; body: string }> {
+  const f = features ?? (await getMerchantFeatures(db, merchant));
+  if (f["booking.appointments"].enabled) {
+    const [svc] = await db.select({ id: services.id }).from(services).where(and(eq(services.merchantId, merchant.id), eq(services.kind, "appointment"), eq(services.active, true))).limit(1);
+    if (svc) return { variant: "appointment", ...WIN_BACK_APPOINTMENT };
+  }
+  return { variant: "loyalty", subject: AUTOMATION_META.win_back.subject, body: AUTOMATION_META.win_back.body };
+}
+
+/** Fill each win-back recipient's weeks since the last visit, the last service and a book-again link, for messages that use those words. */
+async function enrichWinBack(ctx: AppContext, merchant: Merchant, recipients: Recipient[]): Promise<void> {
+  if (!recipients.length) return;
+  const ids = recipients.map((r) => r.userId);
+  const [members, done] = await Promise.all([
+    ctx.db.select({ userId: merchantMembers.userId, last: merchantMembers.lastVisitAt }).from(merchantMembers).where(and(eq(merchantMembers.merchantId, merchant.id), inArray(merchantMembers.userId, ids))),
+    ctx.db.select({ userId: appointments.userId, items: appointments.items, staffId: appointments.staffId }).from(appointments).where(and(eq(appointments.merchantId, merchant.id), eq(appointments.status, "completed"), inArray(appointments.userId, ids))).orderBy(desc(appointments.endsAt)),
+  ]);
+  const last = new Map(members.map((m) => [m.userId, m.last]));
+  const lastAppt = new Map<string, (typeof done)[number]>();
+  for (const a of done) if (a.userId && !lastAppt.has(a.userId)) lastAppt.set(a.userId, a);
+  const book = `${ctx.config.publicWebUrl}/shops/${merchant.slug}/book`;
+  for (const r of recipients) {
+    const at = last.get(r.userId);
+    if (at) r.weeks = Math.max(1, Math.round((ctx.now().getTime() - at.getTime()) / (7 * 86400000)));
+    const a = lastAppt.get(r.userId);
+    const item = a?.items[0];
+    if (item) r.service = item.name;
+    const q = new URLSearchParams();
+    if (item?.serviceId) q.set("service", item.serviceId);
+    if (a?.staffId && item?.serviceId) q.set("staff", a.staffId);
+    r.link = q.size ? `${book}?${q.toString()}` : book;
+  }
+}
+// ---- end phase-pro: p3 ----
+
 interface AutomationConfig {
   kind?: "automation";
   days?: number | null;
@@ -702,8 +758,9 @@ export async function listAutomations(ctx: AppContext, merchant: Merchant): Prom
     const came = new Set(mine.filter((r) => theirVisits.some((v) => v.userId === r.userId && v.at > r.at && v.at.getTime() <= r.at.getTime() + 7 * 86400000)).map((r) => r.userId));
     return { messaged: people.size, cameIn7d: came.size };
   };
+  const winBack = await winBackDefaults(ctx.db, merchant, features); // phase-pro: p3
   return messagingApi.AUTOMATION_KINDS.map((kind) => {
-    const meta = AUTOMATION_META[kind];
+    const meta = kind === "win_back" ? { ...AUTOMATION_META.win_back, subject: winBack.subject, body: winBack.body } : AUTOMATION_META[kind]; // phase-pro: p3
     const row = rows.find((r) => r.automation === kind);
     const cfg = (row?.segment ?? {}) as AutomationConfig;
     return {
@@ -839,6 +896,7 @@ export async function runAutomations(ctx: AppContext): Promise<number> {
     const audience = await resolveAudience(ctx.db, merchant.id, msg.channel, where);
     let recipients = audience.recipients;
     if (!recipients.length) continue;
+    if (msg.automation === "win_back" && WIN_BACK_APPOINTMENT_TOKENS.test(msg.body)) await enrichWinBack(ctx, merchant, recipients); // phase-pro: p3
     if (msg.channel === "sms") {
       const [fresh] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchant.id)).limit(1);
       const remaining = Math.max(0, smsAllowance(fresh!) - fresh!.smsCreditsUsed);
