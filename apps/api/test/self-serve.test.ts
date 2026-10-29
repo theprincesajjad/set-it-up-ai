@@ -28,13 +28,13 @@ const features = async (token: string, id: string) => {
 const geocoder = (hit: { lat: number; lng: number } | null): Geocoder => ({ name: "test", geocode: async () => hit });
 
 describe("trade tools self-serve", () => {
-  it("a new salon buys Café & Retail and the calendar switches on, with no admin override", async () => {
+  it("a new salon has its free calendar at once and buys Café & Retail for the rest, with no admin override", async () => {
     const token = await owner();
     const made = await signup(token, { vertical: "salon" });
     const id = made.body.merchant.id as string;
     let f = await features(token, id);
-    // Locked because of the plan (it has a price and a checkout), not "coming soon".
-    expect(f["booking.appointments"]).toMatchObject({ enabled: false, lockedReason: "plan", stage: "ga" });
+    // phase-solo A: one bookable calendar is free; the walk-in line is locked because of the plan (a price and a checkout), not "coming soon".
+    expect(f["booking.appointments"]).toMatchObject({ enabled: true, lockedReason: null, stage: "ga" });
     expect(f["booking.walkin_queue"]).toMatchObject({ enabled: false, lockedReason: "plan" });
 
     const co = await call(env, token, "POST", `/v1/merchants/${id}/billing/checkout`, { plan: "plus" });
@@ -66,9 +66,10 @@ describe("trade tools self-serve", () => {
     const f = await features(token, id);
     expect(f["booking.appointments"]).toMatchObject({ enabled: true, lockedReason: null });
     expect(f["booking.classes"].enabled).toBe(false);
-    // A salon on the same free plan does not get the calendar for free.
+    // phase-solo A: a salon on the same free plan gets one free calendar too; classes stay paid.
     const salon = (await signup(token, { vertical: "salon", name: "Cuts" })).body.merchant.id as string;
-    expect((await features(token, salon))["booking.appointments"]).toMatchObject({ enabled: false, lockedReason: "plan" });
+    expect((await features(token, salon))["booking.appointments"]).toMatchObject({ enabled: true, lockedReason: null });
+    expect((await features(token, salon))["booking.classes"]).toMatchObject({ enabled: false, lockedReason: "plan" });
   });
 
   it("a pet shop's four pet features turn on with its plan, and only for pet shops", async () => {

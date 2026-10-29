@@ -85,7 +85,8 @@ describe("merchant navigation", () => {
 
   it("Pricing v2: a free shop sees only loyalty + reporting in the sidebar", () => {
     const keys = buildMerchantNav("/m/x", "owner", new Set(FREE_FOREVER)).map((n) => n.key);
-    expect(keys).toEqual(["home", "counter", "customers", "program", "reports", "locations", "settings", "staff", "integrations", "billing"]);
+    // phase-solo G: the Website builder is open to every owner (preview); Publish is gated inside the page.
+    expect(keys).toEqual(["home", "counter", "customers", "program", "reports", "site", "locations", "settings", "staff", "integrations", "billing"]);
     for (const k of ["promos", "discount-cards", "messages", "orders", "tickets", "catalog", "slots", "ads", "campaigns"]) expect(keys).not.toContain(k);
   });
 

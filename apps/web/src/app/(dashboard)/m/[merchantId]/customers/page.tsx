@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { useToast } from "@/components/ui/Toast";
 import { isAppointmentLed } from "@/lib/dashboard/people";
 import type { merchantApi } from "@ll/shared";
 import { CustomerView } from "@/components/dashboard/customers/CustomerView";
@@ -29,10 +30,12 @@ export default function CustomersPage() {
 }
 
 function Customers() {
-  const { enabled, detail } = useMerchant();
+  const { enabled, detail, role } = useMerchant();
   const [view, setView] = useState<"visits" | "loyalty">("visits");
   // phase-solo D (people-side.md gap 12): a beauty pro, barber or salon gets the appointment-led list first; the loyalty list stays one tap away.
   if (!isAppointmentLed(detail.merchant.vertical, enabled("booking.appointments"))) return <LoyaltyCustomers />;
+  // Staff (a renter may see only their own clients) stay on the visits list.
+  if (role === "staff") return <AppointmentCustomers toggle={<MyBookingLink />} />;
   const toggle = <SegmentedControl size="sm" label="View" value={view} onChange={setView} options={[{ value: "visits", label: "By visit" }, { value: "loyalty", label: "By stamps" }]} />;
   return view === "visits" ? <AppointmentCustomers toggle={toggle} /> : <LoyaltyCustomers toggle={toggle} />;
 }
@@ -284,5 +287,21 @@ function CustomerPanel({ memberId, onClose, onChanged }: { memberId: string | nu
         )}
       </Async>
     </SidePanel>
+  );
+}
+
+/** phase-solo D: a staff member's own booking link ("book with Dev"), copied from Customers. */
+function MyBookingLink() {
+  const { detail, me } = useMerchant();
+  const toast = useToast();
+  const copy = async () => {
+    const link = `${window.location.origin}/shops/${detail.merchant.slug}/book?staff=${me.user.id}`;
+    await navigator.clipboard?.writeText(link).catch(() => undefined);
+    toast({ message: "Link copied", tone: "success" });
+  };
+  return (
+    <Button size="sm" variant="secondary" data-testid="my-booking-link" onClick={copy}>
+      Copy my booking link
+    </Button>
   );
 }

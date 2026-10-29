@@ -1,7 +1,7 @@
 "use client";
 import {
   BarChart3, Blocks, CalendarClock, CalendarDays, Tags, ChevronsUpDown, CreditCard, Gift, Home, IdCard, Mail, Megaphone, Map as MapIcon, QrCode, SlidersHorizontal, ShoppingBag, Store, Tag, Users, UserCog,
-  Wrench, Beef, Newspaper, Repeat, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, Plus, PawPrint, Dog, Bone, Car, Droplets, Disc3, BellRing, type LucideIcon, Calculator, Check, Ticket, ScanLine, ListOrdered, Wallet, FileText, Pill,
+  Globe, Wrench, Beef, Newspaper, Repeat, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, Plus, PawPrint, Dog, Bone, Car, Droplets, Disc3, BellRing, type LucideIcon, Calculator, Check, Ticket, ScanLine, ListOrdered, Wallet, FileText, Pill,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -17,6 +17,7 @@ import { errorMessage } from "@/lib/api/errors";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useSoloCalendar } from "@/lib/dashboard/useSoloCalendar";
+import { isAppointmentLed } from "@/lib/dashboard/people";
 import { AccountMenu } from "./AccountMenu";
 import type { CommandSearch } from "./CommandMenu";
 import { useMerchant } from "./MerchantContext";
@@ -28,6 +29,7 @@ import { AlertsLink, LocationChip } from "./TopBar";
 
 const ICONS: Record<string, LucideIcon> = {
   inbox: MessageCircle, // phase-solo D
+  site: Globe, // phase-solo G
   home: Home, counter: Calculator, customers: Users, program: Gift, promos: Megaphone, "discount-cards": IdCard, messages: Mail, reports: BarChart3,
   locations: QrCode, staff: UserCog, integrations: Blocks, billing: CreditCard, settings: SlidersHorizontal, orders: ShoppingBag, catalog: Tag, tickets: Wrench,
   "restaurant-menu": UtensilsCrossed, "restaurant-preorders": Clock, "restaurant-tiffin": Truck, "restaurant-catering": PartyPopper, "restaurant-banquet": Building2,
@@ -197,7 +199,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
   const bottomNav = [pick("home"), pick("counter"), pick("customers"), main ? pick(main.key) : null].filter((x): x is ShellNavItem => !!x);
   const section = pathname.slice(base.length).split("/")[1] ?? "";
   const sectionKey = section === "" ? "home" : section === "setup" ? "home" : section;
-  const allowed = canOpen(role, sectionKey);
+  const allowed = canOpen(role, sectionKey, { appointmentLed: isAppointmentLed(detail.merchant.vertical, features.features.some((f) => f.key === "booking.appointments" && f.enabled)) }); // phase-solo D
 
   const search = useMemo<CommandSearch | undefined>(
     () =>

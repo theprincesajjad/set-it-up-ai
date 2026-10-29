@@ -206,6 +206,8 @@ describe("founder's console", () => {
   it("charge mode: reason is recorded in the audit log and the money view shows it", async () => {
     const admin = await person("admin", "Ada Admin");
     const m = await createMerchant(env);
+    // An existing shop on destination charges (new shops start on direct since phase-solo A).
+    await env.db.update(merchants).set({ chargeMode: "destination" }).where(eq(merchants.id, m.merchant.id));
     const url = `/v1/admin/merchants/${m.merchant.id}/charge-mode`;
     await openSupportSession(env, admin.user.id, m.merchant.id, "Change merchant of record");
     expect((await call("PUT", url, admin.token, { chargeMode: "direct", reason: "ok" })).statusCode).toBe(400);
@@ -285,7 +287,7 @@ describe("founder's console", () => {
     const rep = await person("rep", "Rita Rep");
     const m = await createMerchant(env);
     const hood = await createNeighbourhood(env.db, "audit-hood");
-    await env.db.update(merchants).set({ stripeAccountId: "acct_x" }).where(eq(merchants.id, m.merchant.id));
+    await env.db.update(merchants).set({ stripeAccountId: "acct_x", chargeMode: "destination" }).where(eq(merchants.id, m.merchant.id));
     const steps: [string, () => Promise<{ statusCode: number }>][] = [
       ["feature.stage_changed", () => call("PUT", "/v1/admin/features/promos.basic/stage", admin.token, { stage: "beta", note: "test" })],
       ["support.session_started", () => call("POST", `/v1/admin/merchants/${m.merchant.id}/support-sessions`, admin.token, { reason: "test reason" })],

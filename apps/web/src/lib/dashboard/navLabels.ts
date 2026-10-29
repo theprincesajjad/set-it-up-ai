@@ -65,6 +65,7 @@ export const NAV_LABEL_KEYS: Record<string, MessageKey> = {
   "Pantry reminders": "shell.nav.pantry",
   // phase-solo D
   Inbox: "shell.nav.inbox",
+  Website: "shell.nav.site",
 };
 
 /** The word for a row in the active language, or the English label when there is none. */

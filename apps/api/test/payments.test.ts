@@ -70,11 +70,17 @@ describe("Stripe Connect onboarding", () => {
     expect((await call(env, mgr.token, "GET", `${url}/status`)).body.chargesEnabled).toBe(true);
   });
 
-  it("is not available on Free (no in-app payments)", async () => {
+  it("is open on Free for the free calendar's deposits (on direct charges), and closed when appointments are off", async () => {
+    // phase-solo A: deposits and no-show fees on Free need a connected account; a first connect on Free sets direct charges.
     const { merchant, ownerToken } = await createMerchant(env);
     await setStage(env, PAID_FEATURES, "ga");
+    await env.db.update(merchants).set({ chargeMode: "destination" }).where(eq(merchants.id, merchant.id));
     const r = await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/payments/connect`, {});
-    expect(r.status).toBe(402);
+    expect(r.status).toBe(200);
+    expect((await env.db.select().from(merchants).where(eq(merchants.id, merchant.id)))[0]!.chargeMode).toBe("direct");
+    const other = await createMerchant(env);
+    await setStage(env, ["booking.appointments"], "hidden");
+    expect((await call(env, other.ownerToken, "POST", `/v1/merchants/${other.merchant.id}/payments/connect`, {})).status).toBe(402);
   });
 });
 

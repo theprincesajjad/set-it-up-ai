@@ -66,7 +66,9 @@ test("an area shop's street is nowhere before booking, and on the confirmation a
   await page.screenshot({ path: shot("privacy-shop-390"), fullPage: true });
 
   // The Open Graph image renders from the same public data (no address field exists there), and the sitemap lists the shop without it.
-  expect((await request.get(`/shops/${s.slug}/opengraph-image`)).status()).toBe(200);
+  const og = /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
+  expect(og).toBeTruthy();
+  expect((await request.get(og!.replace(/^https?:\/\/[^/]+/, ""))).status()).toBe(200);
   const sitemap = await (await request.get("/sitemap.xml")).text();
   expect(sitemap).not.toMatch(streetRe);
 
@@ -94,4 +96,22 @@ test("an area shop's street is nowhere before booking, and on the confirmation a
   // Confirmed: now, and only now, the street.
   await expect(page.getByTestId("booked-address")).toContainText(s.street);
   await page.screenshot({ path: shot("privacy-booked-390"), fullPage: true });
+});
+
+test("an area shop's published site at /s/<slug> never shows the street (every preset)", async ({ request }) => {
+  const s = await homeStudio();
+  const streetRe = new RegExp(s.street.split(" ")[1]!, "i");
+  const admin = (await call<{ accessToken: string }>("POST", "/v1/auth/login", { email: "admin@localloyalty.example", password: "localloyalty-admin" })).accessToken;
+  // The annual entitlement, the way a pilot shop gets it (as site-builder.spec.ts does).
+  await call("PUT", "/v1/admin/features/site.builder/overrides", { merchantId: s.id, enabled: true, reason: "e2e privacy" }, admin);
+  for (const preset of ["studio", "portfolio", "shopfront"] as const) {
+    await call("POST", `/v1/merchants/${s.id}/site/reset`, { preset }, s.token);
+    await call("POST", `/v1/merchants/${s.id}/site/publish`, {}, s.token);
+    expect(await (await request.get(`${API}/v1/public/sites/${s.slug}`)).text()).not.toMatch(streetRe);
+    const page = await request.get(`/s/${s.slug}`);
+    expect(page.status()).toBeLessThan(400);
+    const html = await page.text();
+    expect(html, preset).not.toMatch(streetRe);
+    expect(html, preset).not.toContain("M6R 2K1");
+  }
 });

@@ -3602,6 +3602,7 @@ export const en = {
   "bk.intake.label": "A question from {shop}",
   "bk.intake.placeholder": "Your answer (optional)",
   "shell.nav.inbox": "Inbox",
+  "shell.nav.site": "Website",
   "inbox.title": "inbox",
   "inbox.subtitle": "Messages from your customers, in one place",
   "inbox.filter.all": "All",

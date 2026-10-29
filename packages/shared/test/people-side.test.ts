@@ -10,7 +10,7 @@ describe("promo templates", () => {
       expect(keys.has(t.key), t.key).toBe(false);
       keys.add(t.key);
       const title = (en as Record<string, string>)[t.titleKey];
-      const body = (en as Record<string, string>)[t.bodyKey];
+      const body = (en as Record<string, string>)[t.bodyKey] ?? "";
       expect(title, t.titleKey).toBeTruthy();
       expect(body, t.bodyKey).toContain("{shop}");
       expect(body.length, t.bodyKey).toBeLessThanOrEqual(170);

@@ -39,8 +39,9 @@ function UsagePanel({ usage }: { usage: billingApi.PlanUsageDto }) {
         {rows.map((r) => (
           <div key={r.label} className="flex flex-col gap-0.5">
             <dt className="text-meta text-fg-muted">{r.label}</dt>
-            <dd className="text-body tabular-nums text-fg">{r.value}</dd>
-            {r.note ? <dd className="text-meta text-fg-muted">{r.note}</dd> : null}
+            {/* dir="auto": English values with numbers stay readable inside an RTL page until the copy is translated. */}
+            <dd dir="auto" className="text-start text-body tabular-nums text-fg">{r.value}</dd>
+            {r.note ? <dd dir="auto" className="text-start text-meta text-fg-muted">{r.note}</dd> : null}
           </div>
         ))}
       </dl>

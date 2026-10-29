@@ -48,7 +48,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: "Free",
     priceCents: 0,
     annualPriceCents: 0,
-    blurb: `Your loyalty program, the network listing, wallet pass and reports. Free forever: no subscription and no fee on loyalty. Online orders on Free carry ${Number((ORDER_BPS_FREE / 100).toFixed(2))}%.`,
+    blurb: `One bookable calendar with online booking, deposits and reminders, and your loyalty program, the network listing, wallet pass and reports. No subscription and no fee on loyalty. Online orders on Free carry ${Number((ORDER_BPS_FREE / 100).toFixed(2))}%.`,
     bestFor: ["Every shop"],
     // Reserved for transactional texts (confirmations and reminders to clients with no app, pass or email); then email.
     smsPerMonth: 30,

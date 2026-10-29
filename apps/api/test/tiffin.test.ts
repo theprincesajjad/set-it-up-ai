@@ -25,6 +25,9 @@ const at = async (iso: string) => {
 
 async function kitchen() {
   const m = await paidMerchant(env, { plan: "free" });
+  // An existing kitchen on destination charges (new shops default to direct since phase-solo A; these tests switch modes from destination).
+  await env.db.update(merchants).set({ chargeMode: "destination" }).where(eq(merchants.id, m.merchant.id));
+  m.merchant = { ...m.merchant, chargeMode: "destination" };
   await grantFeatures(env, m.merchant.id, ["restaurant.tiffin"]);
   actors.push({ holder: m, user: "owner", token: "ownerToken" });
   const base = `/v1/merchants/${m.merchant.id}/tiffin`;
@@ -636,6 +639,7 @@ describe("charge mode", () => {
   });
 
   it("stays a destination charge while STRIPE_DIRECT_CHARGES is off", async () => {
+    env.ctx.config.stripe.directCharges = false;
     const k = await kitchen();
     await env.db.update(merchants).set({ chargeMode: "direct" }).where(eq(merchants.id, k.m.merchant.id));
     const { payment } = await join(k);

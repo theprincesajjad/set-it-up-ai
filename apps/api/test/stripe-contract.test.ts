@@ -956,7 +956,8 @@ describe("charge-mode change and saved tiffin methods", () => {
 
   it("never calls Stripe, clears the saved customer and method of live subscriptions, counts them, and the renewal then charges a fresh intent on the connected account", async () => {
     const { merchant, ownerToken } = await createMerchant(env);
-    await env.db.update(merchants).set({ stripeAccountId: ACCT, stripeChargesEnabled: true, stripePayoutsEnabled: true, stripeDetailsSubmitted: true }).where(eq(merchants.id, merchant.id));
+    // An existing shop on destination charges switching to direct (new shops start on direct since phase-solo A).
+    await env.db.update(merchants).set({ chargeMode: "destination", stripeAccountId: ACCT, stripeChargesEnabled: true, stripePayoutsEnabled: true, stripeDetailsSubmitted: true }).where(eq(merchants.id, merchant.id));
     const [plan] = await env.db.insert(tiffinPlans).values({ merchantId: merchant.id, name: "Thali", priceCents: 12000 }).returning();
     const rows = [];
     for (const status of ["active", "past_due", "cancelled"]) {

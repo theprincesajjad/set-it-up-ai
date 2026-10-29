@@ -292,6 +292,8 @@ function buildNavEntries(base: string, role: StaffRole, enabled: Set<FeatureKey>
       ...(enabled.has("booking.walkin_queue") ? [run(queue)] : []),
       ...(enabled.has("staff.payouts") ? [run(payouts)] : []),
       ...(enabled.has("booking.appointments") && navVisible("calendar", enabled, shop) ? [run(calendar)] : []),
+      // phase-solo D: at a beauty pro's, barber's or salon, staff see their clients (a private renter only their own).
+      ...(isAppointmentLed(shop?.vertical, enabled.has("booking.appointments")) ? [{ key: "customers", href: `${base}/customers`, label: "Customers", group: "run" as NavSection }] : []),
       ...[classes, door, deskSale].filter((e) => navVisible(e.key, enabled, shop)).map(run),
       ...(shop?.vertical === "grocery" && enabled.has("grocery.counter_preorders") ? [run({ key: "grocery-butcher", href: `${base}/grocery/butcher`, label: "Butcher counter", group: "run" })] : []),
     ];
@@ -329,6 +331,8 @@ function buildNavEntries(base: string, role: StaffRole, enabled: Set<FeatureKey>
     { key: "slots", href: `${base}/slots`, label: enabled.has("service.tickets") && enabled.has("booking.dropoff_scheduling") ? "Drop-off slots" : "Pickup & drop-off", group: "run" },
     { key: "ads", href: `${base}/ads`, label: "Ads", group: "grow" },
     { key: "campaigns", href: `${base}/campaigns`, label: "Street campaigns", group: "grow" },
+    // phase-solo G (added by D, who owns the nav): the website builder, ungated so monthly shops can preview; owners and managers only.
+    ...(role === "owner" || role === "manager" ? [{ key: "site", href: `${base}/site`, label: "Website", group: "grow" as NavSection }] : []),
     { key: "pharmacy", href: `${base}/pharmacy`, label: "Pharmacy rules", group: "run" },
     { key: "locations", href: `${base}/locations`, label: "Locations & QR kit", group: "shop" },
     { key: "staff", href: `${base}/staff`, label: "Staff", group: "shop" },
@@ -418,8 +422,9 @@ function buildGroceryNav(base: string, role: StaffRole, enabled: Set<FeatureKey>
 }
 
 /** Which nav keys a role may open directly (route guard for staff deep links). */
-export function canOpen(role: StaffRole, key: string): boolean {
+export function canOpen(role: StaffRole, key: string, /** phase-solo D: staff at an appointment-led shop may open Customers (their own clients). */ people?: { appointmentLed: boolean }): boolean {
   if (role === "instructor") return key === "home" || key === "classes" || key === "class-door";
+  if (role === "staff" && key === "customers") return !!people?.appointmentLed;
   if (role === "staff") return key === "home" || key === "counter" || key === "calendar" || key === "queue" || key === "payouts" || key === "pets" || key === "groom-rebooking" || key === "daycare" || key === "food-cards" || key === "wash" || key === "vehicles" || key === "service-reminders" || key === "tire-season" || key === "classes" || key === "class-door" || key === "class-offers" || key === "grocery";
   if (key === "billing") return role === "owner";
   return true;
