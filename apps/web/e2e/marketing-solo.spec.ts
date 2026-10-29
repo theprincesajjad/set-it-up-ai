@@ -69,7 +69,7 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
   await expect(page.locator("#plans")).toBeInViewport();
   await expect(page.locator("#plans [data-plan=monthly]")).toContainText("$39");
   await expect(page.locator("#plans [data-plan=yearly]")).toContainText("$390");
-  await expect(page.locator("#plans").getByRole("link", { name: /compare with Fresha/ })).toHaveAttribute("href", "/pricing#booking-apps");
+  await expect(page.locator("#plans").getByRole("link", { name: /Compare with Fresha/ })).toHaveAttribute("href", "/pricing#booking-apps");
   // Deposits are optional, never the lead: not in the hero copy or the trust row; the booking flow says so on its details step.
   await expect(page.locator(".sl-copy")).not.toContainText(/deposit/i);
   await expect(page.locator(".sl-app").nth(2)).toContainText("Deposits are optional");
@@ -247,7 +247,7 @@ test("PoweredBy on a booking page leads to the matching landing page with src=cl
   await expect(link).toContainText("Powered by Local Loyalty");
   await link.click();
   await expect(page).toHaveURL(/\/for-nail-techs\?src=client$/);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("DMs");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("One link.");
   // The visit is counted as the client loop: the form and the cookie carry src=client.
   await expect(page.locator("#start input[name=src]")).toHaveValue("client");
   await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === "ll_src")?.value).toBe("client");

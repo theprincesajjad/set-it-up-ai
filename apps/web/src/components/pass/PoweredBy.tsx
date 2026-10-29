@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { BRAND, translator, type Locale } from "@ll/shared";
 import { cn } from "@/lib/cn";
 
@@ -30,9 +29,11 @@ export function PoweredBy({ locale, vertical, show = true, className, source }: 
   if (source === "preview") return <p className={cls}>{line}</p>;
   return (
     <p className={cn("text-center", className)} data-powered-by>
-      <Link href={poweredByHref(vertical)} className="inline-flex min-h-11 items-center text-meta text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:focus-ring">
+      {/* A plain anchor, not <Link>: the landing page's beacon runs only on a full document load, so a client-side navigation would never count this visit (ab-spec §4.1). */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- full navigation on purpose, see above */}
+      <a href={poweredByHref(vertical)} className="inline-flex min-h-11 items-center text-meta text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:focus-ring">
         <span>{line}</span>
-      </Link>
+      </a>
     </p>
   );
 }

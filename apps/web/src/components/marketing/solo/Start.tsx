@@ -56,7 +56,7 @@ export function Start({ v }: { v: SoloView }) {
               {S.contactHint}
             </span>
           </label>
-          <button className="sl-btn" type="submit">
+          <button className="sl-btn" type="submit" data-cta="start">
             {S.cta}
             <Arrow />
           </button>

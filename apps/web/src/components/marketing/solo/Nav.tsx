@@ -17,7 +17,7 @@ export function SoloNav({ current }: { current: SoloKey }) {
             </a>
           ))}
         </nav>
-        <a className="sl-btn" href="#start">
+        <a className="sl-btn" href="#start" data-cta="nav">
           {N.cta}
         </a>
       </div>

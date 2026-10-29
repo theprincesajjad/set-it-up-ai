@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { FEES, PLANS, PROMOS_PER_MONTH_PLUS, showsPoweredBy } from "@ll/shared";
+import { PLANS, PROMOS_PER_MONTH_PLUS, showsPoweredBy } from "@ll/shared";
 import { CompetitorTableSolo } from "@/components/marketing/CompetitorTableSolo";
 import { SoloLanding } from "@/components/marketing/SoloLanding";
 import { PoweredBy, poweredByHref } from "@/components/pass/PoweredBy";

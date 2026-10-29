@@ -2,21 +2,27 @@
 
 Pages: `/for-nail-techs` (with `?trade=brows|lashes|makeup`), `/for-barbers`, `/for-groomers`. Code: `apps/web/src/app/(landing)/for-*/`, blocks in `apps/web/src/components/marketing/solo/` (`SoloLanding` composes them). Strategy and metrics: `docs/business/solo-pro-launch.md` §5.3 and §5.4. Ads: `docs/marketing/ads/`.
 
-## The seven blocks (landing v2, direction B, product-led; Oct 29, 2026)
+## The nine blocks (landing v3, product-led and few words; Oct 29, 2026)
+
+Founder direction, Oct 29: "Too many words. Think like a SaaS owner wowing side hustlers: promos, booking in one place, how your week's been against last week." Word budget on every block: headlines 2 to 6 words, a subhead of one line (12 words at most), card and feature lines of 8 words at most, no paragraphs (the FAQ and legal pages excepted). The product visuals do the explaining. `test/marketing-solo.test.tsx` enforces the budget on the copy.
 
 Code: `apps/web/src/app/(landing)/` (its own layout: the glass nav, no client header or sales chat), the composer `components/marketing/SoloLanding.tsx`, the blocks in `components/marketing/solo/`, the styles in `components/marketing/solo/solo.css` (Clear tokens only), the view model in `lib/marketing/solo-view.ts`. Copy: `copy.solo` in `apps/web/src/copy/en-CA.ts` (English only).
 
 | # | Block | Component | Notes |
 | --- | --- | --- | --- |
-| 1 | Hero | `solo/Hero.tsx` | The hook, the subhead, one black button and the price as a plain link to the price block. A big phone runs the client's booking flow in CSS (pick, time, details, booked); deposits are optional and the default story has none. Beside it: the work photo (where the mock had a decorative disc), the DM, the new booking and the reminder, none ever over the phone's screen. |
-| 2 | Facts | `Facts` | $0 to start, 0% cut, 2 reminders, 3 minutes (barbers: one price for the shop). |
-| 3 | Three jobs | `Jobs` | Clients book themselves (a week filling), reminders send themselves (lock-screen notifications), regulars come back (who came back this month). Order per variant. |
-| 4 | The DM moment | `DmToBooking` | The inbox next to the prefilled new booking ("Create booking from message"). |
-| 5 | Regulars | `Regulars` | The stamp card over a photo of the work, and the promo composer. |
-| 6 | Price | `PriceBlock` | Free, Pro monthly, Pro yearly, from `PLANS`. Deposits are "optional, if you want them". The footnote links to the full comparison on `/pricing#booking-apps` (`CompetitorTableSolo` moved there). |
-| 7 | Start | `solo/Start.tsx` | Name, trade (native radios) and email or mobile: a GET form to `/signup`, which `signupPrefill` turns into the wizard's starting values (`?shop`, `?trade`, `?contact`). The twelve-field wizard lives on `/signup` only. |
+| 1 | Hero | `solo/Hero.tsx` | The hook (two lines, the second in the trade colour), a one-line lede, one black button (`data-cta="hero"`) and the price as a plain link. A big phone runs the client's booking flow in CSS (pick, time, details, booked); deposits are optional and the default story has none. Beside it: the work photo, the DM, the new booking and the reminder, none ever over the phone's screen. |
+| 2 | Facts | `Facts` | One strip: $0 to start, 0% cut, 2 reminders, 3 min (barbers: 1 price for every chair). |
+| 3 | Your week | `Week` | The wow block: a sample owner dashboard. This week against last week (+23%), four numbers that count up in CSS (bookings, visits, regulars back, rewards given), seven bars that grow with the best day in the trade colour, and the next two clients. Mirrors the real Today screen (counts and "vs last" chips) and Reports (this period against the previous one); labelled as sample numbers. |
+| 4 | Every booking, one calendar | `Bookings` | The week filling from three doors, colour-coded: the link, an Instagram DM, added by the owner. Under it the DM that becomes a booking ("Create booking", then "Booked · Sat 11:30 am"). |
+| 5 | A promo in one tap | `Promos` | Three steps: pick a seasonal template (Valentine's nails, back-to-school cuts), send to the regulars who opted in (112), +9 bookings by morning. The allowance line reads `PROMOS_PER_MONTH_PLUS`. |
+| 6 | They come back | `Regulars` | The stamp card over a photo of the work, and who came back this month. |
+| 7 | The boring part, done | `Jobs` | The variant's three job cards (order per variant), compact: a 2 to 6 word title, one line of 8 words, a live demo. |
+| 8 | Price | `PriceBlock` | Free, Pro monthly, Pro yearly, one line each, from `PLANS`. The footnote links to the comparison on `/pricing#booking-apps`. |
+| 9 | Start | `solo/Start.tsx` | Name, trade (native radios) and email or mobile: a GET form to `/signup` (`data-cta="start"` on the button), which `signupPrefill` turns into the wizard's starting values. |
 
-**A/B variants.** `LANDING_VARIANTS` in `copy/en-CA.ts` holds, per look (nails, brows, lashes, makeup, barber, groom) and variant id, the eyebrow, the headline, the subhead, the button label and the order of the three job cards; "control" is the default. Types and the resolver: `lib/marketing/landing-variants.ts`. `<SoloLanding variant="…">` renders a variant; the page root carries `data-variant`. Assignment and tracking are not built yet: the spec is `scratchpad/landing-v2/ab-spec.md` (assignment by middleware rewrite to a prerendered variant path, `?v=` and the `ll_v` cookie, five first-party events by `sendBeacon`, the variant carried into the `signed_up` milestone beside `src`, and `/admin/experiments`). Which variants exist, the copy per trade and the test order: `docs/marketing/value-props.md`.
+Motion is CSS only (opacity, transform and a registered `--sl-count` integer for the count-up), scroll-driven where the browser has `animation-timeline: view()`, and off under reduced motion, where every demo shows its finished frame. Sections below the fold use `content-visibility: auto`, so the browser skips their style and layout work until they are near the viewport.
+
+**A/B variants.** `LANDING_VARIANTS` in `copy/en-CA.ts` holds, per look (nails, brows, lashes, makeup, barber, groom) and variant id, the eyebrow, the headline, the subhead, the button label and the order of the three job cards; "control" is the default. Types and the resolver: `lib/marketing/landing-variants.ts`. `<SoloLanding variant="…">` renders a variant; the page root carries `data-variant`. Assignment and tracking: the proxy rewrites a counted visitor to the prerendered `[variant]` route, which renders `<SoloLanding variant>` and then `<LandingMeasure>` (the inline beacon; `docs/engineering/api/experiments.md`). Preview a variant with `?v=yours`. The beacon counts clicks on the elements with `data-cta` (hero, nav, start). Which variants exist, the copy per trade and the test order: `docs/marketing/value-props.md`.
 
 **Rendering.** All six looks are prerendered: `/for-nail-techs?trade=brows|lashes|makeup` is rewritten (next.config.ts, `beforeFiles`) to the static `/for-nail-techs/[trade]`. The only script of the page's own is the start form's source field (`?src=`, else the page's source, into the form and the `ll_src` cookie). Motion is CSS only and stops under reduced motion. Photos: `public/marketing/`, AVIF with WebP fallback, licences in `docs/marketing/photo-credits.md`.
 

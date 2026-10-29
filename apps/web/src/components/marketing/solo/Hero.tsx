@@ -30,7 +30,7 @@ export function Hero({ v }: { v: SoloView }) {
           </h1>
           <p className="sl-lede sl-rise sl-i2">{v.hero.lede}</p>
           <div className="sl-ctas sl-rise sl-i3">
-            <a className="sl-btn" href="#start">
+            <a className="sl-btn" href="#start" data-cta="hero">
               {v.hero.cta}
               <Arrow />
             </a>

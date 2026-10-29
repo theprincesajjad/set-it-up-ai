@@ -322,7 +322,7 @@
 .sl-plan .price small { font-size: 16px; font-weight: 550; letter-spacing: 0; color: var(--muted-foreground); margin-inline-start: 6px; }
 .sl-plan .what { font-size: 15px; line-height: 1.45; }
 .sl-plan.featured { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--lg-shadow-lg); }
-.sl-plan.featured .name, .sl-plan.featured .price small { color: inherit; opacity: 0.72; }
+.sl-plan.featured .name, .sl-plan.featured .price small { color: inherit; opacity: 0.86; }
 .sl-plans-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 16px; margin-top: 14px; font-size: 14px; color: var(--muted-foreground); }
 .sl-plans-note a { display: inline-flex; align-items: center; min-height: 44px; color: var(--foreground); font-weight: 550; text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 3px; }
 
