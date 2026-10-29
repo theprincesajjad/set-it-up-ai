@@ -25,6 +25,7 @@ import { useAction, useNow } from "@/lib/dashboard/useApi";
 import { sourceLabel } from "@/lib/dashboard/labels";
 import { ClientPeople } from "./ClientPeople";
 import { isAppointmentLed } from "@/lib/dashboard/people";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 const JOINED_VIA: Record<string, string> = { qr: "QR scan", counter: "Counter", staff_app: "Counter", web_counter: "Counter", import: "Import", web: "Web", app: "App", referral: "Referral", pos: "POS" };
 
@@ -61,6 +62,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
   const rewardName = (id: string) => rewards.find((r) => r.id === id)?.name ?? "Reward";
   const recentCutoff = useNow() - 90 * 86_400_000;
   // phase-solo D: an appointment shop sees the next visit, the visits timeline, Message and Book again first.
+  const { t, locale } = useLocaleOrEnglish();
   const appointmentLed = isAppointmentLed(detail.merchant.vertical, enabled("booking.appointments"));
 
   const phone = (
@@ -109,8 +111,9 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
       {goalN > 0 ? (
         <div className="cust-progress rounded-[14px] bg-bg-subtle px-4 py-3.5">
           <p className="text-[15px] font-semibold text-fg tabular">
-            {`${Math.min(c.balance, goalN)} of ${goalN} ${term} · `}
-            {c.rewardAvailable ? "reward ready" : `${Math.max(0, goalN - c.balance)} to ${active[0] ? (/^free /i.test(active[0].name) ? `a ${active[0].name.toLowerCase()}` : active[0].name) : "the next reward"}`}
+            {c.rewardAvailable
+              ? t("people.progressReady", { have: Math.min(c.balance, goalN), goal: goalN, unit: term })
+              : t("people.progress", { have: Math.min(c.balance, goalN), goal: goalN, unit: term, left: Math.max(0, goalN - c.balance), reward: active[0] ? (/^free /i.test(active[0].name) && locale === "en" ? `a ${active[0].name.toLowerCase()}` : active[0].name) : t("people.nextReward") })}
           </p>
           <div role="progressbar" aria-label="Progress to the next reward" aria-valuemin={0} aria-valuemax={goalN} aria-valuenow={Math.min(c.balance, goalN)} className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-bg-muted">
             <div className="h-full rounded-full bg-points" style={{ width: `${Math.min(100, Math.round((c.balance / goalN) * 100))}%` }} />

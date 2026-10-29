@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } f
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useToast } from "@/components/ui/Toast";
 import { isAppointmentLed } from "@/lib/dashboard/people";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import type { merchantApi } from "@ll/shared";
 import { CustomerView } from "@/components/dashboard/customers/CustomerView";
 import { Capsules, EmptyState, PageHeader, SidePanel, SkeletonRows, ToolbarButton } from "@/components/dashboard/kit";
@@ -31,12 +32,13 @@ export default function CustomersPage() {
 
 function Customers() {
   const { enabled, detail, role } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   const [view, setView] = useState<"visits" | "loyalty">("visits");
   // phase-solo D (people-side.md gap 12): a beauty pro, barber or salon gets the appointment-led list first; the loyalty list stays one tap away.
   if (!isAppointmentLed(detail.merchant.vertical, enabled("booking.appointments"))) return <LoyaltyCustomers />;
   // Staff (a renter may see only their own clients) stay on the visits list.
   if (role === "staff") return <AppointmentCustomers toggle={<MyBookingLink />} />;
-  const toggle = <SegmentedControl size="sm" label="View" value={view} onChange={setView} options={[{ value: "visits", label: "By visit" }, { value: "loyalty", label: "By stamps" }]} />;
+  const toggle = <SegmentedControl size="sm" label={t("people.viewLabel")} value={view} onChange={setView} options={[{ value: "visits", label: t("people.viewByVisit") }, { value: "loyalty", label: t("people.viewByStamps") }]} />;
   return view === "visits" ? <AppointmentCustomers toggle={toggle} /> : <LoyaltyCustomers toggle={toggle} />;
 }
 
@@ -253,6 +255,7 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
 
 function CustomerPanel({ memberId, onClose, onChanged }: { memberId: string | null; onClose: () => void; onChanged: () => void }) {
   const { api, base } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   const state = useApi(memberId ? () => api.customer(memberId) : null, [api, memberId]);
   const rewards = useApi(memberId ? () => api.rewards() : null, [api, !!memberId]);
   const d = state.data && state.data.customer.memberId === memberId ? state.data : null;
@@ -262,7 +265,7 @@ function CustomerPanel({ memberId, onClose, onChanged }: { memberId: string | nu
       onClose={onClose}
       label="Customer"
       title={d ? (d.customer.name ?? "No name") : "Customer"}
-      subtitle={d ? `Member since ${formatDate(d.customer.joinedAt)}` : undefined}
+      subtitle={d ? t("people.customerSince", { date: formatDate(d.customer.joinedAt) }) : undefined}
       footer={
         memberId ? (
           <Link href={`${base}/customers/${memberId}`} className="kit-quiet text-meta font-medium text-fg-muted hover:text-fg">
@@ -293,15 +296,16 @@ function CustomerPanel({ memberId, onClose, onChanged }: { memberId: string | nu
 /** phase-solo D: a staff member's own booking link ("book with Dev"), copied from Customers. */
 function MyBookingLink() {
   const { detail, me } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   const toast = useToast();
   const copy = async () => {
     const link = `${window.location.origin}/shops/${detail.merchant.slug}/book?staff=${me.user.id}`;
     await navigator.clipboard?.writeText(link).catch(() => undefined);
-    toast({ message: "Link copied", tone: "success" });
+    toast({ message: t("people.linkCopied"), tone: "success" });
   };
   return (
     <Button size="sm" variant="secondary" data-testid="my-booking-link" onClick={copy}>
-      Copy my booking link
+      {t("people.myLink")}
     </Button>
   );
 }

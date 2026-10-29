@@ -4010,4 +4010,12 @@ export const pa: Messages = {
   "ob.solo.nudge.off": "ਟੈਕਸਟ ਰਾਹੀਂ ਸੈੱਟਅੱਪ ਦੀਆਂ ਯਾਦ-ਦਹਾਨੀਆਂ ਬੰਦ ਹਨ।",
   "ob.solo.nudge.stop": "ਯਾਦ-ਦਹਾਨੀਆਂ ਬੰਦ ਕਰੋ",
   "ob.solo.nudge.start": "ਚਾਲੂ ਕਰੋ",
+  "people.customerSince": "{date} ਤੋਂ ਗਾਹਕ",
+  "people.viewLabel": "ਵੇਖੋ",
+  "people.viewByVisit": "ਵਿਜ਼ਿਟ ਮੁਤਾਬਕ",
+  "people.viewByStamps": "ਸਟੈਂਪ ਮੁਤਾਬਕ",
+  "people.myLink": "ਮੇਰਾ ਬੁਕਿੰਗ ਲਿੰਕ ਕਾਪੀ ਕਰੋ",
+  "people.progress": "{goal} ਵਿੱਚੋਂ {have} {unit} · {reward} ਤੱਕ {left} ਬਾਕੀ",
+  "people.progressReady": "{goal} ਵਿੱਚੋਂ {have} {unit} · ਇਨਾਮ ਤਿਆਰ",
+  "people.nextReward": "ਅਗਲਾ ਇਨਾਮ",
 };

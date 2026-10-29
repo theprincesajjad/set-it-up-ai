@@ -4010,4 +4010,12 @@ export const hi: Messages = {
   "ob.solo.nudge.off": "टेक्स्ट से सेटअप के रिमाइंडर बंद हैं।",
   "ob.solo.nudge.stop": "रिमाइंडर बंद करें",
   "ob.solo.nudge.start": "चालू करें",
+  "people.customerSince": "{date} से ग्राहक",
+  "people.viewLabel": "देखें",
+  "people.viewByVisit": "विज़िट के हिसाब से",
+  "people.viewByStamps": "स्टैम्प के हिसाब से",
+  "people.myLink": "मेरा बुकिंग लिंक कॉपी करें",
+  "people.progress": "{goal} में से {have} {unit} · {reward} तक {left} बाकी",
+  "people.progressReady": "{goal} में से {have} {unit} · रिवॉर्ड तैयार",
+  "people.nextReward": "अगला रिवॉर्ड",
 };

@@ -4010,4 +4010,12 @@ export const ur: Messages = {
   "ob.solo.nudge.off": "ٹیکسٹ سے سیٹ اپ کی یاد دہانیاں آف ہیں۔",
   "ob.solo.nudge.stop": "یاد دہانیاں بند کریں",
   "ob.solo.nudge.start": "آن کریں",
+  "people.customerSince": "{date} سے گاہک",
+  "people.viewLabel": "دیکھیں",
+  "people.viewByVisit": "وزٹ کے حساب سے",
+  "people.viewByStamps": "اسٹیمپ کے حساب سے",
+  "people.myLink": "میرا بکنگ لنک کاپی کریں",
+  "people.progress": "{goal} میں سے {have} {unit} · {reward} تک {left} باقی",
+  "people.progressReady": "{goal} میں سے {have} {unit} · انعام تیار",
+  "people.nextReward": "اگلا انعام",
 };
