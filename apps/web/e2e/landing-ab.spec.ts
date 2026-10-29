@@ -46,13 +46,20 @@ test("an ad URL with ?v=price lands the price variant, sticks, and the signup ca
   const res = await page.goto("/for-barbers?v=price&src=ad-9");
   expect(new URL(page.url()).pathname).toBe("/for-barbers");
   await expect(page.locator(".sl[data-variant=price]")).toHaveCount(1);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("No per-chair charge. Ever.");
+  // Copy-independent: the variant's headline is not control's (the words live in LANDING_VARIANTS and may change).
+  const priceHook = await page.getByRole("heading", { level: 1 }).textContent();
   expect(res!.headers()["x-robots-tag"]).toBeUndefined();
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/for-barbers$/);
   expect(await cookie(context, "ll_v")).toBe("t1-barber-lead:price");
   expect(await cookie(context, "ll_aid")).toMatch(/^[A-Za-z0-9_-]{22}$/);
   await expect(page.locator("[data-landing-notice]")).toContainText("No ad trackers.");
   await expect.poll(() => sent.map((e) => e.k)).toContain("view");
+
+  const control = await context.browser()!.newContext({ extraHTTPHeaders: { ...IN_T1, "Sec-GPC": "1" } });
+  const cp = await control.newPage();
+  await cp.goto(new URL("/for-barbers", page.url()).toString());
+  expect(priceHook).not.toBe(await cp.getByRole("heading", { level: 1 }).textContent());
+  await control.close();
 
   // Sticky: no ?v=, or an unknown one, keeps the arm.
   await page.goto("/for-barbers");
@@ -108,7 +115,7 @@ test("assignment on the nail page: a fresh visitor gets an arm, the lash look ke
   await page.goto("/for-nail-techs?trade=lashes");
   await expect(page.locator(`.sl[data-variant=${variant}][data-solo-trade=lashes]`)).toHaveCount(1);
   await page.goto("/for-nail-techs?v=yours");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your clients stay yours.");
+  await expect(page.locator(".sl[data-variant=yours]")).toHaveCount(1);
   expect(await cookie(context, "ll_v")).toBe("t1-nails-lead:yours");
   // `privacy` is a variant but not an arm of T1: the cookie wins.
   await page.goto("/for-nail-techs?v=privacy");

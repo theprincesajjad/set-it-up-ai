@@ -80,11 +80,11 @@ const T1_NUMBERS = {
 /**
  * The pre-registered tests. T1 (value-props §3.1): the lead message, on the nail page (all four trades pooled) and on the
  * barber page, in parallel (separate pages, separate ad sets, no shared denominator).
- * `startedAt` is Day 1 of the ads; move it (before the start, never after) if the ads start on another day.
+ * `startedAt` is Day 1 of the ads (midnight in Toronto); move it (before the start, never after) if the ads start on another day.
  */
 export const EXPERIMENTS: readonly Experiment[] = [
-  { id: "t1-nails-lead", pages: ["nail"], arms: [{ variant: "control", weight: 0.5 }, { variant: "yours", weight: 0.5 }], startedAt: "2026-11-02", ...T1_NUMBERS, guardrails: { ...T1_NUMBERS.guardrails } },
-  { id: "t1-barber-lead", pages: ["barber"], arms: [{ variant: "control", weight: 0.5 }, { variant: "price", weight: 0.5 }], startedAt: "2026-11-02", ...T1_NUMBERS, guardrails: { ...T1_NUMBERS.guardrails } },
+  { id: "t1-nails-lead", pages: ["nail"], arms: [{ variant: "control", weight: 0.5 }, { variant: "yours", weight: 0.5 }], startedAt: "2026-11-02T00:00:00-05:00", ...T1_NUMBERS, guardrails: { ...T1_NUMBERS.guardrails } },
+  { id: "t1-barber-lead", pages: ["barber"], arms: [{ variant: "control", weight: 0.5 }, { variant: "price", weight: 0.5 }], startedAt: "2026-11-02T00:00:00-05:00", ...T1_NUMBERS, guardrails: { ...T1_NUMBERS.guardrails } },
 ];
 
 export function experimentById(id: string): Experiment | undefined {
