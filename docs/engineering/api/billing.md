@@ -5,7 +5,9 @@ provider `providers/payments*.ts`. Webhook: `payments.md`.
 
 Rules:
 - **Free is free forever**: no transaction fees, every loyalty feature, unlimited locations/staff/members.
-- **Plus $39/mo · $390/yr** and **Pro $79/mo · $790/yr**, CAD (`PLANS` in `@ll/shared`).
+- **Pro** (id `plus`) $29/mo · $290/yr, **Studio** (id `studio`) $59/mo · $590/yr, **Service** (id `pro`) $99/mo · $990/yr, CAD
+  (`PLANS` in `@ll/shared`; rules in `docs/business/pricing.md`).
+- **The 14-day Pro trial**: a flag on the merchant (`trial_plan`, `trial_ends_at`), no Stripe object; one per shop.
 - A paid plan is **purchasable only once rolled out** (`isPlanAvailable`: any feature on that plan not `hidden`).
 - **Downgrading never deletes data.** Members, balances, ledger, rewards, promos, catalog items, tickets — all kept.
   Free features keep working; paid endpoints return `402 feature_locked` (`reason: "plan"`).
@@ -17,17 +19,30 @@ Errors: `401`, `403`, `404` merchant.
 
 ## Objects
 
-- `PlanOption`: `id (free|plus|pro), name, priceCents, annualPriceCents, currency "CAD", blurb, bestFor[], smsPerMonth, available, current, platformFeeBps (0 free, 75 paid)`
+- `PlanOption`: `id (free|plus|studio|pro), name, priceCents, annualPriceCents, currency "CAD", blurb, bestFor[], smsPerMonth, available, current, platformFeeBps (0 free, 75 paid)`
 - `Subscription`: `id, plan, status (trialing|active|past_due|canceled|incomplete), interval (month|year), currentPeriodEnd, cancelAtPeriodEnd, createdAt`
 
 ## `GET /v1/merchants/:merchantId/billing`
-→ `{ plan, subscription: Subscription | null, plans: PlanOption[], hasBillingAccount }`.
+→ `{ plan, subscription: Subscription | null, plans: PlanOption[], hasBillingAccount, usage, firstYearPrice }`.
+`firstYearPrice`: `{ shown, priceCents, listPriceCents, eligible, taken }` (the first-year price of annual Pro; no spots count).
+
+## `GET /v1/merchants/:merchantId/billing/usage` (manager+)
+→ `{ plan, interval, calendars, texts, promos, annualSiteEntitled, trial: { plan, endsAt, daysLeft } | null, trialUsed, trialEndedAt }`.
+During the trial `texts.includedPerMonth` is `TRIAL_SMS_CAP` (100) and `calendars.limit` is 2.
+
+## `POST /v1/merchants/:merchantId/billing/trial`
+Starts the shop's one 14-day Pro trial. → `201 { plan: "plus", startedAt, endsAt }`. Errors: `409 trial_used` (had one),
+`409 trial_not_needed` (on a paid plan or a restaurant tier). The booking link going live starts it too.
+
+## `GET /v1/billing/first-year-price` (public)
+→ `{ shown, priceCents, listPriceCents, eligible: false, taken: false }`. Config: `FIRST_YEAR_PRICE_*`.
 
 ## `GET /v1/merchants/:merchantId/billing/plans`
 → `{ items: PlanOption[], nextCursor: null }`.
 
 ## `POST /v1/merchants/:merchantId/billing/checkout`
-Body: `{ plan: "plus"|"pro", interval?: "month"|"year" (month), successUrl?, cancelUrl? }`.
+Body: `{ plan: "plus"|"studio"|"pro", interval?: "month"|"year" (month), successUrl?, cancelUrl? }`. An annual Pro checkout
+of an eligible shop carries the first-year coupon (`first_year_<cents off>`) and `first_year_price: "1"` metadata.
 Creates the Stripe customer if needed, then a Checkout Session (subscription mode, CAD; configured
 `STRIPE_PRICE_*` ids or an inline price). Redirect the owner to `url`. The plan changes when the
 `checkout.session.completed` / `customer.subscription.*` webhooks arrive — poll `GET .../billing`.

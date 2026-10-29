@@ -12,22 +12,31 @@ import { SubscribeButton } from "./SubscribeButton";
 
 /** ux-copy.md §5 one-liners. */
 export const TEASER_COPY: Partial<Record<FeatureKey, string>> = {
-  "orders.order_ahead": "Customers order and pay before they arrive, and get a text when it's ready.",
+  "orders.order_ahead": `Customers order and pay before they arrive, and get a text when it's ready. On ${PLANS.studio.name}.`,
   "service.tickets": "Track every repair from drop-off to pickup, with photos and status updates.",
   "service.quote_approval": "Send a quote; your customer approves it on their phone. No more phone tag.",
   "service.invoices": "Send the final bill and get paid in the app. Customers earn points automatically.",
   "promos.basic": "Post offers like double rewards on a slow afternoon.",
   "discount_cards": "Show-to-save cards for students, seniors or your street.",
   "marketing.email": "Email your opted-in regulars, CASL compliant.",
-  "marketing.sms": `Text your opted-in regulars. 500 texts a month included with ${PLANS.plus.name}.`,
+  "marketing.sms": `Text your opted-in regulars. ${PLANS.plus.smsPerMonth.toLocaleString("en-CA")} texts a month included with ${PLANS.plus.name}.`,
   "marketing.automations": "\"We miss you\" and \"Your reward is ready\" messages that send themselves.",
-  "integrations.pos_auto_award": "Award points automatically from Square, Clover and more.",
-  "integrations.webhooks": "Webhooks, Zapier and the merchant API.",
+  "integrations.pos_auto_award": `Award points automatically from Square, Clover and more. On ${PLANS.studio.name}.`,
+  "integrations.webhooks": `Webhooks, Zapier and the merchant API. On ${PLANS.studio.name}.`,
   "customers.csv_export": "Export your customers and their activity.",
   "customers.csv_import": "Bring your members over from another loyalty app.",
   "ads.sponsored_promo": "Show your offer to people near your street. Always labelled Sponsored.",
   "reports.advanced": "Retention cohorts and which shops your customers also visit.",
   "site.builder": "Your own website, built from your bookings, services and prices, on a .ca domain. Included with the annual plan.",
+  // ---- phase-pro: p1 (pro-value.md §5.1, §5.6) ----
+  "booking.waitlist": `On ${PLANS.plus.name}, cancelled slots go to a waitlist by themselves: the first client waiting is offered the slot, with a two-hour hold.`,
+  "booking.review_requests": `On ${PLANS.plus.name}, a Google review request goes out by itself two hours after every visit.`,
+  "booking.add_ons": `Nail art, removal, a French tip. On ${PLANS.plus.name}, clients add them when they book, and the time is blocked for you.`,
+  "insights.weekly": `Your week, in your inbox every Sunday: what was booked, what the waitlist and reminders brought back, and your goal. On ${PLANS.plus.name}.`,
+  "booking.walkin_queue": `The walk-in line is on ${PLANS.studio.name}: clients join from their phone, see the wait, and get a text when they're next.`,
+  "staff.payouts": `Chair rent, commission and take-home per barber, every week, on ${PLANS.studio.name}.`,
+  "booking.pickup_slots": `Customers pick a pickup time. On ${PLANS.studio.name}.`,
+  // ---- end phase-pro: p1 ----
 };
 
 let networkShops: Promise<number> | null = null;

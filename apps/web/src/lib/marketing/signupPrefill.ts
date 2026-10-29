@@ -24,7 +24,7 @@ export interface SignupPrefill {
 const TRADE_VERTICAL: Record<string, string> = { nails: "nails", brows: "brows_lashes", lashes: "brows_lashes", makeup: "makeup", barber: "barber", groom: "pet" };
 
 /** Plans a pricing-page button can carry through signup. */
-export const SIGNUP_PLANS = ["plus", "pro", "restaurant-starter", "restaurant-growth", "restaurant-pro"] as const;
+export const SIGNUP_PLANS = ["plus", "studio", "pro", "restaurant-starter", "restaurant-growth", "restaurant-pro"] as const;
 
 type Params = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);

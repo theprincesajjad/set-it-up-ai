@@ -81,10 +81,7 @@ async function isAppointmentSource(ctx: AppContext, merchantId: string, sourceId
   return !!a;
 }
 
-/** P1 calls this when the trial starts (and when Pro is bought): turn the requests on or off. */
-export async function setReviewRequestsMode(ctx: AppContext, merchantId: string, mode: reviewsApi.ReviewRequestsMode): Promise<void> {
-  await ctx.db.update(merchants).set({ reviewRequestsMode: mode, updatedAt: ctx.now() }).where(eq(merchants.id, merchantId));
-}
+export { setReviewRequestsMode } from "./reviews-mode.js";
 // ---- end phase-pro: p4 ----
 
 async function insertRequest(ctx: AppContext, merchant: Merchant, userId: string, sourceId: string): Promise<Request | null> {

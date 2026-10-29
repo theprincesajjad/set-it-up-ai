@@ -27,8 +27,12 @@ describe("people-side nav", () => {
     const paid = (vertical: string, soloCalendar: boolean) => buildMerchantNav("/m/x", "owner", all, { vertical, plan: "plus", soloCalendar }).map((e) => e.key);
     const k = paid("brows_lashes", true);
     for (const gone of ["orders", "catalog", "payouts", "classes", "class-offers", "class-door", "slots", "tickets"]) expect(k, gone).not.toContain(gone);
-    for (const kept of ["calendar", "services", "customers", "inbox", "messages", "site", "queue"]) expect(k, kept).toContain(kept);
-    expect(paid("nails", false)).toContain("payouts");
+    // The walk-in line and payouts are Studio features since phase-pro P1: not in her Pro sidebar.
+    for (const kept of ["calendar", "services", "customers", "inbox", "messages", "site"]) expect(k, kept).toContain(kept);
+    expect(k).not.toContain("queue");
+    const studio = new Set([...all, ...(Object.keys(FEATURES) as FeatureKey[]).filter((x) => FEATURES[x].minPlan === "studio" && !x.startsWith("grocery."))]);
+    expect(buildMerchantNav("/m/x", "owner", studio, { vertical: "nails", plan: "studio", soloCalendar: false }).map((e) => e.key)).toContain("payouts");
+    expect(buildMerchantNav("/m/x", "owner", studio, { vertical: "barber", plan: "studio", soloCalendar: true }).map((e) => e.key)).toContain("queue");
     expect(paid("barber", true)).toContain("classes");
   });
   it("a café on Free keeps its loyalty-first sidebar although one calendar is free for everyone; a groomer and a nail tech keep the calendar", () => {

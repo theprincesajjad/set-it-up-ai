@@ -1,7 +1,7 @@
 "use client";
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { PLANS, durationText, type appointmentsApi } from "@ll/shared";
+import { PLANS, type appointmentsApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Panel, Segmented, SidePanel, Tag } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -13,6 +13,7 @@ import { DataTable, type Column } from "@/components/ui/DataTable";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { durationText } from "@/lib/booking";
 import { addOnExamples, dollars, toCents } from "@/lib/dashboard/add-ons";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";

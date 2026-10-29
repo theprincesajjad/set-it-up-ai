@@ -20,7 +20,7 @@ const CONSENT = { text: "Yes, Annapurna may text me offers and reminders. Reply 
 
 /** A Plus-plan grocer with the four grocery features granted the way pilot shops get them. */
 async function grocer(opts: { features?: boolean } = {}) {
-  const m = await paidMerchant(env, { plan: "plus" });
+  const m = await paidMerchant(env, { plan: "studio" });
   await env.db.update(merchants).set({ vertical: "grocery", name: "Annapurna Grocers" }).where(eq(merchants.id, m.merchant.id));
   const features = ["grocery.flyer", "grocery.counter_preorders", "grocery.pantry_reminders", "grocery.whatsapp_orders"] as const;
   if (opts.features !== false) await grantFeatures(env, m.merchant.id, [...features]);
@@ -52,7 +52,7 @@ describe("feature gating", () => {
   });
 
   it("grocery features belong to grocers: a café, pharmacy or Starter restaurant on the same plan never gets them, even when they are live", async () => {
-    const m = await paidMerchant(env, { plan: "plus" }); // every paid feature is live; the test shop's vertical is not grocery
+    const m = await paidMerchant(env, { plan: "studio" }); // every paid feature is live; the test shop's vertical is not grocery
     const on = async (key: string) => ((await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/features`)).body.features as { key: string; enabled: boolean }[]).find((f) => f.key === key)?.enabled;
     for (const k of ["grocery.flyer", "grocery.counter_preorders", "grocery.pantry_reminders", "grocery.whatsapp_orders"]) expect(await on(k)).toBe(false);
     expect((await call(env, m.ownerToken, "GET", `/v1/merchants/${m.merchant.id}/grocery/deals`)).status).toBe(402);
@@ -409,7 +409,7 @@ describe("Eid al-Adha plan", () => {
     const avail = await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/preorders/availability?itemId=${cut.body.id}`);
     expect(avail.status).toBe(200);
     expect(avail.body.days.every((d: { potsLeft: number | null; full: boolean }) => d.potsLeft === null && !d.full)).toBe(true);
-    const shop = await paidMerchant(env, { plan: "plus" });
+    const shop = await paidMerchant(env, { plan: "studio" });
     expect((await call(env, null, "GET", `/v1/public/shops/${shop.merchant.slug}/restaurant`)).status).toBe(404);
   });
 
@@ -612,7 +612,7 @@ describe("pantry reminders", () => {
     expect((await call(env, null, "GET", `/v1/public/shops/${g.merchant.slug}/pantry/00000000-0000-4000-8000-000000000000`)).status).toBe(404);
     expect((await call(env, null, "GET", `/v1/public/shops/no-such-shop/pantry/${itemId}`)).status).toBe(404);
     // Another shop's link does not open this item.
-    const other = await paidMerchant(env, { plan: "plus" });
+    const other = await paidMerchant(env, { plan: "studio" });
     expect((await call(env, null, "GET", `/v1/public/shops/${other.merchant.slug}/pantry/${itemId}`)).status).toBe(404);
     // Archived, or the feature switched off: gone.
     await call(env, g.ownerToken, "PATCH", `${g.url}/grocery/pantry/items/${itemId}`, { active: false });

@@ -77,7 +77,7 @@ export const TOOLS: ToolDef[] = [
   def("get_my_account", "The verified owner's own shops: plan, status, restaurant tier, subscription state. Only works after the phone code succeeded. Takes no id: it can only ever return this person's own shops.", {}),
   def("create_checkout_link", "Create a checkout link for a plan on one of the verified owner's own shops. Fails if that plan is not open yet or they are already on it. Two steps: call once without confirmation_id, show the summary, ask yes or no.", {
     product: { type: "string", enum: ["shop_plan", "restaurant_plan"] },
-    plan: { type: ["string", "null"], enum: ["plus", "pro", null], description: "For shop_plan: plus = the Pro plan ($39 a month; its id is plus), pro = the Service plan ($99; its id is pro)." },
+    plan: { type: ["string", "null"], enum: ["plus", "studio", "pro", null], description: `For shop_plan: plus = the ${PLANS.plus.name} plan ($${PLANS.plus.priceCents / 100} a month, one person; its id is plus), studio = the ${PLANS.studio.name} plan ($${PLANS.studio.priceCents / 100}, a shop with chairs), pro = the ${PLANS.pro.name} plan ($${PLANS.pro.priceCents / 100}; its id is pro).` },
     tier: { type: ["string", "null"], enum: ["starter", "growth", "pro", null], description: "For restaurant_plan." },
     interval: { type: "string", enum: ["month", "year"] },
     shop_number: nullable("integer", { description: "The # of the shop from get_my_account. Null when they own one." }),
@@ -383,7 +383,7 @@ const ACTIONS: Record<string, ActionSpec> = {
       if (!merchant) return { ok: false, data: { error: "not_your_shop" }, summary: "shop missing" };
       try {
         const interval = a.interval === "year" ? "year" : "month";
-        const res = a.product === "restaurant_plan" ? await startRestaurantCheckout(ctx, merchant, { tier: a.tier as RestaurantTier, interval }) : await startCheckout(ctx, merchant, { plan: a.plan as "plus" | "pro", interval });
+        const res = a.product === "restaurant_plan" ? await startRestaurantCheckout(ctx, merchant, { tier: a.tier as RestaurantTier, interval }) : await startCheckout(ctx, merchant, { plan: a.plan as "plus" | "studio" | "pro", interval });
         await writeAudit(ctx.db, { actorUserId: conv.verifiedUserId, merchantId: merchant.id, action: "sales_agent.checkout_link", entity: "sales_agent_conversation", entityId: conv.id, data: { product: a.product, tier: a.tier ?? a.plan, interval } });
         return { ok: true, data: { status: "link_ready", url: res.url, message: "Give the person this exact link. They pay on Stripe's page." }, summary: `checkout link (${String(a.tier ?? a.plan)}, ${String(a.interval)})` };
       } catch (err) {

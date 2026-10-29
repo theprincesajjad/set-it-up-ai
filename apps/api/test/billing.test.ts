@@ -27,12 +27,13 @@ describe("billing", () => {
     const { merchant, ownerToken } = await createMerchant(env);
     const o = await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/billing`);
     expect(o.body.plan).toBe("free");
-    expect(Object.fromEntries(o.body.plans.map((p: { id: string; available: boolean }) => [p.id, p.available]))).toEqual({ free: true, plus: true, pro: true });
+    expect(Object.fromEntries(o.body.plans.map((p: { id: string; available: boolean }) => [p.id, p.available]))).toEqual({ free: true, plus: true, studio: true, pro: true });
     const r = await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/billing/checkout`, { plan: "plus" });
     expect(r.status).toBe(200);
     expect(r.body.url).toContain(r.body.sessionId);
     const plans = await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/billing/plans`);
-    expect(plans.body.items.find((p: { id: string }) => p.id === "plus")).toMatchObject({ available: true, priceCents: 3900, annualPriceCents: 39000, currency: "CAD", platformFeeBps: 100 });
+    expect(plans.body.items.find((p: { id: string }) => p.id === "plus")).toMatchObject({ available: true, priceCents: 2900, annualPriceCents: 29000, currency: "CAD", platformFeeBps: 100 });
+    expect(plans.body.items.find((p: { id: string }) => p.id === "studio")).toMatchObject({ available: true, priceCents: 5900, annualPriceCents: 59000 });
     expect(plans.body.items.find((p: { id: string }) => p.id === "pro")).toMatchObject({ available: true, priceCents: 9900 });
   });
 
@@ -44,28 +45,28 @@ describe("billing", () => {
     const base = `/v1/merchants/${merchant.id}/billing`;
 
     expect((await call(env, ownerToken, "POST", `${base}/portal`, {})).status).toBe(409);
-    const co = await call(env, ownerToken, "POST", `${base}/checkout`, { plan: "plus", interval: "year" });
+    const co = await call(env, ownerToken, "POST", `${base}/checkout`, { plan: "studio", interval: "year" });
     expect(co.status).toBe(200);
     expect(co.body.url).toContain(co.body.sessionId);
     expect((await merchantRow(merchant.id)).stripeCustomerId).toMatch(/^cus_fake_/);
 
     const done = await simulate("complete_checkout", co.body.sessionId);
     expect(done.body.events.map((e: { type: string }) => e.type)).toEqual(["checkout.session.completed", "customer.subscription.created"]);
-    expect((await merchantRow(merchant.id)).plan).toBe("plus");
+    expect((await merchantRow(merchant.id)).plan).toBe("studio");
     const overview = await call(env, ownerToken, "GET", base);
-    expect(overview.body.subscription).toMatchObject({ plan: "plus", status: "active", interval: "year", cancelAtPeriodEnd: false });
+    expect(overview.body.subscription).toMatchObject({ plan: "studio", status: "active", interval: "year", cancelAtPeriodEnd: false });
     expect(overview.body.subscription.currentPeriodEnd).toBe("2027-11-03T15:00:00.000Z");
     expect((await call(env, ownerToken, "POST", `${base}/checkout`, { plan: "pro" })).status).toBe(409);
     expect((await call(env, ownerToken, "POST", `${base}/portal`, {})).body.url).toContain("billing-portal");
 
-    // Use a paid feature while subscribed.
+    // Use a paid feature while subscribed (order-ahead is a Studio feature since phase-pro P1).
     const item = await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/catalog/items`, { name: "Latte", priceCents: 500 });
     expect(item.status).toBe(201);
 
-    // Cancel at period end: still Plus until Stripe ends it.
+    // Cancel at period end: still Studio until Stripe ends it.
     const cancel = await call(env, ownerToken, "POST", `${base}/cancel`);
     expect(cancel.body.subscription.cancelAtPeriodEnd).toBe(true);
-    expect((await merchantRow(merchant.id)).plan).toBe("plus");
+    expect((await merchantRow(merchant.id)).plan).toBe("studio");
     expect((await call(env, ownerToken, "POST", `${base}/resume`)).body.subscription.cancelAtPeriodEnd).toBe(false);
     await call(env, ownerToken, "POST", `${base}/downgrade`, {});
     const [sub] = await env.db.select().from(subscriptions).where(eq(subscriptions.merchantId, merchant.id));

@@ -75,7 +75,7 @@ export async function networkDashboard(ctx: AppContext): Promise<adminApi.Networ
       .groupBy(sql`1`),
   ]);
   const byStatus = { onboarding: 0, active: 0, paused: 0, closed: 0 };
-  const byPlan = { free: 0, plus: 0, pro: 0 } as Record<PlanId, number>;
+  const byPlan = Object.fromEntries(PLAN_IDS.map((p) => [p, 0])) as Record<PlanId, number>;
   let activated = 0;
   for (const m of all) {
     byStatus[m.status]++;

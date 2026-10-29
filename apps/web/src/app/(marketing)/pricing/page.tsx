@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
-import { FEES, PLANS, campaignsApi, foundingSoloConfig, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
+import { FEES, PLANS, PLAN_IDS, TRIAL_DAYS, campaignsApi, firstYearPriceConfig, firstYearPriceShown, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
 import { ArtTiles } from "@/components/marketing/HeroArt";
 import { ChipLink } from "@/components/marketing/ChipLink";
 import { CompetitorTableSolo } from "@/components/marketing/CompetitorTableSolo";
@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
 import { publicServerApi } from "@/lib/api/server";
 import { fill, moneyShort } from "@/lib/marketing/text";
-import { AnnualCard, CompareStrip, CompareTable, FreeCard, PLUS_TARGET, PaidCard, ServiceLine, SoloTable } from "./PlanCards";
+import { planNote } from "@/lib/marketing/plan-copy";
+import { CompareStrip, CompareTable, FreeCard, PLUS_TARGET, PaidCard, ServiceLine, SoloTable, pv } from "./PlanCards";
 import { TradeRows } from "./TradeRows";
 import { RestaurantPricing } from "./RestaurantPricing";
 
@@ -19,7 +20,7 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `Free for one bookable calendar with deposits, and free forever for your loyalty program. ${PLANS.plus.name} at ${moneyShort(PLANS.plus.priceCents)} a month or ${moneyShort(PLANS.plus.annualPriceCents)} a year with your own website. Prices in CAD.`,
+  description: `Free for one bookable calendar with deposits, and free forever for your loyalty program. ${PLANS.plus.name} at ${moneyShort(PLANS.plus.priceCents)} a month for one person, ${PLANS.studio.name} at ${moneyShort(PLANS.studio.priceCents)} for the whole shop, and ${TRIAL_DAYS} days of ${PLANS.plus.name} free. Prices in CAD.`,
   alternates: { canonical: "/pricing" },
 };
 
@@ -29,22 +30,22 @@ const P = copy.pricing;
 async function publicPlans(): Promise<{ available: Record<PlanId, boolean>; activeShops: number | null }> {
   try {
     const r = await publicServerApi().public.plans();
-    const available = { free: true, plus: false, pro: false } as Record<PlanId, boolean>;
+    const available = Object.fromEntries(PLAN_IDS.map((id) => [id, id === "free"])) as Record<PlanId, boolean>;
     for (const p of r.items) available[p.id] = p.available;
     return { available, activeShops: r.network.activeMerchants };
   } catch {
-    return { available: { free: true, plus: isPlanAvailable("plus", {}), pro: isPlanAvailable("pro", {}) }, activeShops: null };
+    return { available: Object.fromEntries(PLAN_IDS.map((id) => [id, isPlanAvailable(id, {})])) as Record<PlanId, boolean>, activeShops: null };
   }
 }
 
-/** The founding solo price with the live spot count; the config alone (no count) when the API is down. Null when the offer is off. */
-async function foundingSolo(): Promise<billingApi.FoundingSoloDto | null> {
+/** The first-year price of annual Pro (struck-through list price); the config alone when the API is down. Null when it is not on offer. */
+async function firstYearPrice(): Promise<billingApi.FirstYearPriceDto | null> {
   try {
-    const f = await publicServerApi().public.foundingSolo();
-    return f.enabled ? f : null;
+    const f = await publicServerApi().public.firstYearPrice();
+    return f.shown ? f : null;
   } catch {
-    const cfg = foundingSoloConfig(process.env);
-    return cfg.enabled ? { enabled: true, priceCents: cfg.priceCents, renewsAtCents: PLANS.plus.annualPriceCents, slots: cfg.slots, spotsLeft: cfg.slots, eligible: false, taken: false } : null;
+    const cfg = firstYearPriceConfig(process.env);
+    return firstYearPriceShown(cfg, cfg.slots) ? { shown: true, priceCents: cfg.priceCents, listPriceCents: PLANS.plus.annualPriceCents, eligible: false, taken: false } : null;
   }
 }
 
@@ -57,7 +58,7 @@ export default async function PricingPage({ searchParams }: Props) {
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k][0] : sp[k]);
   const audience = one("for") === "restaurant" || one("for") === "bia" ? (one("for") as "restaurant" | "bia") : "shop";
   const compareOpen = one("compare") === "1";
-  const [{ available, activeShops }, founding] = await Promise.all([publicPlans(), foundingSolo()]);
+  const [{ available, activeShops }, firstYear] = await Promise.all([publicPlans(), firstYearPrice()]);
   const bia = campaignsApi.CAMPAIGN_PACKAGES;
   return (
     <>
@@ -79,17 +80,18 @@ export default async function PricingPage({ searchParams }: Props) {
       </section>
 
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
-        <p className="mx-auto mb-4 max-w-300 px-4 text-meta-strong text-muted-foreground md:px-8">{copy.soloPricing.pricesNote}</p>
+        <p className="mx-auto mb-4 max-w-300 px-4 text-meta-strong text-muted-foreground md:px-8">{copy.proPricing.pricesNote}</p>
         <div className="mx-auto grid max-w-300 items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3">
           <FreeCard />
-          <PaidCard id="plus" />
-          <AnnualCard founding={founding} />
+          <PaidCard id="plus" firstYear={firstYear} />
+          <PaidCard id="studio" firstYear={firstYear} />
         </div>
+        <p className="mx-auto mt-4 max-w-300 px-4 text-meta text-muted-foreground md:px-8">{planNote("solo")}</p>
         <div className="mx-auto mt-4 max-w-300 px-4 md:px-8">
           <ServiceLine />
         </div>
         <div className="mx-auto mt-10 max-w-300 px-4 md:px-8">
-          <h2 className="display text-mkt-md">{copy.soloPricing.table.title}</h2>
+          <h2 className="display text-mkt-md">{copy.proPricing.table.title}</h2>
           <div className="mt-4 rounded-card bg-card px-5 pb-2 shadow-card md:px-7">
             <SoloTable />
           </div>
@@ -153,7 +155,7 @@ export default async function PricingPage({ searchParams }: Props) {
             <h2 className="display mt-3 text-mkt-md md:text-mkt-lg">{P.faqTitle}</h2>
           </div>
           <Faq
-            items={P.faq.map((f) => ({ q: f.q, a: fill(f.a, { cut: pct(FEES.depositInvoiceBps), target: PLUS_TARGET }) }))}
+            items={copy.proPricing.faq.map((f) => ({ q: pv(f.q), a: fill(pv(f.a), { cut: pct(FEES.depositInvoiceBps), target: PLUS_TARGET }) }))}
           />
         </div>
       </MSection>

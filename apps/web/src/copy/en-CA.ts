@@ -1017,13 +1017,6 @@ export const copy = {
       lines: ["Everything in Pro", "{promosYear} promos a year, sent when you like", "Your website, built from your bookings and services", "One .ca domain, registered and renewed by us", "AI writes the first draft of your site"],
       saving: "Two months free against monthly.",
     },
-    founding: {
-      badge: "Founding pro",
-      title: "{price} for your first year, then {renews}.",
-      body: "For the first {slots} beauty pros and barbershops on the annual plan.",
-      spots: "{n} of {slots} spots left",
-      gone: "All founding spots are taken.",
-    },
     service: {
       line: "Repair, auto, alterations or print shop? Service adds tickets, quotes, deposits and invoices.",
       per: "/month",
@@ -1091,7 +1084,6 @@ export const copy = {
     yearly: "Pay yearly: 2 months free",
     monthly: "Monthly",
     annualIncludes: "The annual plan includes your website and one .ca domain.",
-    foundingLine: "Founding pro: {price} for your first year, then {renews}. {n} spots left.",
     subscribeYearly: "Subscribe yearly, {price}/year",
   },
   // ---- end phase-solo: A ----
@@ -1197,6 +1189,77 @@ export const copy = {
     noAccess: "The website is for the owner and managers.",
   },
   // ---- end phase-solo: G ----
+  // ---- phase-pro: p1 ----
+  /** The pricing page after the Pro value packaging (docs/business/pro-value.md §2.2): Free, Pro, Studio, Service as a line. No price is typed: {placeholders} come from PLANS, TRIAL_DAYS and the first-year price. Never call the first-year price "founding". */
+  proPricing: {
+    pricesNote: "Prices in CAD, before HST.",
+    trialLine: "{trial} days of {pro} free, no card.",
+    proCalendars: "{proCalendars} bookable calendars · {texts} texts a month",
+    studioCalendars: "Unlimited calendars, no per-chair charge · {studioTexts} texts a month",
+    studioCta: "Start {studio}",
+    proHeading: "Everything in {free}, plus",
+    studioHeading: "Everything in {pro}, plus",
+    serviceLine: "Repair, auto, alterations or print shop? {service} is everything in {studio}, plus tickets, quotes, deposits and invoices.",
+    serviceCta: "Start {service}",
+    restaurantSub: "Every restaurant plan includes {studio}.",
+    table: {
+      title: "what each plan includes.",
+      caption: "Compare Free, {pro} and {studio}",
+      feature: "What you get",
+      rows: [
+        { label: "Bookable calendars", free: "1", pro: "{proCalendars}", studio: "Unlimited, no per-chair charge" },
+        { label: "Booking link, services, deposits and card on file (1%), reminders by app, web push, in-app message and email", free: "Yes", pro: "Yes", studio: "Yes" },
+        { label: "Reminder and reply texts", free: "{freeTexts} a month, then email", pro: "{texts} a month, then {overage} each", studio: "{studioTexts} a month, then {overage} each" },
+        { label: "Client profiles, visit history, notes, intake question, messages and inbox", free: "Yes", pro: "Yes", studio: "Yes" },
+        { label: "Loyalty stamp card, wallet pass, network listing, Today and basic reports", free: "Yes", pro: "Yes", studio: "Yes" },
+        { label: "Waitlist that fills cancelled slots", free: "Clients can ask; you see the list", pro: "Automatic: the first match is offered the slot, with a 2-hour hold", studio: "Same" },
+        { label: "Rebooking and win-back that run themselves", free: "You see who is due", pro: "Automatic, by app, email and text, with a book-again link", studio: "Same" },
+        { label: "Google review request after every visit", free: "No", pro: "Yes, two hours after checkout", studio: "Same" },
+        { label: "Add-ons at booking (nail art, removal, a French tip)", free: "No", pro: "Yes", studio: "Same" },
+        { label: "Weekly money report with a goal and your best day to promote", free: "No", pro: "Yes, every Sunday", studio: "Same" },
+        { label: "Promos to your regulars, with seasonal templates", free: "No", pro: "{promos} a month ({promosYear} a year on annual)", studio: "{studioPromos} a month ({studioPromosYear} a year on annual)" },
+        { label: "VIP levels, birthday reward, referrals, email campaigns, CSV export and import", free: "No", pro: "Yes", studio: "Yes" },
+        { label: "Advanced reports: retention, cohorts, network overlap", free: "No", pro: "Yes", studio: "Yes" },
+        { label: "“Powered by” badge on your booking and shop pages", free: "Shown", pro: "Removed", studio: "Removed" },
+        { label: "Website on your own .ca domain, AI copy and hosting", free: "No", pro: "On the annual plan", studio: "On the annual plan" },
+        { label: "Walk-in line, payouts and chair rent, per-staff booking links", free: "No", pro: "No", studio: "Yes" },
+        { label: "Order-ahead, pickup slots, POS auto-award, webhooks and the API, daycare and grocer counter tools", free: "No", pro: "No", studio: "Yes" },
+        { label: "Support", free: "Help centre and assistant", pro: "Email, 1 business day", studio: "Email, same day" },
+      ],
+    },
+    groups: { fills: "Fills your book", shops: "For shops" },
+    trades: [
+      { who: "Nail, lash and brow techs, makeup artists", what: "The waitlist, automatic rebooking, review requests and add-ons.", price: "Free for one calendar, {monthly}/mo for {pro}" },
+      { who: "Barbershops and salons", what: "One calendar free. {studio} adds every chair, the walk-in line and payouts.", price: "{monthly}/mo for two calendars, {studioMonthly}/mo for the whole shop" },
+      { who: "Yoga, pilates, boxing and dance studios", what: "Classes, waitlist, packs, memberships and door check-in.", price: "{monthly}/mo + 1% of online class sales (0% on desk sales)" },
+      { who: "Pet groomers, daycares and pet food stores", what: "Vaccine dates, groom rebooking and food cards; daycare check-in on {studio}.", price: "{monthly}/mo, {studioMonthly}/mo with daycare" },
+      { who: "Grocers and halal butchers", what: "Weekly flyer, counter pre-orders, qurbani, WhatsApp list orders.", price: "{studioMonthly}/mo" },
+      { who: "Garages, tire shops and car washes", what: "Service reminders, tire season and storage, wash check-in.", price: "{monthly}/mo ({serviceMonthly} with estimates)" },
+      { who: "Pharmacies", what: "Pharmacist appointments, no prices, no notes kept.", price: "Free" },
+      { who: "Restaurants, tiffin, caterers and banquet halls", what: "The restaurant plans below, {studio} included.", price: "{restaurantPrices}/mo" },
+    ],
+    faq: [
+      { q: "Do you take a cut of my sales?", a: "Not on the loyalty program, and not on your own online orders on a paid plan. Deposits, invoices and tiffin billing carry {cut}. Card fees are Stripe's standard rate." },
+      { q: "How does the free trial work?", a: "Every new shop gets {trial} days of {pro} free, starting the day your booking link goes live. No card and nothing to cancel: when it ends you go back to Free and keep every booking, client and note." },
+      { q: "{pro} or {studio}?", a: "{pro} is for one person, or one person and an apprentice: {proCalendars} bookable calendars. {studio} is for a shop with chairs: as many calendars as you need with no per-chair charge, the walk-in line, payouts and the tools at the till." },
+      { q: "Will my loyalty program ever cost money?", a: "No. Points, stamps, rewards, your customer list and reports stay free." },
+      { q: "Are the prices before HST?", a: "Prices shown are before HST. We are confirming how HST appears on invoices with our accountant before billing starts." },
+      { q: "Can I subscribe today?", a: "Yes. Subscribe from your dashboard and your shop's tools switch on right away. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns) open once {target} shops have joined." },
+      { q: "What does a studio pay on class sales?", a: "{monthly} a month, plus 1% of classes, packs and memberships paid online. Payments you take at the desk by hand carry no fee. Card processing is Stripe's standard rate." },
+      { q: "Can I cancel?", a: "Any time. You go back to Free and keep your clients, bookings and loyalty data. Annual plans pay 10 months, not 12." },
+      { q: "Is the restaurant plan a different plan?", a: "It sits beside Free, {pro}, {studio} and {service}. Any restaurant plan includes everything in {studio}, so you never pay for both." },
+      { q: "Is there a contract?", a: "No contract and no setup fee." },
+    ],
+  },
+  /** The billing page: the plans, the first-year price as a struck-through number, Studio. The trial banner's words are in the shared catalogue (trial.*). */
+  proBilling: {
+    firstYear: "first year",
+    firstYearNote: "Your first year of annual {pro} is {price}, then {list} a year.",
+    preselected: "Picked for you",
+    trialOn: "On until {date}",
+    studioTeaser: "Three or more calendars are on {studio}, {price} a month for the whole shop. No per-chair charge.",
+  },
+  // ---- end phase-pro: p1 ----
 } as const;
 
 export type Copy = typeof copy;

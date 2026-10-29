@@ -119,7 +119,7 @@ function Waitlist() {
                         {d.items.map((e) => (
                           <Tr key={e.id} data-testid="wl-row">
                             <Td>
-                              <bdi className="font-[550]">{e.customer.name}</bdi>
+                              <bdi className="text-body-strong">{e.customer.name}</bdi>
                               {e.source === "staff" ? <span className="ms-2 text-caption text-fg-muted">{t("wl.source.staff")}</span> : null}
                             </Td>
                             <Td>{wants(e)}</Td>

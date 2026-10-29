@@ -96,7 +96,8 @@ export function llApi(c: ApiClient) {
       liveCampaigns: () => c.get<{ items: campaignsApi.PublicCampaign[] }>("/v1/public/live-campaigns", { anonymous: true }),
       plans: () => c.get<networkApi.PublicPlansResponse>("/v1/public/plans", { anonymous: true, next: { revalidate: 300 } }),
       // phase-solo A: the founding solo price and the spots left (pricing and landing pages).
-      foundingSolo: () => c.get<billingApi.FoundingSoloDto>("/v1/billing/founding-solo", { anonymous: true, next: { revalidate: 300 } }),
+      // phase-pro P1: the first-year price of annual Pro (no spots count: it stays internal).
+      firstYearPrice: () => c.get<billingApi.FirstYearPriceDto>("/v1/billing/first-year-price", { anonymous: true, next: { revalidate: 300 } }),
       /** Founding offer spots per corridor (restaurants page and pricing). */
       foundingRestaurants: () => c.get<networkApi.FoundingResponse>("/v1/public/restaurants/founding", { anonymous: true, next: { revalidate: 300 } }),
       lead: (body: repApi.PublicLeadBody) => c.post<repApi.PublicLeadResponse>("/v1/public/leads", body, { anonymous: true }),
@@ -457,6 +458,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
       overview: () => c.get<billingApi.BillingOverviewResponse>(`${b}/billing`),
       // phase-solo A: calendars, texts, promos and the annual website (manager+).
       usage: () => c.get<billingApi.PlanUsageDto>(`${b}/billing/usage`),
+      // phase-pro P1: start the shop's one 14-day Pro trial.
+      startTrial: () => c.post<billingApi.TrialStartResponse>(`${b}/billing/trial`, {}),
       checkout: (body: billingApi.CheckoutBody) => c.post<billingApi.CheckoutResponse>(`${b}/billing/checkout`, body),
       portal: (returnUrl?: string) => c.post<billingApi.UrlResponse>(`${b}/billing/portal`, returnUrl ? { returnUrl } : {}),
       cancel: () => c.post<{ subscription: billingApi.SubscriptionDto }>(`${b}/billing/cancel`, {}),

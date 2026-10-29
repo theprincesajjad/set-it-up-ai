@@ -1,13 +1,14 @@
 /**
  * phase-solo A: solo pro packaging (docs/business/solo-pro-launch.md §3.2). One free bookable calendar with deposits,
- * the text allowance, the promo counter, the annual website entitlement and the founding solo price.
+ * the text allowance, the promo counter, the annual website entitlement and the first-year price (phase-pro P1; it replaced the
+ * founding solo price).
  */
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { merchantCategories, merchants, subscriptions, users } from "@ll/db";
 import { isFeatureEnabled } from "@ll/shared";
 import { zonedToUtc } from "../src/services/bookings.js";
-import { consumePromo, planUsage, promoAllowanceFor } from "../src/services/billing.js";
+import { consumePromo, firstYearPriceTaken, planUsage, promoAllowanceFor } from "../src/services/billing.js";
 import { isFeatureOn } from "../src/services/features.js";
 import { reserveTransactionalText } from "../src/services/text-allowance.js";
 import { call, customer, fake, paidMerchant, staffMember } from "./commerce-fixtures.js";
@@ -18,7 +19,8 @@ beforeEach(async () => {
   env = await createTestEnv({ now: new Date("2026-11-03T15:00:00Z") });
 });
 afterEach(async () => {
-  delete process.env.FOUNDING_SOLO_ENABLED;
+  delete process.env.FIRST_YEAR_PRICE_ENABLED;
+  delete process.env.FIRST_YEAR_PRICE_VERTICALS;
   await env.close();
 });
 
@@ -54,11 +56,11 @@ describe("one free bookable calendar with deposits", () => {
     expect(refused.status).toBe(402);
     expect(refused.body.error).toMatchObject({ code: "plan_limit", details: { limit: "bookable_calendars", max: 1, offer: { kind: "plan", plan: "plus", name: "Pro" } } });
 
-    // Pro lifts the cap.
+    // Pro lifts the cap to two (phase-pro P1).
     await env.db.update(merchants).set({ plan: "plus" }).where(eq(merchants.id, m.merchant.id));
     expect((await call(env, m.ownerToken, "PUT", `${base}/staff/${second.user.id}/hours`, { days: MON_SAT })).status).toBe(200);
     const usage = await call(env, m.ownerToken, "GET", `${base}/billing/usage`);
-    expect(usage.body.calendars).toEqual({ limit: null, used: 2 });
+    expect(usage.body.calendars).toEqual({ limit: 2, used: 2 });
   });
 
   it("an admin override of booking.appointments on a Free shop is a pilot of the full calendar: no cap (final audit: the seeded salons)", async () => {
@@ -97,10 +99,10 @@ describe("texts", () => {
     expect(await reserveTransactionalText(env.db, merchant.id)).toBe(false);
     expect((await row(merchant.id)).smsCreditsUsed).toBe(30);
 
-    await env.db.update(merchants).set({ plan: "plus", smsCreditsUsed: 500 }).where(eq(merchants.id, merchant.id));
+    await env.db.update(merchants).set({ plan: "plus", smsCreditsUsed: 300 }).where(eq(merchants.id, merchant.id));
     expect(await reserveTransactionalText(env.db, merchant.id)).toBe(true);
     const u = await planUsage(env.ctx, await row(merchant.id));
-    expect(u.texts).toMatchObject({ includedPerMonth: 500, used: 501, remaining: 0, overageTexts: 1, overageCents: 4, overageCentsEach: 4 });
+    expect(u.texts).toMatchObject({ includedPerMonth: 300, used: 301, remaining: 0, overageTexts: 1, overageCents: 4, overageCentsEach: 4 });
   });
 });
 
@@ -128,24 +130,25 @@ describe("promo allowance", () => {
   });
 });
 
-describe("annual website entitlement and the founding solo price", () => {
-  it("an annual checkout entitles the shop to site.builder, takes a founding spot with the coupon, and lapses with the subscription", async () => {
+describe("annual website entitlement and the first-year price", () => {
+  it("an annual checkout entitles the shop to site.builder, takes a first-year spot with the coupon, and lapses with the subscription", async () => {
     const { merchant, ownerToken } = await createMerchant(env, { vertical: "salon" });
     const base = `/v1/merchants/${merchant.id}/billing`;
-    const before = await call(env, null, "GET", "/v1/billing/founding-solo");
-    expect(before.body).toMatchObject({ enabled: true, priceCents: 29000, renewsAtCents: 39000, slots: 200, spotsLeft: 200, eligible: false });
-    expect((await call(env, ownerToken, "GET", base)).body.foundingSolo).toMatchObject({ eligible: true, taken: false });
+    const before = await call(env, null, "GET", "/v1/billing/first-year-price");
+    expect(before.body).toEqual({ shown: true, priceCents: 19900, listPriceCents: 29000, eligible: false, taken: false });
+    expect((await call(env, ownerToken, "GET", base)).body.firstYearPrice).toMatchObject({ shown: true, eligible: true, taken: false });
 
     const co = await call(env, ownerToken, "POST", `${base}/checkout`, { plan: "plus", interval: "year" });
     expect(co.status).toBe(200);
     const session = fake(env).sessions.get(co.body.sessionId)!;
-    expect(session).toMatchObject({ couponId: "founding_solo_10000", metadata: { founding_solo: "1" }, unitAmountCents: 39000 });
+    expect(session).toMatchObject({ couponId: "first_year_9100", metadata: { first_year_price: "1" }, unitAmountCents: 29000 });
     await simulate("complete_checkout", co.body.sessionId);
 
     const m = await row(merchant.id);
     expect(m).toMatchObject({ plan: "plus", annualSiteEntitled: true, foundingSolo: true });
     expect(await isFeatureOn(env.db, m, "site.builder")).toBe(true);
-    expect((await call(env, null, "GET", "/v1/billing/founding-solo")).body.spotsLeft).toBe(199);
+    expect(await firstYearPriceTaken(env.ctx)).toBe(1);
+    expect((await call(env, ownerToken, "GET", base)).body.firstYearPrice).toMatchObject({ eligible: false, taken: true });
     expect((await call(env, ownerToken, "GET", `${base}/usage`)).body).toMatchObject({ interval: "year", annualSiteEntitled: true, promos: { limit: 48 } });
 
     const [sub] = await env.db.select().from(subscriptions).where(eq(subscriptions.merchantId, merchant.id));
@@ -155,11 +158,16 @@ describe("annual website entitlement and the founding solo price", () => {
     expect(await isFeatureOn(env.db, after, "site.builder")).toBe(false);
   });
 
-  it("a monthly shop is not entitled; a café gets no founding price; the offer turns off by config", async () => {
+  it("every trade gets it unless narrowed by config; a monthly shop is not entitled; it turns off by config", async () => {
     const { merchant, ownerToken } = await createMerchant(env, { vertical: "cafe" });
     const base = `/v1/merchants/${merchant.id}/billing`;
     const co = await call(env, ownerToken, "POST", `${base}/checkout`, { plan: "plus", interval: "year" });
-    expect(fake(env).sessions.get(co.body.sessionId)!.couponId).toBeUndefined();
+    expect(fake(env).sessions.get(co.body.sessionId)!.couponId).toBe("first_year_9100");
+    process.env.FIRST_YEAR_PRICE_VERTICALS = "solo";
+    const cafe2 = await createMerchant(env, { vertical: "cafe" });
+    const narrowed = await call(env, cafe2.ownerToken, "POST", `/v1/merchants/${cafe2.merchant.id}/billing/checkout`, { plan: "plus", interval: "year" });
+    expect(fake(env).sessions.get(narrowed.body.sessionId)!.couponId).toBeUndefined();
+    delete process.env.FIRST_YEAR_PRICE_VERTICALS;
 
     const salon = await createMerchant(env, { vertical: "salon" });
     const monthly = await call(env, salon.ownerToken, "POST", `/v1/merchants/${salon.merchant.id}/billing/checkout`, { plan: "plus", interval: "month" });
@@ -169,8 +177,8 @@ describe("annual website entitlement and the founding solo price", () => {
     expect(m).toMatchObject({ plan: "plus", annualSiteEntitled: false, foundingSolo: false });
     expect(isFeatureEnabled("site.builder", { plan: m.plan, stage: "ga", annualSiteEntitled: m.annualSiteEntitled })).toBe(false);
 
-    process.env.FOUNDING_SOLO_ENABLED = "false";
-    expect((await call(env, null, "GET", "/v1/billing/founding-solo")).body).toMatchObject({ enabled: false, spotsLeft: 0 });
+    process.env.FIRST_YEAR_PRICE_ENABLED = "false";
+    expect((await call(env, null, "GET", "/v1/billing/first-year-price")).body).toMatchObject({ shown: false });
     const other = await createMerchant(env, { vertical: "barber" });
     const off = await call(env, other.ownerToken, "POST", `/v1/merchants/${other.merchant.id}/billing/checkout`, { plan: "plus", interval: "year" });
     expect(fake(env).sessions.get(off.body.sessionId)!.couponId).toBeUndefined();

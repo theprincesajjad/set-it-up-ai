@@ -11,6 +11,7 @@ import { CalendarClock, CircleCheck, Clock, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { appointmentsApi, waitlistApi } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { PlanLine } from "@/components/onboarding/PlanLine";
 import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/cn";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
@@ -27,7 +28,7 @@ function SeePro() {
   const { base } = useMerchant();
   const { t } = useLocaleOrEnglish();
   return (
-    <a href={seeProHref(base)} className="relative whitespace-nowrap font-[550] text-link hover:underline focus-visible:focus-ring after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']">
+    <a href={seeProHref(base)} className="inline-flex min-h-11 items-center whitespace-nowrap font-semibold text-link hover:underline focus-visible:focus-ring">
       {t("wl.seePro")}
     </a>
   );
@@ -46,7 +47,7 @@ function CancelSwitch({ appt }: { appt: appointmentsApi.AppointmentDto }) {
     if (!d.waiting) return null;
     return (
       <div className="mt-3" data-testid="wl-cancel-switch">
-        <Switch checked={false} disabled onChange={() => undefined} label={t("wl.cancel.switch", { n: d.waiting })} description={<><Lock aria-hidden className="me-1 inline size-3 align-[-1px]" />{t("wl.cancel.free")} <SeePro /></>} />
+        <Switch checked={false} disabled onChange={() => undefined} label={t("wl.cancel.switch", { n: d.waiting })} description={<>{t("wl.cancel.free")} <SeePro /></>} />
       </div>
     );
   }
@@ -73,7 +74,7 @@ function CancelSwitch({ appt }: { appt: appointmentsApi.AppointmentDto }) {
 const ONCE_A_WEEK = "ll-wl-nudge";
 
 function DayStrip({ date }: { date: string }) {
-  const { detail } = useMerchant();
+  const { detail, base } = useMerchant();
   const { t, time } = useLocaleOrEnglish();
   const api = useWaitlistApi();
   const now = useNow();
@@ -125,13 +126,9 @@ function DayStrip({ date }: { date: string }) {
         })}
       </ul>
       {freeLine ? (
-        <p className="text-body text-muted-foreground">
-          {t("wl.chip.free", { n: freeLine.matching })} <SeePro />
-        </p>
+        <PlanLine linkLabel={t("wl.seePro")} href={seeProHref(base)}>{t("wl.chip.free", { n: freeLine.matching })}</PlanLine>
       ) : nudge ? (
-        <p className="text-body text-muted-foreground">
-          {t("wl.chip.freeNone")} <SeePro />
-        </p>
+        <PlanLine linkLabel={t("wl.seePro")} href={seeProHref(base)}>{t("wl.chip.freeNone")}</PlanLine>
       ) : null}
     </section>
   );

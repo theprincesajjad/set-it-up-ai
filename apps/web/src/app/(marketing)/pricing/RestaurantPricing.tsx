@@ -5,6 +5,7 @@ import { SavingsCalculator } from "@/components/marketing/SavingsCalculator";
 import { MSection } from "@/components/marketing/Section";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
+import { pv } from "./PlanCards";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { fill, moneyShort } from "@/lib/marketing/text";
@@ -67,7 +68,7 @@ export function RestaurantPricing() {
       <MSection id="restaurants" tone="peach" className="scroll-mt-20 md:py-24!">
         <p className="text-meta-strong text-primary-text">For restaurants</p>
         <h2 className="display mt-4 max-w-3xl text-mkt-md text-balance md:text-mkt-lg">{P.restaurantTitle}</h2>
-        <p className="mt-5 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{P.restaurantSub}</p>
+        <p className="mt-5 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{pv(copy.proPricing.restaurantSub)}</p>
         <div className="mt-10 grid items-stretch gap-4 lg:grid-cols-3">
           {RESTAURANT_TIERS.map((t) => (
             <TierCard key={t} tier={t} featured={t === "growth"} />

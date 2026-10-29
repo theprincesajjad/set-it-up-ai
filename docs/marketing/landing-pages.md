@@ -2,27 +2,32 @@
 
 Pages: `/for-nail-techs` (with `?trade=brows|lashes|makeup`), `/for-barbers`, `/for-groomers`. Code: `apps/web/src/app/(landing)/for-*/`, blocks in `apps/web/src/components/marketing/solo/` (`SoloLanding` composes them). Strategy and metrics: `docs/business/solo-pro-launch.md` §5.3 and §5.4. Ads: `docs/marketing/ads/`.
 
-## The nine blocks (landing v3, product-led and few words; Oct 29, 2026)
+## The blocks (landing v4, professional voice; Oct 29, 2026)
 
-Founder direction, Oct 29: "Too many words. Think like a SaaS owner wowing side hustlers: promos, booking in one place, how your week's been against last week." Word budget on every block: headlines 2 to 6 words, a subhead of one line (12 words at most), card and feature lines of 8 words at most, no paragraphs (the FAQ and legal pages excepted). The product visuals do the explaining. `test/marketing-solo.test.tsx` enforces the budget on the copy.
+Founder direction, Oct 29: no pill eyebrows above headings (type does the hierarchy), a confident professional SaaS voice (no slang, no jokes), more calls to action, and the paid packaging (Free, Pro for one person, Studio for teams, a 14-day Pro trial, Pro's first-year price on annual) described from one place. Word budget: headlines of 2 to 7 words, one-line subheads, card lines of 8 words at most. `test/marketing-solo.test.tsx` enforces it, the CTA names and the absence of slang.
 
-Code: `apps/web/src/app/(landing)/` (its own layout: the glass nav, no client header or sales chat), the composer `components/marketing/SoloLanding.tsx`, the blocks in `components/marketing/solo/`, the styles in `components/marketing/solo/solo.css` (Clear tokens only), the view model in `lib/marketing/solo-view.ts`. Copy: `copy.solo` in `apps/web/src/copy/en-CA.ts` (English only).
+**One source for the plans:** `apps/web/src/lib/marketing/plan-copy.ts` (`PLAN_COPY` words, `PLAN_MARKETING` trial and first-year numbers, list prices from `PLANS`). The plan cards, the hero price line, the trial buttons, the "with Pro" promo line and the Pro section all read it; the home page uses the same module.
 
 | # | Block | Component | Notes |
 | --- | --- | --- | --- |
-| 1 | Hero | `solo/Hero.tsx` | The hook (two lines, the second in the trade colour), a one-line lede, one black button (`data-cta="hero"`) and the price as a plain link. A big phone runs the client's booking flow in CSS (pick, time, details, booked); deposits are optional and the default story has none. Beside it: the work photo, the DM, the new booking and the reminder, none ever over the phone's screen. |
-| 2 | Facts | `Facts` | One strip: $0 to start, 0% cut, 2 reminders, 3 min (barbers: 1 price for every chair). |
-| 3 | Your week | `Week` | The wow block: a sample owner dashboard. This week against last week (+23%), four numbers that count up in CSS (bookings, visits, regulars back, rewards given), seven bars that grow with the best day in the trade colour, and the next two clients. Mirrors the real Today screen (counts and "vs last" chips) and Reports (this period against the previous one); labelled as sample numbers. |
-| 4 | Every booking, one calendar | `Bookings` | The week filling from three doors, colour-coded: the link, an Instagram DM, added by the owner. Under it the DM that becomes a booking ("Create booking", then "Booked · Sat 11:30 am"). |
-| 5 | A promo in one tap | `Promos` | Three steps: pick a seasonal template (Valentine's nails, back-to-school cuts), send to the regulars who opted in (112), +9 bookings by morning. The allowance line reads `PROMOS_PER_MONTH_PLUS`. |
-| 6 | They come back | `Regulars` | The stamp card over a photo of the work, and who came back this month. |
-| 7 | The boring part, done | `Jobs` | The variant's three job cards (order per variant), compact: a 2 to 6 word title, one line of 8 words, a live demo. |
-| 8 | Price | `PriceBlock` | Free, Pro monthly, Pro yearly, one line each, from `PLANS`. The footnote links to the comparison on `/pricing#booking-apps`. |
-| 9 | Start | `solo/Start.tsx` | Name, trade (native radios) and email or mobile: a GET form to `/signup` (`data-cta="start"` on the button), which `signupPrefill` turns into the wizard's starting values. |
+| 1 | Hero | `solo/Hero.tsx` | Two-line headline, a one-line subhead, the primary button (`data-cta="hero"`), "See how it works" (`how`), the price and trial line linking to the plans, the trust row and the audience line as plain text. The phone is the shared iPhone frame (`components/marketing/device/IPhone.tsx`). |
+| 2 | Facts | `Facts` | Four numbers and a button (`afterhero`). |
+| 3 | Your week | `Week` | The owner dashboard demo, then a button and "See pricing" (`week`, `seepricing`). |
+| 4 | Every booking in one calendar | `Bookings` | |
+| 5 | Promos | `Promos` | Then a button row (`promos`). |
+| 6 | Regulars | `Regulars` | |
+| 7 | Built for how you work | `Jobs` | The variant's three tool cards. |
+| 8 | Pro features | `ProFeatures` | Waitlist, rebooking, reviews, weekly report, each with an illustrative sample (captioned as such), the trial button (`pro`). |
+| 9 | Call-to-action band | `CtaBand` | The trial as the button (`prepricing`). |
+| 10 | Pricing | `PriceBlock` | Free, Pro (with the struck annual price and the first-year price), Studio (`plans`). |
+| 11 | Start | `solo/Start.tsx` | Name, trade, email or mobile (`start`). |
+| — | Sticky bar, phones | `StickyCta` | Primary button and "See pricing" (`sticky`, `seepricing`), hidden over the hero and at the form where the browser has scroll-driven animation. |
+
+`data-cta` values are lower-case letters, 10 at most: the API keeps nothing else.
 
 Motion is CSS only (opacity, transform and a registered `--sl-count` integer for the count-up), scroll-driven where the browser has `animation-timeline: view()`, and off under reduced motion, where every demo shows its finished frame. Sections below the fold use `content-visibility: auto`, so the browser skips their style and layout work until they are near the viewport.
 
-**A/B variants.** `LANDING_VARIANTS` in `copy/en-CA.ts` holds, per look (nails, brows, lashes, makeup, barber, groom) and variant id, the eyebrow, the headline, the subhead, the button label and the order of the three job cards; "control" is the default. Types and the resolver: `lib/marketing/landing-variants.ts`. `<SoloLanding variant="…">` renders a variant; the page root carries `data-variant`. Assignment and tracking: the proxy rewrites a counted visitor to the prerendered `[variant]` route, which renders `<SoloLanding variant>` and then `<LandingMeasure>` (the inline beacon; `docs/engineering/api/experiments.md`). Preview a variant with `?v=yours`. The beacon counts clicks on the elements with `data-cta` (hero, nav, start). Which variants exist, the copy per trade and the test order: `docs/marketing/value-props.md`.
+**A/B variants.** `LANDING_VARIANTS` in `copy/en-CA.ts` holds, per look (nails, brows, lashes, makeup, barber, groom) and variant id, the eyebrow, the headline, the subhead, the button label and the order of the three job cards; "control" is the default. Types and the resolver: `lib/marketing/landing-variants.ts`. `<SoloLanding variant="…">` renders a variant; the page root carries `data-variant`. Assignment and tracking: the proxy rewrites a counted visitor to the prerendered `[variant]` route, which renders `<SoloLanding variant>` and then `<LandingMeasure>` (the inline beacon; `docs/engineering/api/experiments.md`). Preview a variant with `?v=yours`. The beacon counts clicks on every element with `data-cta` (the CTA names above). Which variants exist, the copy per trade and the test order: `docs/marketing/value-props.md`.
 
 **Rendering.** All six looks are prerendered: `/for-nail-techs?trade=brows|lashes|makeup` is rewritten (next.config.ts, `beforeFiles`) to the static `/for-nail-techs/[trade]`. The only script of the page's own is the start form's source field (`?src=`, else the page's source, into the form and the `ll_src` cookie). Motion is CSS only and stops under reduced motion. Photos: `public/marketing/`, AVIF with WebP fallback, licences in `docs/marketing/photo-credits.md`.
 

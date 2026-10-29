@@ -27,11 +27,12 @@ export interface TrialReceiptMessage {
 export function trialReceiptMessage(r: reportsApi.TrialReceiptDto, o: { locale: Locale; billingUrl: string }): TrialReceiptMessage {
   const l = o.locale;
   const price = formatCurrency(l, PLANS.plus.priceCents);
-  const title = t(l, "trial.receipt.title");
+  const plan = PLANS.plus.name;
+  const title = t(l, "trial.receipt.title", { plan });
   const summary = t(l, "trial.receipt.summary", { days: r.days, bookings: r.bookings, amount: formatCurrency(l, r.amountCents) });
   const parts = t(l, "trial.receipt.parts", { fills: r.fills, rebooked: r.rebooked, reviews: r.reviews, addons: r.addons });
-  const paused = t(l, "trial.receipt.paused");
-  const cta = t(l, "trial.receipt.cta", { price, plan: PLANS.plus.name });
+  const paused = t(l, "trial.receipt.paused", { plan });
+  const cta = t(l, "trial.receipt.cta", { price, plan });
   const text = [title, "", summary, parts, "", paused, "", `${cta}: ${o.billingUrl}`].join("\n");
   const html = `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#111;line-height:1.5">
 <h1 style="font-size:20px;margin:0 0 12px">${esc(title)}</h1>

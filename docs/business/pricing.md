@@ -1,47 +1,80 @@
-# Pricing (v2)
+# Pricing (v2, Pro value packaging)
 
-Oct 22, 2026 · Founder decision · Prices in CAD
+Oct 22, 2026 · Founder decision · Prices in CAD, before HST · **Updated Oct 29, 2026: two paid tiers, the trial and the first-year price (founder decisions, final)**
 
-**What changed:** only the loyalty program and the reports on it are free. Every other feature moves to Pro ($39, plan id `plus`) or Service ($99, plan id `pro`), and paid features roll out later as the network grows. This replaces the earlier "every loyalty feature, promos and integrations free" split.
+**What this is.** Loyalty and the reports on it are free forever. Everything else is on **Pro** (plan id `plus`) for one person, **Studio** (plan id `studio`) for a shop with chairs, **Service** (plan id `pro`) for repair, auto, alterations and print shops, or the restaurant pack. The reasoning, the research and the dollar case are in `docs/business/pro-value.md`; this page is the rules and the code names.
 
-The source of truth is `packages/shared/src/plans.ts` (`FEATURES`, `FREE_FOREVER`). The server enforces it with `requireFeature`. The financial effect is in `docs/finance/unit-economics.md` §0.
+The source of truth is `packages/shared/src/plans.ts` (`PLANS`, `FEATURES`, `FREE_FOREVER`, the constants named below). The server enforces it with `requireFeature`. No price or count is typed in copy: pages read `PLANS`, `TRIAL_DAYS`, `FIRST_YEAR_PRICE` and the usage endpoint.
 
-> **Renamed Oct 29, 2026 (founder):** the $39 plan that was shown as "Café & Retail" is now shown as **Pro** everywhere a person reads it. Only the display name changed: its plan id stays `plus` (`PLANS.plus.name`), and the $99 plan keeps the id `pro` with the display name **Service**. "Restaurant Pro" stays the name of the top restaurant tier.
+> **History.** Oct 22: Pricing v2 (only loyalty free). Oct 29, morning: the $39 plan renamed "Pro" (id `plus`), the $99 plan "Service" (id `pro`); appointments free for one calendar; promo allowance; the annual website. Oct 29, founder (this version): Pro at $29, Studio at $59, the 14-day Pro trial for every new shop, and the first-year price of $199 replacing the founding solo price.
 
-> **Updated Oct 29, 2026 for the solo pro launch** (`docs/business/solo-pro-launch.md` §3). Two changes against v2: (1) appointments are **free for one bookable calendar**; (2) promos on Pro are a **counted allowance** (4 a month, 48 a year on annual) and the **annual plan includes a website**. The new section "Solo pro packaging" below has the numbers and the code names. Everything else in this document stands.
+## The plans
 
-## Solo pro packaging (Oct 29, 2026)
-
-Three plans on the pricing page: **Free**, **Pro $39/mo**, **Annual $390/yr** (Pro paid yearly, plus the website). Service ($99) stays for repair, auto, alterations and print shops and is shown as one line under the three. Prices in CAD, before HST.
-
-| Rule | Free | Pro monthly | Annual | Code |
+| | **Free** | **Pro** · `plus` | **Studio** · `studio` | **Service** · `pro` |
 | --- | --- | --- | --- | --- |
-| Bookable calendars (staff with booking hours or a service list) | 1 | Unlimited, no per-chair charge | Unlimited | `FREE_BOOKABLE_CALENDARS = 1`, `bookableCalendarLimit()` |
-| Reminder texts (only to clients with no app, pass or email) | 30 a month, then email | 500 a month, then $0.04 each | 500 a month | `PLANS.free.smsPerMonth = 30`, `PLANS.plus.smsPerMonth = 500`, `SMS_OVERAGE_CENTS = 4` |
-| Promos to regulars (app push and email, no texts) | None | 4 a month, no roll-over | 48 a year | `PROMOS_PER_MONTH_PLUS`, `PROMOS_PER_YEAR_ANNUAL`, `promoAllowance()` |
-| Website builder, one `.ca` domain | No | No | Yes | `site.builder` (`requiresAnnual`), `ANNUAL_INCLUDES_WEBSITE`, `merchants.annual_site_entitled` |
-| Website AI | | | 10 drafts and 40 line edits a month | `SITE_AI_GENERATIONS_PER_MONTH`, `SITE_AI_EDITS_PER_MONTH` |
-| Deposits and no-show fees | Yes, 1%, on direct charges only | Yes, 1% | Yes, 1% | `appointmentPaymentsReady()` |
+| Price | $0 | **$29/mo, $290/yr** | **$59/mo, $590/yr** | $99/mo, $990/yr |
+| Who | Starting out | One person, or one person and an apprentice | A shop with chairs, renters, a walk-in line or a till | Repair, auto, alterations, print |
+| Bookable calendars | 1 | 2 | Unlimited, no per-chair charge | Unlimited |
+| Reminder and reply texts a month | 30, then email | 300, then 4¢ | 1,000, then 4¢ | 1,500, then 4¢ |
+| Promos to regulars | None | 4 a month, 48 a year on annual | 8 a month, 96 a year on annual | As Studio |
+| Website on a `.ca` domain | No | Annual only | Annual only | Annual only |
+| "Powered by" badge | Shown | Removed | Removed | Removed |
+
+`PLAN_RANK`: free 0, plus 1, studio 2, pro 3. Each plan includes everything below it (Service includes Studio, Studio includes Pro). Any restaurant tier counts as Studio (`effectivePlan`), so restaurants keep ordering, pickup and POS sync.
+
+**On Pro** (the money features for one person): the waitlist that fills cancelled slots (`booking.waitlist`), rebooking and win-back that run themselves (`service.rebooking`), a Google review request after every visit (`booking.review_requests`), add-ons at booking (`booking.add_ons`), the weekly money report with a goal (`insights.weekly`), promos, VIP levels, birthday reward, referrals, email and text campaigns, CSV export and import, advanced reports, classes and memberships, pets (except daycare) and auto care.
+
+**On Studio** (the shop and the till): the walk-in line (`booking.walkin_queue`), payouts and chair rent (`staff.payouts`), order-ahead and pickup status (`orders.*`), pickup slots (`booking.pickup_slots`), POS auto-award and webhooks and the API (`integrations.*`), daycare check-in (`pets.daycare`) and the grocer counter tools (`grocery.*`). A locked Studio feature offers Studio at $59 (`featureOffer`).
+
+**On Service**: service tickets, quote approval, deposits, invoices, drop-off scheduling, staff permissions.
+
+| Rule | Code |
+| --- | --- |
+| Plans and prices | `PLAN_IDS`, `PLANS`, `PAID_PLAN_IDS` |
+| Calendar cap: Free 1, Pro 2, Studio and up none | `FREE_BOOKABLE_CALENDARS`, `PRO_BOOKABLE_CALENDARS`, `bookableCalendarLimit()` |
+| Texts | `PLANS[id].smsPerMonth`, `SMS_OVERAGE_CENTS = 4`, `TRIAL_SMS_CAP = 100` |
+| Promos | `PROMOS_PER_MONTH_PLUS`, `PROMOS_PER_YEAR_ANNUAL`, `PROMOS_PER_MONTH_STUDIO`, `PROMOS_PER_YEAR_STUDIO_ANNUAL`, `promoAllowance()` |
+| Website | `site.builder` (`requiresAnnual`), `ANNUAL_INCLUDES_WEBSITE`, `merchants.annual_site_entitled` (annual Pro, Studio or Service) |
+| Website AI | `SITE_AI_GENERATIONS_PER_MONTH`, `SITE_AI_EDITS_PER_MONTH` |
+| Deposits and no-show fees, 1%, every plan | `appointmentPaymentsReady()` |
 
 How it is enforced:
 
-- **Calendar cap.** A second person getting booking hours or a service list on Free is refused with `402 plan_limit` and the Pro offer (`apps/api/src/services/appointments.ts`). After a downgrade, the first calendar (by join order) stays bookable; online availability ignores the rest. Unlimited staff logins stay free: only *bookable* calendars are capped.
-- **Texts.** Every text counts against `merchants.sms_credits_used` (reset on the 1st). On Free the 31st transactional text is not sent and the reminder goes by email; campaign texts need `marketing.sms` as before. Paid plans keep sending past 500 and the extra texts show on the billing page as overage at 4¢ each. Charging the overage through Stripe usage records is a follow-up; until then it is shown, not billed.
-- **Promos.** `merchants.promos_sent_count` and `promos_sent_period_start` count promos in the current billing period (a monthly period on Pro, the subscription year on annual). `consumePromo()` in `apps/api/src/services/billing.ts` is the atomic gate the promo send path calls; Free gets `402 feature_locked` with the plan offer, a used-up allowance gets `402 promo_allowance_used`.
-- **Annual entitlement.** Every subscription webhook runs `recomputePlan()`, which sets `merchants.annual_site_entitled` when a live Pro or Service subscription bills yearly, and clears it when that ends. What the site does when the flag clears (30 days up with a banner, then the custom domain stops routing) is in `docs/engineering/site-builder.md`.
-- **Usage.** `GET /v1/merchants/:id/billing/usage` returns calendars, texts, promos and the website flag; the billing page shows it.
+- **Calendar cap.** A person past the cap getting booking hours or a service list is refused with `402 plan_limit`. The offer names the next plan: a second calendar on Free offers Pro, a third on Pro (or the trial) offers Studio (`apps/api/src/services/appointments.ts`). After a downgrade the first calendars by join order stay bookable. Unlimited staff logins stay free: only *bookable* calendars are capped.
+- **Texts.** Every text counts against `merchants.sms_credits_used` (reset on the 1st). Free and the trial stop at their allowance and the reminder goes by email; paid plans keep sending and the extra texts show on the billing page as overage at 4¢. Charging the overage through Stripe usage records is a follow-up; until then it is shown, not billed.
+- **Promos.** `consumePromo()` in `apps/api/src/services/billing.ts` is the atomic gate. Free gets `402 feature_locked` with the Pro offer, a used-up allowance `402 promo_allowance_used`.
+- **Annual entitlement.** `recomputePlan()` sets `merchants.annual_site_entitled` when a live paid subscription bills yearly, and clears it when that ends.
+- **Usage.** `GET /v1/merchants/:id/billing/usage` returns calendars, texts, promos, the website flag and the trial.
 
-### Founding solo price (proposal, not yet confirmed)
+## The 14-day Pro trial
 
-The first 200 beauty pros and barbershops (`nails`, `brows_lashes`, `makeup`, `salon`, `barber`) on the annual plan pay **$290 for the first year**, then $390. Not lifetime. It is a founder proposal (solo-pro-launch.md §8.3), so it is a config value, on by default:
+Every new shop, any trade, gets **14 days of Pro, free, with no card**, starting the day its booking link goes live (the `booking_link_live` milestone), not at signup, so the two weeks cover real bookings. One per shop.
+
+| | |
+| --- | --- |
+| Data | `merchants.trial_plan` (set only while it is live), `trial_started_at`, `trial_ends_at`, `trial_used` (migration `0042_pro_p1`) |
+| Constants | `TRIAL_DAYS = 14`, `TRIAL_PLAN = "plus"`, `TRIAL_SMS_CAP = 100`, `trialActive()`, `liveTrialPlan()`, `trialDaysLeft()` |
+| Start | `POST /v1/merchants/:id/billing/trial` (owner; `409 trial_used` the second time, `409 trial_not_needed` on a paid plan), and automatically when `booking_link_live` is recorded (`apps/api/src/services/trial.ts`). It writes the `trial_started` milestone, turns review requests on and rebooking to automatic |
+| While live | Features resolve as Pro (`effectivePlan(plan, restaurantTier, trialPlan)`): the waitlist offers slots, reminders send themselves, review requests go out, add-ons show at booking, the Sunday report arrives. 2 calendars, 4 promos, texts capped at 100 then email. No Stripe object: there is nothing to cancel |
+| End | The hourly job `billing.trial` (`apps/api/src/jobs/billing-trial.ts`) clears `trial_plan` at `trial_ends_at`, writes `trial_ended` and sends the receipt (P6's `trialReceipt`, pro-value.md §5.4) by push and email. A paid subscription going live ends it at once (`recomputePlan`). Nothing is deleted: automations pause, the waitlist stays visible, add-ons stay configured, the badge returns |
+| Where it shows | The billing page banner ("Pro ends {weekday} · {n} days left" with Keep Pro monthly and yearly; after the end, "Pro ended {weekday}" with the numbers), and the Today card (`TrialCard.tsx`: start, day 11, the receipt) |
+
+## The first-year price of annual Pro
+
+The first **200 shops** on annual Pro pay **$199 for year one**, then $290. Founder: "Don't say founding promo, just show the discounted price!" So every page shows it as a struck-through list price, **~~$290~~ $199 first year**, and never names it; the spots counter stays internal (no page shows how many are left). Studio has no first-year price. It replaces the founding solo price ($290 for year one, then $390), which is gone.
 
 | Setting | Default | Effect |
 | --- | --- | --- |
-| `FOUNDING_SOLO_ENABLED` | on | `false` or `0` hides the strip on the pricing page and stops the coupon |
-| `FOUNDING_SOLO_PRICE_CENTS` | `29000` | First-year price |
-| `FOUNDING_SOLO_SLOTS` | `200` | Spots |
+| `FIRST_YEAR_PRICE_ENABLED` | on | `false` or `0` shows the plain $290 everywhere and stops the coupon |
+| `FIRST_YEAR_PRICE_CENTS` | `19900` | Year-one price |
+| `FIRST_YEAR_PRICE_SLOTS` | `200` | Shops that can take it |
+| `FIRST_YEAR_PRICE_VERTICALS` | every shop | A comma list of verticals, or `solo` for `SOLO_VERTICALS` (beauty pros and barbershops), narrows it |
 
-In code: `FOUNDING_SOLO` and `foundingSoloConfig(process.env)` in `plans.ts`. An eligible annual checkout gets a once-only amount-off coupon (`founding_solo_<cents>`, $100 off by default) and `founding_solo = "1"` in the session metadata; the webhook sets `merchants.founding_solo`, which is what the "N spots left" counter counts (`GET /v1/billing/founding-solo`). Two shops racing for the last spot can both get it; at 200 spots that is acceptable.
+In code: `FIRST_YEAR_PRICE`, `firstYearPriceConfig(process.env)`, `firstYearPriceShown()`, `isFirstYearPriceEligible()` in `plans.ts`; `firstYearPriceFor()` in `apps/api/src/services/billing.ts`; public `GET /v1/billing/first-year-price` (`{ shown, priceCents, listPriceCents }`, no count). An eligible annual Pro checkout gets a once-only amount-off coupon (`first_year_<cents off>`, named "First-year price", $91 off by default) and `first_year_price = "1"` in the session metadata; the webhook sets `merchants.founding_solo` (the column kept its old name), which is what the internal counter counts. Two shops racing for the last spot can both get it; at 200 that is acceptable. The marketing pages read the same numbers through `apps/web/src/lib/marketing/plan-copy.ts`.
+
+## Stripe
+
+Prices: `STRIPE_PRICE_PLUS_MONTHLY` / `_ANNUAL` (Pro), `STRIPE_PRICE_STUDIO_MONTHLY` / `_ANNUAL` (Studio), `STRIPE_PRICE_PRO_MONTHLY` / `_ANNUAL` (Service); without them Checkout uses an inline CAD price from `PLANS`. Checkout accepts `plan: "plus" | "studio" | "pro"`; the webhook maps a subscription to its plan from the metadata, else from the price id. See `docs/engineering/stripe-go-live.md`.
 
 ## Free, forever ($0, no transaction fee)
 
@@ -56,40 +89,23 @@ In code: `FOUNDING_SOLO` and `foundingSoloConfig(process.env)` in `plans.ts`. An
 | Basic reports (visits, members, rewards, redemptions, activation) | Reporting on the free program |
 | Unlimited staff, unlimited locations, unlimited members | Kept free per the founder's earlier instruction. **Open question**: staff and locations may be revisited |
 
-The invariant still holds: a free-forever feature can never be gated. Admins can't hide it, and a test fails if it moves to a paid plan. Before launch we moved the features listed below once. After launch, what is free stays free.
+Free also keeps one bookable calendar with online booking, deposits and card on file (1%), reminders by app, web push and email, 30 texts, the client list and the inbox. Seeing the waitlist and who is due is free; acting on them automatically is Pro.
 
-## Pro: $39/mo ($390/yr), 500 SMS/mo included
+The invariant still holds: a free-forever feature can never be gated. Admins can't hide it, and a test fails if it moves to a paid plan. After launch, what is free stays free.
 
-- **Promos:** offers, double-points days, bonus points on items, nearby push promos.
-- **Loyalty extras:** VIP levels, birthday reward, referrals, digital discount cards.
-- **Marketing:** email and push campaigns, SMS campaigns, automations (win-back, reward-ready).
-- **Data:** CSV export, CSV import and migration from another app.
-- **Integrations:** POS auto-award (Square, Clover, Shopify, Lightspeed, Toast), Mailchimp, outgoing webhooks, Zapier/Make and the merchant REST API.
-- **Reports:** advanced reports (retention cohorts, network overlap, promo results).
-- **Commerce:** order-ahead, pickup status, pickup slots, in-app payments (Stripe fee at cost; 0% platform fee on orders, 1% on deposits and invoices).
-- **Appointments, every calendar:** the staff-column calendar, services and prices, staff hours and time off, online booking with a deposit or a card on file, walk-ins, reminders and no-show protection, and checkout with a tip for the stylist (`booking.appointments`). Since Oct 29 the feature itself is **free for one bookable calendar**; Pro lifts the cap, with no per-chair charge (see "Solo pro packaging").
-- **Promos to your regulars:** 4 a month by app push and email (48 a year on annual), with seasonal templates per trade.
-- **Walk-in line and barber payouts** (`booking.walkin_queue`, `staff.payouts`): a live line for barbershops and threading bars (join from a phone or the tablet at the door, a wait estimate, a text when next, the barber picks who is next, a no-show rule), "my barber" and family members under one card for kids' cuts, and a payouts report with chair rent and commission per barber (a report, no money moves) where a renter sees only their own clients. Founder default until told otherwise: barbershops and threading bars buy Pro at $39, with no per-chair charge. Beauty supply stores use the existing points per dollar, categories and discount cards on the same plan; texts, promos and rewards from a beauty supply shop are checked for treatment claims. Research: `docs/research/barbers-beauty.md`.
-- **Classes and memberships** (`booking.classes`, `memberships.recurring`): class schedule with capacity and a waitlist that fills itself, drop-ins, class packs and intro offers, recurring memberships billed to the card on file with freezes, renewal notices and the Ontario 10-day cooling-off refund, late-cancel fees, and door check-in with the member card. Founder decision (keep today's plan structure): yoga, pilates, boxing, dance, bhangra, women-only and small-gym studios buy Pro at $39, with no per-room or per-member charge and no add-on. Online class money carries the 1% fee below; money taken by hand at the desk carries none. See `docs/research/fitness-studios.md` section 4.
+## Trades on each plan
 
-- **Pets** (`pets.profiles`, `pets.daycare`, `pets.food_cards`, `pets.report_cards`): pets under the owner with vaccine expiry dates and a photo of the certificate, a groom cadence per pet with a reminder text, a daycare check-in that stops expired shots with packs, capacity and dogs per staff, buy-12-get-1 food cards per brand and bag size (locked until earned, with a run-out text), and a report-card text after a visit. Founder default until told otherwise: groomers, dog daycares and independent pet food stores buy Pro at $39, with no per-pet, per-dog or pack charge. The features only switch on for shops whose vertical is `pet`. Daycare packs are recorded by hand and carry no platform fee. Research: `docs/research/pet-care.md`.
-
-- **Auto care** (`auto.vehicles`, `auto.tires`, `auto.wash`): cars under the owner with an optional plate and odometer readings, service reminders by km or months whichever comes first (a ride-hail car on shorter intervals) with a reminder text, a tire swap capacity plan for the fall and spring windows with customer booking that refuses a full day, a tire hotel record with rack and tread and a pickup text, and a wash check-in by plate, QR or phone with one wash a day and a list of plan members who stopped coming. Wash plans and the punch card are the memberships and packs above. The vehicle estimate rules (written estimate with part condition and dates, no work and no invoice before approval, the 10% cap, the estimate and odometer on the invoice) apply to vehicle tickets on the Service plan below. Founder default until told otherwise: car washes, garages and tire shops buy Pro at $39 (a garage that writes estimates in the app buys Service at $99), with no per-bay charge.
-
-## Service: $99/mo ($990/yr), 1,500 SMS/mo included
-
-Everything in Plus, plus:
-
-- Service tickets
-- Quote approval
-- Deposits
-- Invoices
-- Drop-off scheduling
-- Staff permissions
+- **Nail, lash and brow techs, makeup artists, solo stylists and barbers:** Pro.
+- **Barbershops and salons with chairs, threading bars:** Studio for the walk-in line, payouts and chair rent and more than 2 calendars, flat for any number of chairs. Research: `docs/research/barbers-beauty.md`.
+- **Yoga, pilates, boxing, dance and small-gym studios:** Pro (classes and memberships; online class money carries 1%, desk money none). See `docs/research/fitness-studios.md` §4.
+- **Groomers and pet food stores:** Pro; **dog daycares:** Studio (daycare check-in). Research: `docs/research/pet-care.md`.
+- **Grocers and halal butchers:** Studio (the counter tools). Research: `docs/research/grocers.md`.
+- **Cafés and bakeries** that sell order-ahead with POS auto-award: Studio; one that only runs promos and loyalty extras: Pro.
+- **Car washes, garages and tire shops:** Pro; a garage that writes estimates in the app: Service.
 
 ## Restaurant pack: Starter $99, Growth $199, Pro $349 per month
 
-A separate ladder for restaurants, sweet shops and tiffin kitchens, sold beside Free, Pro and Service. Any restaurant tier includes everything in Pro (`effectivePlan`), so a restaurant never pays for both. Annual price is 10 months (Starter $990, Growth $1,990, Pro $3,490). Source of truth: `RESTAURANT_PLANS`, `ADD_ONS`, `FEES`, `FOUNDING_OFFER` in `packages/shared/src/plans.ts`. Restaurant features ship GA; they are reachable only by buying the pack.
+A separate ladder for restaurants, sweet shops and tiffin kitchens, sold beside Free, Pro and Service. Any restaurant tier includes everything in Studio (`effectivePlan`, Oct 29: Studio took ordering, pickup and POS sync from Pro), so a restaurant never pays for both. Annual price is 10 months (Starter $990, Growth $1,990, Pro $3,490). Source of truth: `RESTAURANT_PLANS`, `ADD_ONS`, `FEES`, `FOUNDING_OFFER` in `packages/shared/src/plans.ts`. Restaurant features ship GA; they are reachable only by buying the pack.
 
 | Tier | Price | Adds | WhatsApp included |
 | --- | --- | --- | --- |
@@ -149,7 +165,7 @@ Note: every payment path now uses `computeFees()`. Pro and Service shops pay 0% 
 
 ## Rollout
 
-**Decision, 2026-10-27 (founder): "Trade tools self-serve."** A new shop subscribes to its own trade's tools right away, with no 100-shop wait and no admin override. That covers calendar and booking, ordering and pre-orders, classes and memberships, the walk-in line and payouts, pets, grocer tools, auto care, the restaurant tiers (including tiffin, catering and banquet) and pharmacist appointments. Pro ($39), Service ($99) and the restaurant ladder ($99 / $199 / $349) are all buyable today, with one status and one price everywhere (pricing page, billing, gate cards, sales assistant).
+**Decision, 2026-10-27 (founder): "Trade tools self-serve."** A new shop subscribes to its own trade's tools right away, with no 100-shop wait and no admin override. That covers calendar and booking, ordering and pre-orders, classes and memberships, the walk-in line and payouts, pets, grocer tools, auto care, the restaurant tiers (including tiffin, catering and banquet) and pharmacist appointments. Pro ($29), Studio ($59), Service ($99) and the restaurant ladder ($99 / $199 / $349) are all buyable today, with one status and one price everywhere (pricing page, billing, gate cards, sales assistant).
 
 Only **network-wide extras** wait for the gate, because they are worth nothing without a big network: sponsored promos, sponsored listings, map pins as ads, BIA neighbourhood campaigns, and nearby push promos. They ship **hidden** and an admin moves them hidden → beta → GA once the network has 100 active shops (`NETWORK_GATE_SHOPS`; 300 for ads). Until then a shop sees "Opens when the network reaches N shops" and a "Notify me" button.
 
@@ -157,7 +173,7 @@ How it is built: `FeatureDef.networkGated` in `packages/shared/src/plans.ts`. It
 
 - **Admin overrides still work** (Admin → Rollout → Overrides) and still win, for example to give a pilot shop a network extra early or to switch a trade tool off for one shop.
 - **Existing data stays** when a shop doesn't have a feature: promos, VIP levels, discount cards, webhooks and POS connections are kept but stop applying. Merchants can still read and delete their data.
-- **Locked cards name the plan.** A feature that is off because of the plan says "On Pro, $39 a month", "On Restaurant Growth, $199 a month" (tiffin, catering) or "On Restaurant Pro, $349 a month" (banquet), with a button to that plan's checkout. Tiffin and catering need Growth, not Starter.
+- **Locked cards name the plan.** A feature that is off because of the plan says "On Pro, $29 a month", "On Studio, $59 a month", "On Restaurant Growth, $199 a month" (tiffin, catering) or "On Restaurant Pro, $349 a month" (banquet), with a button to that plan's checkout. Tiffin and catering need Growth, not Starter.
 - **Class fee:** 1% on online class sales and membership billing, none on desk sales. A cap was considered and not adopted (a $1,200 annual membership pays $12, still below card-network-style fees elsewhere); revisit if studios push back.
 
 ## Why

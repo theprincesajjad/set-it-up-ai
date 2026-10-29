@@ -2,7 +2,7 @@
 import { Check, CreditCard } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type PlanId, type billingApi } from "@ll/shared";
+import { FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PAID_PLAN_IDS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type PaidPlanId, type PlanId, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Dot, PageHeader, Panel, Section, Segmented, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -11,11 +11,14 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
 import { RestaurantBilling } from "./RestaurantBilling";
+import { TrialBanner } from "./TrialBanner";
 import { formatDateYear, formatMoney } from "@/lib/format";
 import { fill } from "@/lib/marketing/text";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 const B = copy.billingSolo;
+const PB = copy.proBilling;
+const isPaid = (v: string | null): v is PaidPlanId => !!v && (PAID_PLAN_IDS as readonly string[]).includes(v);
 
 /** phase-solo A: calendars, texts, promos and the website against the plan (solo-pro-launch.md §3.2). */
 function UsagePanel({ usage }: { usage: billingApi.PlanUsageDto }) {
@@ -53,7 +56,7 @@ function UsagePanel({ usage }: { usage: billingApi.PlanUsageDto }) {
 const RESTAURANT_VERTICALS = ["restaurant", "restaurant_south_asian", "tiffin", "caterer", "banquet_hall", "bakery"];
 const FAQ = [
   ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That's a promise in our terms."],
-  [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name} or ${PLANS.pro.name}. The Free plan has no subscription and no fee on loyalty. Online orders on Free carry ${FEES.orderBpsFree / 100}%.`],
+  [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name}, ${PLANS.studio.name} or ${PLANS.pro.name}. The Free plan has no subscription and no fee on loyalty. Online orders on Free carry ${FEES.orderBpsFree / 100}%.`],
   [`Can I subscribe to ${PLANS.plus.name} today?`, `Yes. Subscribe below and your shop's tools switch on at once. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns) open once ${NETWORK_GATE_SHOPS} shops have joined.`],
   ["What happens if I cancel?", "Your loyalty program keeps running on Free. Members, balances and history are all kept."],
 ];
@@ -82,7 +85,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
   const subscribe = params.get("subscribe");
   const autoRan = useRef(false);
 
-  async function checkout(plan: "plus" | "pro", interval: "month" | "year" = period) {
+  async function checkout(plan: PaidPlanId, interval: "month" | "year" = period) {
     const r = await act.run(() => api.billing.checkout({ plan, interval, successUrl: `${origin}${base}/billing?checkout=success`, cancelUrl: `${origin}${base}/billing?checkout=cancelled` }));
     if (r) {
       try {
@@ -96,13 +99,15 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
 
   // A "Start Pro" button on the pricing page lands here with ?subscribe=plus: go straight to the checkout once.
   useEffect(() => {
-    if (autoRan.current || sub || (subscribe !== "plus" && subscribe !== "pro")) return;
+    if (autoRan.current || sub || !isPaid(subscribe)) return;
     autoRan.current = true;
     void checkout(subscribe, params.get("interval") === "year" ? "year" : "month");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribe, sub]);
 
   const tier = params.get("tier");
+  // "See Pro" / "See Studio" links (pro-value.md §5) land here with ?plan=: that card is marked.
+  const picked = params.get("plan");
   const restaurant = <RestaurantBilling autoTier={subscribe?.startsWith("restaurant-") && !sub ? (subscribe.slice(11) as "starter" | "growth" | "pro") : null} recommended={tier === "starter" || tier === "growth" || tier === "pro" ? tier : null} />;
 
   return (
@@ -117,13 +122,16 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       {params.get("checkout") === "cancelled" ? <Banner tone="neutral">Checkout cancelled. Nothing was charged.</Banner> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
 
+      <TrialBanner b={b} busy={act.busy} onKeep={(interval) => void checkout("plus", interval)} reload={reload} />
+
       <Panel>
         <p className="text-meta text-fg-muted">Current plan</p>
         <h2 className="mt-1 text-title text-fg">
           You&apos;re on {b.plan === "free" ? "Free" : b.plans.find((p) => p.id === b.plan)?.name}
           {b.plan === "free" ? ". Forever." : "."}
         </h2>
-        {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, Pro tools are included.</p> : null}
+        {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, {PLANS.studio.name} tools are included.</p> : null}
+        {b.usage?.trial ? <p className="mt-1 text-meta text-fg-muted" data-testid="trial-on">{PLANS[b.usage.trial.plan].name} · {fill(PB.trialOn, { date: formatDateYear(b.usage.trial.endsAt) })}</p> : null}
         <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {["No subscription and no fee on loyalty", "Unlimited locations, staff and members", "Your loyalty program and reports", "Network listing and perks"].map((t) => (
             <li key={t} className="flex items-center gap-2 text-meta text-fg">
@@ -172,28 +180,38 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       {period === "year" ? (
         <div className="-mt-3 flex flex-col gap-1">
           <p className="text-meta text-fg">{B.annualIncludes}</p>
-          {b.foundingSolo?.eligible ? (
-            <p className="text-meta-strong text-fg" data-testid="billing-founding">
-              {fill(B.foundingLine, { price: formatMoney(b.foundingSolo.priceCents).replace(".00", ""), renews: formatMoney(b.foundingSolo.renewsAtCents).replace(".00", ""), n: b.foundingSolo.spotsLeft })}
+          {b.firstYearPrice?.eligible ? (
+            <p className="text-meta text-fg" data-testid="billing-first-year">
+              {fill(PB.firstYearNote, { pro: PLANS.plus.name, price: formatMoney(b.firstYearPrice.priceCents).replace(".00", ""), list: formatMoney(b.firstYearPrice.listPriceCents).replace(".00", "") })}
             </p>
           ) : null}
         </div>
       ) : null}
-      <ul className="-mt-3 grid gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-3">
+      <ul className="-mt-3 grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2 xl:grid-cols-4" data-testid="billing-plans">
         {b.plans.map((p) => {
           // The website (requiresAnnual) leads the list on yearly billing and is left off monthly.
           const feats = FEATURE_KEYS.filter((k) => FEATURES[k].minPlan === p.id && FEATURES[k].phase === 2 && !FEATURES[k].pack && (period === "year" || !FEATURES[k].requiresAnnual)).sort((a, z) => Number(!!FEATURES[z].requiresAnnual) - Number(!!FEATURES[a].requiresAnnual));
           const price = period === "year" ? p.annualPriceCents : p.priceCents;
+          // The first-year price of annual Pro: the list price struck through, never named.
+          const fy = period === "year" && p.id === "plus" && b.firstYearPrice?.eligible && b.firstYearPrice.priceCents < p.annualPriceCents ? b.firstYearPrice : null;
+          const isPicked = picked === p.id && !p.current;
           return (
-            <li key={p.id}>
-              <div className="flex h-full flex-col gap-3 bg-bg p-5">
+            <li key={p.id} data-plan={p.id}>
+              <div className={`flex h-full flex-col gap-3 bg-bg p-5 ${isPicked ? "ring-2 ring-inset ring-link" : ""}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-body-strong text-fg">{p.name}</h3>
-                  {p.current ? <Dot tone="positive">Current</Dot> : null}
+                  {p.current ? <Dot tone="positive">Current</Dot> : isPicked ? <Dot tone="info">{PB.preselected}</Dot> : null}
                 </div>
                 <p className="text-[28px] font-semibold leading-8 tracking-[-0.01em] tabular-nums text-fg">
-                  {p.id === "free" ? "$0" : formatMoney(price).replace(".00", "")}
-                  <span className="text-meta font-normal tracking-normal text-fg-muted">{p.id === "free" ? " forever" : period === "year" ? "/year, CAD" : "/month, CAD"}</span>
+                  {fy ? (
+                    <>
+                      <span className="sr-only">regular price </span>
+                      <s className="me-1.5 text-body font-normal text-fg-muted">{formatMoney(fy.listPriceCents).replace(".00", "")}</s>
+                      <span className="sr-only">, now </span>
+                    </>
+                  ) : null}
+                  {p.id === "free" ? "$0" : formatMoney(fy ? fy.priceCents : price).replace(".00", "")}
+                  <span className="text-meta font-normal tracking-normal text-fg-muted">{p.id === "free" ? " forever" : fy ? ` ${PB.firstYear}, CAD` : period === "year" ? "/year, CAD" : "/month, CAD"}</span>
                 </p>
                 <p className="text-meta text-fg">{p.blurb}</p>
                 <p className="text-caption font-normal text-fg-muted">Best for {p.bestFor.join(", ").toLowerCase()}</p>
@@ -208,7 +226,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
                 </ul>
                 <div className="mt-auto flex flex-col gap-3 pt-2">
                   {p.id === "free" || p.current || sub ? null : (
-                    <Button loading={act.busy} onClick={() => checkout(p.id as "plus" | "pro")}>
+                    <Button loading={act.busy} variant={isPicked || (!picked && p.id === "plus") ? "primary" : "secondary"} onClick={() => checkout(p.id as PaidPlanId)}>
                       {`Subscribe to ${p.name}`}
                     </Button>
                   )}

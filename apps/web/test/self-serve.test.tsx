@@ -45,7 +45,8 @@ describe("pricing and landing say the same true thing", () => {
     expect(html).toContain("Free");
     expect(html).toContain("1% of online class sales");
     expect(html).toContain("0% on desk");
-    expect(html).toContain("$39/mo");
+    expect(html).toContain("$29/mo");
+    expect(html).toContain("$59/mo");
     expect(html).toContain("$99, $199 and $349/mo");
     expect(html).not.toMatch(/coming soon|early access|pilot/i);
   });

@@ -8,22 +8,31 @@ import { FreeCard, PaidCard } from "@/app/(marketing)/pricing/PlanCards";
 import { moneyShort } from "@/lib/marketing/text";
 
 describe("pricing cards", () => {
-  it("shows the real price in the normal text colour with a working Start button, no pilot badge", () => {
-    const html = renderToStaticMarkup(<PaidCard id="plus" />);
-    expect(html).toContain(">$39<");
-    expect(html).toMatch(/text-primary-text[^>]*>\$39</); // the price wears terracotta text, never a subdued grey
+  const firstYear = { shown: true, priceCents: 19900, listPriceCents: PLANS.plus.annualPriceCents, eligible: false, taken: false };
+  it("shows Pro's real price in the normal text colour, the trial and the first-year price struck through, never named", () => {
+    const html = renderToStaticMarkup(<PaidCard id="plus" firstYear={firstYear} />);
+    expect(html).toContain(`>${moneyShort(PLANS.plus.priceCents)}<`);
+    expect(html).toMatch(/text-primary-text[^>]*>\$29</); // the price wears terracotta text, never a subdued grey
     expect(html).not.toContain("text-fg-subtle");
-    expect(html).not.toContain("Pilot shops now");
     expect(html).not.toContain("early access");
-    expect(html).toContain('href="/signup?plan=plus"');
-    expect(html).toContain("Start Pro");
-    expect(html).toContain(`or ${moneyShort(PLANS.plus.annualPriceCents)} a year`);
+    expect(html).toContain('href="/signup"'); // the trial needs no card: signup, not checkout
+    expect(html).toContain(`<s class="tabular-nums">${moneyShort(PLANS.plus.annualPriceCents)}</s>`);
+    expect(html).toContain("$199");
+    expect(html).toContain("first year");
+    expect(html).toContain("14 days of Pro free, no card.");
+    expect(html.toLowerCase()).not.toContain("founding");
   });
-  it("sells Service at $99 with the same button", () => {
-    const html = renderToStaticMarkup(<PaidCard id="pro" />);
-    expect(html).toContain(">$99<");
-    expect(html).toContain('href="/signup?plan=pro"');
-    expect(html).toContain("Start Service");
+  it("shows the plain yearly price when the first-year price is off", () => {
+    const html = renderToStaticMarkup(<PaidCard id="plus" firstYear={null} />);
+    expect(html).toContain(`or ${moneyShort(PLANS.plus.annualPriceCents)} a year`);
+    expect(html).not.toMatch(/<s[ >]/);
+  });
+  it("sells Studio at its price with its own button", () => {
+    const html = renderToStaticMarkup(<PaidCard id="studio" firstYear={firstYear} />);
+    expect(html).toContain(`>${moneyShort(PLANS.studio.priceCents)}<`);
+    expect(html).toContain('href="/signup?plan=studio"');
+    expect(html).toContain("Start Studio");
+    expect(html).not.toMatch(/<s[ >]/);
   });
   it("keeps the free card to five plain lines", () => {
     const html = renderToStaticMarkup(<FreeCard />);

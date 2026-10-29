@@ -6,7 +6,7 @@
  */
 import { eq } from "drizzle-orm";
 import { merchantMilestones, merchants, pushTokens } from "@ll/db";
-import { SIGNAL_KEYS, normalizeLocale } from "@ll/shared";
+import { normalizeLocale, reportsApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { weekReport } from "../services/insights.js";
 import { enabledFeaturesFor } from "../services/features.js";
@@ -40,7 +40,7 @@ export async function runWeeklyReports(ctx: AppContext): Promise<{ sent: number 
       const owner = await soloOwner(ctx.db, m.id);
       if (!owner) continue;
       const report = await weekReport(ctx, m);
-      const quiet = report.revenueCents === 0 && report.visits === 0 && SIGNAL_KEYS.every((k) => report.signals[k].count === 0);
+      const quiet = report.revenueCents === 0 && report.visits === 0 && reportsApi.SIGNAL_KEYS.every((k) => report.signals[k].count === 0);
       // Claim the week first so a second worker or the next pass cannot send it twice.
       const claim = await ctx.db.insert(merchantMilestones).values({ merchantId: m.id, key: `weekly_report:${week}`, reachedAt: now, data: { quiet } }).onConflictDoNothing().returning({ id: merchantMilestones.id });
       if (!claim.length || quiet) continue;

@@ -322,14 +322,14 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             const p = pick(a);
             return (
               <li key={a.id}>
-                <button type="button" role="switch" aria-checked={on} onClick={() => setAddOnIds((cur) => (on ? cur.filter((x) => x !== a.id) : [...cur, a.id]))} className="flex min-h-[64px] w-full items-center gap-3 py-3 text-start focus-visible:focus-ring">
+                <button type="button" role="switch" aria-checked={on} onClick={() => setAddOnIds((cur) => (on ? cur.filter((x) => x !== a.id) : [...cur, a.id]))} className="flex min-h-16 w-full items-center gap-3 py-3 text-start focus-visible:focus-ring">
                   <span className="min-w-0 flex-1">
                     <span className="block text-body-strong text-fg">{p.name}</span>
                     {p.description ? <span className="block text-meta text-fg-muted">{p.description}</span> : null}
                     <span className="block text-meta tabular-nums text-fg-muted">{addOnPriceTime(t as never, money, dur, a)}</span>
                   </span>
                   <span aria-hidden className={cn("relative h-7 w-12 shrink-0 rounded-full transition-colors", on ? "bg-trade clear:bg-primary" : "bg-bg-muted")}>
-                    <span className={cn("absolute top-0.5 size-6 rounded-full bg-bg shadow-card transition-all", on ? "start-[22px]" : "start-0.5")} />
+                    <span className={cn("absolute top-0.5 size-6 rounded-full bg-bg shadow-card transition-all", on ? "start-5.5" : "start-0.5")} />
                   </span>
                 </button>
               </li>
@@ -371,7 +371,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
               <button key={d} type="button" aria-pressed={on} disabled={avLoading || (!!av && n === 0 && !full)} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && av && n === 0 && "text-fg-subtle")}>
                 <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
                 <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
-                {full ? <span className="text-[11px] leading-none">{t("wl.full")}</span> : null}
+                {full ? <span className="text-caption leading-none">{t("wl.full")}</span> : null}
               </button>
             );
           })}

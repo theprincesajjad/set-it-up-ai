@@ -456,7 +456,7 @@ async function take(ctx: Ctx, e: Entry): Promise<waitlistApi.TakeOfferResponse> 
       .where(and(eq(appointments.id, e.offeredAppointmentHoldId!), eq(appointments.status, "booked"), isNotNull(appointments.holdExpiresAt), gt(appointments.holdExpiresAt, now)))
       .returning();
     if (!a) return null;
-    await tx.update(appointmentWaitlist).set({ status: "booked", bookedAppointmentId: a.id, bookedAt: now, offerToken: null, updatedAt: now }).where(eq(appointmentWaitlist.id, e.id));
+    await tx.update(appointmentWaitlist).set({ status: "booked", bookedAppointmentId: a.id, bookedAt: now, updatedAt: now }).where(eq(appointmentWaitlist.id, e.id));
     if (e.freedSlotId) {
       await tx.update(waitlistFreedSlots).set({ status: "filled", filledAppointmentId: a.id, updatedAt: now }).where(eq(waitlistFreedSlots.id, e.freedSlotId));
       // Any other open offer for this slot is over.

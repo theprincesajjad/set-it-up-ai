@@ -1,6 +1,7 @@
 /**
- * phase-solo A: the pricing page's three solo plans (Free, Pro, Annual) and the billing page that mirrors it,
- * at 390 and 1440, in Clear light and in Urdu. Screenshots go to SOLO_SHOTS (default: e2e/screenshots/solo-a, not tracked).
+ * phase-pro P1 (was phase-solo A): the pricing page's three plans (Free, Pro, Studio, with Service as a line), the first-year price
+ * shown only as a struck-through number, the trial line, and the billing page with the trial banner for a shop on its trial,
+ * at 390 and 1440, in Clear light and in Urdu. Screenshots go to PRO_SHOTS (default: e2e/screenshots/pro-p1, not tracked).
  */
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
@@ -17,23 +18,32 @@ async function axe(page: Page, selector: string): Promise<string[]> {
   }, selector);
 }
 
-const DIR = process.env.SOLO_SHOTS ?? "e2e/screenshots/solo-a";
+const DIR = process.env.PRO_SHOTS ?? "e2e/screenshots/pro-p1";
 const shot = (name: string) => `${DIR}/${name}.png`;
-const OWNER = { email: "owner+pinecone-coffee@example.com", password: "localloyalty-demo" };
+const PASSWORD = "localloyalty-e2e-trial";
 
-async function signIn(page: Page, next: string) {
-  await page.goto(`/login?next=${encodeURIComponent(next)}`);
-  await page.getByLabel("Email").fill(OWNER.email);
-  await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+async function call<T>(method: string, path: string, body?: unknown, token?: string): Promise<T> {
+  const res = await fetch(`${API}${path}`, { method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${method} ${path} → ${res.status} ${text}`);
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
-async function pineconeId(): Promise<string> {
-  const login = await fetch(`${API}/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(OWNER) });
-  const { accessToken } = (await login.json()) as { accessToken: string };
-  const r = await fetch(`${API}/v1/merchants`, { headers: { authorization: `Bearer ${accessToken}` } });
-  return ((await r.json()) as { items: { id: string }[] }).items[0]!.id;
+/** A new nail tech on her 14-day Pro trial (registered and started through the API, no card). */
+async function trialShop(): Promise<{ email: string; id: string }> {
+  const email = `trial+${Date.now()}${Math.floor(Math.random() * 1000)}@example.com`;
+  const { accessToken } = await call<{ accessToken: string }>("POST", "/v1/auth/register", { email, password: PASSWORD, name: "Maya Lin" });
+  const made = await call<{ merchant: { id: string } }>("POST", "/v1/merchants", { name: "Maya Nails", vertical: "nails", address: "10 Roncesvalles Ave", phone: "(416) 555-0142" }, accessToken);
+  await call("POST", `/v1/merchants/${made.merchant.id}/billing/trial`, {}, accessToken);
+  return { email, id: made.merchant.id };
+}
+
+async function signIn(page: Page, email: string, next: string) {
+  await page.goto(`/login?next=${encodeURIComponent(next)}`);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((u) => !u.pathname.startsWith("/login"));
 }
 
 const SIZES = [
@@ -41,28 +51,35 @@ const SIZES = [
   { w: 1440, h: 900 },
 ] as const;
 
-test.describe("solo pricing", () => {
+test.describe("pricing: Free, Pro, Studio", () => {
   for (const { w, h } of SIZES) {
-    test(`three plans, the table, the comparison and the founding strip at ${w}`, async ({ page }) => {
+    test(`three cards, the first-year price struck through, the trial line, the tables at ${w}`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: h });
       await page.goto("/pricing?theme=clear");
       const shops = page.locator("#shops");
+      await expect(shops.locator("[data-plan]")).toHaveCount(4); // Free, Pro, Studio and the Service line
       await expect(shops.locator("[data-plan=free]")).toContainText("$0");
-      await expect(shops.locator("[data-plan=plus]")).toContainText("$39");
-      await expect(shops.locator("[data-plan=annual]")).toContainText("$390");
-      await expect(shops.locator("[data-plan=annual]")).toContainText("48 promos a year");
-      await expect(shops.locator("[data-plan=plus]")).toContainText("4 promos a month");
+      const pro = shops.locator("[data-plan=plus]");
+      await expect(pro).toContainText("$29");
+      await expect(pro.getByTestId("first-year-price")).toContainText("$199");
+      await expect(pro.getByTestId("first-year-price")).toContainText("first year");
+      await expect(pro.getByTestId("first-year-price").locator("s")).toHaveText("$290");
+      await expect(pro.getByTestId("trial-line")).toHaveText("14 days of Pro free, no card.");
+      await expect(shops.locator("[data-plan=studio]")).toContainText("$59");
+      await expect(shops.locator("[data-plan=studio]")).toContainText("or $590 a year");
       await expect(shops.locator("[data-plan=pro]")).toContainText("$99");
       await expect(shops).toContainText("Prices in CAD");
-      await expect(shops.getByTestId("founding-strip")).toContainText("$290 for your first year, then $390");
-      await expect(shops.getByTestId("founding-strip")).toContainText("of 200 spots left");
-      await expect(page.getByRole("table", { name: "Compare Free, Pro and the annual plan" })).toBeVisible();
+      expect((await page.locator("main").innerText()).toLowerCase()).not.toContain("founding pro");
+      await expect(page.getByRole("table", { name: "Compare Free, Pro and Studio" })).toBeVisible();
       await expect(page.getByTestId("solo-table")).toContainText("30 a month, then email");
       await expect(page.getByTestId("solo-compare")).toContainText("Fresha");
-      await expect(page.getByTestId("solo-compare")).toContainText("Oct 28, 2026");
+      await expect(page.getByTestId("solo-compare")).toContainText("Oct 29, 2026");
       // No horizontal page scroll at phone width.
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
       await page.screenshot({ path: shot(`pricing-${w}`), fullPage: true });
+      await page.goto("/pricing?theme=clear&compare=1#compare");
+      await expect(page.getByTestId("compare")).toContainText("Fills your book");
+      await expect(page.getByTestId("compare")).toContainText("For shops");
       await page.goto("/pricing?theme=clear&lang=ur");
       await page.screenshot({ path: shot(`pricing-${w}-ur`), fullPage: true });
     });
@@ -75,21 +92,31 @@ test.describe("solo pricing", () => {
   });
 });
 
-test.describe("billing mirrors it", () => {
+test.describe("billing on the trial", () => {
   for (const { w, h } of SIZES) {
-    test(`usage panel and the annual line at ${w}`, async ({ page }) => {
+    test(`the trial banner, Studio and the first-year price at ${w}`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: h });
-      const base = `/m/${await pineconeId()}`;
-      await signIn(page, `${base}/billing`);
+      const shop = await trialShop();
+      const base = `/m/${shop.id}`;
+      await signIn(page, shop.email, `${base}/billing`);
       await page.goto(`${base}/billing?theme=clear`);
-      await expect(page.getByTestId("plan-usage")).toContainText("Bookable calendars");
-      await expect(page.getByTestId("plan-usage")).toContainText("Reminder texts");
+      const banner = page.getByTestId("trial-banner");
+      await expect(banner).toHaveAttribute("data-moment", "live");
+      await expect(banner).toContainText("Pro ends");
+      await expect(banner).toContainText("14 days left");
+      await expect(page.getByTestId("keep-monthly")).toContainText("$29 a month");
+      await expect(page.getByTestId("keep-yearly").locator("s")).toHaveText("$290");
+      await expect(page.getByTestId("keep-yearly")).toContainText("$199");
+      await expect(page.getByTestId("plan-usage")).toContainText("of 2");
+      await expect(page.getByTestId("billing-plans").locator("[data-plan=studio]")).toContainText("$59");
       await page.screenshot({ path: shot(`billing-${w}`), fullPage: true });
       await page.getByRole("radio", { name: "Pay yearly: 2 months free" }).first().click();
-      await expect(page.getByText("The annual plan includes your website and one .ca domain.")).toBeVisible();
-      await page.screenshot({ path: shot(`billing-${w}-yearly`), fullPage: true });
+      await expect(page.getByTestId("billing-plans").locator("[data-plan=plus] s")).toHaveText("$290");
+      await page.goto(`${base}/billing?theme=clear&plan=studio`);
+      await expect(page.getByTestId("billing-plans").locator("[data-plan=studio]")).toContainText("Picked for you");
+      await page.screenshot({ path: shot(`billing-${w}-studio`), fullPage: true });
       await page.goto(`${base}/billing?theme=clear&lang=ur`);
-      await expect(page.getByTestId("plan-usage")).toBeVisible();
+      await expect(page.getByTestId("trial-banner")).toBeVisible();
       await page.screenshot({ path: shot(`billing-${w}-ur`), fullPage: true });
       expect(await axe(page, "main")).toEqual([]);
     });

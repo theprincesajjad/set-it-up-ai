@@ -261,8 +261,7 @@ export const FEATURE_KEYS = [
   "booking.pickup_slots",
   "booking.appointments",
   "service.rebooking",
-  // phase-pro P1: the money features for one person (pro-value.md §2.2). P2 waitlist, P4 review requests.
-  "booking.waitlist",
+  // phase-pro P1: the money features for one person (pro-value.md §2.2): P4 review requests (P2's waitlist key is below, with P5's and P6's).
   "booking.review_requests",
   // Built-in website builder (workstream G): Pro on the annual plan only (FeatureDef.requiresAnnual).
   "site.builder",
@@ -415,7 +414,6 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = Object.fromEntries(
     // Free for one bookable calendar (FREE_BOOKABLE_CALENDARS, solo-pro-launch.md §3.1); two on Pro, unlimited on Studio (bookableCalendarLimit). Not FREE_FOREVER (phase 2): the calendar cap is its only gate.
     { ...f("booking.appointments", "Appointments", "Calendar, services and prices, online booking, deposits, reminders and no-show protection. One bookable calendar on Free, two on Pro, as many as you need on Studio.", "free", 2), freeForVerticals: ["pharmacy"] as const },
     f("service.rebooking", "Rebooking and pickup reminders", "Nudge regulars when they are due, and remind customers to collect finished repairs.", "plus", 2, 100),
-    f("booking.waitlist", "Waitlist that fills cancelled slots", "When a slot opens, the first client waiting is offered it by their best channel with a two-hour hold. On Free you see the list; on Pro it offers the slot for you.", "plus", 2, 100),
     f("booking.review_requests", "Google review requests", "A review request two hours after every visit, by the client's best channel, with the same ask for every rating.", "plus", 2, 100),
     { ...f("site.builder", "Website", "A website built from your bookings, services, prices, loyalty, promos, reviews and map pin, with AI copy, hosting and one .ca domain. Included with the annual plan.", "plus", 2), requiresAnnual: true },
     f("booking.classes", "Classes", "Class schedule with capacity and waitlist, drop-ins, class packs and intro offers, late-cancel fees and door check-in for yoga, pilates, boxing, dance and women-only studios.", "plus", 2, 100),

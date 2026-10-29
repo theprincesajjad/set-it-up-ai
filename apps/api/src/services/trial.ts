@@ -9,7 +9,8 @@
  *  - It ends at trial_ends_at (the hourly job in jobs/billing-trial.ts, which also sends the receipt), or at once when a paid
  *    subscription goes live (billing.ts recomputePlan). Nothing is deleted when it ends.
  *
- * This module imports no other billing module (billing.ts imports it), so there is no import cycle.
+ * This module imports no other billing module (billing.ts imports it). The rebooking mode is loaded when the trial starts (dynamic
+ * import), because rebooking.ts sits in the messaging graph that imports billing.ts at load time.
  */
 import { and, eq, gte, isNotNull, isNull, lte } from "drizzle-orm";
 import { auditLogs, merchantMilestones, merchants } from "@ll/db";
@@ -17,8 +18,7 @@ import { PLANS, TRIAL_PLAN, effectivePlan, trialEndsAt, type MilestoneKey, type 
 import type { AppContext } from "../context.js";
 import { HttpError } from "../lib/errors.js";
 import { isPharmacy } from "./pharmacy-guard.js";
-import { setRebookingMode } from "./rebooking.js";
-import { setReviewRequestsMode } from "./reviews.js";
+import { setReviewRequestsMode } from "./reviews-mode.js";
 
 type Merchant = typeof merchants.$inferSelect;
 
@@ -62,6 +62,7 @@ export async function startTrial(ctx: AppContext, merchant: Merchant, source: "b
 /** The trial's tools that have a mode: review requests on, rebooking automatic (unless the owner turned it off, or a pharmacy). */
 async function switchOnTrialTools(ctx: AppContext, m: Merchant): Promise<void> {
   try {
+    const { setRebookingMode } = await import("./rebooking.js");
     await setReviewRequestsMode(ctx, m.id, "on");
     if (!isPharmacy(m) && m.rebookingMode !== "off") await setRebookingMode(ctx, m, "auto", { force: true });
   } catch (err) {

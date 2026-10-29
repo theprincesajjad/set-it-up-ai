@@ -3,7 +3,7 @@
  * Endpoint docs: docs/engineering/api/admin.md.
  */
 import { z } from "zod";
-import type { FeatureKey, PlanId, RolloutStage } from "../plans.js";
+import { PLAN_IDS, type FeatureKey, type PlanId, type RolloutStage } from "../plans.js";
 import { phoneSchema, uuidSchema } from "./common.js";
 
 const page = { limit: z.coerce.number().int().min(1).max(200).default(50), cursor: z.string().optional() };
@@ -212,7 +212,7 @@ export const listMerchantsQuery = z.object({
   status: z.enum(["onboarding", "active", "paused", "closed"]).optional(),
   neighbourhoodId: uuidSchema.optional(),
   vertical: z.string().max(40).optional(),
-  plan: z.enum(["free", "plus", "pro"]).optional(),
+  plan: z.enum(PLAN_IDS).optional(),
   repUserId: uuidSchema.optional(),
   ...page,
 });

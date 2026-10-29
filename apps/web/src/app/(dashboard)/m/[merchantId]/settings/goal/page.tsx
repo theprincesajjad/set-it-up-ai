@@ -18,7 +18,7 @@ export default function GoalSettingsPage() {
   const { api, base, role } = useMerchant();
   const loc = useLocaleOrEnglish();
   const { t } = loc;
-  const { toast } = useToast();
+  const toast = useToast();
   const manager = role !== "staff";
   const state = useApi(manager ? () => api.insights.week() : null, [api, manager]);
   const act = useAction();

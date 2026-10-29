@@ -55,7 +55,7 @@ describe("legal pages render their numbers from plans.ts", () => {
     for (const slug of Object.keys(LEGAL_DOCS) as (keyof typeof LEGAL_DOCS)[]) {
       const md = rendered(slug);
       expect(md, slug).not.toMatch(/0\.75%/);
-      // "Plus" is retired. "Pro" is again the display name of the $39 plan (founder, Oct 29, 2026; id `plus`), so it may appear, but only as PLANS.plus.name.
+      // "Plus" is retired. "Pro" is again the display name of the $29 plan (founder, Oct 29, 2026; id `plus`), so it may appear, but only as PLANS.plus.name.
       expect(md, slug).not.toMatch(/\bPlus plan\b|\bPlus\b \$/);
       for (const m of md.matchAll(/\bPro\b \$(\d+)/g)) expect(Number(m[1]) * 100, slug).toBe(PLANS.plus.priceCents);
     }
@@ -69,7 +69,9 @@ describe("legal pages render their numbers from plans.ts", () => {
 
   it("the paid-plan token tables are rendered from the shared plan data", () => {
     const t = legalTokens();
-    expect(t["plan.plus.price"]).toBe("$39/month");
+    expect(t["plan.plus.price"]).toBe("$29/month");
+    expect(t["plan.studio.name"]).toBe("Studio");
+    expect(t["plan.studio.price"]).toBe("$59/month");
     expect(t["plan.pro.name"]).toBe("Service");
     expect(t["fee.orderFree"]).toBe("1.5%");
   });

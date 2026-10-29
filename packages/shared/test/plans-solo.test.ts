@@ -191,6 +191,9 @@ describe("two paid tiers: Pro and Studio (pro-value.md §2.2)", () => {
       expect(isFeatureEnabled(k, { plan: "plus", stage: "ga" }), k).toBe(true);
     }
   });
+  it("lists every feature key once (workstreams add keys in parallel)", () => {
+    expect(new Set(FEATURE_KEYS).size).toBe(FEATURE_KEYS.length);
+  });
   it("leaves Free forever untouched", () => {
     for (const k of FREE_FOREVER) expect(FEATURES[k].minPlan, k).toBe("free");
     expect(FREE_FOREVER).toHaveLength(14);

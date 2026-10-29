@@ -36,7 +36,7 @@ export function RebookMode({ settings, onChange, canEdit, billingHref }: { setti
                 onChange(m);
               }}
               className={cn(
-                "inline-flex min-h-11 items-center rounded-full border px-4 text-meta focus-visible:focus-ring",
+                "inline-flex h-11 items-center rounded-full border px-4 text-meta focus-visible:focus-ring",
                 on ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle",
                 (locked || !canEdit) && !on && "text-fg-muted hover:bg-transparent",
               )}

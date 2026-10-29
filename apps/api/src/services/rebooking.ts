@@ -18,14 +18,20 @@ import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { memberRhythms } from "./member-stats.js";
 import { isPharmacy } from "./pharmacy-guard.js";
 import { getMerchantFeatures, requireFeature } from "./features.js";
-import { localDate, reserveSmsCredits, smsAllowance, unsubscribeHeaders, unsubscribeUrl } from "./messaging.js";
-import { recordSignal } from "./signals.js"; // phase-pro: p3
+import { smsAllowance } from "./text-allowance.js";
 import { sendWebPush } from "./web-push.js";
 import { messageDeliveries } from "@ll/db";
-import { inQuietHours } from "./notifications.js";
 import { isSuppressed, optedOutSet, sendSms } from "./opt-out.js";
 
 type Merchant = typeof merchants.$inferSelect;
+
+// messaging, notifications and signals load on first use: trial.ts (phase-pro P1) imports this module from the onboarding graph, which the ledger
+// imports, and those modules register ledger listeners when they load. Importing them up here would evaluate them before the ledger has finished.
+const messagingLazy = () => import("./messaging.js");
+const quietHours = async (at: Date, tz: string) => (await import("./notifications.js")).inQuietHours(at, tz);
+const recordSignal = async (...a: Parameters<typeof import("./signals.js")["recordSignal"]>) => (await import("./signals.js")).recordSignal(...a);
+/** Local YYYY-MM-DD in a timezone (the same as messaging.localDate, kept here so this module stays light). */
+const localDate = (at: Date, timeZone: string): string => new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
 const DAY_MS = 86_400_000;
 const WINDOW_MONTHS = 24;
 /** A customer who has not visited in this long is left alone. */
@@ -377,21 +383,21 @@ async function deliverNudge(ctx: AppContext, merchant: Merchant, c: Candidate, o
     } else if (rung === "email") {
       const [u] = await ctx.db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
       if (!u?.email) continue;
-      const footer = c.memberId ? `\n\n—\nSent by ${merchant.name} via Local Loyalty because you opted in to offers from them.\nUnsubscribe: ${unsubscribeUrl(ctx, c.memberId)}` : "";
+      const footer = c.memberId ? `\n\n—\nSent by ${merchant.name} via Local Loyalty because you opted in to offers from them.\nUnsubscribe: ${(await messagingLazy()).unsubscribeUrl(ctx, c.memberId)}` : "";
       const body = `${text.short}${footer}`;
       try {
-        const r = await ctx.providers.email.send({ to: u.email, subject: text.title, text: body, ...(c.memberId ? { headers: unsubscribeHeaders(ctx, c.memberId) } : {}) });
+        const r = await ctx.providers.email.send({ to: u.email, subject: text.title, text: body, ...(c.memberId ? { headers: (await messagingLazy()).unsubscribeHeaders(ctx, c.memberId) } : {}) });
         await ctx.db.insert(messageDeliveries).values({ userId, merchantId: merchant.id, channel: "email", to: u.email, body, kind: "marketing", status: "sent", providerId: r.id });
         reached = "email";
       } catch (err) {
         await ctx.db.insert(messageDeliveries).values({ userId, merchantId: merchant.id, channel: "email", to: u.email, body, kind: "marketing", status: "failed", error: err instanceof Error ? err.message.slice(0, 500) : "send failed" });
       }
     } else {
-      if (opts.quietHours && inQuietHours(now, merchant.timezone)) {
+      if (opts.quietHours && (await quietHours(now, merchant.timezone))) {
         blocked = conflict("Quiet hours: we don't text overnight.");
         continue;
       }
-      if (!(await reserveSmsCredits(ctx.db, merchant, 1))) {
+      if (!(await (await messagingLazy()).reserveSmsCredits(ctx.db, merchant, 1))) {
         blocked = new HttpError(402, "sms_credits_exhausted", `This needs 1 SMS credit but you have none left this month.`, { needed: 1, remaining: Math.max(0, smsAllowance(merchant) - merchant.smsCreditsUsed) });
         continue;
       }

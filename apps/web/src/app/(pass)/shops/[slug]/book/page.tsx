@@ -79,7 +79,7 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
   // ---- end phase-pro: p3 ----
   return (
     <PageFrame locale={locale} trade={shop.vertical}>
-      {rebook && welcome ? (
+      {rebook && (welcome || me) ? (
         <Banner tone="info" title={first ? t("rb.book.welcome", { name: first }) : t("rb.book.welcomeNoName")}>
           {t("rb.book.welcomeSub")}
         </Banner>

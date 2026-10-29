@@ -110,6 +110,13 @@ export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
   "pets.report_cards",
   // ---- phase-solo: G ---- the website builder page is open to every owner (build and preview); this key gates Publish there.
   "site.builder",
+  // ---- phase-pro: p1 ---- the Pro money features live inside existing pages: the waitlist on the calendar (P2), review requests in
+  // Settings and after checkout (P4), add-ons on Services (P5), the weekly report on Today and Reports (P6). Their owners may add entries.
+  "booking.waitlist",
+  "booking.review_requests",
+  "booking.add_ons",
+  "insights.weekly",
+  // ---- end phase-pro: p1 ----
 ];
 
 /**

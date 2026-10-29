@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/lib/api/errors";
 import { useMerchant } from "./MerchantContext";
 
-/** One tap to the checkout for the plan that has a locked feature (Pro, Service or a restaurant tier). Owners only. */
+/** One tap to the checkout for the plan that has a locked feature (Pro, Studio, Service or a restaurant tier). Owners only. */
 export function SubscribeButton({ offer, size = "sm", variant = "primary", label }: { offer: Extract<FeatureOffer, { kind: "plan" | "restaurant" }>; size?: "sm" | "md"; variant?: "primary" | "secondary"; label?: string }) {
   const { api, base, refresh } = useMerchant();
   const [busy, setBusy] = useState(false);

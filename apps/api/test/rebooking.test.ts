@@ -5,10 +5,15 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { appointments, invoices, merchantMembers, merchants, pushTokens, rebookingNudges, services, webPushSubscriptions } from "@ll/db";
+// Import order matters here: the services import each other (this is the order service-ops.test.ts uses).
+import { MemoryStorage } from "../src/providers/storage.js";
+import { runRollingDropoffSlots } from "../src/services/dropoff.js";
+import { runPickupReminders } from "../src/services/pickup.js";
 import { handleInboundSms, runAutomations, winBackDefaults } from "../src/services/messaging.js";
 import { attributeBooking, rebookingResults, runRebookNudges } from "../src/services/rebooking.js";
 import { createTestEnv, createUser, grantFeatures, tokenFor, type TestEnv } from "./helpers.js";
 import { call, paidMerchant, setStage } from "./commerce-fixtures.js";
+void [MemoryStorage, runRollingDropoffSlots, runPickupReminders];
 
 let env: TestEnv;
 beforeEach(async () => {
