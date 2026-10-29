@@ -34,6 +34,8 @@ import {
   type PlanId,
   type Vertical,
   type merchantApi,
+  experimentById,
+  isArm,
 } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { randomCode, randomToken, sha256 } from "../lib/crypto.js";
@@ -385,7 +387,8 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
       }
     }
     const template = await applyVerticalTemplate(tx, m!.id, b.vertical);
-    await recordMilestone(tx, m!.id, "signed_up", ctx.now(), b.source || work ? { ...(b.source ? { source: b.source.toLowerCase() } : {}), ...(work ? { workSetting: work } : {}) } : undefined);
+    const ab = landingAttribution(b);
+    await recordMilestone(tx, m!.id, "signed_up", ctx.now(), b.source || work || ab ? { ...(b.source ? { source: b.source.toLowerCase() } : {}), ...(work ? { workSetting: work } : {}), ...ab } : undefined);
     await writeAudit(tx, {
       actorUserId: args.actorUserId,
       merchantId: m!.id,
@@ -518,5 +521,20 @@ export async function buildQrKit(ctx: AppContext, merchantId: string): Promise<m
       }),
     ),
     staffScript: `"Are you on ${m.name} rewards? It's free — just your phone number." Then award ${program?.terminology ?? "points"} in the staff app.`,
+  };
+}
+
+/**
+ * The landing-page A/B fields for the `signed_up` milestone (packages/shared/src/experiments.ts): the variant the owner saw, its
+ * test (kept only when it is a known test and the variant one of its arms) and the anonymous id. Nothing else links a landing visit
+ * to a shop. Undefined when the signup carried none of them.
+ */
+export function landingAttribution(b: Pick<merchantApi.CreateMerchantBody, "variant" | "experimentId" | "anonId">): { variant?: string; experimentId?: string; anonId?: string } | undefined {
+  if (!b.variant && !b.anonId) return undefined;
+  const exp = b.experimentId ? experimentById(b.experimentId) : undefined;
+  return {
+    ...(b.variant ? { variant: b.variant } : {}),
+    ...(exp && b.variant && isArm(exp, b.variant) ? { experimentId: exp.id } : {}),
+    ...(b.anonId ? { anonId: b.anonId } : {}),
   };
 }

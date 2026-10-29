@@ -32,6 +32,8 @@ export const RETENTION = {
   pharmacyMessageDays: 30,
   /** After a shop closes or falls back to Free it can still download its members and visits CSV for this long, free (merchant agreement 2.1). */
   leaverExportDays: 90,
+  /** Landing-page visit counts (anonymous id, variant, event kind, device class), after the visit. The per-test totals are kept. */
+  landingEventDays: 90,
 } as const;
 
 export type RetentionKey = keyof typeof RETENTION;

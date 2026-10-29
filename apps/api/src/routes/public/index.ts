@@ -20,8 +20,12 @@ import { depositPayment, getQuoteByToken, isExpired, markQuoteViewed, quoteDto, 
 import { merchantTax } from "../../services/tax.js";
 import { invoiceExtras } from "../../services/auto-estimate.js";
 import { getTicketByStatusToken, publicTicketStatus } from "../../services/tickets.js";
+import registerLanding from "./landing.js";
 
 export default async function register(app: FastifyInstance, ctx: AppContext): Promise<void> {
+  // Landing-page A/B tests: the beacon and the ended-tests list (landing.ts).
+  await registerLanding(app, ctx);
+
   async function merchantBySlug(slug: string) {
     const [m] = await ctx.db.select().from(merchants).where(eq(merchants.slug, slug)).limit(1);
     if (!m || m.status === "closed") throw notFound("Shop");

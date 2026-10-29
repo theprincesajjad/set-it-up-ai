@@ -2917,6 +2917,7 @@ export const pa: Messages = {
   "shell.console.adsReview": "ਇਸ਼ਤਿਹਾਰ ਸਮੀਖਿਆ",
   "shell.console.salesAgent": "ਸੇਲਜ਼ ਏਜੰਟ",
   "shell.console.siteDomains": "ਸਾਈਟ ਡੋਮੇਨ",
+  "shell.console.experiments": "ਲੈਂਡਿੰਗ ਪੇਜ ਟੈਸਟ",
   "shell.console.users": "ਯੂਜ਼ਰ ਅਤੇ ਭੂਮਿਕਾਵਾਂ",
   "shell.console.audit": "ਆਡਿਟ ਲੌਗ",
   "shell.console.overview": "ਸੰਖੇਪ",

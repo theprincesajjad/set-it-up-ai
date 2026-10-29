@@ -2917,6 +2917,7 @@ export const hi: Messages = {
   "shell.console.adsReview": "विज्ञापन समीक्षा",
   "shell.console.salesAgent": "सेल्स एजेंट",
   "shell.console.siteDomains": "साइट डोमेन",
+  "shell.console.experiments": "लैंडिंग पेज टेस्ट",
   "shell.console.users": "यूज़र और भूमिकाएँ",
   "shell.console.audit": "ऑडिट लॉग",
   "shell.console.overview": "सारांश",

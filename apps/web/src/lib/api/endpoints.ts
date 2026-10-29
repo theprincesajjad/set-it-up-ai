@@ -8,6 +8,7 @@
  */
 import type {
   adminApi,
+  experimentsApi,
   adsApi,
   authApi,
   billingApi,
@@ -192,6 +193,11 @@ export function llApi(c: ApiClient) {
       salesAgent: adminSalesAgentEndpoints(c),
       dashboard: () => c.get<adminApi.NetworkDashboard>("/v1/admin/dashboard"),
       onboardingFunnel: (days = 90) => c.get<adminApi.OnboardingFunnel>("/v1/admin/onboarding/funnel", { query: { days } }),
+      experiments: () => c.get<{ items: experimentsApi.ExperimentSummary[]; nextCursor: null }>("/v1/admin/experiments"),
+      experiment: (id: string) => c.get<experimentsApi.ExperimentReport>(`/v1/admin/experiments/${enc(id)}`),
+      recordInterimLook: (id: string) => c.post<experimentsApi.ExperimentReport>(`/v1/admin/experiments/${enc(id)}/looks`, { look: "interim" }),
+      addGuardrailInput: (id: string, body: experimentsApi.GuardrailInputBody) => c.post<experimentsApi.ExperimentReport>(`/v1/admin/experiments/${enc(id)}/guardrails`, body),
+      endExperiment: (id: string, reason: string) => c.post<experimentsApi.ExperimentReport>(`/v1/admin/experiments/${enc(id)}/end`, { reason }),
       overview: () => c.get<adminApi.AdminOverview>("/v1/admin/overview"),
       atRisk: () => c.get<{ items: adminApi.AtRiskShop[] }>("/v1/admin/at-risk"),
       costs: () => c.get<adminApi.AdminCosts>("/v1/admin/costs"),

@@ -73,6 +73,7 @@ We collect only what a feature needs. What you share depends on which shops and 
 | Payment details | Entered directly with **Stripe**; we receive only limited information such as card brand and last 4 digits | Process payments; we never store full card numbers |
 | Approximate or precise location (only if you allow it) | Your device | Show nearby shops and nearby promos you opted into. We do not keep a location history |
 | Device and usage data: app version, crash logs, IP address in security and audit logs | Your device | Security, fraud prevention, fixing bugs |
+| **Landing-page visit counts** on our pages for nail techs, barbers and groomers: three first-party cookies (`ll_src`, where you came from; `ll_v`, which version of the page you see; `ll_aid`, a random number that is not linked to your name, email or phone), and what you did on the page (viewed it, scrolled, tapped a button, sent the start form) with the version, the page and whether you were on a phone or a computer. We do not store your IP address, browser details, the page you came from or your location for this. No ad trackers and no third-party scripts | Your browser | See which words on the page work. If you sign up, the random number and the version are kept with your new shop's signup record so we can count which version led to signups |
 | Messages with support | You | Help you |
 
 We do not collect government ID, prescription or other health records, precise location history or your contacts.
@@ -135,6 +136,7 @@ Some are located in, or may process data in, the **United States** or other coun
 - **Marketing:** opt in or out per shop and for Local Loyalty, by email, SMS (reply STOP, or ARRET in French), WhatsApp (reply STOP) or push, in settings. Unsubscribes take effect promptly and within 10 business days at most. Replying STOP ends marketing from every shop and from us. Service messages about an order or booking you made continue.
 - **Mute a shop**, or **leave a shop's program**. Your points at that shop stay unless you close your account.
 - **Location:** turn it off in device settings.
+- **Landing-page counts:** the "Turn it off" link at the bottom of those pages stops the counting at once (it sets `ll_aid=off` for a year) and the page keeps working. A browser that sends Global Privacy Control is never counted and gets no `ll_v` or `ll_aid` cookie.
 - **Access and correction:** see and edit your profile in the app, or ask us. We respond within **30 days**.
 - **Export and deletion:** download your data from settings (a JSON file with your profile, every shop's activity and everything you gave a feature: orders, appointments, tickets, tiffin, catering, WhatsApp, review feedback, wait lists, consents and more), or delete your account there. Deleting your account removes your name, phone, email, birthday, postal code and consent records, signs you out everywhere, and clears what you gave each feature: order and allergy notes, appointment notes, tiffin addresses and notes, catering and hall event details and signatures, WhatsApp chats, phone transcripts, review comments, repair details, photos and quote signatures, wait-list entries, referral links, wallet passes and push tokens. Records the law or accounting needs, such as paid invoices, charges and deposits, stay with only amounts and dates and no longer identify you; fraud logs are kept as long as the law requires. We keep one entry for a number that replied STOP, so we never message it again.
 - **Withdraw consent** at any time, subject to legal or contractual limits. We will explain what that means for the Service.
@@ -155,6 +157,7 @@ Some are located in, or may process data in, the **United States** or other coun
 - **Appointments:** notes and the name typed at the desk are deleted {{retention.appointmentMonths}} after the visit. The booking and its payment record stay.
 - **Pharmacies:** a pharmacy appointment stops pointing at a person {{retention.pharmacyAppointmentDays}} after the visit: your name, phone number and the type of appointment are removed and only the time slot stays, as a count. A pharmacy's "your order is ready" and appointment reminder texts, and their copies in our delivery log and your inbox, are deleted {{retention.pharmacyMessageDays}} after they were sent.
 - **Unpaid holds:** a booking or hall hold that lapsed without payment is deleted {{retention.abandonedHoldDays}} later.
+- **Landing-page visit counts:** each recorded view, scroll, tap and form send is deleted {{retention.landingEventDays}} after the visit. We keep only the totals per version of the page.
 - These deletions run automatically, several times a day.
 
 ## 7. Security

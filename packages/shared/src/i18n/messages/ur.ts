@@ -2917,6 +2917,7 @@ export const ur: Messages = {
   "shell.console.adsReview": "اشتہارات کا جائزہ",
   "shell.console.salesAgent": "سیلز ایجنٹ",
   "shell.console.siteDomains": "سائٹ ڈومینز",
+  "shell.console.experiments": "لینڈنگ پیج ٹیسٹ",
   "shell.console.users": "صارفین اور کردار",
   "shell.console.audit": "آڈٹ لاگ",
   "shell.console.overview": "جائزہ",

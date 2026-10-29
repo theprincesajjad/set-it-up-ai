@@ -3461,3 +3461,79 @@ export const siteAiCalls = pgTable(
   (t) => [index("site_ai_calls_merchant_idx").on(t.merchantId, t.createdAt)],
 );
 // ---- end phase-solo: G ----
+
+// ---- landing A/B ----
+// Landing-page A/B tests (packages/shared/src/experiments.ts; docs/marketing/value-props.md §3). First-party only: no IP, no user
+// agent, no referrer, no geolocation. The anonymous id is the only link to a shop, through the `signed_up` milestone the signup wrote.
+
+/** One row per beacon event from /for-nail-techs, /for-barbers, /for-groomers. Deleted after RETENTION.landingEventDays. */
+export const landingEvents = pgTable(
+  "landing_events",
+  {
+    id: id(),
+    /** The `ll_aid` cookie (16 random bytes, base64url). */
+    anonId: text("anon_id").notNull(),
+    /** From `ll_v`, only while that test runs; null otherwise. */
+    experimentId: text("experiment_id"),
+    /** "control" when no test runs. */
+    variant: text("variant").notNull().default("control"),
+    /** nail | barber | groom */
+    page: text("page").notNull(),
+    /** nails | brows | lashes | makeup | barber | groom */
+    trade: text("trade").notNull(),
+    /** The page's ?src (ad-3, ig, client). */
+    src: text("src"),
+    /** view | scroll_50 | scroll_90 | cta_click | start_submit */
+    kind: text("kind").notNull(),
+    /** The CTA id for cta_click (hero, nav, plans, faq). */
+    data: text("data"),
+    /** phone | desktop (from the user agent, which is not stored). */
+    device: text("device").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("landing_events_exp_idx").on(t.experimentId, t.variant, t.kind, t.createdAt),
+    // A refresh is not a second exposure or a second submit.
+    uniqueIndex("landing_events_once_uq").on(t.anonId, t.experimentId, t.kind).where(sql`${t.kind} in ('view', 'start_submit')`),
+    index("landing_events_created_idx").on(t.createdAt),
+  ],
+);
+
+/** A pre-registered look an admin took ("Record interim look"): after it the report hides p-values again until the horizon. */
+export const experimentLooks = pgTable(
+  "experiment_looks",
+  {
+    id: id(),
+    experimentId: text("experiment_id").notNull(),
+    /** interim */
+    look: text("look").notNull(),
+    takenAt: ts("taken_at").notNull().defaultNow(),
+    adminId: uuid("admin_id").references(() => users.id, { onDelete: "set null" }),
+    /** The report as the admin saw it. */
+    snapshot: jsonb("snapshot"),
+  },
+  (t) => [uniqueIndex("experiment_looks_uq").on(t.experimentId, t.look)],
+);
+
+/** Cost per free signup by variant, typed weekly from the ads manager (a guardrail input). */
+export const experimentGuardrailInputs = pgTable(
+  "experiment_guardrail_inputs",
+  {
+    id: id(),
+    experimentId: text("experiment_id").notNull(),
+    variant: text("variant").notNull(),
+    costPerSignupCents: integer("cost_per_signup_cents").notNull(),
+    adminId: uuid("admin_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("experiment_guardrail_inputs_idx").on(t.experimentId, t.variant, t.createdAt)],
+);
+
+/** "End experiment" from the admin page: the page stops assigning (the web proxy reads this within a minute). */
+export const experimentEnds = pgTable("experiment_ends", {
+  experimentId: text("experiment_id").primaryKey(),
+  endedAt: ts("ended_at").notNull().defaultNow(),
+  adminId: uuid("admin_id").references(() => users.id, { onDelete: "set null" }),
+  reason: text("reason").notNull(),
+});
+// ---- end landing A/B ----

@@ -107,6 +107,12 @@ export interface Config {
     apnsKeyId?: string;
     apnsKeyP8?: string;
   };
+  /**
+   * Landing A/B tests (services/landing-events.ts, admin-experiments.ts). Test clock: outside production, EXPERIMENTS_NOW (an ISO
+   * instant) pins the experiment schedule and the x-ll-experiments-now header moves it per request (e2e/run-all.sh). Lighthouse:
+   * EXPERIMENTS_LIGHTHOUSE_JSON is the path of the JSON the e2e run writes ({ "<experimentId>:<variant>" | "<variant>": score }).
+   */
+  experiments: { testClock: boolean; now?: string; lighthouseJson?: string };
 }
 
 function parseTrustProxy(v: string | undefined, isProd: boolean): boolean | number {
@@ -232,5 +238,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       apnsKeyId: env.APPLE_APNS_KEY_ID,
       apnsKeyP8: env.APPLE_APNS_KEY_P8,
     },
+    experiments: { testClock: !isProd, now: env.EXPERIMENTS_NOW || undefined, lighthouseJson: env.EXPERIMENTS_LIGHTHOUSE_JSON || undefined },
   };
 }

@@ -2921,6 +2921,7 @@ export const en = {
   "shell.console.adsReview": "Ads review",
   "shell.console.salesAgent": "Sales agent",
   "shell.console.siteDomains": "Site domains",
+  "shell.console.experiments": "Landing tests",
   "shell.console.users": "Users & roles",
   "shell.console.audit": "Audit log",
   "shell.console.overview": "Overview",

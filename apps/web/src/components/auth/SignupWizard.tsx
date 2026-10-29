@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
-import { SOLO_ONLY_VERTICALS, VERTICALS, VERTICAL_TEMPLATES, normalizePostal, type MessageKey, type merchantApi } from "@ll/shared";
+import { AID_OFF, AID_PATTERN, LANDING_COOKIES, SOLO_ONLY_VERTICALS, VERTICALS, VERTICAL_TEMPLATES, normalizePostal, parseVariantCookie, type MessageKey, type merchantApi } from "@ll/shared";
 import { browserClient, sessionApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { toE164 } from "@/lib/phone";
@@ -46,10 +46,31 @@ function cookieSrc(): string | undefined {
   }
 }
 
+/**
+ * The landing-page A/B fields (packages/shared/src/experiments.ts): the variant from ?v= or the `ll_v` cookie, and the anonymous id
+ * from `ll_aid`, which is the only link between a landing visit and the new shop. Nothing is read when counting is off or the
+ * browser sends Global Privacy Control.
+ */
+function landingAb(fromLink: { experimentId: string | null; variant: string } | undefined): Pick<merchantApi.CreateMerchantBody, "variant" | "experimentId" | "anonId"> {
+  try {
+    const cookie = (k: string) => new RegExp(`(?:^|;\\s*)${k}=([^;]+)`).exec(document.cookie)?.[1];
+    const gpc = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true;
+    const aid = cookie(LANDING_COOKIES.aid);
+    if (gpc || aid === AID_OFF) return {};
+    const v = fromLink ?? parseVariantCookie(cookie(LANDING_COOKIES.variant)) ?? undefined;
+    return {
+      ...(v ? { variant: v.variant, ...(v.experimentId ? { experimentId: v.experimentId } : {}) } : {}),
+      ...(aid && AID_PATTERN.test(aid) ? { anonId: aid } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export interface SignupWizardProps {
   signedInName?: string | null;
   /** From the sales assistant's link or a landing page (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
-  prefill?: { shop?: string; vertical?: string; phone?: string; email?: string; plan?: string; src?: string; interval?: "year" };
+  prefill?: { shop?: string; vertical?: string; phone?: string; email?: string; plan?: string; src?: string; interval?: "year"; v?: { experimentId: string | null; variant: string } };
 }
 
 export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
@@ -127,6 +148,7 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
         phone: e164!,
         city: "Toronto",
         ...(source ? { source } : {}),
+        ...landingAb(prefill?.v),
         ...(shop.vertical === "other" && shop.sells.trim() ? { description: shop.sells.trim() } : {}),
       };
       const r = await browserClient.post<merchantApi.MerchantDetail>("/v1/merchants", body);

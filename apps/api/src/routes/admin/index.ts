@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { adminApi } from "@ll/shared";
+import { EXPERIMENTS_CLOCK_HEADER, adminApi, experimentsApi } from "@ll/shared";
 import { z } from "zod";
 import type { AppContext } from "../../context.js";
 import { requirePlatformRole } from "../../lib/auth.js";
@@ -29,6 +29,7 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
 }
 
 import { onboardingFunnel } from "../../services/onboarding.js";
+import * as experiments from "../../services/admin-experiments.js";
 
 async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const actor = (req: FastifyRequest) => requirePlatformRole(req, "admin").id;
@@ -109,6 +110,17 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
     const { platformRole } = parse(adminApi.setPlatformRoleBody, req.body);
     return svc.setPlatformRole(ctx, actor(req), req.params.userId, platformRole);
   });
+
+  // ---- Landing A/B tests (services/admin-experiments.ts) ----
+  const clock = (req: FastifyRequest) => req.headers[EXPERIMENTS_CLOCK_HEADER];
+  app.get("/admin/experiments", async (req) => experiments.listExperiments(ctx, clock(req)));
+  app.get("/admin/experiments/:id", async (req: Req<{ id: string }>) => experiments.experimentReport(ctx, req.params.id, clock(req)));
+  app.post("/admin/experiments/:id/looks", async (req: Req<{ id: string }>) => {
+    parse(experimentsApi.recordLookBody, req.body);
+    return experiments.recordInterimLook(ctx, actor(req), req.params.id, req.ip);
+  });
+  app.post("/admin/experiments/:id/guardrails", async (req: Req<{ id: string }>) => experiments.addGuardrailInput(ctx, actor(req), req.params.id, parse(experimentsApi.guardrailInputBody, req.body), req.ip));
+  app.post("/admin/experiments/:id/end", async (req: Req<{ id: string }>) => experiments.endExperiment(ctx, actor(req), req.params.id, parse(experimentsApi.endExperimentBody, req.body).reason, req.ip));
 
   // ---- Audit log ----
   app.get("/admin/audit", async (req) => svc.listAudit(ctx, parse(adminApi.listAuditQuery, req.query)));

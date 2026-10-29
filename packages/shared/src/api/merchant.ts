@@ -9,6 +9,7 @@ import { THEME_STYLES, type ThemeStyle } from "../theme.js";
 import { LOCALE_CODES } from "../i18n/locales.js";
 import { ADDRESS_VISIBILITIES, SERVICE_RADII_KM, WORK_SETTINGS, type AddressVisibility, type WorkSetting } from "../address-privacy.js";
 import { centsSchema, phoneSchema, uuidSchema } from "./common.js";
+import { AID_PATTERN } from "../experiments.js";
 import { translationsSchema } from "./restaurant.js";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,11 @@ export const createMerchantBody = z.object({
   serviceRadiusKm: z.union([z.literal(SERVICE_RADII_KM[0]), z.literal(SERVICE_RADII_KM[1]), z.literal(SERVICE_RADII_KM[2])]).optional(),
   /** Where the owner came from (the landing page's `src`, kept in the `ll_src` cookie): "ig", "tiktok", "nails-lp". Attribution only. */
   source: z.string().trim().regex(/^[A-Za-z0-9_.-]{1,40}$/).optional(),
+  /** The landing-page variant the owner saw (`?v=` or the `ll_v` cookie) and its test (experiments.ts). Attribution only. */
+  variant: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/).optional(),
+  experimentId: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/).optional(),
+  /** The landing page's anonymous id (`ll_aid`): the only link between a landing visit and this shop, kept in the signed_up milestone. */
+  anonId: z.string().regex(AID_PATTERN).optional(),
   city: z.string().trim().max(80).optional(),
   postalCode: z.string().trim().max(10).optional(),
   phone: phoneSchema,

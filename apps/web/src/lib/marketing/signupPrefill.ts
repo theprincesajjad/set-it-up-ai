@@ -2,7 +2,7 @@
  * The sign-up link the sales assistant sends is pre-filled from the chat (?shop=&vertical=&phone=&ref=assistant). Query text is
  * untrusted: it is only ever put into form fields the person can change, trimmed, length-capped and checked against known values.
  */
-import { VERTICALS } from "@ll/shared";
+import { VERTICALS, isVariantId, parseVariantCookie } from "@ll/shared";
 
 export interface SignupPrefill {
   shop?: string;
@@ -16,6 +16,8 @@ export interface SignupPrefill {
   src?: string;
   /** "year" from an annual plan button (?interval=year): the checkout opens on the annual price. */
   interval?: "year";
+  /** The landing-page variant (?v= from the start form: `<experimentId>:<variant>`, or a bare variant id), stored with the signup. */
+  v?: { experimentId: string | null; variant: string };
 }
 
 /** The landing page's short form (?trade=) names a trade; the wizard wants a vertical. Brows and lashes share one. */
@@ -39,6 +41,10 @@ export function signupPrefill(params: Params): SignupPrefill {
   if (one(params.interval)?.trim() === "year") out.interval = "year";
   const src = one(params.src)?.trim();
   if (src && /^[A-Za-z0-9_.-]{1,40}$/.test(src)) out.src = src;
+  const v = one(params.v)?.trim();
+  const pv = parseVariantCookie(v);
+  if (pv) out.v = pv;
+  else if (isVariantId(v)) out.v = { experimentId: null, variant: v };
   // The landing page's "Email or mobile" field (?contact=): an email goes to the account, anything else is read as a phone number.
   const contact = one(params.contact)?.trim().slice(0, 254) ?? "";
   if (/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(contact)) out.email = contact;
