@@ -11,6 +11,8 @@ describe("solo signup routing and prefill", () => {
     expect(afterSignupPath("/m/a", "salon")).toBe("/m/a/setup?step=trade_setup");
     expect(afterSignupPath("/m/a", "cafe", null, "shop")).toBe("/m/a/setup?step=first_stamp");
     expect(afterSignupPath("/m/a", "nails", "plus")).toBe("/m/a/billing?subscribe=plus");
+    expect(afterSignupPath("/m/a", "nails", "plus", "home", "year")).toBe("/m/a/billing?subscribe=plus&interval=year");
+    expect(signupPrefill({ plan: "plus", interval: "year" })).toEqual({ plan: "plus", interval: "year" });
   });
   it("reads ?vertical=nails&src=ig and drops junk", () => {
     expect(signupPrefill({ vertical: "nails", src: "ig" })).toEqual({ vertical: "nails", src: "ig" });

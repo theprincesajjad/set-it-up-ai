@@ -3854,7 +3854,7 @@ export const en = {
   "ob.solo.services.price": "Price",
   "ob.solo.services.deposit": "Deposit",
   "ob.solo.services.askDeposit": "Ask for a deposit",
-  "ob.solo.services.add": "+ Add a service",
+  "ob.solo.services.add": "Add a service",
   "ob.solo.services.newName": "New service",
   "ob.solo.services.addAll": "Add all, I'll edit later",
   "ob.solo.services.none": "Tick at least one service.",

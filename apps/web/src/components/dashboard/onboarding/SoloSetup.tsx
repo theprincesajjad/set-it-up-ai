@@ -65,7 +65,7 @@ export function SoloSetup({ checklist, onChange, footer }: { checklist: Checklis
       ) : null}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[240px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)_300px] lg:gap-8">
         <div className="flex min-w-0 flex-col gap-6">
-          <SetupProgress title={t("ob.solo.pageTitle")} steps={rail} />
+          <SetupProgress title={t("ob.solo.steps")} steps={rail} />
           <LaterList steps={checklist.later} current={key} onPick={go} t={t} className="hidden md:block" />
         </div>
         <div className="flex min-w-0 flex-col gap-4" id="solo-card" tabIndex={-1}>
@@ -431,7 +431,7 @@ function PrivacyCard({ solo, api, trade, next }: CardProps) {
             <ChoiceTile value="city" icon="domain" trade={trade} label={t("ob.solo.privacy.showCity")} hint={t("ob.solo.privacy.showCityHint")} />
           </ChoiceGroup>
           <TextField label={t("ob.solo.privacy.postal")} value={postal} onChange={(e) => setPostal(e.target.value.toUpperCase())} maxLength={7} autoComplete="postal-code" dir="ltr" className="max-w-[200px]" />
-          <TextField label={t("ob.solo.privacy.street")} hint={t("ob.solo.privacy.streetHint")} value={street} onChange={(e) => setStreet(e.target.value)} placeholder={solo.hasStreetAddress ? "••••" : undefined} autoComplete="street-address" maxLength={300} />
+          <TextField label={t("ob.solo.privacy.street")} hint={t("ob.solo.privacy.streetHint")} value={street} onChange={(e) => setStreet(e.target.value)} placeholder={solo.hasStreetAddress ? "••••" : undefined} autoComplete="street-address" maxLength={300} dir="auto" />
         </div>
       ) : solo.workSetting === "mobile" ? (
         <div className="flex flex-col gap-2">

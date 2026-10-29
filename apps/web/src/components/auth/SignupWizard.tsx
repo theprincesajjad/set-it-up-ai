@@ -49,7 +49,7 @@ function cookieSrc(): string | undefined {
 export interface SignupWizardProps {
   signedInName?: string | null;
   /** From the sales assistant's link or a landing page (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
-  prefill?: { shop?: string; vertical?: string; phone?: string; plan?: string; src?: string };
+  prefill?: { shop?: string; vertical?: string; phone?: string; plan?: string; src?: string; interval?: "year" };
 }
 
 export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
@@ -129,7 +129,7 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
         ...(shop.vertical === "other" && shop.sells.trim() ? { description: shop.sells.trim() } : {}),
       };
       const r = await browserClient.post<merchantApi.MerchantDetail>("/v1/merchants", body);
-      router.push(afterSignupPath(routes.dashboard(r.merchant.id), body.vertical, prefill?.plan, work));
+      router.push(afterSignupPath(routes.dashboard(r.merchant.id), body.vertical, prefill?.plan, work, prefill?.interval));
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
         setRegistered(false);

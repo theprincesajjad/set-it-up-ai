@@ -698,7 +698,7 @@ registerBalanceListener("notifications", notificationsBalanceListener);
  *   1. app push (Expo tokens)          free
  *   2. web push (the PWA pass)         free
  *   3. email                           ~free
- *   4. text, only inside the shop's monthly text allowance (messaging.reserveSmsCredits; Free has FREE_REMINDER_SMS_PER_MONTH)
+ *   4. text, only inside the shop's monthly text allowance (text-allowance.reserveTransactionalText; Free stops at FREE_REMINDER_SMS_PER_MONTH)
  *
  * The in-app inbox row is written first, always, so the app and the web pass show it whatever the outcome. The customer's channel
  * preference at the shop (merchant_members.channel_pref) picks the rungs (shared `rungsFor`); a marketing send never uses a text.
@@ -735,8 +735,6 @@ export interface LadderResult {
 export async function deliverByLadder(ctx: AppContext, args: LadderArgs): Promise<LadderResult> {
   const out: LadderResult = { notificationId: null, rung: "in_app", channels: [], textCapReached: false };
   try {
-    // messaging.ts imports this module (quiet hours), so its credit check is loaded lazily.
-    const { reserveSmsCredits } = await import("./messaging.js");
     const now = ctx.now();
     const info = customerApi.notificationInfo(args.type);
     const [user] = await ctx.db.select().from(users).where(eq(users.id, args.userId)).limit(1);
@@ -798,9 +796,11 @@ export async function deliverByLadder(ctx: AppContext, args: LadderArgs): Promis
         }
       } else if (rung === "sms") {
         if (!allowed("sms") || !user.phone || member?.muted) continue;
-        // The last rung costs money: it comes out of the shop's monthly texts, and stops when they are used up.
-        const [fresh] = await ctx.db.select().from(merchants).where(eq(merchants.id, merchant.id)).limit(1);
-        if (!(await reserveSmsCredits(ctx.db, fresh ?? merchant, Math.max(1, args.textCredits ?? 1)))) {
+        // The last rung costs money: each segment comes out of the shop's monthly texts (A's text-allowance.ts: Free stops at its
+        // allowance, paid plans go on as overage).
+        let reserved = true;
+        for (let i = 0; i < Math.max(1, args.textCredits ?? 1) && reserved; i++) reserved = await reserveTransactionalText(ctx.db, merchant.id);
+        if (!reserved) {
           out.textCapReached = true;
           await log("sms", user.phone, args.textBody, "skipped", null, "text_allowance_used");
           continue;

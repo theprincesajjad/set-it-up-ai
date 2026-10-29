@@ -26,7 +26,7 @@ import {
   rewards,
   type DbOrTx,
 } from "@ll/db";
-import { FEATURE_KEYS, FEATURES, FOUNDING_OFFER, PLAN_IDS, PLANS, distanceMetres, publicPin, isPlanAvailable, networkApi as networkContract, type adsApi, type networkApi } from "@ll/shared";
+import { FEATURE_KEYS, FEATURES, FOUNDING_OFFER, PLAN_IDS, PLANS, distanceMetres, publicPin, showsPoweredBy, isPlanAvailable, networkApi as networkContract, type adsApi, type networkApi } from "@ll/shared";
 import { customerApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
@@ -479,6 +479,7 @@ export async function publicShop(ctx: AppContext, slug: string): Promise<network
     consentText: customerApi.marketingConsentText(m.name),
     memberCount: counts.get(m.id) ?? null,
     features: features.get(m.id)!,
+    poweredBy: showsPoweredBy(m.plan, m.restaurantTier),
   };
 }
 

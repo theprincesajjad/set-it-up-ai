@@ -234,6 +234,8 @@ export interface PublicShopResponse {
   memberCount: number | null;
   /** Customer-facing entry points this shop has switched on. */
   features: CustomerFeaturesDto;
+  /** Show the "Powered by" link (Free shops only; showsPoweredBy in plans.ts). Older APIs omit it: treat as true. */
+  poweredBy?: boolean;
 }
 
 /** GET /v1/public/plans: pricing page data (no merchant data). */

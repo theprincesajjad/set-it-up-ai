@@ -17,8 +17,8 @@ export function recommendedRestaurantTier(vertical: string): RestaurantTier {
   return "starter";
 }
 
-export function afterSignupPath(base: string, vertical: string, plan?: string | null, workSetting?: string | null): string {
-  if (plan) return `${base}/billing?subscribe=${plan}`;
+export function afterSignupPath(base: string, vertical: string, plan?: string | null, workSetting?: string | null, interval?: "year" | null): string {
+  if (plan) return `${base}/billing?subscribe=${plan}${interval === "year" ? "&interval=year" : ""}`;
   // Solo pros and appointment-led storefronts start on their booking link (onboarding-v1.md §3.1; phase-solo B).
   if (onboardingPath(vertical, workSetting) !== "storefront") return `${base}/setup?step=your_link`;
   if (RESTAURANT_VERTICALS.includes(vertical)) return `${base}/billing?welcome=restaurant&tier=${recommendedRestaurantTier(vertical)}`;

@@ -41,9 +41,10 @@ for (const run of [
 
     // The landing page, then its full sign-up page (the inline form is the marketing team's; the full page is the same wizard).
     await page.goto(`/for-nail-techs?lang=${run.lang}`);
-    const full = page.locator('a[href^="/signup"]').first();
-    if (await full.count()) await page.goto(`${(await full.getAttribute("href"))!}&lang=${run.lang}`);
-    else await page.goto(`/signup?vertical=nails&src=e2e&lang=${run.lang}`);
+    const full = page.locator('a[href^="/signup?"]').first();
+    const href = (await full.count()) ? new URL((await full.getAttribute("href"))!, "http://x") : new URL("/signup?src=e2e", "http://x");
+    href.searchParams.set("lang", run.lang);
+    await page.goto(`${href.pathname}${href.search}`);
     if (run.lang === "ur") await expect(page.locator('[dir="rtl"]').first()).toBeAttached();
 
     // Signup: one screen. A nail tech works from home: a postal code, never a street.

@@ -10,7 +10,7 @@ Tables (migration `0034_solo_d.sql`): `conversations`, `conversation_messages`, 
 ## The channel ladder
 Reminders, confirmations and shop messages go the cheapest way that reaches the person and stop at the first that works:
 **app push → web push → email → text**. The in-app row (`notifications`) is written first, always. A text is the last rung and
-comes out of the shop's monthly texts (`messaging.reserveSmsCredits`; Free has `FREE_REMINDER_SMS_PER_MONTH`); when they are used
+comes out of the shop's monthly texts (`text-allowance.reserveTransactionalText`: Free stops at `FREE_REMINDER_SMS_PER_MONTH`, paid plans go on as overage); when Free's are used
 up nothing is texted (`textCapReached`). The customer's preference at the shop (`merchant_members.channel_pref`: `best`, `app`,
 `email`, `text`) picks the rungs (`rungsFor`). English reminder texts are one segment (`oneSegmentText`: shop, service, time, the
 address when it fits, a short `/me` link, `STOP to opt out`); a text in Hindi, Urdu or Punjabi script keeps the full sentence.

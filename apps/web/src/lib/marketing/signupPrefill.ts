@@ -12,6 +12,8 @@ export interface SignupPrefill {
   plan?: string;
   /** Where the owner came from (?src=ig on an ad or landing page), stored with the new shop for attribution. */
   src?: string;
+  /** "year" from an annual plan button (?interval=year): the checkout opens on the annual price. */
+  interval?: "year";
 }
 
 /** Plans a pricing-page button can carry through signup. */
@@ -28,6 +30,7 @@ export function signupPrefill(params: Params): SignupPrefill {
   if (vertical && (VERTICALS as readonly string[]).includes(vertical)) out.vertical = vertical;
   const plan = one(params.plan)?.trim();
   if (plan && (SIGNUP_PLANS as readonly string[]).includes(plan)) out.plan = plan;
+  if (one(params.interval)?.trim() === "year") out.interval = "year";
   const src = one(params.src)?.trim();
   if (src && /^[A-Za-z0-9_.-]{1,40}$/.test(src)) out.src = src;
   // The form's phone field holds the 10 digits of a Canadian number.
