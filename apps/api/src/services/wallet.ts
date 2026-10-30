@@ -10,7 +10,7 @@
  * never throws and skips the push when the pass content didn't change.
  */
 import { createHash } from "node:crypto";
-import { and, asc, desc, eq, gt, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { locations, loyaltyPrograms, merchantMembers, merchants, neighbourhoods, rewards, users, walletDeviceRegistrations, walletPasses } from "@ll/db";
 import { normalizeLocale, t as translate, walletApi, type Locale } from "@ll/shared";
 import type { AppContext } from "../context.js";
@@ -19,8 +19,9 @@ import { HttpError, notFound } from "../lib/errors.js";
 import { httpFor } from "./integrations-http.js";
 import { registerBalanceListener, type BalanceListener } from "./ledger.js";
 import { apnsFor } from "./wallet-apns.js";
-import { appleSignerFromConfig, buildPkpass, missingAppleConfig, type PassLocation } from "./wallet-apple.js";
+import { appleSignerFromConfig, buildPkpass, missingAppleConfig, passTypeIdOf, type PassLocation } from "./wallet-apple.js";
 import { addGoogleMessage, googleConfigured, googleSaveUrl, updateGoogleObject } from "./wallet-google.js";
+import { markAppleAdded, markAppleRemovedIfUnregistered, shopPassBuffer } from "./wallet-shop.js";
 
 export type WalletPass = typeof walletPasses.$inferSelect;
 type Platform = "apple" | "google";
@@ -115,7 +116,8 @@ export async function passLocations(ctx: AppContext, userId: string, max = 10, l
 }
 
 export async function getOrCreatePass(ctx: AppContext, userId: string, platform: Platform): Promise<WalletPass> {
-  const [existing] = await ctx.db.select().from(walletPasses).where(and(eq(walletPasses.userId, userId), eq(walletPasses.platform, platform))).limit(1);
+  const network = and(eq(walletPasses.userId, userId), eq(walletPasses.platform, platform), isNull(walletPasses.merchantId));
+  const [existing] = await ctx.db.select().from(walletPasses).where(network).limit(1);
   if (existing) return existing;
   const [created] = await ctx.db
     .insert(walletPasses)
@@ -123,7 +125,7 @@ export async function getOrCreatePass(ctx: AppContext, userId: string, platform:
     .onConflictDoNothing()
     .returning();
   if (created) return created;
-  const [again] = await ctx.db.select().from(walletPasses).where(and(eq(walletPasses.userId, userId), eq(walletPasses.platform, platform))).limit(1);
+  const [again] = await ctx.db.select().from(walletPasses).where(network).limit(1);
   return again!;
 }
 
@@ -139,6 +141,8 @@ export function walletNotConfigured(platform: Platform, missing: string[]) {
 }
 
 export async function applePassBuffer(ctx: AppContext, pass: WalletPass): Promise<Buffer> {
+  // A shop card (merchant_id set) is built by wallet-shop.ts; the network pass below.
+  if (pass.merchantId) return shopPassBuffer(ctx, pass);
   const signer = appleSignerFromConfig(ctx.config);
   if (!signer) throw walletNotConfigured("apple", missingAppleConfig(ctx.config));
   const summary = await walletSummary(ctx, pass.userId);
@@ -147,6 +151,7 @@ export async function applePassBuffer(ctx: AppContext, pass: WalletPass): Promis
 }
 
 export function missingGoogleConfig(ctx: AppContext): string[] {
+  if (googleConfigured(ctx.config)) return [];
   const missing = [!ctx.config.google.walletIssuerId && "GOOGLE_WALLET_ISSUER_ID", !ctx.config.google.walletServiceAccountJson && "GOOGLE_WALLET_SERVICE_ACCOUNT_JSON"].filter(Boolean) as string[];
   return missing.length ? missing : ["valid GOOGLE_WALLET_SERVICE_ACCOUNT_JSON"];
 }
@@ -184,7 +189,8 @@ export function verifyDownloadToken(ctx: AppContext, token: string): string | nu
 // PassKit web service
 // ---------------------------------------------------------------------------
 export async function authenticatePass(ctx: AppContext, passTypeId: string, serialNumber: string, authorization: string | undefined): Promise<WalletPass> {
-  if (ctx.config.apple.passTypeId && passTypeId !== ctx.config.apple.passTypeId) throw new HttpError(404, "not_found", "Unknown pass type");
+  const expected = passTypeIdOf(ctx.config);
+  if (expected && passTypeId !== expected) throw new HttpError(404, "not_found", "Unknown pass type");
   const token = authorization?.startsWith("ApplePass ") ? authorization.slice(10).trim() : null;
   const [pass] = await ctx.db.select().from(walletPasses).where(and(eq(walletPasses.serialNumber, serialNumber), eq(walletPasses.platform, "apple"))).limit(1);
   if (!pass || !token || !safeEqual(pass.authToken, token)) throw new HttpError(401, "unauthorized", "Invalid pass authentication token");
@@ -203,16 +209,21 @@ export async function registerDevice(ctx: AppContext, pass: WalletPass, deviceLi
     return false;
   }
   const [row] = await ctx.db.insert(walletDeviceRegistrations).values({ deviceLibraryId, pushToken, passId: pass.id }).onConflictDoNothing().returning();
+  // The pass is in a wallet now (again, if it was removed before).
+  await markAppleAdded(ctx, pass.id);
   return !!row;
 }
 
 export async function unregisterDevice(ctx: AppContext, pass: WalletPass, deviceLibraryId: string) {
   await ctx.db.delete(walletDeviceRegistrations).where(and(eq(walletDeviceRegistrations.deviceLibraryId, deviceLibraryId), eq(walletDeviceRegistrations.passId, pass.id)));
+  // Deleting the pass from Wallet unregisters it: with no device left it is removed (no more pushes).
+  await markAppleRemovedIfUnregistered(ctx, pass.id);
 }
 
 /** Serial numbers registered on a device and updated since the tag (epoch ms). */
 export async function serialsUpdatedSince(ctx: AppContext, deviceLibraryId: string, passTypeId: string, since: string | undefined) {
-  if (ctx.config.apple.passTypeId && passTypeId !== ctx.config.apple.passTypeId) return null;
+  const expected = passTypeIdOf(ctx.config);
+  if (expected && passTypeId !== expected) return null;
   const sinceMs = since && /^\d+$/.test(since) ? Number(since) : null;
   const rows = await ctx.db
     .select({ serial: walletPasses.serialNumber, updated: walletPasses.lastUpdatedAt })
@@ -244,7 +255,7 @@ export interface PassUpdateResult {
  */
 export async function notifyPassUpdate(ctx: AppContext, userId: string, opts: { force?: boolean } = {}): Promise<PassUpdateResult | undefined> {
   try {
-    const existing = await ctx.db.select({ id: walletPasses.id, platform: walletPasses.platform }).from(walletPasses).where(eq(walletPasses.userId, userId));
+    const existing = await ctx.db.select({ id: walletPasses.id, platform: walletPasses.platform }).from(walletPasses).where(and(eq(walletPasses.userId, userId), isNull(walletPasses.merchantId)));
     if (!existing.length) return undefined;
     const summary = await walletSummary(ctx, userId);
     const locs = await passLocations(ctx, userId, 10, summary.locale ?? "en");
@@ -255,7 +266,7 @@ export async function notifyPassUpdate(ctx: AppContext, userId: string, opts: { 
     if (!opts.force && seen.get(userId) === hash) return out;
     seen.set(userId, hash);
     out.changed = true;
-    const passes = await ctx.db.update(walletPasses).set({ lastUpdatedAt: ctx.now() }).where(eq(walletPasses.userId, userId)).returning();
+    const passes = await ctx.db.update(walletPasses).set({ lastUpdatedAt: ctx.now() }).where(and(eq(walletPasses.userId, userId), isNull(walletPasses.merchantId))).returning();
     const apple = passes.filter((p) => p.platform === "apple");
     if (apple.length) {
       const regs = await ctx.db
@@ -264,7 +275,7 @@ export async function notifyPassUpdate(ctx: AppContext, userId: string, opts: { 
         .where(inArray(walletDeviceRegistrations.passId, apple.map((p) => p.id)));
       out.apple.devices = regs.length;
       if (regs.length) {
-        const topic = ctx.config.apple.passTypeId ?? "pass.local.loyalty";
+        const topic = passTypeIdOf(ctx.config) ?? "pass.local.loyalty";
         const r = await apnsFor(ctx).push([...new Set(regs.map((x) => x.pushToken))], topic);
         out.apple.sent = r.sent;
         out.apple.invalid = r.invalid.length;
@@ -294,7 +305,7 @@ export async function notifyPassUpdate(ctx: AppContext, userId: string, opts: { 
 export async function addPassMessage(ctx: AppContext, userId: string, msg: { id: string; header: string; body: string }): Promise<"added" | "missing" | "skipped" | "failed"> {
   try {
     if (!googleConfigured(ctx.config)) return "skipped";
-    const [g] = await ctx.db.select({ id: walletPasses.id }).from(walletPasses).where(and(eq(walletPasses.userId, userId), eq(walletPasses.platform, "google"))).limit(1);
+    const [g] = await ctx.db.select({ id: walletPasses.id }).from(walletPasses).where(and(eq(walletPasses.userId, userId), eq(walletPasses.platform, "google"), isNull(walletPasses.merchantId))).limit(1);
     if (!g) return "skipped";
     return await addGoogleMessage(ctx.config, userId, { ...msg, id: msg.id.replace(/[^\w.-]/g, "_").slice(0, 60) }, httpFor(ctx), ctx.now());
   } catch (err) {

@@ -34,7 +34,6 @@ import { writeAudit } from "./admin-audit.js";
 import { getMerchantFeatures } from "./features.js";
 import { isOptedOut, sendSms } from "./opt-out.js";
 import { pathOf, sendSoloNudge, soloSetup } from "./onboarding-solo.js";
-import { startTrialOnLinkLive } from "./trial.js"; // phase-pro: p1
 
 type Merchant = typeof merchants.$inferSelect;
 const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
@@ -200,7 +199,8 @@ export async function getOnboardingChecklist(ctx: AppContext, merchantId: string
   const solo = path === "storefront" ? null : await soloSetup(ctx, m, locale, marked, ms, async (key, data) => {
     const created = await recordMilestone(db, merchantId, key, now, data);
     // phase-pro P1: the link is live, so the 14-day Pro trial starts (every vertical, one per shop).
-    if (created && key === "booking_link_live") await startTrialOnLinkLive(ctx, merchantId);
+    // Loaded lazily: ledger.ts imports this module, and trial.ts reaches rebooking/reviews (and through them messaging and ledger).
+    if (created && key === "booking_link_live") await (await import("./trial.js")).startTrialOnLinkLive(ctx, merchantId);
     return created;
   });
   const steps = solo ? solo.steps : coreFor(m.vertical).map(mk);

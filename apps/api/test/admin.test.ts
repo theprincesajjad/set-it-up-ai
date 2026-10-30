@@ -74,7 +74,7 @@ describe("admin", () => {
 
     // Every plan is purchasable from day one: the trade tools on it are live.
     const plans = (await get("/v1/admin/plans")).json().items;
-    expect(plans.map((p: { available: boolean }) => p.available)).toEqual([true, true, true]);
+    expect(plans.map((p: { available: boolean }) => p.available)).toEqual([true, true, true, true]);
     const beta = await env.app.inject({ method: "PUT", url: `/v1/admin/features/promos.push_nearby/stage`, headers: auth(adminToken), payload: { stage: "beta", note: "Pilot on Roncy" } });
     expect(beta.json()).toMatchObject({ stage: "beta", note: "Pilot on Roncy", updatedBy: admin.id });
     const [row] = await env.db.select().from(featureRollouts).where(eq(featureRollouts.key, "promos.push_nearby"));

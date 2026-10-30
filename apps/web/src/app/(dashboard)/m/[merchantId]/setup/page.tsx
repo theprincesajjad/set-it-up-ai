@@ -367,7 +367,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         ) : (
           <div className="flex flex-col items-start gap-3">
             <p className="text-body text-fg">
-              Connecting your POS is part of {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month. Until then, add stamps from the counter.
+              Connecting your POS is part of {PLANS.studio.name}, ${PLANS.studio.priceCents / 100} a month. Until then, add stamps from the counter.
             </p>
             <SubscribeButton offer={{ kind: "plan", plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents }} />
           </div>

@@ -103,19 +103,20 @@ describe("public plans", () => {
     let res = await call("GET", "/v1/public/plans");
     expect(res.statusCode).toBe(200);
     let body = res.json();
-    expect(body.items.map((p: { id: string }) => p.id)).toEqual(["free", "plus", "pro"]);
+    expect(body.items.map((p: { id: string }) => p.id)).toEqual(["free", "plus", "studio", "pro"]);
     expect(body.items[0]).toMatchObject({ id: "free", available: true, features: [] });
-    // Trade tools self-serve: both paid plans are open from day one and their features are live.
+    // Trade tools self-serve: every paid plan is open from day one and its features are live. Order-ahead is Studio's (pro-value.md §2.2).
     expect(body.items[1].available).toBe(true);
-    expect(body.items[1].features.find((f: { key: string }) => f.key === "orders.order_ahead")).toMatchObject({ stage: "ga", name: "Order-ahead" });
+    expect(body.items[2].features.find((f: { key: string }) => f.key === "orders.order_ahead")).toMatchObject({ stage: "ga", name: "Order-ahead" });
     expect(body.network).toEqual({ activeMerchants: 1, neighbourhoods: 1, members: 0, multiShopMemberPct: 0, liveStreets: 1 });
     expect(JSON.stringify(body)).not.toContain("Test Shop");
 
     await env.db.insert(featureRollouts).values({ key: "orders.order_ahead", stage: "beta" });
     body = (await call("GET", "/v1/public/plans")).json();
     expect(body.items[1].available).toBe(true);
-    expect(body.items[1].features.find((f: { key: string }) => f.key === "orders.order_ahead").stage).toBe("beta");
+    expect(body.items[2].features.find((f: { key: string }) => f.key === "orders.order_ahead").stage).toBe("beta");
     expect(body.items[2].available).toBe(true);
+    expect(body.items[3].available).toBe(true);
     res = await call("GET", "/v1/public/plans");
     expect(res.statusCode).toBe(200);
   });

@@ -6,7 +6,7 @@
  */
 import { ListPlus, Lock, MessageCircle, Plus, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
-import type { waitlistApi } from "@ll/shared";
+import { PLANS, type waitlistApi } from "@ll/shared";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { EmptyState, PageHeader, PageTabs, StatusPill, Table, TableWrap, Td, Th, Tr, type DotTone } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -69,7 +69,7 @@ function Waitlist() {
           auto ? (
             <Button size="sm" variant="secondary" iconStart={Send} disabled={!e.customer.userId} onClick={() => setOffering(e)}>{t("wl.offerSlot")}</Button>
           ) : (
-            <Button size="sm" variant="secondary" iconStart={Lock} href={seeProHref(base)} aria-label={`${t("wl.offerSlot")}. ${t("wl.seePro")}`}>{t("wl.offerSlot")}</Button>
+            <Button size="sm" variant="secondary" iconStart={Lock} href={seeProHref(base)} aria-label={`${t("wl.offerSlot")}. ${t("wl.seePro", { plan: PLANS.plus.name })}`}>{t("wl.offerSlot")}</Button>
           )
         ) : null}
         {e.customer.userId ? (
@@ -92,8 +92,8 @@ function Waitlist() {
         {(d) => (
           <>
             {!d.autoOffer && d.waiting > 0 ? (
-              <PlanLine linkLabel={t("wl.seePro")} href={seeProHref(base)} className="-mt-1" >
-                {t("wl.free.line", { n: d.waiting })}
+              <PlanLine linkLabel={t("wl.seePro", { plan: PLANS.plus.name })} href={seeProHref(base)} className="-mt-1" >
+                {t("wl.free.line", { n: d.waiting, plan: PLANS.plus.name })}
               </PlanLine>
             ) : null}
             <PageTabs label={t("wl.page.title")} value={tab} onChange={setTab} items={[{ id: "open", label: t("wl.tab.open"), count: d.waiting }, { id: "all", label: t("wl.tab.all") }]} />

@@ -68,7 +68,7 @@
       }
     ]
   },
-  "locations": [
+  "merchantLocations": [
     {
       "latitude": 43.6496,
       "longitude": -79.4218

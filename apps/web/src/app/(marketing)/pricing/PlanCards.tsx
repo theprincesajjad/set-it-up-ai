@@ -140,7 +140,7 @@ export function FreeCard() {
   );
 }
 
-/** "or ~~$290~~ $199 first year, billed yearly": the first-year price as a struck-through number, never named. */
+/** "or ~~{yearly}~~ {firstYear} first year, billed yearly": the first-year price (FIRST_YEAR_PRICE) as a struck-through number, never named. */
 export function YearlyLine({ id, firstYear }: { id: "plus" | "studio"; firstYear: billingApi.FirstYearPriceDto | null }) {
   const plan = PLANS[id];
   const card = marketingPlans("solo").find((c) => c.key === (id === "plus" ? "monthly" : "studio"));

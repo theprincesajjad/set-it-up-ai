@@ -335,7 +335,7 @@ export interface MrrSplit {
 export interface AdminOverview {
   generatedAt: string;
   pace: { month: number; plannedEndOfMonth: number; plannedToday: number; actual: number; delta: number; areasOpened: number; areasPlanned: number };
-  money: { mrrCents: number; mrrSplit: MrrSplit; payingShops: number; byPlan: { plus: number; pro: number; restaurant: number }; feeRevenue30dCents: number; volume30dCents: number };
+  money: { mrrCents: number; mrrSplit: MrrSplit; payingShops: number; byPlan: { plus: number; studio: number; pro: number; restaurant: number }; feeRevenue30dCents: number; volume30dCents: number };
   activation: { signed: number; activated: number; rate: number; goal: number };
   costs: { monthCents: number; perShopCents: number; shops: number };
   funnel: AreaFunnel[];

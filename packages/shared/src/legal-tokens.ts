@@ -7,7 +7,7 @@
  * Inline tokens: {{plan.free.name}} {{plan.plus.price}} {{plan.pro.annual}} {{restaurant.growth.price}}
  *   {{retention.phoneTranscriptDays}} (see retention.ts) {{upload.linkMinutes}} {{addon.phone_ai.price}} {{fee.orderFree}} {{fee.orderPaid}} {{fee.depositInvoice}} {{fee.tiffin}}
  *   {{fee.appointmentCheckout}} {{fee.classes}} {{fee.customerService}} {{founding.firstYearPct}} ...
- * Blocks: {{table.plans}} {{table.restaurant}} {{table.addons}} {{table.fees}} {{list.free}} {{list.plus}} {{list.pro}}
+ * Blocks: {{table.plans}} {{table.restaurant}} {{table.addons}} {{table.fees}} {{list.free}} {{list.plus}} {{list.studio}} {{list.pro}}
  */
 import { RETENTION, UPLOAD_LINK_MINUTES, retentionLabel, type RetentionKey } from "./retention.js";
 
@@ -82,6 +82,7 @@ export function legalTokens(lang: LegalLang = "en"): Record<string, string> {
   const names = (keys: readonly string[]) => keys.map((k) => FEATURES[k as keyof typeof FEATURES].name).join("; ");
   t["list.free"] = names(FREE_FOREVER);
   t["list.plus"] = names(PAID_FEATURES.filter((k) => FEATURES[k].minPlan === "plus"));
+  t["list.studio"] = names(PAID_FEATURES.filter((k) => FEATURES[k].minPlan === "studio"));
   t["list.pro"] = names(PAID_FEATURES.filter((k) => FEATURES[k].minPlan === "pro"));
   return t;
 }

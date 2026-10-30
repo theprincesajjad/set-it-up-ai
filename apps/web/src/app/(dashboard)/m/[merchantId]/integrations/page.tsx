@@ -121,9 +121,9 @@ export default function IntegrationsPage() {
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-fg-muted">
                   <span className="text-fg">POS auto-award, Mailchimp, Zapier and webhooks</span>
                   <span aria-hidden>·</span>
-                  <span>part of {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month</span>
+                  <span>part of {PLANS.studio.name}, ${PLANS.studio.priceCents / 100} a month</span>
                   <span aria-hidden>·</span>
-                  <a href={`${base}/billing`} className="text-fg underline underline-offset-4">Subscribe</a>
+                  <a href={`${base}/billing?plan=studio`} className="text-fg underline underline-offset-4">Subscribe</a>
                 </p>
               ) : null}
             </>

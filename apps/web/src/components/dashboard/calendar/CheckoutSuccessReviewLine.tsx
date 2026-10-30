@@ -24,7 +24,7 @@ export function CheckoutSuccessReviewLine({ appointmentId, clientName }: { appoi
   if (!s.available)
     return (
       <div data-testid="review-line-free">
-        <PlanLine href={`${base}/billing`} linkLabel={t("promo.planCta", { plan: PLANS.plus.name })}>
+        <PlanLine href={`${base}/billing?plan=plus`} linkLabel={t("promo.planCta", { plan: PLANS.plus.name })}>
           {t("revreq.checkoutFree", { name, plan: PLANS.plus.name })}
         </PlanLine>
       </div>

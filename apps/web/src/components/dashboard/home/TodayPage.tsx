@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { HoursCard, NumbersCard, NeedsYouCard, QuickActionsCard, UpNextCard } from "./TodayCards";
 import { StreetCard } from "./StreetCard";
 import { ThisWeekTile } from "./ThisWeekTile"; // phase-pro: p6
+import { TrialCard } from "./TrialCard"; // phase-pro: p1
 import { useThemeStyle } from "@/components/ui/ThemeStyle";
 
 /** Clear: the page header's glass secondary (ClearKit GlassButton, default size). */
@@ -58,15 +59,15 @@ const STAT_ICONS: Record<string, LucideIcon[]> = {
 /** What Pro switches on for a trade, in the owner's words (the Today line that sells the plan). */
 // One calendar and online booking are free since phase solo, so the appointment trades are sold more chairs, promos and nudges.
 const TRADE_TOOLS: Record<string, string> = {
-  salon: "every chair bookable and rebooking nudges",
-  barber: "every chair bookable, the walk-in line and payouts",
-  spa: "every room bookable and rebooking nudges",
-  nails: "rebooking nudges",
-  brows_lashes: "rebooking nudges",
-  makeup: "rebooking nudges",
+  // phase-pro: what Pro itself adds for the trade (the walk-in line, payouts, daycare, the grocer flyer and POS sync are Studio's).
+  salon: "a waitlist that fills cancelled slots and automatic rebooking",
+  barber: "a second calendar, a waitlist and automatic rebooking",
+  spa: "a waitlist that fills cancelled slots and automatic rebooking",
+  nails: "a waitlist that fills cancelled slots, automatic rebooking and add-ons",
+  brows_lashes: "a waitlist that fills cancelled slots, automatic rebooking and add-ons",
+  makeup: "a waitlist that fills cancelled slots, automatic rebooking and add-ons",
   fitness: "classes and memberships",
-  pet: "pets, groom reminders and daycare",
-  grocery: "the weekly flyer and butcher counter",
+  pet: "pet profiles and groom reminders",
   repair_auto: "vehicles, service reminders and tire season",
   car_wash: "wash check-in and plans",
 };
@@ -265,7 +266,8 @@ export function TodayPage() {
         }
       />
 
-      {manager ? <ThisWeekTile /> : null /* phase-pro: p6 (TODO(P1): mount TrialCard here) */}
+      {manager ? <TrialCard /> : null /* phase-pro: p1 */}
+      {manager ? <ThisWeekTile /> : null /* phase-pro: p6 */}
 
       {err && !needs.length && !today.data && !restaurant.data ? <ErrorLine message={err} onRetry={() => { void today.reload(); void restaurant.reload(); }} /> : null}
 
@@ -314,8 +316,8 @@ export function TodayPage() {
           {ob ? <UpsellCard upsell={ob.upsell} base={base} activeLine={ob.activatedAt ? `Your regulars are on the card: ${ob.activeMembers} customers have visited` : undefined} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
           {upsellKeys.length === 3 ? (
             <p className="border-t border-border pt-4 text-meta text-muted-foreground">
-              More with {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month: {TRADE_TOOLS[m.vertical] ? `${TRADE_TOOLS[m.vertical]}, ` : ""}{PROMOS_PER_MONTH_PLUS} promos a month, {PLANS.plus.smsPerMonth} texts, POS sync and the tools for your kind of shop ·{" "}
-              <a href={`${base}/billing`} className="text-foreground underline underline-offset-4">Subscribe</a>
+              More with {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month: {TRADE_TOOLS[m.vertical] ? `${TRADE_TOOLS[m.vertical]}, ` : ""}{PROMOS_PER_MONTH_PLUS} promos a month, {PLANS.plus.smsPerMonth} texts, your week every Sunday and the tools for your kind of shop ·{" "}
+              <a href={`${base}/billing?plan=plus`} className="text-foreground underline underline-offset-4">Subscribe</a>
             </p>
           ) : null}
         </>

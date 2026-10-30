@@ -369,7 +369,7 @@ const ACTIONS: Record<string, ActionSpec> = {
         const tier = RESTAURANT_TIERS.find((t) => t === a.tier) ?? need("tier (starter, growth or pro) is required for a restaurant plan.");
         return { args: { shopId: shop.id, product: "restaurant_plan", tier, interval }, summary: `Create a checkout link for ${RESTAURANT_PLANS[tier].name} (${interval === "year" ? "yearly" : "monthly"}) for ${shop.name}. You pay on Stripe's page; nothing is charged until you complete it.` };
       }
-      const plan = a.plan === "plus" || a.plan === "pro" ? a.plan : need("plan (plus or pro) is required for a shop plan.");
+      const plan = a.plan === "plus" || a.plan === "studio" || a.plan === "pro" ? a.plan : need("plan (plus, studio or pro) is required for a shop plan.");
       return { args: { shopId: shop.id, product: "shop_plan", plan, interval }, summary: `Create a checkout link for ${PLANS[plan].name} (${interval === "year" ? "yearly" : "monthly"}) for ${shop.name}. You pay on Stripe's page; nothing is charged until you complete it.` };
     },
     async run(c, a) {

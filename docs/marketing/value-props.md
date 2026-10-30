@@ -59,6 +59,16 @@ Score 1–5 each: **Pain** (how often it shows up in what techs say, weighted fo
 
 ## 2. The recommended control, and the variants
 
+> **Packaging update, Oct 29, 2026 (phase "pro value", `docs/business/pro-value.md`).** The price strip on every landing page reads
+> **Free, Pro, Studio**: Pro (`PLANS.plus`, one person, two bookable calendars) and Studio (`PLANS.studio`, a shop with chairs, no
+> per-chair charge), with Service and the restaurant plans on `/pricing` only. Every new shop gets `TRIAL_DAYS` of Pro with no card,
+> from the day its booking link goes live, and annual Pro shows its first-year price struck through (`FIRST_YEAR_PRICE`; never called
+> "founding"). The regulars block names the paid half honestly: seeing who is due, who asked for a full day and what the week made is
+> free; the **waitlist that fills cancelled slots**, **automatic rebooking**, **review requests** and the **weekly report** run
+> themselves on Pro. No price, count or trial length is typed into a variant: they come from `PLANS`, `PROMOS_PER_MONTH_PLUS` and
+> `TRIAL_DAYS` through `apps/web/src/lib/marketing/plan-copy.ts`. Where this section says "$39" or "the paid plan", read Pro and
+> `PLANS.plus.priceCents`. The barber variant's "one price for the whole shop" is Studio's line now (`STUDIO_MO` per month, any number of chairs).
+
 Voice: the founder's. "If you're a nail tech, put your bookings, your clients and your reminders in one place." Plain words, Canadian spelling, sentence case on anything a person taps, no "Upgrade", no "all-in-one". Rules from `docs/design/ux-copy.md` §13 apply (the address is never in a headline; say where a message goes).
 
 **The code (C, Oct 29, 14:35).** The build agent shipped `apps/web/src/lib/marketing/landing-variants.ts` and `LANDING_VARIANTS` in `apps/web/src/copy/en-CA.ts`: per look (`nails`, `brows`, `lashes`, `makeup`, `barber`, `groom`), per variant id, `{ eyebrow, hook: [line1, line2], lede, cta, jobs: [JobId, JobId, JobId] }` with `JobId = "book" | "remind" | "regulars"`, `control` the default, and `landingVariant(key, id)` falling back to control. **Today's `control` is the DM hook** ("Stop booking / in your DMs.") for the tech pages, "One link for / the whole shop." for barbers, and a `price` variant exists for barbers. The tables below use those keys and add the ids the plan needs (`yours`, `dms` as an explicit alias of today's control copy, `private`, `noshows`, and the job ids `noshow`, `yours`, `private`, `line`). The recommended lead is `yours`; whether it becomes `control` before the test (one key swap) or wins its way there is the founder's call, and the test is the same either way.

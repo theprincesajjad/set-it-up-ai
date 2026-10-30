@@ -22,26 +22,29 @@ describe("commerce gating", () => {
     expect(menu.status).toBe(402);
   });
 
-  it("free plan is locked (402 plan) once rolled out; Plus unlocks order-ahead but not Pro service", async () => {
+  it("free plan is locked (402 plan) once rolled out; Studio unlocks order-ahead but not Service", async () => {
     const { merchant, ownerToken } = await createMerchant(env);
     await setStage(env, PAID_FEATURES, "ga");
     const r = await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/catalog`);
     expect(r.status).toBe(402);
     expect(r.body.error.details.reason).toBe("plan");
+    // Order-ahead is Studio's (pro-value.md §2.2): Pro does not open it.
     await setPlan(env, merchant.id, "plus");
+    expect((await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/catalog`)).status).toBe(402);
+    await setPlan(env, merchant.id, "studio");
     expect((await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/catalog`)).status).toBe(200);
     expect((await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/tickets`)).status).toBe(402);
   });
 
   it("beta stage only for opted-in merchants", async () => {
-    const { merchant, ownerToken } = await paidMerchant(env, { plan: "plus", stage: "beta" });
+    const { merchant, ownerToken } = await paidMerchant(env, { plan: "studio", stage: "beta" });
     expect((await call(env, ownerToken, "GET", `/v1/merchants/${merchant.id}/catalog`)).status).toBe(402);
   });
 });
 
 describe("catalog", () => {
   it("managers manage the catalog; plain staff can't; unauthenticated is 401", async () => {
-    const { merchant, ownerToken } = await paidMerchant(env, { plan: "plus" });
+    const { merchant, ownerToken } = await paidMerchant(env, { plan: "studio" });
     const cat = await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/catalog/categories`, { name: "Drinks" });
     expect(cat.status).toBe(201);
     const created = await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/catalog/items`, { ...item, categoryId: cat.body.id });
@@ -60,8 +63,8 @@ describe("catalog", () => {
   });
 
   it("rejects duplicate modifier groups and foreign categories", async () => {
-    const a = await paidMerchant(env, { plan: "plus" });
-    const b = await paidMerchant(env, { plan: "plus" });
+    const a = await paidMerchant(env, { plan: "studio" });
+    const b = await paidMerchant(env, { plan: "studio" });
     const dup = await call(env, a.ownerToken, "POST", `/v1/merchants/${a.merchant.id}/catalog/items`, { ...item, modifiers: [item.modifiers[0], item.modifiers[0]] });
     expect(dup.status).toBe(400);
     const foreign = await call(env, a.ownerToken, "POST", `/v1/merchants/${a.merchant.id}/catalog/items`, { ...item, categoryId: b.noEarnCategory.id });
@@ -69,7 +72,7 @@ describe("catalog", () => {
   });
 
   it("public menu lists only orderable items with tax info", async () => {
-    const { merchant, ownerToken } = await paidMerchant(env, { plan: "plus" });
+    const { merchant, ownerToken } = await paidMerchant(env, { plan: "studio" });
     await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/catalog/items`, item);
     await call(env, ownerToken, "POST", `/v1/merchants/${merchant.id}/catalog/items`, { name: "Secret", priceCents: 100, orderable: false });
     const r = await call(env, null, "GET", `/v1/public/shops/${merchant.slug}/menu`);

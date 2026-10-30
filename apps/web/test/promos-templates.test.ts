@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PROMO_TEMPLATES, promoStatusLine, promoWhen, signedVisits, templateDraft, templatesFor, validatePromo } from "@/lib/dashboard/promos";
+import { PROMO_TEMPLATES, dayFromParam, promoStatusLine, promoWhen, signedVisits, templateDraft, templatesFor, validatePromo } from "@/lib/dashboard/promos";
 
 const p = (o: Partial<Parameters<typeof promoWhen>[0]> = {}) => ({ daysOfWeek: null, startTime: null, endTime: null, startsAt: "2026-10-01T04:00:00Z", endsAt: null, ...o });
 
@@ -40,5 +40,12 @@ describe("promo table text", () => {
 
   it("signs extra visits", () => {
     expect([22, 0, -3].map(signedVisits)).toEqual(["+22", "0", "-3"]);
+  });
+
+  it("presets the weekday from ?day= (the weekly report's promo link)", () => {
+    expect(["sun", "sat", "Tue", "friday", "", null, "xyz"].map(dayFromParam)).toEqual([0, 6, 2, 5, null, null, null]);
+    expect(templateDraft(null, new Date("2026-10-29T12:00:00Z"), "stamps", "sat").daysOfWeek).toEqual([6]);
+    expect(templateDraft("slow_afternoons", new Date("2026-10-29T12:00:00Z"), "stamps", "tue").daysOfWeek).toEqual([2]);
+    expect(templateDraft("slow_afternoons", new Date("2026-10-29T12:00:00Z"), "stamps", null).daysOfWeek).toEqual([1, 2, 3, 4, 5]);
   });
 });

@@ -1,15 +1,33 @@
 /**
- * Wallet passes: GET /v1/me/wallet{,/apple,/apple/link,/google} for customers,
- * and the Apple PassKit web service at /v1/wallet/apple/v1/... (Apple calls it
- * with `Authorization: ApplePass <authenticationToken>`).
+ * Wallet passes: GET /v1/me/wallet{,/apple,/apple/link,/google} for customers (network pass), the shop cards
+ * (GET /v1/me/wallet/shops/:merchantId, /v1/wallet/apple/shop-download, Settings at /v1/merchants/:id/wallet-card),
+ * and the Apple PassKit web service at /v1/wallet/apple/v1/... (Apple calls it with `Authorization: ApplePass <authenticationToken>`).
+ * Setup: docs/engineering/wallet.md. Contract: docs/engineering/api/wallet.md.
  */
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { AppContext } from "../../context.js";
-import { requireUser } from "../../lib/auth.js";
+import { decodeJwt } from "jose";
+import { walletApi } from "@ll/shared";
+import { requireStaff, requireUser } from "../../lib/auth.js";
+import { parse } from "../../lib/validate.js";
+import { merchants } from "@ll/db";
+import { eq } from "drizzle-orm";
 import { HttpError } from "../../lib/errors.js";
 import { appleSignerFromConfig, missingAppleConfig, PASS_COLORS } from "../../services/wallet-apple.js";
 import { googleConfigured } from "../../services/wallet-google.js";
 import { iconPng, logoPng, walletAsset } from "../../services/wallet-png.js";
+import { renderStrip, stripInputFrom } from "../../services/wallet-strip.js";
+import {
+  cardsInWallets,
+  getOrCreateShopPass,
+  markGoogleEvent,
+  sampleShopModel,
+  shopPassBuffer,
+  shopWalletStatus,
+  verifyShopDownloadToken,
+  walletAvailability,
+  walletShopChanged,
+} from "../../services/wallet-shop.js";
 import {
   applePassBuffer,
   authenticatePass,
@@ -87,6 +105,89 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const userId = verifyDownloadToken(ctx, String((req.query as { token?: string }).token ?? ""));
     if (!userId) throw new HttpError(401, "link_expired", "This wallet link expired. Open your card again to get a new one.");
     return sendPass(ctx, reply, userId);
+  });
+
+  // -------------------------------------------------------------------------
+  // Shop cards (one per membership, in the shop's look)
+  // -------------------------------------------------------------------------
+  app.get("/wallet/availability", async (): Promise<walletApi.WalletAvailability> => walletAvailability(ctx.config));
+
+  app.get("/me/wallet/shops/:merchantId", async (req): Promise<walletApi.ShopWalletResponse> => {
+    const u = requireUser(req);
+    return shopWalletStatus(ctx, u.id, (req.params as { merchantId: string }).merchantId);
+  });
+
+  // Short-lived signed link: Safari opens it and offers "Add to Apple Wallet" for that shop's card.
+  app.get("/wallet/apple/shop-download", async (req, reply) => {
+    const t = verifyShopDownloadToken(ctx, String((req.query as { token?: string }).token ?? ""));
+    if (!t) throw new HttpError(401, "link_expired", "This wallet link expired. Open your card again to get a new one.");
+    const pass = await getOrCreateShopPass(ctx, t.userId, t.merchantId, "apple");
+    const buf = await shopPassBuffer(ctx, pass);
+    return reply
+      .header("content-type", PKPASS)
+      .header("content-disposition", 'attachment; filename="card.pkpass"')
+      .header("last-modified", pass.lastUpdatedAt.toUTCString())
+      .header("cache-control", "no-store")
+      .send(buf);
+  });
+
+  // The stamp strip / progress bar (Google heroImage). Counts and colours only, no member data: public and cacheable.
+  app.get("/wallet/strip.png", async (req, reply) =>
+    reply.header("content-type", "image/png").header("cache-control", "public, max-age=604800, immutable").send(renderStrip(stripInputFrom(req.query as Record<string, string>), 3)),
+  );
+
+  // Google Wallet save/delete callbacks (class callbackOptions.url carries the key).
+  app.post("/wallet/google/callback", async (req, reply) => {
+    const key = String((req.query as { k?: string }).k ?? "");
+    await markGoogleEvent(ctx, key, req.body);
+    return reply.status(200).send();
+  });
+
+  // Dev-fake mode only: what the Google save link would carry (pay.google.com would reject the fake signature).
+  app.get("/wallet/dev/google-save", async (req, reply) => {
+    if (!ctx.config.walletDevFake || ctx.config.env === "production") throw new HttpError(404, "not_found", "Not found");
+    let payload: unknown = null;
+    try {
+      payload = decodeJwt(String((req.query as { jwt?: string }).jwt ?? "")).payload;
+    } catch {
+      throw new HttpError(400, "bad_request", "Bad token");
+    }
+    const esc = (v: string) => v.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
+    return reply
+      .header("content-type", "text/html; charset=utf-8")
+      .send(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Google Wallet (dev fake)</title><body style="font:14px system-ui;margin:16px"><h1 data-testid="google-dev-save">Google Wallet save link (dev fake)</h1><p>With real credentials this opens Google Wallet. Payload:</p><pre style="white-space:pre-wrap">${esc(JSON.stringify(payload, null, 2))}</pre></body>`);
+  });
+
+  // Settings, Wallet card (owner/manager edit; staff can look).
+  app.get("/merchants/:merchantId/wallet-card", async (req): Promise<walletApi.WalletCardResponse> => {
+    const s = await requireStaff(ctx, req, (req.params as { merchantId: string }).merchantId, "staff");
+    const settings = (s.merchant.walletCard ?? {}) as walletApi.WalletCardSettings;
+    return { settings, preview: await sampleShopModel(ctx, s.merchant.id, settings), availability: walletAvailability(ctx.config), cardsInWallets: await cardsInWallets(ctx, s.merchant.id) };
+  });
+
+  // Draft preview (unsaved settings), so the editor shows exactly what the API would build.
+  app.post("/merchants/:merchantId/wallet-card/preview", async (req): Promise<walletApi.ShopPassModel> => {
+    const s = await requireStaff(ctx, req, (req.params as { merchantId: string }).merchantId, "staff");
+    return sampleShopModel(ctx, s.merchant.id, parse(walletApi.walletCardSchema, req.body ?? {}));
+  });
+
+  app.put("/merchants/:merchantId/wallet-card", async (req): Promise<walletApi.WalletCardResponse> => {
+    const s = await requireStaff(ctx, req, (req.params as { merchantId: string }).merchantId, "manager");
+    const body = parse(walletApi.walletCardSchema, req.body ?? {});
+    // Empty strings mean "use the default".
+    const settings = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== "" && v !== undefined)) as walletApi.WalletCardSettings;
+    await ctx.db.update(merchants).set({ walletCard: settings }).where(eq(merchants.id, s.merchant.id));
+    walletShopChanged(ctx, s.merchant.id);
+    return { settings, preview: await sampleShopModel(ctx, s.merchant.id, settings), availability: walletAvailability(ctx.config), cardsInWallets: await cardsInWallets(ctx, s.merchant.id) };
+  });
+
+  // Anything else every card shows (name, logo, colour, program, rewards, hours) refreshes the shop's cards after it saves.
+  const SHOP_CARD_ROUTES = /^\/v1\/merchants\/:merchantId(\/program|\/rewards(\/:rewardId)?|\/locations(\/:locationId)?)?$/;
+  app.addHook("onResponse", async (req, reply) => {
+    if (req.method === "GET" || req.method === "HEAD" || reply.statusCode >= 300) return;
+    const url = req.routeOptions?.url;
+    const merchantId = (req.params as { merchantId?: string } | undefined)?.merchantId;
+    if (url && merchantId && SHOP_CARD_ROUTES.test(url)) walletShopChanged(ctx, merchantId);
   });
 
   // Public pass artwork (Google Wallet object logo).

@@ -33,7 +33,7 @@ const sms = () => env.ctx.providers.outbox.sms;
 const days = (n: number) => new Date(env.clock.now.getTime() + n * 86_400_000);
 const ymd = (n: number) => days(n).toISOString().slice(0, 10);
 
-async function shop(opts: { plan?: "free" | "plus"; vertical?: string } = {}) {
+async function shop(opts: { plan?: "free" | "plus" | "studio"; vertical?: string } = {}) {
   const m = await paidMerchant(env, { plan: opts.plan ?? "plus", vertical: opts.vertical ?? "pet" });
   const base = `/v1/merchants/${m.merchant.id}`;
   const out = { ...m, base, ownerUser: m.owner, owner: m.ownerToken };
@@ -100,10 +100,16 @@ describe("gating", () => {
     const s = await shop();
     expect((await call(env, s.owner, "GET", `${s.base}/pets`)).status).toBe(200);
     expect((await call(env, null, "GET", `${s.base}/pets`)).status).toBe(401);
-    for (const k of ["pets.profiles", "pets.daycare", "pets.food_cards", "pets.report_cards"] as const) {
+    for (const k of ["pets.profiles", "pets.food_cards", "pets.report_cards"] as const) {
       expect(FEATURES[k].minPlan).toBe("plus");
       expect(FREE_FOREVER).not.toContain(k);
     }
+    // phase-pro: daycare is a shop's tool, on Studio (pro-value.md §2.2): a Pro pet shop is offered Studio for it.
+    expect(FEATURES["pets.daycare"].minPlan).toBe("studio");
+    expect(FREE_FOREVER).not.toContain("pets.daycare");
+    expect((await call(env, s.owner, "GET", `${s.base}/daycare/day`)).status).toBe(402);
+    const studio = await shop({ plan: "studio" });
+    expect((await call(env, studio.owner, "GET", `${studio.base}/daycare/day`)).status).toBe(200);
   });
 });
 
@@ -347,7 +353,7 @@ describe("daycare", () => {
   const expect_ = async (s: Shop, petId: string) => (await call(env, s.owner, "POST", `${s.base}/daycare/stays`, { petId })).body.id as string;
 
   it("checks a dog in and out, counts the room and the ratio, and notes a late pickup", async () => {
-    const s = await shop();
+    const s = await shop({ plan: "studio" });
     const m = await member(s);
     const pet = await ready(s, m, "Biscuit");
     const id = await expect_(s, pet.id);
@@ -372,7 +378,7 @@ describe("daycare", () => {
   });
 
   it("blocks an expired or missing shot, no temperament check, and a full room, and says why", async () => {
-    const s = await shop();
+    const s = await shop({ plan: "studio" });
     const m = await member(s);
     const expired = await ready(s, m, "Ziggy", { vax: { rabies: 300, dhpp: 300, bordetella: -26 } });
     const missing = await ready(s, m, "Luna", { vax: { rabies: 300 } });
@@ -399,7 +405,7 @@ describe("daycare", () => {
   });
 
   it("a full room refuses the next dog; a manager can take one more with a reason, staff cannot", async () => {
-    const s = await shop();
+    const s = await shop({ plan: "studio" });
     const m = await member(s);
     await call(env, s.owner, "PUT", `${s.base}/pets/settings`, { capacity: 1, requireAssessment: false });
     const p1 = await ready(s, m, "A", { assess: false });
@@ -415,7 +421,7 @@ describe("daycare", () => {
   });
 
   it("sells a pack by hand; a day is taken at check-in, not booking; the last day is used once and the next is a drop-in", async () => {
-    const s = await shop();
+    const s = await shop({ plan: "studio" });
     const m = await member(s);
     const pet = await ready(s, m, "Biscuit");
     expect((await call(env, s.owner, "POST", `${s.base}/daycare/packs`, { memberId: m.memberId, days: 1, priceCents: 1000 })).status).toBe(400);
@@ -444,7 +450,7 @@ describe("daycare", () => {
   });
 
   it("no-show and cancel keep the row and take no pack day; settings are validated", async () => {
-    const s = await shop();
+    const s = await shop({ plan: "studio" });
     const m = await member(s);
     const pet = await ready(s, m, "Biscuit");
     await call(env, s.owner, "POST", `${s.base}/daycare/packs`, { memberId: m.memberId, days: 5, priceCents: 20000 });
@@ -673,7 +679,7 @@ describe("appointments and pets", () => {
   });
 
   it("the public shop page can say the food card deal and the daycare packs, and a flagged dog already in the room", async () => {
-    const s = await shop();
+    const s = await shop({ plan: "studio" });
     await call(env, s.owner, "POST", `${s.base}/food/programs`, { brand: "Fromm", buyCount: 12 });
     const r = await call(env, null, "GET", `/v1/public/shops/${s.merchant.slug}/pets`);
     expect(r.status).toBe(200);

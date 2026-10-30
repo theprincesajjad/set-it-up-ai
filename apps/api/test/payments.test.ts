@@ -147,7 +147,7 @@ describe("Stripe webhook", () => {
   });
 
   it("payment_intent.succeeded marks the order paid; unknown intents are ignored", async () => {
-    const m = await paidMerchant(env, { plan: "plus", connect: false });
+    const m = await paidMerchant(env, { plan: "studio", connect: false }); // online orders are Studio's
     await env.db.update(merchants).set({ stripeAccountId: "acct_real_1", stripeChargesEnabled: true }).where(eq(merchants.id, m.merchant.id));
     const c = await customer(env);
     const created = await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/catalog/items`, { name: "Bagel", priceCents: 400 });

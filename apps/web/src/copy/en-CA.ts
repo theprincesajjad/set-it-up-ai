@@ -2,7 +2,13 @@
  * UX copy (docs/design/ux-copy.md). Keys are stable so fr-CA can be added later.
  * `{brand}` is always BRAND.name from @ll/shared, never hard-coded.
  */
-import { BRAND } from "@ll/shared";
+import { BRAND, PLANS } from "@ll/shared";
+
+/** List prices as the copy shows them ("$29"), from PLANS: never typed (phase-pro). */
+const per = (cents: number) => `$${Math.round(cents / 100)}`;
+const PRO_MO = per(PLANS.plus.priceCents);
+const STUDIO_MO = per(PLANS.studio.priceCents);
+const SERVICE_MO = per(PLANS.pro.priceCents);
 
 export const copy = {
   action: {
@@ -249,8 +255,8 @@ export const copy = {
         title: "What a salon and a studio do with it.",
         note: "Examples of how the tools work, not customer quotes.",
         items: [
-          { who: "A salon", what: "Clients book a stylist online and a deposit holds the slot. The calendar shows who asked for whom. At checkout the tip goes to the stylist, and a rebooking text goes out when a client is due.", price: "$39 a month. 0% on checkout at the desk." },
-          { who: "A yoga studio", what: "Classes with a waitlist that fills itself, drop-ins, class packs, an intro offer and monthly memberships billed to the card on file. Door check-in on a tablet.", price: "$39 a month, plus 1% of classes and memberships paid online. 0% on desk sales." },
+          { who: "A salon", what: "Clients book a stylist online and a deposit holds the slot. The calendar shows who asked for whom. At checkout the tip goes to the stylist, and a rebooking text goes out when a client is due.", price: `${PRO_MO} a month. 0% on checkout at the desk.` },
+          { who: "A yoga studio", what: "Classes with a waitlist that fills itself, drop-ins, class packs, an intro offer and monthly memberships billed to the card on file. Door check-in on a tablet.", price: `${PRO_MO} a month, plus 1% of classes and memberships paid online. 0% on desk sales.` },
         ],
       },
       restaurantsNote: "Restaurants and sweet shops get a bigger kit on the restaurant page.",
@@ -275,8 +281,9 @@ export const copy = {
       foot: "From each vendor’s public pricing page. Loyalty never moves to a paid plan.",
       pricesTitle: "Need more than loyalty? One flat price.",
       prices: [
-        { name: "Pro", price: "$39", per: "a month", line: "Booking, classes, the line, ordering, promos, texts." },
-        { name: "Service", price: "$99", per: "a month", line: "Pro, plus tickets, quotes, deposits and invoices." },
+        { name: PLANS.plus.name, price: PRO_MO, per: "a month", line: "The waitlist, automatic rebooking, review requests, add-ons and your week." },
+        { name: PLANS.studio.name, price: STUDIO_MO, per: "a month", line: "Every chair with no per-chair charge, the walk-in line, payouts, ordering." },
+        { name: PLANS.pro.name, price: SERVICE_MO, per: "a month", line: `${PLANS.studio.name}, plus tickets, quotes, deposits and invoices.` },
         { name: "Restaurants", price: "from $99", per: "a month", line: "Commission-free ordering. Tiffin $199, banquet $349." },
       ],
     },
@@ -442,25 +449,17 @@ export const copy = {
     freeBadge: "Every shop",
     freeLead: "Your loyalty program and its reports. No subscription and no fee on loyalty.",
     freeLines: ["Points, visits or stamps", "Rewards and a welcome bonus", "Customer list and basic reports", "Map listing and wallet pass", "Unlimited staff and locations"],
-    plusLine: "Calendar and booking, classes, the walk-in line, ordering, promos, texts and POS auto-award.",
+    plusLine: "The waitlist that fills cancelled slots, automatic rebooking, review requests, add-ons, promos and your week every Sunday.",
     proLine: "For repair, auto, alterations and print shops: tickets, quotes, deposits and invoices.",
     openNote: "Subscribe from your dashboard, cancel any time. Network extras open at {target} shops.",
     trades: {
       eyebrow: "Your kind of shop, included",
       title: "the tools for your kind of shop are in the plan.",
       sub: "No add-ons. No per-chair, per-room or per-pet charge.",
-      rows: [
-        { who: "Salons, barbers and threading bars", what: "One calendar free. Pro adds every chair, the walk-in line and payouts.", price: "Free for one calendar, $39/mo for more, 0% on desk checkout" },
-        { who: "Yoga, pilates, boxing and dance studios", what: "Classes, waitlist, packs, memberships and door check-in.", price: "$39/mo + 1% of online class sales (0% on desk sales)" },
-        { who: "Pet groomers, daycares and pet food stores", what: "Vaccine dates, groom rebooking, daycare check-in, food cards.", price: "$39/mo" },
-        { who: "Grocers and halal butchers", what: "Weekly flyer, counter pre-orders, qurbani, WhatsApp list orders.", price: "$39/mo" },
-        { who: "Garages, tire shops and car washes", what: "Service reminders, tire season and storage, wash check-in.", price: "$39/mo ($99 with estimates)" },
-        { who: "Pharmacies", what: "Pharmacist appointments, no prices, no notes kept.", price: "Free" },
-        { who: "Restaurants, tiffin, caterers and banquet halls", what: "The restaurant plans below, Pro included.", price: "$99, $199 and $349/mo" },
-      ],
+      // The rows are copy.proPricing.trades (prices from PLANS).
     },
     restaurantTitle: "keep the whole order. flat monthly price, no commission.",
-    restaurantSub: "Every restaurant plan includes Pro.",
+    restaurantSub: `Every restaurant plan includes ${PLANS.studio.name}.`,
     restaurantLines: {
       starter: "Your own ordering page, with no commission.",
       growth: "For tiffin kitchens, caterers and festival rushes.",
@@ -491,9 +490,9 @@ export const copy = {
       { q: "Will my loyalty program ever cost money?", a: "No. Points, stamps, rewards, your customer list and reports stay free." },
       { q: "Are the prices before HST?", a: "Prices shown are before HST. We are confirming how HST appears on invoices with our accountant before billing starts." },
       { q: "Can I buy Pro or Service today?", a: "Yes. Subscribe from your dashboard and your shop's tools switch on right away: calendar and booking, classes and memberships, the walk-in line, pets, grocer and auto tools. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns) open once {target} shops have joined." },
-      { q: "What does a studio pay on class sales?", a: "$39 a month, plus 1% of classes, packs and memberships paid online. Payments you take at the desk by hand carry no fee. Card processing is Stripe's standard rate." },
+      { q: "What does a studio pay on class sales?", a: `${PRO_MO} a month, plus 1% of classes, packs and memberships paid online. Payments you take at the desk by hand carry no fee. Card processing is Stripe's standard rate.` },
       { q: "Can I cancel?", a: "Any time. You go back to Free and keep your loyalty data. Annual plans pay 10 months, not 12." },
-      { q: "Is the restaurant plan a different plan?", a: "It sits beside Free, Pro and Service. Any restaurant plan includes everything in Pro, so you never pay for both." },
+      { q: "Is the restaurant plan a different plan?", a: `It sits beside Free, ${PLANS.plus.name}, ${PLANS.studio.name} and ${PLANS.pro.name}. Any restaurant plan includes everything in ${PLANS.studio.name}, so you never pay for both.` },
       { q: "Do I keep DoorDash or Uber Eats?", a: "Yes, if you want to. Use the apps to be found, and send your regulars to your own page." },
       { q: "Is there a contract?", a: "No contract and no setup fee." },
     ],

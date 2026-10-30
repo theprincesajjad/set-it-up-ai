@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { appointments, invoices, ledgerTransactions, merchantCategories, merchantMembers, merchants, rewards, users } from "@ll/db";
-import { FEATURES, FREE_FOREVER, smsSegments } from "@ll/shared";
+import { FEATURES, FREE_FOREVER, PLANS, smsSegments } from "@ll/shared";
 import { appointmentJobs } from "../src/jobs/appointments.js";
 import { computeFees } from "../src/services/fees.js";
 import { zonedToUtc } from "../src/services/bookings.js";
@@ -64,7 +64,7 @@ const staffBooking = (s: Salon, staffId: string, start: string, services: string
   book(s, s.desk.token, { staffId, serviceIds: services, startsAt: at(start), customer: { phone: "+14165550123", name: "Neha Sharma" }, ...extra });
 
 describe("gating and price list", () => {
-  it("is free for one calendar, unlimited on Plus; repair price list rides service.tickets", async () => {
+  it("is free for one calendar, the second is offered on Pro; repair price list rides service.tickets", async () => {
     const free = await salon({ plan: "free" });
     // A Free shop creates services and gets one bookable calendar; the second is refused with the Pro offer.
     expect(free.cut.id).toBeTruthy();
@@ -72,7 +72,7 @@ describe("gating and price list", () => {
     expect((await call(env, null, "GET", `/v1/public/shops/${free.merchant.slug}/services`)).status).toBe(200);
     const second = await call(env, free.ownerToken, "PUT", `${free.base}/staff/${free.aisha.user.id}/hours`, { days: MON_SAT });
     expect(second.status).toBe(402);
-    expect(second.body.error).toMatchObject({ code: "plan_limit", details: { limit: "bookable_calendars", max: 1, offer: { kind: "plan", plan: "plus", priceCents: 3900 } } });
+    expect(second.body.error).toMatchObject({ code: "plan_limit", details: { limit: "bookable_calendars", max: 1, offer: { kind: "plan", plan: "plus", priceCents: PLANS.plus.priceCents } } });
     // Also refused through a service list or the service's staff list.
     expect((await call(env, free.ownerToken, "PUT", `${free.base}/staff/${free.aisha.user.id}/services`, { services: [{ serviceId: free.cut.id }] })).status).toBe(402);
     expect((await call(env, free.ownerToken, "PATCH", `${free.base}/services/${free.cut.id}`, { staffIds: [free.simran.user.id, free.aisha.user.id] })).status).toBe(402);

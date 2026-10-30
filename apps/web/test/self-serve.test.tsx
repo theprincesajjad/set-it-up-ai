@@ -50,10 +50,12 @@ describe("pricing and landing say the same true thing", () => {
     expect(html).toContain("$99, $199 and $349/mo");
     expect(html).not.toMatch(/coming soon|early access|pilot/i);
   });
-  it("shows $39 and $99 on the landing, and a salon and a studio story", () => {
+  it("shows $29, $59 and $99 on the landing, and a salon and a studio story", () => {
     const prices = renderToStaticMarkup(<PriceStrip />);
-    expect(prices).toContain("$39");
+    expect(prices).toContain("$29");
+    expect(prices).toContain("$59");
     expect(prices).toContain("$99");
+    expect(prices).not.toContain("$39");
     const stories = renderToStaticMarkup(<TradeStories />);
     expect(stories).toContain("A salon");
     expect(stories).toContain("A yoga studio");

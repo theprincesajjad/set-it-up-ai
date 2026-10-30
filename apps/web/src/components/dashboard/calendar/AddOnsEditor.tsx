@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { durationText } from "@/lib/booking";
-import { addOnExamples, dollars, toCents } from "@/lib/dashboard/add-ons";
+import { addOnExamples, dollars, plus, toCents } from "@/lib/dashboard/add-ons";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
@@ -54,9 +54,9 @@ export function AddOnsEditor({ services, manager }: { services: Service[]; manag
         {!a.active ? <Tag>{t("addon.hidden")}</Tag> : null}
       </span>
     ) },
-    { key: "time", header: t("addon.col.time"), mobile: "subtitle", sortValue: (a) => a.durationMin, cell: (a) => <span className="tabular text-fg-muted">{a.durationMin ? t("addon.plusTime", { duration: dur(a.durationMin) }) : t("addon.noTime")}</span> },
+    { key: "time", header: t("addon.col.time"), mobile: "subtitle", sortValue: (a) => a.durationMin, cell: (a) => <span className="tabular text-fg-muted">{a.durationMin ? plus(dur(a.durationMin)) : t("addon.noTime")}</span> },
     { key: "offered", header: t("addon.col.offered"), mobile: "subtitle", cell: chips },
-    { key: "price", header: t("addon.col.price"), align: "end", mobile: "trailing", sortValue: (a) => a.priceCents, cell: (a) => <span className="tabular">{t("addon.plusPrice", { price: money(a.priceCents) })}</span> },
+    { key: "price", header: t("addon.col.price"), align: "end", mobile: "trailing", sortValue: (a) => a.priceCents, cell: (a) => <span className="tabular">{plus(money(a.priceCents))}</span> },
   ];
 
   return (

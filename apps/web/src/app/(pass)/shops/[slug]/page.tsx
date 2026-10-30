@@ -27,7 +27,7 @@ import { env } from "@/lib/env";
 import { unitsText } from "@/lib/units";
 import { expiryLineL, howYouEarnL, kindL, openStatusL, rewardInSentenceL, weekRowsL } from "@/lib/i18n/formatL";
 import { PetShopBlock } from "@/components/pass/PetShopBlock";
-import { MemberWalletButtons } from "@/components/pass/MemberWalletButtons";
+import { ShopWalletCard } from "@/components/pass/ShopWalletCard";
 import { howYouEarn } from "@/lib/program";
 import { Awning } from "@/components/ui/Awning";
 import { ThemeStyle } from "@/components/ui/ThemeStyle";
@@ -237,7 +237,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       </Suspense>
 
       {membership ? (
-        <div className="flex flex-col gap-4 rounded-card border border-line p-4">
+        <div id="wallet" className="flex scroll-mt-24 flex-col gap-4 rounded-card border border-line p-4">
         <div className="flex items-center gap-4">
           <PointsRing balance={membership.balance} goal={membership.nextReward?.pointsCost ?? 0} terminology={membership.terminology} size={64} showCaption={false} />
           <div className="min-w-0 flex-1">
@@ -249,7 +249,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
             {t("sh.fs.ctaCard")}
           </Button>
         </div>
-        <MemberWalletButtons />
+        <ShopWalletCard merchantId={m.id} shopName={m.name} slug={m.slug} terminology={membership.terminology} className="scroll-mt-24 border-t border-line pt-4" />
         </div>
       ) : null}
 

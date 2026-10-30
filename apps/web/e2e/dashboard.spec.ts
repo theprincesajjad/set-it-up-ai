@@ -78,7 +78,7 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "POS & integrations" })).toBeVisible();
-  await expect(page.getByText(/More with Pro, \$39 a month: 4 promos a month, 500 texts, POS sync and the tools for your kind of shop/)).toBeVisible();
+  await expect(page.getByText(/More with Pro, \$29 a month: 4 promos a month, 300 texts, your week every Sunday and the tools for your kind of shop/)).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: shot("01-home"), fullPage: true });
 
@@ -178,8 +178,8 @@ test("owner: create and publish a promo (pilot override)", async ({ page }) => {
   const id = await pineconeId();
   // Locked: the deep link names the plan and its price and offers the checkout, not the editor (trade tools self-serve).
   await signIn(page, OWNER, `/m/${id}/promos/new`);
-  await expect(page.getByText("On Pro · $39 a month")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Subscribe to Pro, $39/mo" })).toBeVisible();
+  await expect(page.getByText("On Pro · $29 a month")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subscribe to Pro, $29/mo" })).toBeVisible();
   await pilot(id, ["promos.basic", "promos.double_points"], true);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Create a promo" })).toBeVisible();
@@ -327,7 +327,7 @@ test("owner: billing and plans, integrations, messages, reports", async ({ page 
   // Google Business Profile is free; paid connectors collapse into one quiet line.
   await expect(page.getByRole("heading", { name: "Google Business Profile" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Square" })).toHaveCount(0);
-  await expect(page.getByText("part of Pro, $39 a month")).toBeVisible();
+  await expect(page.getByText("part of Studio, $59 a month")).toBeVisible();
   await page.screenshot({ path: shot("27-integrations"), fullPage: true });
   await pilot(id, ["marketing.email"], true);
   await page.goto(`/m/${id}/messages/new`);

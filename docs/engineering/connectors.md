@@ -187,7 +187,7 @@ Expo / app-store steps for push (customer app):
    production APNs (`api.push.apple.com`), topic = pass type id.
 5. `PUBLIC_API_URL` must be https with a valid certificate in production (Wallet refuses http web services); the PassKit web
    service lives at `${PUBLIC_API_URL}/v1/wallet/apple/v1/...`. Pass artwork: `node apps/api/scripts/render-wallet-assets.cjs`.
-See `docs/engineering/api/wallet.md`.
+See `docs/engineering/api/wallet.md`; the full founder checklist (costs, shop cards, testing on phones) is `docs/engineering/wallet.md`.
 
 ## Google Wallet
 

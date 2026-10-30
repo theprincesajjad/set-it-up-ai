@@ -41,7 +41,12 @@ describe("trade tools self-serve", () => {
     expect(co.status).toBe(200);
     await call(env, null, "POST", "/v1/payments/fake/simulate", { action: "complete_checkout", id: co.body.sessionId });
     f = await features(token, id);
-    for (const k of ["booking.appointments", "booking.walkin_queue", "staff.payouts", "booking.classes", "memberships.recurring", "orders.order_ahead"]) expect(f[k]?.enabled, k).toBe(true);
+    for (const k of ["booking.appointments", "booking.classes", "memberships.recurring", "booking.waitlist", "booking.review_requests", "booking.add_ons", "insights.weekly"]) expect(f[k]?.enabled, k).toBe(true);
+    // The walk-in line, payouts and order-ahead are Studio's (pro-value.md §2.2): still a plan lock on Pro, open on Studio.
+    for (const k of ["booking.walkin_queue", "staff.payouts", "orders.order_ahead"]) expect(f[k], k).toMatchObject({ enabled: false, lockedReason: "plan" });
+    await setPlan(env, id, "studio");
+    f = await features(token, id);
+    for (const k of ["booking.walkin_queue", "staff.payouts", "orders.order_ahead"]) expect(f[k]?.enabled, k).toBe(true);
   });
 
   it("network-wide extras stay shut, even on the top plan, until an admin opens them", async () => {
@@ -78,7 +83,11 @@ describe("trade tools self-serve", () => {
     expect((await features(token, pet))["pets.daycare"].enabled).toBe(false);
     await setPlan(env, pet, "plus");
     const f = await features(token, pet);
-    for (const k of ["pets.profiles", "pets.daycare", "pets.food_cards", "pets.report_cards"]) expect(f[k].enabled, k).toBe(true);
+    for (const k of ["pets.profiles", "pets.food_cards", "pets.report_cards"]) expect(f[k].enabled, k).toBe(true);
+    // Daycare is a shop's tool, on Studio.
+    expect(f["pets.daycare"].enabled).toBe(false);
+    await setPlan(env, pet, "studio");
+    expect((await features(token, pet))["pets.daycare"].enabled).toBe(true);
     const cafe = (await signup(token, { vertical: "cafe", name: "Beans" })).body.merchant.id as string;
     await setPlan(env, cafe, "plus");
     expect((await features(token, cafe))["pets.daycare"].enabled).toBe(false);

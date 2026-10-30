@@ -34,6 +34,7 @@ function makeDeps(over: Partial<JoinDeps> = {}): JoinDeps {
     card: vi.fn(async () => ({ memberCode: "K7QX2M9P", qrPayload: "LL:K7QX2M9P", qrSvg: "<svg></svg>", name: "Alex" })),
     wallet: vi.fn(async () => ({ summary: { memberCode: "K7QX2M9P", qrValue: "LL:K7QX2M9P", name: null, shopCount: 1, totalPoints: 1, shops: [] }, apple: { available: true, downloadUrl: "https://example.com/p.pkpass", reason: null }, google: { available: false, saveUrl: null, reason: "not configured" } })),
     googleWallet: vi.fn(async () => ({ saveUrl: "https://pay.google.com/gp/v/save/x" })),
+    shopWallet: vi.fn(async (merchantId: string) => ({ merchantId, apple: { available: true, url: "https://example.com/card.pkpass", added: false }, google: { available: false, url: null, added: false } })),
     nearby: vi.fn(async () => ({ items: [], nextCursor: null })),
     ...over,
   };
@@ -76,7 +77,10 @@ describe("<JoinFlow> (counter QR join)", () => {
     expect(deps.updateName).toHaveBeenCalledWith("Alex");
     expect(deps.join).toHaveBeenCalledWith({ locationQrCode: "RONCY01", referralCode: "REF12345" });
     await waitFor(() => expect(screen.getByText("You're in, Alex.")).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Add to Apple Wallet" })).toBeTruthy();
+    // The shop's own card: Apple only (Google isn't configured in this mock), plus the open-on-your-phone QR on a computer.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add to Apple Wallet" })).toBeTruthy());
+    expect(deps.shopWallet).toHaveBeenCalledWith(merchant.id);
+    expect(screen.queryByRole("button", { name: "Add to Google Wallet" })).toBeNull();
     await waitFor(() => expect(deps.card).toHaveBeenCalled());
   });
 

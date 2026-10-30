@@ -6,6 +6,8 @@ Pages: `/for-nail-techs` (with `?trade=brows|lashes|makeup`), `/for-barbers`, `/
 
 Founder direction, Oct 29: no pill eyebrows above headings (type does the hierarchy), a confident professional SaaS voice (no slang, no jokes), more calls to action, and the paid packaging (Free, Pro for one person, Studio for teams, a 14-day Pro trial, Pro's first-year price on annual) described from one place. Word budget: headlines of 2 to 7 words, one-line subheads, card lines of 8 words at most. `test/marketing-solo.test.tsx` enforces it, the CTA names and the absence of slang.
 
+**Prices on the page (phase "pro value", Oct 29):** the price block and the hero line read Free, Pro (`PLANS.plus`, with the trial from `TRIAL_DAYS` and the struck-through first-year price from `FIRST_YEAR_PRICE`) and Studio (`PLANS.studio`); Service and the restaurant plans are on `/pricing` only. The Regulars block and the Pro section say which half is paid: seeing who is due and who asked is free, the waitlist offers, automatic rebooking, review requests and the weekly report are Pro. No number is typed on a page.
+
 **One source for the plans:** `apps/web/src/lib/marketing/plan-copy.ts` (`PLAN_COPY` words, `PLAN_MARKETING` trial and first-year numbers, list prices from `PLANS`). The plan cards, the hero price line, the trial buttons, the "with Pro" promo line and the Pro section all read it; the home page uses the same module.
 
 | # | Block | Component | Notes |
@@ -43,7 +45,7 @@ Motion is CSS only (opacity, transform and a registered `--sl-count` integer for
 | Signup to booking link live | 70% or more | Under 50%: fix onboarding first |
 | Activation: first booking by someone else within 14 days | 40% or more | Under 25%: the share step is failing |
 | Share of signups from the client loop and organic | 50% or more by week 8 | Under 30%: the loop line is not visible enough |
-| Free to paid within 90 days | 6% or more | Under 3%: test the founding annual price at signup |
+| Free to paid within 90 days | 6% or more | Under 3%: test the first-year annual price at signup |
 
 How to read them: `src` on a signup says which page it came from (`nail-techs`, `barbers`, `groomers`, `client` for the loop). The loop share is signups with `src=client` over all signups. `variant` on the same milestone says which copy the signup saw.
 

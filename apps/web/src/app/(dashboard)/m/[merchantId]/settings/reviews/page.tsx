@@ -71,8 +71,8 @@ export default function ReviewSettingsPage() {
                 <Switch checked={d.mode === "on"} onChange={(v) => void flip(v)} disabled={!canEdit} label={t("revreq.switch")} description={t("revreq.switchHint")} />
               ) : (
                 <div data-testid="review-locked">
-                  <PlanLine href={`${base}/billing`} linkLabel={t("promo.planCta", { plan: PLANS.plus.name })}>
-                    {t("revreq.lockedBody")} {t("people.perMonth", { price: formatMoney(PLANS.plus.priceCents) })}
+                  <PlanLine href={`${base}/billing?plan=plus`} linkLabel={t("promo.planCta", { plan: PLANS.plus.name })}>
+                    {t("revreq.lockedBody")} {t("people.perMonth", { price: formatMoney(PLANS.plus.priceCents).replace(/\.00$/, "") })}
                   </PlanLine>
                 </div>
               )}

@@ -20,9 +20,12 @@ export function addOnExamples(t: T, vertical: string | undefined): string {
   return t(EXAMPLES[vertical ?? ""] ?? "addon.examples.other");
 }
 
+/** "+$10", "+15 min": an extra on top of the service. Symbols only, so it is not a catalog string (each locale formats the amount). */
+export const plus = (shown: string) => `+${shown}`;
+
 /** "+$10 · +15 min", or "+$10" when it adds no time. */
-export function addOnPriceTime(t: T, money: (cents: number) => string, duration: (min: number) => string, a: { priceCents: number; durationMin: number }): string {
-  return a.durationMin > 0 ? t("addon.plusPriceTime", { price: money(a.priceCents), duration: duration(a.durationMin) }) : t("addon.plusPrice", { price: money(a.priceCents) });
+export function addOnPriceTime(_t: T, money: (cents: number) => string, duration: (min: number) => string, a: { priceCents: number; durationMin: number }): string {
+  return a.durationMin > 0 ? `${plus(money(a.priceCents))} · ${plus(duration(a.durationMin))}` : plus(money(a.priceCents));
 }
 
 /** Whole dollars from a text field ("12.5" → 1250). */

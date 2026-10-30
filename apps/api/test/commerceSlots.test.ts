@@ -20,7 +20,7 @@ describe("time zones", () => {
 
 describe("pickup slots", () => {
   it("generates slots from opening hours, books with capacity, cancels, and reminds 2h ahead", async () => {
-    const m = await paidMerchant(env, { plan: "plus" });
+    const m = await paidMerchant(env, { plan: "studio" });
     const url = `/v1/merchants/${m.merchant.id}/slots`;
     const gen = await call(env, m.ownerToken, "POST", `${url}/generate`, { locationId: m.location.id, kind: "pickup", startDate: "2026-11-03", days: 2, slotMinutes: 60, capacity: 1 });
     expect(gen.status).toBe(201);
@@ -69,7 +69,7 @@ describe("pickup slots", () => {
   });
 
   it("an order can book a pickup slot; pickupAt comes from the slot", async () => {
-    const m = await paidMerchant(env, { plan: "plus" });
+    const m = await paidMerchant(env, { plan: "studio" });
     await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/slots/generate`, { locationId: m.location.id, startDate: "2026-11-04", days: 1, slotMinutes: 30, capacity: 2 });
     const slots = (await call(env, null, "GET", `/v1/public/shops/${m.merchant.slug}/slots`)).body.items;
     const item = (await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/catalog/items`, { name: "Muffin", priceCents: 300 })).body;

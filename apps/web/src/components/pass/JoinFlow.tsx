@@ -4,7 +4,7 @@
  * "No-download join"): phone → code → name + CASL consent → joined.
  * Target: under 30 seconds on a 3-year-old phone. One page, state kept in memory.
  */
-import { WalletButtons } from "./WalletButtons";
+import { ShopWalletCard } from "./ShopWalletCard";
 import { BRAND, t as translate } from "@ll/shared";
 import Link from "next/link";
 import { LogoMark } from "@/components/site/Brand";
@@ -46,6 +46,8 @@ export interface JoinDeps {
   card: () => Promise<customerApi.CardResponse>;
   wallet: () => Promise<walletApi.WalletStatusResponse>;
   googleWallet: () => Promise<walletApi.GoogleSaveResponse>;
+  /** The shop's own card (shop name, colour, stamps): what the join success screen offers. */
+  shopWallet: (merchantId: string) => Promise<walletApi.ShopWalletResponse>;
   nearby: (q: Partial<networkApi.ShopsQuery>) => Promise<networkApi.ShopsResponse>;
 }
 
@@ -58,6 +60,7 @@ export const defaultJoinDeps: JoinDeps = {
   card: () => browserApi.me.card(),
   wallet: () => browserApi.me.wallet(),
   googleWallet: () => browserApi.me.googleWallet(),
+  shopWallet: (merchantId) => browserApi.me.shopWallet(merchantId),
   nearby: (q) => browserApi.network.shops(q),
 };
 
@@ -381,21 +384,13 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
   const m = result.membership;
   const program = m.program;
   const [card, setCard] = useState<customerApi.CardResponse | null>(null);
-  const [walletError, setWalletError] = useState<string | null>(null);
-  const [walletBusy, setWalletBusy] = useState<"apple" | "google" | null>(null);
   const [nearby, setNearby] = useState<networkApi.ShopListItemDto[]>([]);
   // Only rendered after the join completes (never server-rendered), so reading the UA here is safe.
   const [os] = useState<"ios" | "android" | "other">(platform);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const [available, setAvailable] = useState<{ apple?: boolean; google?: boolean }>({});
 
   useEffect(() => {
     headingRef.current?.focus();
-    // Hide a wallet the server can't issue yet (GET /v1/me/wallet → apple/google.available).
-    deps
-      .wallet()
-      .then((s) => setAvailable({ apple: s.apple.available, google: s.google.available }))
-      .catch(() => undefined);
     deps.card().then(setCard).catch(() => undefined);
     const { lat, lng } = info.location;
     if (lat != null && lng != null)
@@ -404,33 +399,6 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
         .then((r) => setNearby(r.items.filter((s) => s.merchant.id !== info.merchant.id).slice(0, 6)))
         .catch(() => undefined);
   }, [deps, info]);
-
-  async function google() {
-    setWalletError(null);
-    setWalletBusy("google");
-    try {
-      const r = await deps.googleWallet();
-      window.location.href = r.saveUrl;
-    } catch {
-      setWalletError(t("auth.joined.walletUnavailable"));
-    } finally {
-      setWalletBusy(null);
-    }
-  }
-
-  async function apple() {
-    setWalletError(null);
-    setWalletBusy("apple");
-    try {
-      const s = await deps.wallet();
-      if (s.apple.available && s.apple.downloadUrl) window.location.href = s.apple.downloadUrl;
-      else setWalletError(t("auth.joined.walletUnavailable"));
-    } catch {
-      setWalletError(t("auth.joined.walletUnavailable"));
-    } finally {
-      setWalletBusy(null);
-    }
-  }
 
   const fname = firstName(name);
   const bonus = result.bonusPoints > 0 ? (locale === "en" ? formatPoints(result.bonusPoints, m.terminology, false) : unitText(t, program, result.bonusPoints)) : null;
@@ -473,8 +441,8 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
       </section>
 
       <div className="flex flex-col gap-2">
-        {walletError ? <Banner tone="neutral">{walletError}</Banner> : null}
-        <WalletButtons os={os} onApple={apple} onGoogle={google} busy={walletBusy} available={available} />
+        {/* The shop's own card for this phone's wallet (both + a QR on a computer); hidden or "coming soon" without credentials. */}
+        <ShopWalletCard merchantId={info.merchant.id} shopName={info.merchant.name} slug={info.merchant.slug} terminology={m.terminology} load={deps.shopWallet} os={os} />
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta">
           <span className="text-fg-muted">{t("auth.joined.getApp")}</span>
           {os !== "android" ? (

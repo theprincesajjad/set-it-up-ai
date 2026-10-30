@@ -1,5 +1,13 @@
 # Solo pro launch: nail, brow and lash techs, barbers, and the storefront trades behind them
 
+> **Oct 29, 2026, superseded packaging: read `docs/business/pro-value.md` first.** The founder's final packaging replaces §3 and the
+> plan numbers in §4: **Pro** (id `plus`) $29 a month or $290 a year, two bookable calendars, 300 texts, built from the money
+> features (a waitlist that fills cancelled slots, rebooking and win-back that run themselves, review requests after every visit,
+> add-ons at booking, the weekly report); **Studio** (id `studio`) $59 or $590, unlimited calendars with no per-chair charge, the
+> walk-in line, payouts and the till-side tools; a **14-day Pro trial with no card** for every new shop from the day its booking link
+> goes live; the first 200 shops on annual Pro pay $199 for year one, shown only as a struck-through price (never "founding"); the
+> website comes with annual on both paid plans; deposits stay optional and free, and are never the lead. Code: `packages/shared/src/plans.ts`.
+
 > **Oct 29, 2026, founder decisions:** (1) the $39 plan formerly shown as "Café & Retail" is shown as **Pro** (plan id unchanged, `plus`); (2) deposits are an optional feature, not the lead message: the landing pages lead with one link for bookings, clients booking themselves, reminders sending themselves and regulars coming back, and the booking flow shows a deposit only as an option; (3) the landing hero copy and job order are swappable variants for A/B tests (`LANDING_VARIANTS` in `apps/web/src/copy/en-CA.ts`, resolver in `apps/web/src/lib/marketing/landing-variants.ts`).
 
 Oct 28, 2026 · Strategy for @Sajjad Pirani · CAD unless marked US$ · Builds on `pricing.md` (Pricing v2), `strategy-audit-2.md`, `combined-strategy.md`, `docs/research/barbers-beauty.md`, `docs/research/service-businesses.md` and `docs/research/merchant-onboarding.md`. Where this document overturns an earlier decision it says so in a box. The founder's decisions of Oct 28 (app-first reminders, read-only Instagram, the built-in website builder, promos inside paid plans, area-only map pins, no licensing content) are folded in throughout.
@@ -117,6 +125,8 @@ Nothing about licensing, inspections or city rules appears in the product or the
 ---
 
 ## 3. Packaging
+
+> **Superseded on Oct 29, 2026** by `docs/business/pro-value.md` §2 (Pro $29, Studio $59, the trial, the first-year price). Kept for the reasoning; the numbers below are not the product any more.
 
 ### 3.1 What changes against Pricing v2
 

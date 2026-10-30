@@ -162,7 +162,7 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
           </Button>
         ) : null}
         {role === "owner" ? (
-          <a href={`${base}/billing`} className="text-meta text-muted-foreground hover:text-foreground">
+          <a href={offer.kind === "plan" ? `${base}/billing?plan=${offer.plan}` : `${base}/billing`} className="text-meta text-muted-foreground hover:text-foreground">
             See plans
           </a>
         ) : null}

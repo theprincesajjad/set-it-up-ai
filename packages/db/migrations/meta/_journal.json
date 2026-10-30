@@ -276,17 +276,17 @@
       "breakpoints": true
     },
     {
+      "idx": 39,
+      "version": "7",
+      "when": 1793289819635,
+      "tag": "0039_pro_p5",
+      "breakpoints": true
+    },
+    {
       "idx": 40,
       "version": "7",
       "when": 1793290819635,
       "tag": "0040_pro_p6",
-      "breakpoints": true
-    },
-    {
-      "idx": 39,
-      "version": "7",
-      "when": 1793291819635,
-      "tag": "0039_pro_p5",
       "breakpoints": true
     },
     {
@@ -301,6 +301,13 @@
       "version": "7",
       "when": 1793293819635,
       "tag": "0042_pro_p1",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793300819635,
+      "tag": "0043_wallet_shop_pass",
       "breakpoints": true
     }
   ]

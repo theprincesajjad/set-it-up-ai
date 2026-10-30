@@ -32,7 +32,7 @@ import type { AppContext } from "../context.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { startPhoneOtp } from "./auth.js";
 import { JOINABLE_STATUSES, notMerged } from "./customer.js";
-import { customerFeaturesFor, enabledFeaturesByMerchantId, enabledFeaturesFor, getRolloutStages, promoFeature } from "./features.js";
+import { customerFeaturesFor, enabledFeaturesByMerchantId, enabledFeaturesFor, getRolloutStages, promoFeature, trialPlanOf } from "./features.js";
 import { promoAppliesAt } from "./ledger.js";
 import { cardsForMember, locationDto, merchantBrief, programSummary, promoDto, rewardDto, terminologyOf } from "./serializers.js";
 import { injectSponsored as injectSponsoredItems } from "./sponsored.js";
@@ -479,7 +479,7 @@ export async function publicShop(ctx: AppContext, slug: string): Promise<network
     consentText: customerApi.marketingConsentText(m.name),
     memberCount: counts.get(m.id) ?? null,
     features: features.get(m.id)!,
-    poweredBy: showsPoweredBy(m.plan, m.restaurantTier),
+    poweredBy: showsPoweredBy(m.plan, m.restaurantTier, trialPlanOf(m)),
   };
 }
 

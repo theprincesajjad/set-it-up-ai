@@ -144,7 +144,7 @@ export async function adminOverview(ctx: AppContext): Promise<adminApi.AdminOver
   // Money
   let mrr = 0;
   const split = { plansCents: 0, restaurantCents: 0, whatsappCents: 0, extraLocationsCents: 0, otherAddOnsCents: 0 };
-  const byPlan = { plus: 0, pro: 0, restaurant: 0 };
+  const byPlan = { plus: 0, studio: 0, pro: 0, restaurant: 0 };
   const payingIds = new Set<string>();
   for (const { s, founding } of subs) {
     const c = subscriptionMrrCents(s, founding);
@@ -155,6 +155,7 @@ export async function adminOverview(ctx: AppContext): Promise<adminApi.AdminOver
     else split.plansCents += c;
     if (s.restaurantTier) byPlan.restaurant++;
     else if (s.plan === "pro") byPlan.pro++;
+    else if (s.plan === "studio") byPlan.studio++;
     else byPlan.plus++;
   }
   for (const a of (await addOnMrrByMerchant(ctx.db, subs)).values()) {

@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { clock, dateLabel, duePreview, duration, instantAt, money, parts } from "@/lib/dashboard/calendar";
 import { maskPhone } from "@/lib/dashboard/customers";
+import { plus } from "@/lib/dashboard/add-ons"; // phase-pro: P5
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { formatDate } from "@/lib/format";
 import { useMessageCustomer } from "@/components/dashboard/inbox/useMessageCustomer";
@@ -99,9 +100,9 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Tag>{t("addon.sheet.tag")}</Tag>
               <span className="min-w-0 text-body text-fg">{i.name}</span>
-              {i.durationMin ? <span className="text-meta text-fg-muted">{t("addon.plusTime", { duration: duration(i.durationMin) })}</span> : null}
+              {i.durationMin ? <span className="text-meta text-fg-muted">{plus(duration(i.durationMin))}</span> : null}
             </div>
-            <p className="shrink-0 text-body tabular text-fg">{t("addon.plusPrice", { price: money(i.priceCents) })}</p>
+            <p className="shrink-0 text-body tabular text-fg">{plus(money(i.priceCents))}</p>
           </li>
           // ---- end phase-pro: P5 ----
         ) : (

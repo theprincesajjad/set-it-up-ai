@@ -193,7 +193,7 @@ describe("tool use and grounding", () => {
 
   it("get_pricing returns every plan, add-on and the founding offer exactly as plans.ts has them", async () => {
     const p = (await getPricing(env.ctx, "all")) as Record<string, any>;
-    expect(p.shop_plans.map((x: any) => x.monthly)).toEqual([legalTokens()["plan.free.price"], legalTokens()["plan.plus.price"], legalTokens()["plan.pro.price"]]);
+    expect(p.shop_plans.map((x: any) => x.monthly)).toEqual([legalTokens()["plan.free.price"], legalTokens()["plan.plus.price"], legalTokens()["plan.studio.price"], legalTokens()["plan.pro.price"]]);
     expect(p.shop_plans[0].status).toContain("open");
     expect(p.shop_plans[1].status).toBe("open now"); // trade tools self-serve: Pro is buyable on day one
     expect(p.restaurant_plans.tiers.map((t: any) => t.monthly)).toEqual([legalTokens()["restaurant.starter.price"], legalTokens()["restaurant.growth.price"], legalTokens()["restaurant.pro.price"]]);
@@ -203,7 +203,8 @@ describe("tool use and grounding", () => {
     expect(p.founding_offer.price_examples[1].first_12_months_monthly).toBe("$99.50");
     expect(p.founding_offer.price_examples[1].then_monthly).toBe("$149.25");
     expect(JSON.stringify(p)).toContain(String(RESTAURANT_PLANS.pro.priceCents / 100));
-    expect(PLANS.plus.priceCents).toBe(3900);
+    expect(PLANS.plus.priceCents).toBe(2900);
+    expect(PLANS.studio.priceCents).toBe(5900);
   });
 
   it("does not let a wrong figure through: one retry with the reason, then a corrected answer", async () => {

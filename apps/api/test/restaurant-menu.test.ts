@@ -77,7 +77,7 @@ describe("dietary tags", () => {
 
     // A café without the pack: filters are ignored and no restaurant keys appear.
     const cafe = await restaurant(null, { slug: "plain-cafe" });
-    await env.db.update(merchants).set({ plan: "plus" }).where(eq(merchants.id, cafe.merchant.id));
+    await env.db.update(merchants).set({ plan: "studio" }).where(eq(merchants.id, cafe.merchant.id)); // order-ahead is Studio's
     await call(env, cafe.ownerToken, "POST", itemsUrl(cafe), { name: "Latte", priceCents: 500 });
     const menu = await call(env, null, "GET", "/v1/public/shops/plain-cafe/menu?halal=1&lang=hi");
     expect(menu.status).toBe(200);

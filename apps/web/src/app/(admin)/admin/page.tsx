@@ -42,7 +42,7 @@ export default function AdminToday() {
               <StatBlock
                 label="Money and activation"
                 items={[
-                  { label: "MRR", value: formatMoney(d.money.mrrCents), caption: d.money.payingShops ? `${d.money.payingShops} paying · Pro ${d.money.byPlan.plus}, Service ${d.money.byPlan.pro}${d.money.byPlan.restaurant ? `, Restaurant ${d.money.byPlan.restaurant}` : ""}` : "Paid plans start in month 4", href: "/admin/costs" },
+                  { label: "MRR", value: formatMoney(d.money.mrrCents), caption: d.money.payingShops ? `${d.money.payingShops} paying · Pro ${d.money.byPlan.plus}, Studio ${d.money.byPlan.studio}, Service ${d.money.byPlan.pro}${d.money.byPlan.restaurant ? `, Restaurant ${d.money.byPlan.restaurant}` : ""}` : "Paid plans start in month 4", href: "/admin/costs" },
                   { label: "Fee revenue, 30 days", value: formatMoney(d.money.feeRevenue30dCents), caption: `On ${formatMoney(d.money.volume30dCents)} paid through the app` },
                   { label: "Activated", value: pct(d.activation.rate), caption: `${formatNumber(d.activation.activated)} of ${formatNumber(d.activation.signed)} shops · goal ${pct(d.activation.goal)}`, dot: d.activation.rate < d.activation.goal && d.activation.signed >= 10 ? "accent" : undefined },
                   { label: "Cost per shop", value: formatMoney(d.costs.perShopCents), caption: `${formatMoney(d.costs.monthCents)} this month for ${formatNumber(d.costs.shops)} shops`, href: "/admin/costs" },

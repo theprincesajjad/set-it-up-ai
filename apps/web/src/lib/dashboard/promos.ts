@@ -114,10 +114,18 @@ export const PROMO_TEMPLATES: PromoTemplate[] = [
   { key: "quiet_mondays", title: "Quiet Mondays", blurb: "Free upsize every Monday", job: "Fixes your slowest day", draft: { kind: "offer", title: "Quiet Mondays", body: "Free upsize every Monday.", daysOfWeek: [1], endsLocal: "" } },
 ];
 
-export function templateDraft(key: string | null | undefined, now = new Date(), terminology = "stamps"): PromoDraft {
+export function templateDraft(key: string | null | undefined, now = new Date(), terminology = "stamps", day?: string | null): PromoDraft {
   const found = PROMO_TEMPLATES.find((x) => x.key === key);
   const t = found ? inUnit(found, terminology) : undefined;
-  return { ...emptyPromo(now), ...(t?.draft ?? {}) };
+  const weekday = dayFromParam(day);
+  return { ...emptyPromo(now), ...(t?.draft ?? {}), ...(weekday != null ? { daysOfWeek: [weekday] } : {}) };
+}
+
+/** phase-pro P6: `?day=sat` (sun..sat, from the weekly report's "Send a Saturday promo") as a weekday 0-6, or null. */
+export const PROMO_DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+export function dayFromParam(day: string | null | undefined): number | null {
+  const i = PROMO_DAY_KEYS.indexOf((day ?? "").trim().toLowerCase().slice(0, 3) as (typeof PROMO_DAY_KEYS)[number]);
+  return i >= 0 ? i : null;
 }
 
 /** Template wording in the shop's own unit: stamps are the default wording, points shops get the points version. */

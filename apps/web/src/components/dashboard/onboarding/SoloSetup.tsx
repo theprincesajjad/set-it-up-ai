@@ -7,7 +7,7 @@
  */
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { SERVICE_RADII_KM, SOLO_STEP_SECONDS, type appointmentsApi, type merchantApi } from "@ll/shared";
+import { PLANS, SERVICE_RADII_KM, SOLO_STEP_SECONDS, type appointmentsApi, type merchantApi } from "@ll/shared";
 import { AddRow, ChoiceGroup, ChoiceTile, LivePreview, PlanLine, ServiceRow, SetupProgress, ShareRow, StepCard, WeekStrip, type SetupStep } from "@/components/onboarding";
 import { BookFlow } from "@/components/pass/BookFlow";
 import { Banner } from "@/components/ui/Banner";
@@ -20,6 +20,9 @@ import { errorMessage } from "@/lib/api/errors";
 import { useLocale } from "@/lib/i18n/client";
 import { SOLO_STEP_ICON, centsToField, fieldToCents, parsePeople, smsHref, soloApi } from "@/lib/dashboard/onboarding";
 import { useMerchant } from "../MerchantContext";
+
+/** A list price as the plan lines show it ("$29", "$290"), from PLANS (phase-pro). */
+const planPrice = (cents: number) => `$${(cents / 100).toLocaleString("en-CA")}`;
 
 type Checklist = merchantApi.OnboardingChecklist;
 type Solo = merchantApi.SoloSetupDto;
@@ -631,7 +634,7 @@ function StaffCard({ api, trade, next, base }: CardProps) {
       <Err text={s.error} />
       {detail.merchant.plan === "free" ? (
         <PlanLine linkLabel={t("ob.solo.seePlan")} href={`${base}/billing`}>
-          {t("ob.solo.staffCap")}
+          {t("ob.solo.staffCap", { plan: PLANS.plus.name, price: planPrice(PLANS.plus.priceCents), studio: PLANS.studio.name })}
         </PlanLine>
       ) : null}
     </StepCard>
@@ -681,11 +684,11 @@ function LaterCard({ k, api, trade, onChange, base, checklist }: CardProps) {
       <Err text={s.error} />
       {k === "site" && !(detail.merchant as { annualSiteEntitled?: boolean }).annualSiteEntitled ? (
         <PlanLine linkLabel={t("ob.solo.seePlan")} href={`${base}/billing`}>
-          {t("ob.solo.site.plan")}
+          {t("ob.solo.site.plan", { annual: planPrice(PLANS.plus.annualPriceCents) })}
         </PlanLine>
       ) : k === "promos" && detail.merchant.plan === "free" ? (
         <PlanLine linkLabel={t("ob.solo.seePlan")} href={`${base}/billing`}>
-          {t("ob.solo.promos.plan")}
+          {t("ob.solo.promos.plan", { plan: PLANS.plus.name, price: planPrice(PLANS.plus.priceCents) })}
         </PlanLine>
       ) : null}
     </StepCard>

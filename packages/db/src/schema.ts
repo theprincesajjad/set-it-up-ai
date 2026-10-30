@@ -234,6 +234,8 @@ export const merchants = pgTable(
     logoUrl: text("logo_url"),
     coverUrl: text("cover_url"),
     brandColor: text("brand_color"),
+    /** The Apple / Google Wallet card the shop's customers carry (Settings, Wallet card). Validated by @ll/shared walletCardSchema. */
+    walletCard: jsonb("wallet_card").$type<WalletCardSettings>().notNull().default({}),
     /** The shop's look (docs/design/v3.2-clear-build.md): "clear" (default) or "warm". Validated by @ll/shared THEME_STYLES. */
     themeStyle: text("theme_style").notNull().default("clear"),
     /** Clear's graphite dark for the owner screens, opt-in. Warm ignores it (it follows the device). */
@@ -871,12 +873,23 @@ export const walletPasses = pgTable(
     id: id(),
     userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(), // apple | google
+    /** Null = the network pass; set = that shop's card for this customer (docs/engineering/wallet.md). */
+    merchantId: uuid("merchant_id").references(() => merchants.id, { onDelete: "cascade" }),
     serialNumber: text("serial_number").notNull(),
     authToken: text("auth_token").notNull(),
     lastUpdatedAt: ts("last_updated_at").notNull().defaultNow(),
+    /** Last confirmed in a wallet (Apple: a device registered; Google: a "save" callback). */
+    addedAt: ts("added_at"),
+    /** Last removed (Apple: its last device unregistered; Google: a "del" callback). In a wallet = addedAt after removedAt. */
+    removedAt: ts("removed_at"),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("wallet_passes_serial_uq").on(t.serialNumber), index("wallet_passes_user_idx").on(t.userId)],
+  (t) => [
+    uniqueIndex("wallet_passes_serial_uq").on(t.serialNumber),
+    index("wallet_passes_user_idx").on(t.userId),
+    uniqueIndex("wallet_passes_shop_uq").on(t.userId, t.platform, t.merchantId).where(sql`${t.merchantId} IS NOT NULL`),
+    index("wallet_passes_merchant_idx").on(t.merchantId),
+  ],
 );
 
 export const walletDeviceRegistrations = pgTable(
@@ -1361,6 +1374,19 @@ export type DietaryTags = { halal?: boolean; zabihah?: boolean; vegetarian?: boo
 export type Translations = Record<string, { name?: string; description?: string }>;
 
 /** Halal certification as the owner states it. `certifier` is printed only when present. */
+/** The shop's wallet card (Settings, Wallet card). Every key optional: an empty object is the default card. Shape mirrored by @ll/shared walletCardSchema. */
+export type WalletCardSettings = {
+  /** Card colour (#rrggbb); default the shop's brand colour. */
+  color?: string;
+  /** Front image: the stamp strip (default) or the plain colour. */
+  strip?: "stamps" | "plain";
+  /** Reward line override ("Free haircut"); default the cheapest active reward's name. */
+  rewardText?: string;
+  showHours?: boolean;
+  showBooking?: boolean;
+  /** Back-of-card terms; default the program's terms. */
+  terms?: string;
+};
 export type HalalCertification = { certifier: string; certificateNo?: string; scope: "all_meat" | "some_dishes"; slaughter: "zabihah" | "machine" | "unspecified"; validUntil?: string; fileUrl?: string };
 
 /** One group on a dish: single (radio) or multi (checkboxes). A "single" group with priceMode "absolute" sets the dish's price (size). */

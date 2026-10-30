@@ -14,7 +14,7 @@ Between **[Local Loyalty Inc.]** ("Local Loyalty", "we") and the business named 
    **There is no subscription fee and no transaction fee on your loyalty program.** If you take payments through us, the fees in section 5 apply, and we show them before you turn the feature on. A {{plan.free.name}} feature will never be moved to a paid plan.
 2. **You own your customer relationships.** Your members and their activity at your shop are yours. When you leave we give you an export of all of it, free, for {{retention.leaverExportDays}}: after you close your shop or move back to the {{plan.free.name}} plan, the owner can still download every file (and one ZIP of everything) from Settings, under Privacy.
 3. **Your points are your promise.** Points customers earn at your shop are issued by you, and you honour them at your shop. **Network bonuses are paid for by us**, never by you.
-4. Paid plans ({{plan.plus.name}} {{plan.plus.price}}, {{plan.pro.name}} {{plan.pro.price}}, and the restaurant plans {{restaurant.starter.name}}, {{restaurant.growth.name}} and {{restaurant.pro.name}}) are optional. They appear only when we launch them in your area, and you can cancel at any time. Prices are in section 1.2 and fees in section 5.
+4. Paid plans ({{plan.plus.name}} {{plan.plus.price}}, {{plan.studio.name}} {{plan.studio.price}}, {{plan.pro.name}} {{plan.pro.price}}, and the restaurant plans {{restaurant.starter.name}}, {{restaurant.growth.name}} and {{restaurant.pro.name}}) are optional. They appear only when we launch them in your area, and you can cancel at any time. Prices are in section 1.2 and fees in section 5.
 5. You follow the rules on consent, pharmacies, alcohol and fair promos, and we give you the tools to do it.
 
 ## 1. The Service and plans
@@ -27,7 +27,9 @@ Between **[Local Loyalty Inc.]** ("Local Loyalty", "we") and the business named 
 
 {{plan.plus.name}} adds: {{list.plus}}.
 
-{{plan.pro.name}} includes everything in {{plan.plus.name}}, plus: {{list.pro}}.
+{{plan.studio.name}} includes everything in {{plan.plus.name}}, plus: {{list.studio}}.
+
+{{plan.pro.name}} includes everything in {{plan.studio.name}}, plus: {{list.pro}}.
 
 Restaurants can instead buy a restaurant plan. Every restaurant plan includes everything in {{plan.plus.name}}.
 

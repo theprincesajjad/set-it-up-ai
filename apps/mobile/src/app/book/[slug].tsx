@@ -195,7 +195,7 @@ export default function Book() {
             <SwitchRow
               key={a.id}
               label={pick(a).name}
-              description={a.durationMin > 0 ? t("addon.plusPriceTime", { price: money(a.priceCents), duration: dur(a.durationMin) }) : t("addon.plusPrice", { price: money(a.priceCents) })}
+              description={a.durationMin > 0 ? `+${money(a.priceCents)} · +${dur(a.durationMin)}` : `+${money(a.priceCents)}`}
               value={addOnIds.includes(a.id)}
               onValueChange={(on) => setAddOnIds((cur) => (on ? [...cur, a.id] : cur.filter((x) => x !== a.id)))}
               divider={i < offeredAddOns.length - 1}

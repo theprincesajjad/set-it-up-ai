@@ -1,4 +1,6 @@
-# Wallet API (Apple Wallet + Google Wallet network pass)
+# Wallet API (Apple Wallet + Google Wallet: network pass and shop cards)
+
+Founder setup checklist and costs: [`../wallet.md`](../wallet.md).
 
 Contract: `packages/shared/src/api/wallet.ts` (`walletApi`). Code: `apps/api/src/routes/wallet/`, `services/wallet*.ts`.
 Artwork: `apps/api/assets/wallet/*.png`, rendered from `apps/web/public/brand/*.svg` by `apps/api/scripts/render-wallet-assets.cjs`.
@@ -25,7 +27,7 @@ Google: one **loyalty class** per network (`<issuer>.ll_network_loyalty`: issuer
 `/v1/wallet/assets/logo.png` 660 px, `hexBackgroundColor` `#0B0B0C`, country CA) and one **loyalty object** per customer
 (`<issuer>.ll_<userId without dashes>`): `loyaltyPoints` = rewards ready, `secondaryLoyaltyPoints` = shops, `accountId` =
 member code, QR barcode, `textModulesData` (top 3 shops with balances, "N more shops", expiry, how to use),
-`linksModuleData` (card, terms, support), `locations` (same 10).
+`linksModuleData` (card, terms, support), `merchantLocations` (same 10; `locations` is deprecated).
 
 ## Updates (automatic)
 
@@ -47,9 +49,9 @@ Apple has no message API; the `changeMessage` covers it.
 Other teams only need `notifyPassUpdate(ctx, userId)` when something **other than a balance** on the pass changes (e.g. the
 customer's name, a shop's name or expiry setting). It never throws.
 
-APNs auth: token-based (`APPLE_APNS_KEY_ID` + `APPLE_APNS_KEY_P8` + `APPLE_TEAM_ID`, ES256 provider JWT) first; any token
-rejected with 403 is retried with the pass certificate (`APPLE_PASS_CERT_PEM`/`APPLE_PASS_KEY_PEM`). Certificate-only works
-too. Without either, pushes go to a console recorder (`consoleApns`); tests use a local HTTP/2 server.
+APNs auth: the pass certificate first (Apple: pass pushes use the certificate that signed the pass; `APPLE_PASS_P12_BASE64` or
+`APPLE_PASS_CERT_PEM`/`APPLE_PASS_KEY_PEM`); a 403 is retried with the optional token (`APPLE_APNS_KEY_ID` + `APPLE_APNS_KEY_P8`,
+ES256 provider JWT), which is also used alone when no certificate is set. Without either, pushes go to a console recorder (`consoleApns`); tests use a local HTTP/2 server.
 
 ## Customer (Bearer)
 
@@ -102,3 +104,45 @@ user in the Wallet console). Console steps: `docs/engineering/connectors.md`.
 
 Migration note: the Google pass moved from a Generic class (`…ll_network_member`) to a Loyalty class
 (`…ll_network_loyalty`) before launch; no Generic passes were issued in production.
+
+## Shop cards (one per membership, in the shop's look)
+
+Code: `services/wallet-shop.ts` (model, Apple pass.json, Google class/object, updates, removal), `services/wallet-strip.ts`
+(stamp strip / progress bar PNG), `services/wallet-dev-fake.ts` (fake signer and Google key for dev, e2e and tests).
+
+`wallet_passes.merchant_id` set = a shop card (null = the network pass); serial per (user, shop, platform). `added_at` /
+`removed_at` track whether it is in a wallet (Apple: device registered / last device unregistered; Google: save / del callback).
+Shop settings: `merchants.wallet_card` (`walletApi.walletCardSchema`).
+
+| Apple field | Content |
+| --- | --- |
+| `organizationName`, `logoText`, `logo.png` | shop name; the shop's logo when it is a PNG (or sharp is installed), else the name alone |
+| colours | `wallet_card.color` or the brand colour; text white or near-black for ≥ 4.5:1 contrast; label a 28% mix |
+| header `balance` | "4 of 6" (stamps) or "120 points"; `changeMessage` "Stamps: %@" |
+| `strip.png` @1x/2x/3x | 375×123 / 750×246 / 1125×369: stamp circles (≤ 12, two rows above 6, last one the reward) or a progress bar; omitted for the plain front |
+| secondary `reward`, `member` | "Free coffee, 2 to go" / "ready now"; member name |
+| auxiliary `visit` | next confirmed appointment (date field), `relevantDate` (1 h before) and `relevantDates` (2 h before → end) |
+| barcode | QR `LL:<memberCode>` (the counter scans it as usual) |
+| `locations` | the shop's storefront (`exact`) pins only, `maxDistance` 150 m; none for `area`/`city` shops |
+| back | next visit, hours, booking link, where (public line only), shop page, how it works, terms, member code, updates, support |
+
+Google: class `<issuer>.ll_shop_<merchant hex>` (issuer name = shop, `programLogo` = the shop's https logo or ours,
+`hexBackgroundColor`, `merchantLocations` for storefronts, `callbackOptions.url` with an HMAC key), object
+`<issuer>.ll_s_<merchant hex>_<user hex>` (`loyaltyPoints` "Stamps / 4 of 6", `secondaryLoyaltyPoints` rewards ready,
+`heroImage` = `/v1/wallet/strip.png?...`, QR barcode, text modules reward / visit / hours / where / how / terms, links book / shop /
+support). PATCHes carry `notifyPreference` NOTIFY (customer activity) or DO_NOT_NOTIFY (shop edits).
+
+Updates: ledger listener `wallet_shop_pass`; `walletAppointmentChanged` from the appointment services (create, update, status,
+confirm, cancel, reschedule); `walletShopChanged` after `PUT /wallet-card` and after any 2xx write to `/v1/merchants/:id`,
+`/program`, `/rewards…` or `/locations…` (onResponse hook, coalesced per shop). Tests wait with `flushWalletWork()`.
+
+### `GET /v1/wallet/availability` (public) → `{ apple, google }`
+### `GET /v1/me/wallet/shops/:merchantId` → `ShopWalletResponse { apple: { available, url, added }, google: {…} }`
+`404` unless a member, or a client with a confirmed upcoming booking (their card starts at 0). Apple `url` is a 10-minute signed
+`/v1/wallet/apple/shop-download?token=` link; Google `url` the save link (dev-fake: `/v1/wallet/dev/google-save?jwt=`).
+### `GET /v1/wallet/apple/shop-download?token=` → pkpass (`401 link_expired`)
+### `GET /v1/wallet/strip.png?k=stamps|points&n=&g=&bg=&fg=` (public, counts and colours only) → 1125×369 PNG
+### `POST /v1/wallet/google/callback?k=<key>` body `{ signedMessage: "{classId, objectId, eventType: save|del}" }` → `200`, `401` bad key
+### `GET /v1/merchants/:id/wallet-card` (staff) → `WalletCardResponse { settings, preview, availability, cardsInWallets }`
+### `POST /v1/merchants/:id/wallet-card/preview` (staff, body: draft settings) → `ShopPassModel` for a sample member
+### `PUT /v1/merchants/:id/wallet-card` (manager+) → `WalletCardResponse`; refreshes every card of the shop

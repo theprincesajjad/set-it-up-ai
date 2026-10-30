@@ -24,7 +24,7 @@ export function PeopleSettings() {
   const { enabled, features, base } = useMerchant();
   const solo = useSoloCalendar();
   const { t } = useLocaleOrEnglish();
-  const free = features.plan === "free";
+  const free = features.plan === "free" && !features.trial; // phase-pro: a live trial already has Pro's calendars
   return (
     <div className="flex flex-col gap-4">
       <InstagramCard />
@@ -32,14 +32,17 @@ export function PeopleSettings() {
       <SurfaceCard>
         <Rows ruleTop={false}>
           <Row href={`${base}/messages/promos`} title={t("promo.title")} subtitle={t("promo.subtitle")} />
+          {/* phase-pro: P4 review requests after every visit, P6 the weekly goal and report time */}
+          {enabled("booking.appointments") ? <Row href={`${base}/settings/reviews`} title={t("revreq.title")} subtitle={t("revreq.sub")} /> : null}
+          {enabled("booking.appointments") ? <Row href={`${base}/settings/goal`} title={t("insights.goal.title")} subtitle={t("insights.goal.description")} /> : null}
         </Rows>
       </SurfaceCard>
       {enabled("booking.appointments") ? <IntakeCard /> : null}
       {solo && free ? (
         <SurfaceCard padded data-testid="second-chair">
           <p className="text-headline text-fg">{t("people.addChair")}</p>
-          <PlanLine className="mt-1" href={`${base}/billing`} linkLabel={t("promo.planCta", { plan: PLANS.plus.name })}>
-            {t("people.addChairBody")} {t("people.perMonth", { price: formatMoney(PLANS.plus.priceCents) })}
+          <PlanLine className="mt-1" href={`${base}/billing?plan=plus`} linkLabel={t("promo.planCta", { plan: PLANS.plus.name })}>
+            {t("people.addChairBody")} {t("people.perMonth", { price: formatMoney(PLANS.plus.priceCents).replace(/\.00$/, "") })}
           </PlanLine>
         </SurfaceCard>
       ) : null}

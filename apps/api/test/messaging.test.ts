@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditLogs, featureOverrides, ledgerTransactions, loyaltyPrograms, merchantMembers, merchants, messageDeliveries, messages, pushTokens, users } from "@ll/db";
+import { PLANS } from "@ll/shared";
 import { awardPurchase } from "../src/services/ledger.js";
 import {
   awardBirthdayBonuses,
@@ -152,14 +153,14 @@ describe("SMS (Plus) and push", () => {
     expect(ok.json().recipientCount).toBe(2); // Alice + Noemail; not muted/no-consent
     expect(env.ctx.providers.outbox.sms.at(-1)!.body).toBe("Fresh croissants today!\n— Test Shop. Reply STOP to unsubscribe.");
     const usage = (await env.app.inject({ method: "GET", url: `${base}/sms-usage`, headers: auth(s.ownerToken) })).json();
-    expect(usage).toMatchObject({ used: 2, allowance: 500, remaining: 498, resetsOn: "2026-12-01" });
+    expect(usage).toMatchObject({ used: 2, allowance: PLANS.plus.smsPerMonth, remaining: PLANS.plus.smsPerMonth - 2, resetsOn: "2026-12-01" });
 
-    await env.db.update(merchants).set({ smsCreditsUsed: 499 }).where(eq(merchants.id, s.merchant.id));
+    await env.db.update(merchants).set({ smsCreditsUsed: PLANS.plus.smsPerMonth - 1 }).where(eq(merchants.id, s.merchant.id));
     const over = await env.app.inject({ method: "POST", url: base, headers: auth(s.ownerToken), payload });
     expect(over.statusCode).toBe(402);
     expect(over.json().error.code).toBe("sms_credits_exhausted");
     const [m] = await env.db.select().from(merchants).where(eq(merchants.id, s.merchant.id));
-    expect(m!.smsCreditsUsed).toBe(499);
+    expect(m!.smsCreditsUsed).toBe(PLANS.plus.smsPerMonth - 1);
     expect((await env.app.inject({ method: "POST", url: base, headers: auth(s.ownerToken), payload: { channel: "sms", body: "x".repeat(321) } })).statusCode).toBe(400);
   });
 

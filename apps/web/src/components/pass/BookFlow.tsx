@@ -3,6 +3,7 @@ import { useHydratedValue } from "@/lib/useHydratedValue";
 import { ChevronLeft, ChevronRight, CircleCheck, CreditCard } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appointmentsApi as apptApi, serviceFitsSize, type appointmentsApi, type petApi } from "@ll/shared";
+import { ShopWalletCard } from "./ShopWalletCard";
 import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
@@ -271,6 +272,8 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           ) : null}
         </section>
         {!pharmacy ? <NextVisitCard appt={finished} showManage={false} /> : null}
+        {/* The shop's wallet card, with this visit on it (pharmacies keep visits off the card). */}
+        <ShopWalletCard merchantId={finished.merchant.id} shopName={shop.name} slug={shop.slug} className="rounded-sheet border border-line p-5" />
         <ReminderCard text={finished.reminderText} />
         {/* phase-solo D: the free reminder channel for a client who booked on the web. */}
         <NotifyPrompt />

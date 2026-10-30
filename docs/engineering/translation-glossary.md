@@ -93,8 +93,22 @@ One term per concept. Use the left column's meaning, not a new synonym.
 | name | नाम | نام | ਨਾਂ |
 | page | पेज | صفحہ | ਪੰਨਾ |
 | halal, zabihah | हलाल, ज़बीहा | حلال، ذبیحہ | ਹਲਾਲ, ਜ਼ਬੀਹਾ |
+| waitlist (phase-pro P2) | वेटलिस्ट | ویٹ لسٹ | ਵੇਟਲਿਸਟ |
+| add-on (to a service) | ऐड-ऑन | ایڈ آن | ਐਡ-ਆਨ |
+| weekly report, your week | आपका हफ़्ता (साप्ताहिक रिपोर्ट) | آپ کا ہفتہ (ہفتہ وار رپورٹ) | ਤੁਹਾਡਾ ਹਫ਼ਤਾ (ਹਫ਼ਤਾਵਾਰੀ ਰਿਪੋਰਟ) |
+| weekly goal | साप्ताहिक लक्ष्य | ہفتہ وار ہدف | ਹਫ਼ਤਾਵਾਰੀ ਟੀਚਾ |
+| review request | रिव्यू अनुरोध | جائزے کی درخواست | ਰਿਵਿਊ ਬੇਨਤੀ |
+| trial (the 14 days of Pro) | ट्रायल | ٹرائل | ਟ੍ਰਾਇਲ |
+| plan names: Free, Pro, Studio, Service | `{plan}`, Latin script | `{plan}`, Latin script | `{plan}`, Latin script |
 
 Notes on the terms that mattered most:
+
+- **Plan names** (Pro, Studio, Service) stay in Latin script and always come in through `{plan}` from `PLANS`, never typed (Oct 29,
+  phase "pro value": six keys that spelled प्रो, پرو, ਪ੍ਰੋ or a Latin "Pro" by hand now take `{plan}`: `wl.free.line`, `wl.seePro`,
+  `wl.cancel.free`, `wl.chip.free`, `wl.chip.freeNone`, `rb.customers.due`). Prices come in as `{price}` and `{annual}` (`ob.solo.*.plan`,
+  `ob.solo.staffCap`). "+$10" and "+15 min" on add-ons are formatted in code, so they are not catalog strings.
+- **Waitlist** is the loanword (वेटलिस्ट, ویٹ لسٹ, ਵੇਟਲਿਸਟ) everywhere; the walk-in line stays "लाइन/لائن/ਲਾਈਨ". A plural count with
+  its own words ("that slot / those slots") is written as a second `{n, plural, …}` in the same string so the placeholders match.
 
 - **Deposit** is the loanword in all three languages. बयाना, بیعانہ and ਬਿਆਨਾ are the traditional words for
   booking money, but they imply money the shop keeps. The product has partial and full refunds on hall

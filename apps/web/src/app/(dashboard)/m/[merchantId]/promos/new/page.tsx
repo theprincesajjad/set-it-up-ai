@@ -20,14 +20,17 @@ export default function NewPromoPageGated() {
 
 function NewPromoPage() {
   const { base, detail } = useMerchant();
-  const template = useSearchParams().get("template");
+  const params = useSearchParams();
+  const template = params.get("template");
+  // phase-pro P6: ?day=sat (the weekly report's "Send a Saturday promo") presets the weekday.
+  const day = params.get("day");
   // A template pre-fills the rule, hours and weekdays; everything stays editable.
-  const initial = useMemo(() => templateDraft(template, new Date(), detail.program?.terminology ?? "points"), [template, detail.program?.terminology]);
+  const initial = useMemo(() => templateDraft(template, new Date(), detail.program?.terminology ?? "points", day), [template, day, detail.program?.terminology]);
   return (
     <div className="flex flex-col gap-4">
       <BackLink href={`${base}/promos`}>Promos</BackLink>
       <PageHeader title="Create a promo" description="Shows on your shop page and the neighbourhood feed while it's live." />
-      <PromoEditor key={template ?? "blank"} initial={initial} />
+      <PromoEditor key={`${template ?? "blank"}:${day ?? ""}`} initial={initial} />
     </div>
   );
 }

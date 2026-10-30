@@ -85,6 +85,8 @@ export function createEndpoints(c: ApiClient) {
       status: () => c.get<walletApi.WalletStatusResponse>("/v1/me/wallet"),
       appleLink: () => c.get<walletApi.AppleLinkResponse>("/v1/me/wallet/apple/link"),
       google: () => c.get<walletApi.GoogleSaveResponse>("/v1/me/wallet/google"),
+      /** One shop's card (shop name, colour, stamps): availability, add links, already in a wallet. */
+      shop: (merchantId: string) => c.get<walletApi.ShopWalletResponse>(`/v1/me/wallet/shops/${encodeURIComponent(merchantId)}`),
     },
 
     network: {

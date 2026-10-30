@@ -31,7 +31,13 @@ Reports.
 | opted in, can text | consent, subscribed | In tables and hints. The legal consent text itself is never reworded here. |
 | balance history | ledger | Also "payment history" for what a customer paid. |
 | text | SMS | "Text" in every sentence a person reads. "SMS" stays in plan lists and developer pages. |
-| Pro, Service, Restaurant Starter, Restaurant Growth, Restaurant Pro | Plus, Café & Retail (the old name), Growth tier, tier | Name the plan, never its internal id. **Pro** is the $39 plan (renamed from "Café & Retail" on Oct 29, 2026; its id stays `plus`). The $99 plan is **Service** (id `pro`): never call it Pro. Say "Restaurant Pro" in full for the restaurant tier. In hi, ur and pa, keep "Pro" in Latin script, like the other plan names. |
+| Pro, Studio, Service, Restaurant Starter, Restaurant Growth, Restaurant Pro | Plus, Café & Retail (the old name), Growth tier, tier, "founding" | Name the plan, never its internal id, and read the name and the price from `PLANS` (`{plan}`, `{price}`), never type them. **Pro** (id `plus`) is the plan for one person; **Studio** (id `studio`, new Oct 29, 2026) is the plan for a shop with chairs; **Service** (id `pro`) is the repair plan: never call it Pro. Say "Restaurant Pro" in full for the restaurant tier. In hi, ur and pa, keep the plan names in Latin script, through `{plan}`. |
+| Studio | Team plan, Business, Premium | The shop plan: every chair bookable with no per-chair charge, the walk-in line, payouts, the till-side tools. "See Studio" opens billing with Studio picked. |
+| waitlist | wait list, queue (that is the walk-in line), standby | Clients who asked for a spot on a full day. "Offered" when a freed slot is held for one of them. The walk-in line is the "line". |
+| add-on | extra, upsell, upgrade | Something a client adds to a service when they book ("Nail art +$10 · +15 min"). Never "upsell" on a client's screen. |
+| weekly report, your week | digest, newsletter, analytics | The Sunday push and email, and Reports > Week. On Today the tile is "This week". |
+| trial, "Pro is on for 14 days" | free trial period, demo, freemium | Fourteen days of Pro, no card, from the day the booking link goes live. Say what happens at the end ("goes back to Free; your bookings and clients stay"). The length comes from `TRIAL_DAYS`. |
+| first year (the struck-through price) | founding, founding member, early bird, launch price | Annual Pro's first-year price shows only as "~~$290~~ $199 first year". The word "founding" never appears in the product, and the spots counter stays internal. |
 | early access, live | beta, GA | |
 | your kind of shop | your trade, vertical | "Trade" is a design-system word (trade colour), not a word for people. |
 | once N shops have joined | network-gated, network-wide | Why a feature is not open yet, in plain words. |
@@ -193,7 +199,7 @@ Rules: honest reason, real number, no price as headline, no "Upgrade". One sente
 | `soon.tickets` | **Service tickets.** Track every repair from drop-off to pickup, with photos and status updates. |
 | `soon.quotes` | **Quote approvals.** Send a quote; your customer approves it on their phone. No more phone tag. |
 | `soon.invoices` | **Invoices.** Send the final bill and get paid in the app. Customers earn points automatically. |
-| `soon.sms` | **SMS campaigns.** Text your opted-in regulars. 500 texts a month included with Pro. |
+| `soon.sms` | **SMS campaigns.** Text your opted-in regulars. {texts} texts a month included with Pro (`PLANS.plus.smsPerMonth`). |
 | `soon.automations` | **Automations.** "We miss you" and "Your reward is ready" messages that send themselves. |
 | `soon.boost` | **Boost a promo.** Show your offer to people near your street. Always labelled Sponsored. |
 | `soon.beta` | In beta. Try it early and tell us what you think. |
@@ -201,6 +207,39 @@ Rules: honest reason, real number, no price as headline, no "Upgrade". One sente
 | `soon.notified` | We'll let you know |
 | `soon.pricing.note` | Paid tools switch on once enough shops are on the network, so every feature launches with customers already using the app. |
 | `soon.pricing.promise` | Our promise: a feature that's free today stays free. Loyalty will never move to a paid plan. |
+
+### 5.1 Pro moments (phase "pro value", Oct 29, 2026)
+
+Source: `docs/business/pro-value.md` §5. Rules on top of the ones above: a moment states a real number from the shop's own
+week (`merchant_signals`) and says nothing when the count is zero; one moment per screen; no banners; the link is always "See Pro"
+or "See Studio" and opens `/m/:id/billing?plan=plus` (or `studio`) with that plan picked. Prices, counts and the trial length
+come from `PLANS`, `PROMOS_PER_MONTH_*` and `TRIAL_DAYS`. Strings live in `packages/shared/src/i18n/messages/en.ts` in the
+`phase-pro` blocks; hi, ur and pa follow the [translation glossary](../engineering/translation-glossary.md).
+
+| Where | Key | Copy (Free) |
+| --- | --- | --- |
+| Calendar, a cancelled slot, people waiting | `wl.chip.free` | {n} waiting · On {plan} they'd be offered this slot. See Pro |
+| Calendar, a cancelled slot, nobody waiting | `wl.chip.freeNone` | On {plan}, cancelled slots go to a waitlist by themselves. See Pro |
+| Cancel confirm | `wl.cancel.switch`, `wl.cancel.free` | Offer this slot to the waitlist ({n} waiting) · On {plan}, this slot is offered to them automatically. (locked switch) |
+| Waitlist page | `wl.free.line` | {n} waiting. {plan} offers open slots to them automatically, with a two-hour hold. Until then, you can message them from here. |
+| Today, This week | `insights.locked.fullDay`, `insights.locked.cancellations`, `insights.locked.inbox` | {day} was full. {n} people looked and left. {plan} keeps them on a waitlist. · {n} cancellations this week. {plan} would have offered those slots to your waitlist. · Your week, in your inbox every {weekday}, on {plan}. |
+| Customers, Due for a visit | `rb.customers.due` | {n} clients are due. {plan} reminds them for you, by app, email or text, with a link that already knows their usual service. See Pro |
+| Rebooking, mode switch | `rb.mode.*`, `rb.planCta` | Remind them for me · On {plan}, {price} a month |
+| After checkout | `revreq.checkoutFree` (on Pro: `revreq.checkoutPro`, "A review request goes to {name} at {time}.") | Ask {first name} for a Google review? On {plan} this goes out by itself two hours after every visit. See Pro |
+| Settings > Reviews | `revreq.lockedBody` | The switch locked behind the plan line, with "{price} a month." |
+| Services, Add-ons | `addon.planLine` | {examples}. On {plan}, clients add them when they book, and the time is blocked for you. See Pro (examples by trade: `addon.examples.*`) |
+| Promos | `promo.planLine` | {count} a month on {plan}. See Pro |
+| Staff, a second calendar on Free | (staff sheet) | A second calendar is on Pro; a third and more on Studio, with no per-chair charge. See Pro |
+| Staff, a third calendar on Pro | (staff sheet) | Three or more calendars are on Studio, {price} a month for the whole shop. No per-chair charge. See Studio |
+| Queue and Payouts on Pro | `TEASER_COPY` in `FeatureTeaser.tsx` | The walk-in line is on Studio: clients join from their phone, see the wait, and get a text when they're next. · Chair rent, commission and take-home per barber, every week, on Studio. |
+
+The trial, on Today (`TrialCard.tsx`, `trial.card.*`) and on billing (`TrialBanner.tsx`, `trial.banner.*`):
+
+| Moment | Copy |
+| --- | --- |
+| Start (more than three days left) | **Your link is live. {plan} is on for {days} days, free.** No card, nothing to cancel. For the next two weeks, cancelled slots go to a waitlist, clients who are due get a reminder with a book-again link, every visit is followed by a review request, and your week arrives on Sunday with the numbers. On {date} it goes back to Free unless you keep it. Your bookings and clients stay either way. [See what's on] [Set a weekly goal] |
+| Three days left (`TRIAL_REMINDER_DAYS_LEFT`) | **{plan} ends {weekday}.** So far: {fills} cancelled slots filled, {rebooked} clients rebooked from reminders, {reviews} review requests sent, {addons} add-ons booked. That's about {amount} you didn't have to chase. {plan} is {price} a month, or {annual} a year with your website. [Keep Pro] [Let it end]. With every count at zero: "So far it's been quiet, which is normal in the first two weeks. …" |
+| Ended (the receipt, for a week) | **{plan} ended {weekday}.** {days} days · {bookings} bookings · {amount} booked, the parts line, "paused, not deleted", [Turn Pro on, {price} a month] |
 
 ## 6. Sponsored
 
@@ -406,6 +445,12 @@ Voice rules for this group:
 | `site.*`, `shell.nav.site` | public website labels, lapse banner | Built-in website |
 | `bk.privacy.*`, `shop.byAppt`, `shop.area`, `shop.travels`, `bk.msg.*` | area rule, "by appointment", confirmation and reminder texts with the address | Booking page, confirmation |
 | `ob.solo.share.*` | bio steps, text yourself the link, QR, paste a Linktree, Fresha or Booksy link | Share step |
+| `wl.*` | the full-day sheet, "You're on the list", the offer texts and push, Take it, "That spot was taken", the Waitlist page, the calendar chip, the cancel switch | Booking page, `/w/:token`, owner Waitlist, calendar (phase-pro P2) |
+| `rb.*` | the mode switch (review, automatic, off), the results strip, the Customers due line, the book-again welcome | Rebooking page, Customers, booking page (P3) |
+| `revreq.*` | Settings > Reviews, the checkout line, the last 30 days | Settings, checkout (P4) |
+| `addon.*` | the Add-ons section, the booking step "Add anything?", the sheet tag | Services, booking page, appointment sheet (P5). "+$10" and "+15 min" are formatted in code, not catalog strings |
+| `insights.*` | This week tile, the locked lines, Reports > Week, Settings > Weekly goal, the Sunday push | Today, Reports, Settings (P6) |
+| `trial.*` | the Today card, the billing banner, the receipt | Today, billing (P1) |
 
 The English was reviewed against sections 0 to 3 in this pass. Changes: "your trade" became "your
 kind of work" (`ob.solo.services.body`), "Stamps are added at the till by themselves" became "...

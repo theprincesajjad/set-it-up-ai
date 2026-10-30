@@ -41,6 +41,7 @@ import { addOnLinesOf, publicAddOnsByService, resolveAddOns, withAddOns } from "
 import { appointmentPaymentsReady, chargeConnectSavedMethod, createConnectPayment, refundConnectPayment, retrieveConnectPayment, savedMethodScope, chargeModeFor } from "./payments.js";
 import { getPayments } from "../providers/payments.js";
 import { waitlistOnFreedSlot } from "./waitlist.js"; // phase-pro: p2
+import { walletAppointmentChanged } from "./wallet-shop.js";
 
 const { ACTIVE_APPOINTMENT_STATUSES, HOLD_MINUTES } = appointmentsApi;
 const MIN = 60_000;
@@ -283,6 +284,7 @@ async function confirmedText(ctx: AppContext, merchant: Merchant, a: Appointment
 
 async function notifyConfirmed(ctx: AppContext, merchant: Merchant, a: Appointment) {
   if (!a.userId) return;
+  walletAppointmentChanged(ctx, a); // wallet: the next visit on the shop card
   const locale = await localeOf(ctx, a.userId);
   const t = translator(locale);
   // A pharmacy confirmation, like its reminder, names neither the shop nor the service: it can show on a lock screen.
@@ -547,6 +549,7 @@ export async function cancelMine(ctx: AppContext, userId: string, id: string): P
   if (!row) throw conflict("This appointment was just updated. Refresh and try again.");
   if (!late) await refundDeposit(ctx, merchant, a, "requested_by_customer");
   await waitlistOnFreedSlot(ctx, merchant, row); // phase-pro: p2 (offer the slot to the waitlist)
+  walletAppointmentChanged(ctx, row); // wallet: the next visit on the shop card
   return { appointment: (await myDtos(ctx, [row]))[0]!, feeCharged: fee.charged, feeCents: fee.cents };
 }
 
@@ -623,6 +626,7 @@ export async function setStatus(ctx: AppContext, staff: StaffContext, id: string
   if (body.status === "cancelled" && cur.depositPaidAt) await refundDeposit(ctx, merchant, cur, "requested_by_customer");
   if (body.status === "completed") await autoSetPreferred(ctx, row.userId, merchant.id, row.staffId);
   await waitlistOnFreedSlot(ctx, merchant, row); // phase-pro: p2 (a staff cancel or a no-show frees the slot; other statuses return at once)
+  walletAppointmentChanged(ctx, row); // wallet: the next visit on the shop card
   return { appointment: await appointmentDto(ctx.db, (await getAppointment(ctx.db, merchant.id, id))), feeCharged: fee.charged, feeCents: fee.cents };
 }
 

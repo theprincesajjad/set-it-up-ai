@@ -16,7 +16,8 @@ beforeEach(async () => {
 afterEach(async () => env.close());
 
 async function shop(opts: { vertical?: string } = {}) {
-  const m = await paidMerchant(env, { plan: "plus", vertical: opts.vertical ?? "barber" });
+  // The walk-in line, payouts and chair rent are Studio's (pro-value.md §2.2): a barbershop with chairs.
+  const m = await paidMerchant(env, { plan: "studio", vertical: opts.vertical ?? "barber" });
   const base = `/v1/merchants/${m.merchant.id}`;
   const owner = m.ownerToken;
   const marcus = await staffMember(env, m.merchant.id, "staff");
@@ -54,6 +55,9 @@ describe("joining the line", () => {
   it("is gated by the plan and by the open switch", async () => {
     const free = await paidMerchant(env, { plan: "free", vertical: "barber" });
     expect((await call(env, null, "GET", `/v1/public/shops/${free.merchant.slug}/queue`)).status).toBe(402);
+    // On Pro the line is offered on Studio.
+    const pro = await paidMerchant(env, { plan: "plus", vertical: "barber" });
+    expect((await call(env, null, "GET", `/v1/public/shops/${pro.merchant.slug}/queue`)).status).toBe(402);
     const s = await shop();
     await call(env, s.owner, "PUT", `${s.base}/queue/settings`, { open: false });
     const r = await join(s, { name: "Omar", phone: "416-555-0201" });
@@ -440,9 +444,9 @@ describe("beauty supply claims guard", () => {
 });
 
 describe("plans", () => {
-  it("the new keys are paid features, not free forever", () => {
+  it("the new keys are paid features on Studio, not free forever", () => {
     for (const k of ["booking.walkin_queue", "staff.payouts"] as const) {
-      expect(FEATURES[k].minPlan).toBe("plus");
+      expect(FEATURES[k].minPlan).toBe("studio");
       expect((FREE_FOREVER as readonly string[]).includes(k)).toBe(false);
     }
   });

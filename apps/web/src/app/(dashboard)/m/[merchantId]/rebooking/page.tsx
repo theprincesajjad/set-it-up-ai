@@ -32,7 +32,7 @@ function RebookLocked() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Rebooking" description="Nudge regulars once when they are due, in their language, with a link that books the same service." />
-      <RebookMode settings={{ auto: false, mode: "review", canAuto: false }} canEdit={false} billingHref={`${base}/billing`} onChange={() => undefined} />
+      <RebookMode settings={{ auto: false, mode: "review", canAuto: false }} canEdit={false} billingHref={`${base}/billing?plan=plus`} onChange={() => undefined} />
     </div>
   );
 }
@@ -100,7 +100,7 @@ function Rebooking() {
             <RebookMode
               settings={d.settings}
               canEdit={manager}
-              billingHref={`${base}/billing`}
+              billingHref={`${base}/billing?plan=plus`}
               onChange={async (m) => {
                 const r = await act.run(() => api.serviceOps.rebookMode(m));
                 if (r) {

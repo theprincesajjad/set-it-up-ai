@@ -29,7 +29,7 @@ const memberBalance = async (merchantId: string, userId: string) => {
 
 describe("payment processing (bank debit in flight)", () => {
   async function placeInApp(key: string) {
-    const m = await paidMerchant(env, { plan: "plus" });
+    const m = await paidMerchant(env, { plan: "studio" });
     const { latte } = await menu(m);
     const c = await customer(env);
     const placed = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: m.merchant.id, locationId: m.location.id, items: [{ catalogItemId: latte.id, quantity: 1 }], idempotencyKey: key });
@@ -80,7 +80,7 @@ describe("tax", () => {
 
 describe("order-ahead", () => {
   it("prices server-side with modifiers, reward discount (not on no-earn items), HST and tip; ignores client prices", async () => {
-    const m = await paidMerchant(env, { plan: "plus" });
+    const m = await paidMerchant(env, { plan: "studio" });
     const { latte, croissant, lottery } = await menu(m);
     const c = await customer(env);
     await awardPurchase(env.ctx, { merchantId: m.merchant.id, userId: c.user.id, amountCents: 6000, source: "staff_app" }); // 60 pts
@@ -115,7 +115,7 @@ describe("order-ahead", () => {
   });
 
   it("rejects unknown modifiers, unavailable items and in-app pay without Connect", async () => {
-    const m = await paidMerchant(env, { plan: "plus", connect: false });
+    const m = await paidMerchant(env, { plan: "studio", connect: false });
     const { latte, croissant } = await menu(m);
     const c = await customer(env);
     const base = { merchantId: m.merchant.id, locationId: m.location.id };
@@ -134,7 +134,7 @@ describe("order-ahead", () => {
   });
 
   it("full lifecycle: pay via webhook → accept → ready (push + SMS) → picked up awards points once", async () => {
-    const m = await paidMerchant(env, { plan: "plus" });
+    const m = await paidMerchant(env, { plan: "studio" });
     const { latte, croissant, lottery } = await menu(m);
     const c = await customer(env);
     const placed = await call(env, c.token, "POST", "/v1/me/orders", {
@@ -193,7 +193,7 @@ describe("order-ahead", () => {
   });
 
   it("cancelling a paid order refunds it and returns redeemed points; numbers are per merchant", async () => {
-    const m = await paidMerchant(env, { plan: "plus" });
+    const m = await paidMerchant(env, { plan: "studio" });
     const { latte } = await menu(m);
     const c = await customer(env);
     await awardPurchase(env.ctx, { merchantId: m.merchant.id, userId: c.user.id, amountCents: 5000, source: "staff_app" });
@@ -211,7 +211,7 @@ describe("order-ahead", () => {
     // A second order gets #2; a different merchant starts at #1.
     const second = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: m.merchant.id, locationId: m.location.id, items: [{ catalogItemId: latte.id, quantity: 1 }], paymentMethod: "at_pickup", idempotencyKey: "cancel-0002" });
     expect(second.body.order.number).toBe(2);
-    const m2 = await paidMerchant(env, { plan: "plus" });
+    const m2 = await paidMerchant(env, { plan: "studio" });
     const menu2 = await menu(m2);
     const third = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: m2.merchant.id, locationId: m2.location.id, items: [{ catalogItemId: menu2.latte.id, quantity: 1 }], paymentMethod: "at_pickup", idempotencyKey: "cancel-0003" });
     expect(third.body.order.number).toBe(1);
@@ -223,7 +223,7 @@ describe("order-ahead", () => {
   });
 
   it("pay-at-pickup orders become paid on pickup with no platform fee", async () => {
-    const m = await paidMerchant(env, { plan: "plus" });
+    const m = await paidMerchant(env, { plan: "studio" });
     const { croissant } = await menu(m);
     const c = await customer(env, { pushToken: false });
     const placed = await call(env, c.token, "POST", "/v1/me/orders", { merchantId: m.merchant.id, locationId: m.location.id, items: [{ catalogItemId: croissant.id, quantity: 4 }], paymentMethod: "at_pickup", idempotencyKey: "atpickup-0001" });

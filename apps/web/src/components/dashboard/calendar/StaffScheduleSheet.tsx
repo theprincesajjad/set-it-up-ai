@@ -1,15 +1,17 @@
 "use client";
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { appointmentsApi, merchantApi } from "@ll/shared";
+import { PLANS, type appointmentsApi, type merchantApi } from "@ll/shared";
 import { SidePanel } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { PlanLine } from "@/components/onboarding/PlanLine";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { TextField, inputBase } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
-import { formatDateTime } from "@/lib/format";
+import { isApiError } from "@/lib/api/errors";
+import { formatDateTime, formatMoney } from "@/lib/format";
 import { fromLocalInput } from "@/lib/dashboard/time";
 import { duration, money } from "@/lib/dashboard/calendar";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
@@ -41,9 +43,11 @@ function fromHours(hours: appointmentsApi.StaffHoursDto[]): Week {
  * services they do with their own length and price, and time off. The calendar and online booking read these.
  */
 export function StaffScheduleSheet({ open, onClose, member }: { open: boolean; onClose: () => void; member: merchantApi.StaffMember | null }) {
-  const { api } = useMerchant();
+  const { api, base } = useMerchant();
   const toast = useToast();
   const act = useAction();
+  // phase-pro P1: a calendar past the plan's cap (402 plan_limit) shows the plan line with the plan that allows it (pro-value.md §5.1, §5.6).
+  const [limitPlan, setLimitPlan] = useState<"plus" | "studio" | null>(null);
   const cal = useApi(open ? () => api.appointments.staff() : null, [api, open]);
   const services = useApi(open ? () => api.appointments.services("appointment") : null, [api, open]);
   const me = cal.data?.items.find((s) => s.userId === member?.userId);
@@ -83,8 +87,15 @@ export function StaffScheduleSheet({ open, onClose, member }: { open: boolean; o
   async function save() {
     const days = DAYS.flatMap((d) => (week[d.weekday]?.on ? week[d.weekday]!.shifts.map((s) => ({ weekday: d.weekday, startsLocal: s.start, endsLocal: s.end })) : []));
     const picked = Object.entries(does).filter(([, v]) => v.on).map(([serviceId, v]) => ({ serviceId, durationMin: v.min ? Number(v.min) : null, priceCents: v.price !== "" ? Math.round(Number(v.price) * 100) : null }));
+    setLimitPlan(null);
     const r = await act.run(async () => {
-      await api.appointments.putHours(member!.userId, { days });
+      try {
+        await api.appointments.putHours(member!.userId, { days });
+      } catch (e) {
+        const plan = isApiError(e) && e.code === "plan_limit" ? (e.details as { offer?: { plan?: string } } | undefined)?.offer?.plan : undefined;
+        if (plan === "plus" || plan === "studio") setLimitPlan(plan);
+        throw e;
+      }
       await api.appointments.putStaffServices(member!.userId, { services: picked });
       return true;
     });
@@ -210,7 +221,15 @@ export function StaffScheduleSheet({ open, onClose, member }: { open: boolean; o
           <TextField label="Reason" optionalLabel value={offWhy} onChange={(e) => setOffWhy(e.target.value)} />
           <Button variant="secondary" size="sm" className="w-fit" onClick={addOff}>Add time off</Button>
         </section>
-        {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+        {act.error && limitPlan ? (
+          <PlanLine href={`${base}/billing?plan=${limitPlan}`} linkLabel={`See ${PLANS[limitPlan].name}`}>
+            {limitPlan === "studio"
+              ? `Three or more calendars are on ${PLANS.studio.name}, ${formatMoney(PLANS.studio.priceCents).replace(/\.00$/, "")} a month for the whole shop. No per-chair charge.`
+              : `A second calendar is on ${PLANS.plus.name}; a third and more on ${PLANS.studio.name}, with no per-chair charge.`}
+          </PlanLine>
+        ) : act.error ? (
+          <Banner tone="danger">{act.error}</Banner>
+        ) : null}
       </div>
     </SidePanel>
   );

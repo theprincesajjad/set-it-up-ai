@@ -339,7 +339,7 @@ describe("POS webhook pipeline (Square)", () => {
     expect(await memberByPhone(m.merchant.id, m.phone!)).toBeNull();
     const sq = (await env.app.inject({ method: "GET", url: `/v1/merchants/${m.merchant.id}/integrations`, headers: auth(m.ownerToken) })).json().items.find((i: { provider: string }) => i.provider === "square");
     expect(sq).toMatchObject({ status: "connected", locked: true });
-    expect(sq.pausedReason).toMatch(/^Paused: POS auto-award is a Pro feature/);
+    expect(sq.pausedReason).toMatch(/^Paused: POS auto-award is a Studio feature/);
     // Re-enabled → awards again; nothing was deleted.
     await grantFeatures(env, m.merchant.id, ["integrations.pos_auto_award"]);
     expect((await postSquare(squarePaymentUpdated({ eventId: "back_1", orderId: "BACK_1" }))).json().results[0].status).toBe("processed");

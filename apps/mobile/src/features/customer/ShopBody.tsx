@@ -59,6 +59,7 @@ import { ShopDietary, ShopRestaurantRows, ShopWhatsapp } from "../restaurant/Sho
 import { useDeviceLocation } from "./location";
 import { useMembershipDetail, usePhase2, useWallet } from "./queries";
 import { JoinSheet, RedeemConfirmSheet } from "./sheets";
+import { WalletPassButton } from "./WalletPassButton";
 import { useLocale } from "../../lib/i18n";
 
 export function useShopModel(slug: string | null | undefined) {
@@ -258,6 +259,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         </View>
       </View>}
       {m ? <View>{balance}</View> : null}
+      {/* This shop's own wallet card (hidden when the server can't issue it). */}
+      {m ? <View style={{ marginTop: 12 }}><WalletPassButton merchantId={s.merchant.id} size="md" /></View> : null}
       <View style={styles.statusRow}>
         {status ? <View style={[styles.dot, { backgroundColor: status.open ? c.positive : c.fgSubtle }]} /> : null}
         {statusWord ? <Text style={ui(13, 500, 17)}>{statusWord}</Text> : null}

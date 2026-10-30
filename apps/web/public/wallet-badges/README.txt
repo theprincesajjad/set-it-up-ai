@@ -1,9 +1,13 @@
-Official wallet badge artwork goes here before launch (then set NEXT_PUBLIC_WALLET_BADGES=1):
+Official wallet button artwork. Use the files exactly as supplied: no recolouring, cropping or re-typesetting.
+Setup and brand rules: docs/engineering/wallet.md.
 
-  add-to-apple-wallet.svg   Apple "Add to Apple Wallet" badge (black, en-CA; add fr-CA when we ship French)
-                            https://developer.apple.com/wallet/add-to-apple-wallet-guidelines/
-  add-to-google-wallet.svg  Google "Add to Google Wallet" button (black/dark, en-CA)
-                            https://developers.google.com/wallet/generic/resources/brand-guidelines
+  add-to-google-wallet-en-CA.svg  Google "Add to Google Wallet" primary button, en-CA (in the repo)
+  add-to-google-wallet-ur.svg     the same, Urdu (Google has no Hindi or Punjabi button; those use en-CA)
+                                  Source: https://developers.google.com/static/wallet/download-assets/add-to-wallet-svg.zip
+                                  (enCA_add_to_google_wallet_wallet-button.svg, ur_add_to_google_wallet_wallet-button.svg)
 
-Use the files exactly as supplied: no recolouring, cropping or re-typesetting.
-Until then apps/web/src/components/pass/WalletButtons.tsx renders the official wording in a black capsule.
+  add-to-apple-wallet-en-CA.svg   Apple "Add to Apple Wallet" badge (NOT in the repo: Apple licenses it only to Apple Developer
+                                  Program members). After enrolling, download it from
+                                  https://developer.apple.com/wallet/add-to-apple-wallet-guidelines/ ("Download badge files"),
+                                  copy the en-CA black SVG here under this name, and set NEXT_PUBLIC_WALLET_BADGES=1.
+                                  Until then the web shows a neutral black button with the official wording.

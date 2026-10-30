@@ -14,6 +14,7 @@ import type { Config } from "../config.js";
 import { requestJson } from "../connectors/util.js";
 import type { Fetch } from "./integrations-http.js";
 import { PASS_COLORS, balanceText, passLocale, type PassLocation } from "./wallet-apple.js";
+import { FAKE_ISSUER_ID, devServiceAccount, recordingGoogleFetch } from "./wallet-dev-fake.js";
 
 export interface ServiceAccount {
   client_email: string;
@@ -38,7 +39,19 @@ export function parseServiceAccount(raw: string | undefined): ServiceAccount | n
   return tryParse(raw) ?? tryParse(Buffer.from(raw, "base64").toString("utf8"));
 }
 
-export const googleConfigured = (config: Config) => !!(config.google.walletIssuerId && parseServiceAccount(config.google.walletServiceAccountJson));
+/** Issuer id + service account from env, or the throwaway pair in dev-fake mode (WALLET_DEV_FAKE=1, never production). */
+export function googleCreds(config: Config): { issuerId: string; sa: ServiceAccount; fake: boolean } | null {
+  const sa = parseServiceAccount(config.google.walletServiceAccountJson);
+  if (config.google.walletIssuerId && sa) return { issuerId: config.google.walletIssuerId, sa, fake: false };
+  if (config.walletDevFake && config.env !== "production" && !config.google.walletIssuerId) return { issuerId: FAKE_ISSUER_ID, sa: parseServiceAccount(devServiceAccount().json)!, fake: true };
+  return null;
+}
+
+export const googleConfigured = (config: Config) => !!googleCreds(config);
+
+const devFetch = recordingGoogleFetch(false);
+/** Outbound HTTP for Google Wallet: the injected fetch (tests), the recorder in dev-fake mode, else global fetch. */
+export const googleHttp = (config: Config, injected: Fetch): Fetch => (googleCreds(config)?.fake && injected === fetch ? devFetch : injected);
 
 export const classIdFor = (issuerId: string) => `${issuerId}.ll_network_loyalty`;
 export const objectIdFor = (issuerId: string, userId: string) => `${issuerId}.ll_${userId.replace(/-/g, "")}`;
@@ -115,14 +128,15 @@ export function loyaltyObject(config: Config, issuerId: string, userId: string, 
         { id: "support", uri: `mailto:${BRAND.supportEmail}`, description: tr("sh.pass.support") },
       ],
     },
-    ...(input.locations?.length ? { locations: input.locations.slice(0, 10).map((l) => ({ latitude: l.latitude, longitude: l.longitude })) } : {}),
+    // merchantLocations (≤10) trigger Google's geo notifications; `locations` is deprecated and no longer does.
+    ...(input.locations?.length ? { merchantLocations: input.locations.slice(0, 10).map((l) => ({ latitude: l.latitude, longitude: l.longitude })) } : {}),
   };
 }
 
 export async function googleSaveUrl(config: Config, userId: string, input: GoogleObjectInput, now: Date): Promise<string> {
-  const sa = parseServiceAccount(config.google.walletServiceAccountJson);
-  const issuerId = config.google.walletIssuerId;
-  if (!sa || !issuerId) throw new Error("Google Wallet is not configured");
+  const creds = googleCreds(config);
+  if (!creds) throw new Error("Google Wallet is not configured");
+  const { sa, issuerId } = creds;
   const key = await importPKCS8(sa.private_key, "RS256");
   const jwt = await new SignJWT({
     origins: [config.publicWebUrl],
@@ -142,7 +156,8 @@ export const clearGoogleTokenCache = () => tokenCache.clear();
 
 /** OAuth 2.0 service-account flow (JWT bearer grant) → access token for the Wallet API. */
 export async function accessToken(config: Config, fetch: Fetch, now: Date): Promise<string> {
-  const sa = parseServiceAccount(config.google.walletServiceAccountJson)!;
+  const sa = googleCreds(config)!.sa;
+  fetch = googleHttp(config, fetch);
   const cached = tokenCache.get(sa.client_email);
   if (cached && cached.exp - 60_000 > now.getTime()) return cached.token;
   const key = await importPKCS8(sa.private_key, "RS256");
@@ -161,7 +176,8 @@ export async function accessToken(config: Config, fetch: Fetch, now: Date): Prom
 
 /** PATCH the customer's object with fresh balances. 404 (never saved) is fine. */
 export async function updateGoogleObject(config: Config, userId: string, input: GoogleObjectInput, fetch: Fetch, now: Date): Promise<"updated" | "missing"> {
-  const issuerId = config.google.walletIssuerId!;
+  const issuerId = googleCreds(config)!.issuerId;
+  fetch = googleHttp(config, fetch);
   const token = await accessToken(config, fetch, now);
   const obj = loyaltyObject(config, issuerId, userId, input);
   try {
@@ -184,7 +200,8 @@ export async function addGoogleMessage(
   fetch: Fetch,
   now: Date,
 ): Promise<"added" | "missing"> {
-  const issuerId = config.google.walletIssuerId!;
+  const issuerId = googleCreds(config)!.issuerId;
+  fetch = googleHttp(config, fetch);
   const token = await accessToken(config, fetch, now);
   const end = new Date(now.getTime() + (msg.validDays ?? 7) * 86_400_000);
   const body = {

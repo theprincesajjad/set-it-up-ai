@@ -1,0 +1,7 @@
+{
+  "name": "ll-passkit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local Loyalty: Apple PassKit add-pass flow (PKAddPassButton + PKAddPassesViewController) as a local Expo module. iOS only; no third-party dependency.",
+  "main": "src/index.ts"
+}

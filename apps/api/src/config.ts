@@ -103,10 +103,21 @@ export interface Config {
     keyPem?: string;
     wwdrPem?: string;
     keyPassphrase?: string;
-    /** APNs token auth (.p8 key from Apple Developer → Keys). Preferred; the pass certificate is the fallback. */
+    /** The Pass Type ID certificate + key as one .p12 (base64), instead of certPem/keyPem. */
+    p12Base64?: string;
+    p12Password?: string;
+    /**
+     * APNs token auth (.p8 key from Apple Developer → Keys). Optional: Apple's PassKit docs say pass-update pushes use the
+     * pass certificate, so the certificate goes first and the token is only used when no certificate is set.
+     */
     apnsKeyId?: string;
     apnsKeyP8?: string;
   };
+  /**
+   * WALLET_DEV_FAKE=1 (never honoured in production): a throwaway Apple signer and Google service account, and Google REST
+   * calls recorded instead of sent, so the wallet buttons and passes work end to end in dev and e2e without real credentials.
+   */
+  walletDevFake: boolean;
   /**
    * Landing A/B tests (services/landing-events.ts, admin-experiments.ts). Test clock: outside production, EXPERIMENTS_NOW (an ISO
    * instant) pins the experiment schedule and the x-ll-experiments-now header moves it per request (e2e/run-all.sh). Lighthouse:
@@ -238,9 +249,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       keyPem: env.APPLE_PASS_KEY_PEM,
       wwdrPem: env.APPLE_WWDR_PEM,
       keyPassphrase: env.APPLE_PASS_KEY_PASSPHRASE,
+      p12Base64: env.APPLE_PASS_P12_BASE64,
+      p12Password: env.APPLE_PASS_P12_PASSWORD,
       apnsKeyId: env.APPLE_APNS_KEY_ID,
       apnsKeyP8: env.APPLE_APNS_KEY_P8,
     },
+    walletDevFake: !isProd && env.WALLET_DEV_FAKE === "1",
     experiments: { testClock: !isProd, now: env.EXPERIMENTS_NOW || undefined, lighthouseJson: env.EXPERIMENTS_LIGHTHOUSE_JSON || undefined },
   };
 }

@@ -39,6 +39,7 @@ import { iso } from "./commerceShared.js";
 import { findOrCreateCustomerByPhone } from "./ledger.js";
 import { requirePhone } from "./merchant.js";
 import { assertNoPharmacyNotes, isPharmacy, pharmacyServiceFields } from "./pharmacy-guard.js";
+import { walletAppointmentChanged } from "./wallet-shop.js";
 
 export type Merchant = typeof merchants.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
@@ -833,6 +834,7 @@ export async function createAppointment(ctx: AppContext, staff: StaffContext, bo
       .returning();
     return a!;
   });
+  walletAppointmentChanged(ctx, row); // wallet: the next visit on the shop card
   return appointmentDto(ctx.db, row);
 }
 
@@ -882,6 +884,7 @@ export async function updateAppointment(ctx: AppContext, staff: StaffContext, id
     patch.petId = body.petId;
   }
   const row = await guardOverlap(async () => (await ctx.db.update(appointments).set(patch).where(eq(appointments.id, cur.id)).returning())[0]!);
+  walletAppointmentChanged(ctx, row); // wallet: the next visit on the shop card
   return appointmentDto(ctx.db, row);
 }
 

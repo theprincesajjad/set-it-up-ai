@@ -143,6 +143,8 @@ export function llApi(c: ApiClient) {
       wallet: () => c.get<walletApi.WalletStatusResponse>("/v1/me/wallet"),
       googleWallet: () => c.get<walletApi.GoogleSaveResponse>("/v1/me/wallet/google"),
       appleWalletLink: () => c.get<walletApi.AppleLinkResponse>("/v1/me/wallet/apple/link"),
+      /** The shop card for one membership: availability, the add links and whether it is already in a wallet. */
+      shopWallet: (merchantId: string) => c.get<walletApi.ShopWalletResponse>(`/v1/me/wallet/shops/${enc(merchantId)}`),
       order: (orderId: string) => c.get<commerceApi.OrderDto>(`/v1/me/orders/${enc(orderId)}`),
       orders: () => c.get<{ items: commerceApi.OrderDto[]; nextCursor: string | null }>("/v1/me/orders"),
       campaigns: (q: { lat?: number; lng?: number } = {}) => c.get<{ items: campaignsApi.MyCampaign[] }>("/v1/me/campaigns", { query: q }),
@@ -364,6 +366,10 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     setStaffProfile: (userId: string, body: { locale?: merchantApi.StaffMember["locale"]; station?: string | null }) => c.patch<merchantApi.StaffMember>(`${b}/team/${enc(userId)}`, body),
     removeStaff: (userId: string) => c.delete<void>(`${b}/team/${enc(userId)}`),
     setPin: (userId: string, pin: string) => c.put<void>(`${b}/team/${enc(userId)}/pin`, { pin }),
+    // Wallet card (Settings, Wallet card)
+    walletCard: () => c.get<walletApi.WalletCardResponse>(`${b}/wallet-card`),
+    previewWalletCard: (body: walletApi.WalletCardSettings) => c.post<walletApi.ShopPassModel>(`${b}/wallet-card/preview`, body),
+    saveWalletCard: (body: walletApi.WalletCardSettings) => c.put<walletApi.WalletCardResponse>(`${b}/wallet-card`, body),
     // Program
     program: () => c.get<merchantApi.LoyaltyProgram>(`${b}/program`),
     updateProgram: (body: merchantApi.UpdateProgramBody) => c.patch<merchantApi.LoyaltyProgram>(`${b}/program`, body),

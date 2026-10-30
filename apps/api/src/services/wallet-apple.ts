@@ -15,6 +15,7 @@ import forge from "node-forge";
 import { BRAND, normalizeLocale, t as translate, unitLabel, unitWord, walletApi, type Locale } from "@ll/shared";
 import type { Config } from "../config.js";
 import { pemFromEnv } from "./wallet-apns.js";
+import { devAppleChain } from "./wallet-dev-fake.js";
 import { iconPng, logoPng, walletAsset } from "./wallet-png.js";
 
 /** v2 tokens: bg (dark) #0B0B0C, fg (dark) #F5F5F4, accent (dark) #FF7A45. */
@@ -47,19 +48,68 @@ export interface AppleSigner {
   keyPassphrase?: string;
 }
 
+/** Certificate + key from a base64 .p12 (Keychain export of the Pass Type ID certificate). */
+export function pemsFromP12(p12Base64: string, password = ""): { certPem: string; keyPem: string } {
+  const der = forge.util.decode64(p12Base64.replace(/\s+/g, ""));
+  const p12 = forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(der), password);
+  const certBag = p12.getBags({ bagType: forge.pki.oids.certBag! })[forge.pki.oids.certBag!]?.[0];
+  const keyBag = (p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag! })[forge.pki.oids.pkcs8ShroudedKeyBag!] ?? p12.getBags({ bagType: forge.pki.oids.keyBag! })[forge.pki.oids.keyBag!])?.[0];
+  if (!certBag?.cert || !keyBag?.key) throw new Error("APPLE_PASS_P12_BASE64 has no certificate or no private key");
+  return { certPem: forge.pki.certificateToPem(certBag.cert), keyPem: forge.pki.privateKeyToPem(keyBag.key) };
+}
+
+const p12Cache = new Map<string, { certPem: string; keyPem: string } | null>();
+function p12Pems(a: Config["apple"]) {
+  if (!a.p12Base64) return null;
+  const k = `${a.p12Base64.length}:${a.p12Base64.slice(-32)}`;
+  if (!p12Cache.has(k)) {
+    try {
+      p12Cache.set(k, pemsFromP12(a.p12Base64, a.p12Password ?? ""));
+    } catch (err) {
+      console.error("[wallet] could not read APPLE_PASS_P12_BASE64 (wrong APPLE_PASS_P12_PASSWORD?)", (err as Error).message);
+      p12Cache.set(k, null);
+    }
+  }
+  return p12Cache.get(k)!;
+}
+
+/**
+ * The pass signer from env: APPLE_PASS_TYPE_ID + APPLE_TEAM_ID + APPLE_WWDR_PEM + either APPLE_PASS_CERT_PEM/KEY_PEM or
+ * APPLE_PASS_P12_BASE64 (+ _PASSWORD). With WALLET_DEV_FAKE=1 outside production and nothing set: a throwaway fake chain.
+ */
 export function appleSignerFromConfig(config: Config): AppleSigner | null {
   const a = config.apple;
-  if (!a.passTypeId || !a.teamId || !a.certPem || !a.keyPem || !a.wwdrPem) return null;
-  return { passTypeId: a.passTypeId, teamId: a.teamId, certPem: pemFromEnv(a.certPem)!, keyPem: pemFromEnv(a.keyPem)!, wwdrPem: pemFromEnv(a.wwdrPem)!, keyPassphrase: a.keyPassphrase };
+  const p12 = p12Pems(a);
+  const certPem = p12?.certPem ?? pemFromEnv(a.certPem);
+  const keyPem = p12?.keyPem ?? pemFromEnv(a.keyPem);
+  if (a.passTypeId && a.teamId && certPem && keyPem && a.wwdrPem) return { passTypeId: a.passTypeId, teamId: a.teamId, certPem, keyPem, wwdrPem: pemFromEnv(a.wwdrPem)!, keyPassphrase: p12 ? undefined : a.keyPassphrase };
+  if (config.walletDevFake && config.env !== "production" && !a.passTypeId) {
+    const f = devAppleChain();
+    return { passTypeId: f.passTypeId, teamId: f.teamId, certPem: f.certPem, keyPem: f.keyPem, wwdrPem: f.wwdrPem };
+  }
+  return null;
+}
+
+/** The pass type id passes are issued under (the fake one in dev-fake mode). */
+export const passTypeIdOf = (config: Config) => appleSignerFromConfig(config)?.passTypeId ?? config.apple.passTypeId;
+
+/** The certificate APNs pass pushes use (the signing certificate, as Apple's PassKit docs require). */
+export function apnsCertFromConfig(config: Config): { certPem: string; keyPem: string; passphrase?: string } | null {
+  const a = config.apple;
+  const p12 = p12Pems(a);
+  const certPem = p12?.certPem ?? pemFromEnv(a.certPem);
+  const keyPem = p12?.keyPem ?? pemFromEnv(a.keyPem);
+  return certPem && keyPem ? { certPem, keyPem, passphrase: p12 ? undefined : a.keyPassphrase } : null;
 }
 
 export function missingAppleConfig(config: Config): string[] {
+  if (appleSignerFromConfig(config)) return [];
   const a = config.apple;
+  const hasCert = !!(p12Pems(a) || (a.certPem && a.keyPem));
   const pairs: [string, unknown][] = [
     ["APPLE_PASS_TYPE_ID", a.passTypeId],
     ["APPLE_TEAM_ID", a.teamId],
-    ["APPLE_PASS_CERT_PEM", a.certPem],
-    ["APPLE_PASS_KEY_PEM", a.keyPem],
+    ["APPLE_PASS_P12_BASE64 (or APPLE_PASS_CERT_PEM + APPLE_PASS_KEY_PEM)", hasCert],
     ["APPLE_WWDR_PEM", a.wwdrPem],
   ];
   return pairs.filter(([, v]) => !v).map(([k]) => k);

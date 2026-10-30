@@ -72,8 +72,8 @@ export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen:
 
       {/* phase-pro: p3 -- Free: who is due, and what Pro does about it */}
       {!enabled("service.rebooking") && (d?.counts.due ?? 0) > 0 ? (
-        <PlanLine href={`${base}/billing`} linkLabel={t("rb.planCta", { plan: PLANS.plus.name })} className="text-meta">
-          {t("rb.customers.due", { n: d!.counts.due })}
+        <PlanLine href={`${base}/billing?plan=plus`} linkLabel={t("rb.planCta", { plan: PLANS.plus.name })} className="text-meta">
+          {t("rb.customers.due", { n: d!.counts.due, plan: PLANS.plus.name })}
         </PlanLine>
       ) : null}
       {list.error ? <p className="text-meta text-negative">{list.error}</p> : null}

@@ -4,17 +4,18 @@
  * PassKit web service to fetch the new pass (and show the pass's changeMessage
  * on the lock screen).
  *
- * Auth, in order:
- *  1. Token-based (provider JWT, ES256, signed with the .p8 key from Apple
- *     Developer → Keys): APPLE_APNS_KEY_ID + APPLE_APNS_KEY_P8 + APPLE_TEAM_ID.
- *  2. Certificate-based (TLS client cert = the Pass Type ID certificate):
- *     APPLE_PASS_CERT_PEM + APPLE_PASS_KEY_PEM. Also used as the fallback for any
- *     token that APNs rejects with 403 (e.g. TopicDisallowed / InvalidProviderToken),
- *     because Apple has historically required the pass certificate for pass topics.
+ * Auth, in order (Apple: "the notification uses the same certificate and private key that the creator of the pass used to
+ * sign the original", developer.apple.com/documentation/walletpasses/adding-a-web-service-to-update-passes):
+ *  1. Certificate-based (TLS client cert = the Pass Type ID certificate): APPLE_PASS_P12_BASE64, or
+ *     APPLE_PASS_CERT_PEM + APPLE_PASS_KEY_PEM.
+ *  2. Token-based (provider JWT, ES256, .p8 key from Apple Developer → Keys): APPLE_APNS_KEY_ID + APPLE_APNS_KEY_P8 +
+ *     APPLE_TEAM_ID. Optional; used alone when no certificate is set, and as the retry for a 403 on the certificate.
+ * Pass pushes work only against production APNs (api.push.apple.com).
  */
 import http2 from "node:http2";
 import { SignJWT, importPKCS8 } from "jose";
 import type { AppContext } from "../context.js";
+import { apnsCertFromConfig } from "./wallet-apple.js";
 
 export interface ApnsResult {
   sent: number;
@@ -129,22 +130,19 @@ async function sendBatch(
 export function http2Apns(opts: { token?: { keyId: string; teamId: string; keyP8: string }; cert?: { certPem: string; keyPem: string; passphrase?: string }; host?: string; connect?: Http2Connect; now?: () => Date }): ApnsPusher {
   const base = { host: opts.host ?? APNS_HOST, connect: opts.connect ?? (http2.connect as Http2Connect), now: opts.now ?? (() => new Date()) };
   return {
-    name: opts.token ? "apns-token" : "apns-cert",
+    name: opts.cert ? "apns-cert" : "apns-token",
     async push(tokens, topic) {
       const res: ApnsResult = { sent: 0, failed: 0, invalid: [], results: [] };
       if (!tokens.length) return res;
-      let pending = tokens;
-      if (opts.token) {
-        const r = await sendBatch(base, { kind: "token", ...opts.token }, pending, topic);
-        for (const x of r) res.results!.push({ ...x, auth: "token" });
-        // 403 = the provider token isn't accepted for this topic: retry with the pass certificate.
-        pending = opts.cert ? r.filter((x) => x.status === 403).map((x) => x.token) : [];
-        if (pending.length) res.results = res.results!.filter((x) => !pending.includes(x.token));
-      }
-      if (opts.cert && pending.length) {
-        const r = await sendBatch(base, { kind: "cert", ...opts.cert }, pending, topic);
-        for (const x of r) res.results!.push({ ...x, auth: "cert" });
-      }
+      // Apple's PassKit docs: a pass update push "uses the same certificate and private key that the creator of the pass used
+      // to sign the original". So the pass certificate goes first; a configured .p8 token is the fallback for any 403.
+      const first: ApnsAuth | null = opts.cert ? { kind: "cert", ...opts.cert } : opts.token ? { kind: "token", ...opts.token } : null;
+      const second: ApnsAuth | null = opts.cert && opts.token ? { kind: "token", ...opts.token } : null;
+      if (!first) return res;
+      const r1 = await sendBatch(base, first, tokens, topic);
+      const retry = second ? r1.filter((x) => x.status === 403).map((x) => x.token) : [];
+      for (const x of r1) if (!retry.includes(x.token)) res.results!.push({ ...x, auth: first.kind });
+      if (second && retry.length) for (const x of await sendBatch(base, second, retry, topic)) res.results!.push({ ...x, auth: second.kind });
       for (const x of res.results!) {
         if (x.status === 200) res.sent++;
         else {
@@ -183,7 +181,7 @@ export function setApnsPusher(ctx: AppContext, p: ApnsPusher) {
 export function apnsAuthMode(config: AppContext["config"]): "token+cert" | "token" | "cert" | "none" {
   const a = config.apple;
   const token = !!(a.apnsKeyId && a.apnsKeyP8 && a.teamId);
-  const cert = !!(a.certPem && a.keyPem);
+  const cert = !!apnsCertFromConfig(config);
   return token && cert ? "token+cert" : token ? "token" : cert ? "cert" : "none";
 }
 
@@ -191,15 +189,9 @@ export function apnsFor(ctx: AppContext): ApnsPusher {
   let p = registry.get(ctx);
   if (!p) {
     const a = ctx.config.apple;
-    const mode = apnsAuthMode(ctx.config);
-    p =
-      mode !== "none" && ctx.config.env !== "test"
-        ? http2Apns({
-            token: a.apnsKeyId && a.apnsKeyP8 && a.teamId ? { keyId: a.apnsKeyId, teamId: a.teamId, keyP8: pemFromEnv(a.apnsKeyP8)! } : undefined,
-            cert: a.certPem && a.keyPem ? { certPem: pemFromEnv(a.certPem)!, keyPem: pemFromEnv(a.keyPem)!, passphrase: a.keyPassphrase } : undefined,
-            now: ctx.now,
-          })
-        : consoleApns(ctx.config.env === "development");
+    const cert = apnsCertFromConfig(ctx.config);
+    const token = a.apnsKeyId && a.apnsKeyP8 && a.teamId ? { keyId: a.apnsKeyId, teamId: a.teamId, keyP8: pemFromEnv(a.apnsKeyP8)! } : undefined;
+    p = (cert || token) && ctx.config.env !== "test" && !ctx.config.walletDevFake ? http2Apns({ token, cert: cert ?? undefined, now: ctx.now }) : consoleApns(ctx.config.env === "development");
     registry.set(ctx, p);
   }
   return p;

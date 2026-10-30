@@ -66,8 +66,8 @@ export function PromoPicker({ standalone }: { /** On its own page under a page t
       <div className="flex flex-col gap-4 px-4 pb-4">
         {standalone ? null : <p className="text-meta text-fg-muted">{t("promo.subtitle")}</p>}
         {d?.offer ? (
-          <PlanLine href={`${base}/billing`} linkLabel={t("promo.planCta", { plan: d.offer.name })}>
-            {t("promo.planLine", { plan: d.offer.name, count: PROMOS_PER_MONTH_PLUS })} {t("people.perMonth", { price: formatMoney(PLANS.plus.priceCents) })}
+          <PlanLine href={`${base}/billing?plan=plus`} linkLabel={t("promo.planCta", { plan: d.offer.name })}>
+            {t("promo.planLine", { plan: d.offer.name, count: PROMOS_PER_MONTH_PLUS })} {t("people.perMonth", { price: formatMoney(PLANS.plus.priceCents).replace(/\.00$/, "") })}
           </PlanLine>
         ) : null}
         {sentLine ? <Banner tone="success">{sentLine}</Banner> : null}

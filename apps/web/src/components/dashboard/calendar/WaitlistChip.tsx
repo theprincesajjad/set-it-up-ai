@@ -9,7 +9,7 @@
  */
 import { CalendarClock, CircleCheck, Clock, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { appointmentsApi, waitlistApi } from "@ll/shared";
+import { PLANS, type appointmentsApi, type waitlistApi } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { PlanLine } from "@/components/onboarding/PlanLine";
 import { Switch } from "@/components/ui/Switch";
@@ -29,7 +29,7 @@ function SeePro() {
   const { t } = useLocaleOrEnglish();
   return (
     <a href={seeProHref(base)} className="inline-flex min-h-11 items-center whitespace-nowrap font-semibold text-link hover:underline focus-visible:focus-ring">
-      {t("wl.seePro")}
+      {t("wl.seePro", { plan: PLANS.plus.name })}
     </a>
   );
 }
@@ -47,7 +47,7 @@ function CancelSwitch({ appt }: { appt: appointmentsApi.AppointmentDto }) {
     if (!d.waiting) return null;
     return (
       <div className="mt-3" data-testid="wl-cancel-switch">
-        <Switch checked={false} disabled onChange={() => undefined} label={t("wl.cancel.switch", { n: d.waiting })} description={<>{t("wl.cancel.free")} <SeePro /></>} />
+        <Switch checked={false} disabled onChange={() => undefined} label={t("wl.cancel.switch", { n: d.waiting })} description={<>{t("wl.cancel.free", { plan: PLANS.plus.name })} <SeePro /></>} />
       </div>
     );
   }
@@ -126,9 +126,9 @@ function DayStrip({ date }: { date: string }) {
         })}
       </ul>
       {freeLine ? (
-        <PlanLine linkLabel={t("wl.seePro")} href={seeProHref(base)}>{t("wl.chip.free", { n: freeLine.matching })}</PlanLine>
+        <PlanLine linkLabel={t("wl.seePro", { plan: PLANS.plus.name })} href={seeProHref(base)}>{t("wl.chip.free", { n: freeLine.matching, plan: PLANS.plus.name })}</PlanLine>
       ) : nudge ? (
-        <PlanLine linkLabel={t("wl.seePro")} href={seeProHref(base)}>{t("wl.chip.freeNone")}</PlanLine>
+        <PlanLine linkLabel={t("wl.seePro", { plan: PLANS.plus.name })} href={seeProHref(base)}>{t("wl.chip.freeNone", { plan: PLANS.plus.name })}</PlanLine>
       ) : null}
     </section>
   );

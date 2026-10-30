@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { auditLogs, invoices, leadActivities, leads, merchants, neighbourhoods, orders, subscriptions, supportSessions } from "@ll/db";
+import { PLANS } from "@ll/shared";
 import { atRiskShops, subscriptionMrrCents } from "../src/services/admin-ops.js";
 import { awardPurchase } from "../src/services/ledger.js";
 import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, openSupportSession, tokenFor, type TestEnv } from "./helpers.js";
@@ -178,8 +179,8 @@ describe("founder's console", () => {
     const o = (await call("GET", "/v1/admin/overview", admin.token)).json();
     expect(o.pace).toMatchObject({ month: 1, plannedEndOfMonth: 109, actual: 3, areasOpened: 1 });
     expect(o.pace.delta).toBe(3 - o.pace.plannedToday);
-    // Plus $39 counts; the past-due Pro shop is still paying.
-    expect(o.money).toMatchObject({ mrrCents: 3900 + 9900, payingShops: 2, byPlan: { plus: 1, pro: 1, restaurant: 0 }, feeRevenue30dCents: 199, volume30dCents: 10000 });
+    // Pro ($29) counts; the past-due Service shop is still paying.
+    expect(o.money).toMatchObject({ mrrCents: PLANS.plus.priceCents + PLANS.pro.priceCents, payingShops: 2, byPlan: { plus: 1, studio: 0, pro: 1, restaurant: 0 }, feeRevenue30dCents: 199, volume30dCents: 10000 });
     expect(o.activation).toMatchObject({ signed: 3, activated: 1, goal: 0.6 });
     expect(o.activation.rate).toBeCloseTo(0.333, 3);
     // 3 shops x $0.60 infra + 100 SMS x 2.2c + 200 WhatsApp x 0.5c = 180 + 220 + 100.
@@ -199,8 +200,8 @@ describe("founder's console", () => {
     await env.db.insert(subscriptions).values({ merchantId: a.merchant.id, plan: "plus", status: "active", interval: "month" });
     const c = (await call("GET", "/v1/admin/costs", admin.token)).json();
     expect(c.assumptions).toMatchObject({ smsSegmentCents: 2.2, infraPerShopCents: 60 });
-    expect(c.shops[0]).toMatchObject({ merchantId: a.merchant.id, smsCredits: 50, messagingCents: 110, costCents: 170, subscriptionCents: 3900, marginCents: 3730 });
-    expect(c.totals).toMatchObject({ shops: 1, costCents: 170, subscriptionCents: 3900 });
+    expect(c.shops[0]).toMatchObject({ merchantId: a.merchant.id, smsCredits: 50, messagingCents: 110, costCents: 170, subscriptionCents: PLANS.plus.priceCents, marginCents: PLANS.plus.priceCents - 170 });
+    expect(c.totals).toMatchObject({ shops: 1, costCents: 170, subscriptionCents: PLANS.plus.priceCents });
   });
 
   it("charge mode: reason is recorded in the audit log and the money view shows it", async () => {
@@ -308,9 +309,10 @@ describe("founder's console", () => {
 
 describe("pure rules", () => {
   it("prices subscriptions: trialing pays nothing, annual is a twelfth, founding restaurants pay half in year one", () => {
-    expect(subscriptionMrrCents({ plan: "plus", restaurantTier: null, interval: "month", status: "active" })).toBe(3900);
+    expect(subscriptionMrrCents({ plan: "plus", restaurantTier: null, interval: "month", status: "active" })).toBe(PLANS.plus.priceCents);
+    expect(subscriptionMrrCents({ plan: "studio", restaurantTier: null, interval: "month", status: "active" })).toBe(PLANS.studio.priceCents);
     expect(subscriptionMrrCents({ plan: "plus", restaurantTier: null, interval: "month", status: "trialing" })).toBe(0);
-    expect(subscriptionMrrCents({ plan: "plus", restaurantTier: null, interval: "year", status: "active" })).toBe(3250);
+    expect(subscriptionMrrCents({ plan: "plus", restaurantTier: null, interval: "year", status: "active" })).toBe(Math.round(PLANS.plus.annualPriceCents / 12));
     expect(subscriptionMrrCents({ plan: "free", restaurantTier: "starter", interval: "month", status: "active" }, true)).toBe(4950);
   });
   it("gives each shop one reason, most urgent first, skipping paused and closed", () => {

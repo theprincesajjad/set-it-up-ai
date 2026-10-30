@@ -217,7 +217,7 @@ describe("Apple Wallet pass (v2 design)", () => {
     const off = await env.app.inject({ method: "GET", url: "/v1/me/wallet/apple", headers: h });
     expect(off.statusCode).toBe(503);
     expect(off.json().error).toMatchObject({ code: "wallet_not_configured" });
-    expect(off.json().error.details.missing).toContain("APPLE_PASS_CERT_PEM");
+    expect(off.json().error.details.missing.join(" ")).toContain("APPLE_PASS_CERT_PEM");
     expect((await env.app.inject({ method: "GET", url: "/v1/me/wallet/apple" })).statusCode).toBe(401);
 
     configureApple();
@@ -349,33 +349,37 @@ describe("APNs (HTTP/2, mock server)", () => {
     return { seen, host, close: () => new Promise<void>((resolve) => server.close(() => resolve())) };
   }
 
-  it("token auth: POST /3/device/<token>, apns-topic = pass type id, ES256 provider JWT, empty JSON body; 410 → invalid; 403 → retried with the pass certificate", async () => {
+  it("pass certificate first (Apple: pass pushes use the signing certificate); 403 retried with the .p8 token; 410 → invalid; token-only config: ES256 provider JWT", async () => {
     const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
     const keyP8 = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
     const srv = await mockApns((h) => {
       const token = String(h[":path"]).split("/").at(-1);
       if (token === "gone") return { status: 410, reason: "Unregistered" };
-      if (token === "certonly") return h.authorization ? { status: 403, reason: "TopicDisallowed" } : { status: 200 };
+      if (token === "tokenonly") return h.authorization ? { status: 200 } : { status: 403, reason: "MissingProviderToken" };
       return { status: 200 };
     });
     try {
       const pusher = http2Apns({ token: { keyId: "KEY123ABCD", teamId: "TEAM123456", keyP8 }, cert: { certPem: "unused-over-h2c", keyPem: "unused" }, host: srv.host, now: () => env.clock.now });
-      const r = await pusher.push(["ok1", "gone", "certonly"], "pass.test.loyalty");
+      expect(pusher.name).toBe("apns-cert");
+      const r = await pusher.push(["ok1", "gone", "tokenonly"], "pass.test.loyalty");
       expect(r).toMatchObject({ sent: 2, failed: 1, invalid: ["gone"] });
-      expect(r.results!.find((x) => x.token === "certonly")).toMatchObject({ status: 200, auth: "cert" });
-      expect(r.results!.find((x) => x.token === "ok1")).toMatchObject({ status: 200, auth: "token" });
-
+      expect(r.results!.find((x) => x.token === "ok1")).toMatchObject({ status: 200, auth: "cert" });
+      expect(r.results!.find((x) => x.token === "tokenonly")).toMatchObject({ status: 200, auth: "token" });
       const first = srv.seen.find((s) => s.headers[":path"] === "/3/device/ok1")!;
       expect(first.headers[":method"]).toBe("POST");
       expect(first.headers["apns-topic"]).toBe("pass.test.loyalty");
       expect(first.body).toBe("{}");
-      const jwt = String(first.headers.authorization).replace(/^bearer /, "");
+      expect(first.headers.authorization).toBeUndefined();
+      const retried = srv.seen.filter((s) => s.headers[":path"] === "/3/device/tokenonly");
+      expect(retried).toHaveLength(2);
+      const jwt = String(retried[1]!.headers.authorization).replace(/^bearer /, "");
       expect(decodeProtectedHeader(jwt)).toEqual({ alg: "ES256", kid: "KEY123ABCD" });
       const { payload } = await jwtVerify(jwt, await importSPKI(publicKey.export({ type: "spki", format: "pem" }).toString(), "ES256"), { issuer: "TEAM123456", currentDate: env.clock.now });
       expect(payload.iat).toBe(Math.floor(env.clock.now.getTime() / 1000));
-      const retried = srv.seen.filter((s) => s.headers[":path"] === "/3/device/certonly");
-      expect(retried).toHaveLength(2);
-      expect(retried[1]!.headers.authorization).toBeUndefined();
+
+      const tokenOnly = await http2Apns({ token: { keyId: "KEY123ABCD", teamId: "TEAM123456", keyP8 }, host: srv.host, now: () => env.clock.now }).push(["t2"], "pass.test.loyalty");
+      expect(tokenOnly.results![0]).toMatchObject({ status: 200, auth: "token" });
+      expect(srv.seen.at(-1)!.headers.authorization).toMatch(/^bearer /);
     } finally {
       await srv.close();
     }
@@ -413,7 +417,7 @@ describe("Google Wallet (loyalty class + object)", () => {
       { id: "shop1", header: "Pinecone Coffee", body: "130 points · 1 reward ready" },
       { id: "shop2", header: "Dundas West Bakery & Café", body: "7 stamps" },
     ]);
-    expect(obj.locations).toEqual([
+    expect(obj.merchantLocations).toEqual([
       { latitude: 43.6496, longitude: -79.4218 },
       { latitude: 43.6502, longitude: -79.4305 },
     ]);

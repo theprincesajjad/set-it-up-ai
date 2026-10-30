@@ -5,6 +5,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { manualPayments, merchantMembers, merchants, orders, orderItems, pantryEntries, pantryItems } from "@ll/db";
+import { PLANS } from "@ll/shared";
 import { createTestEnv, grantFeatures, nextPhone, type TestEnv } from "./helpers.js";
 import { call, customer, deliver, fake, paidMerchant, setStage, staffMember } from "./commerce-fixtures.js";
 import { signAccessToken } from "../src/lib/auth.js";
@@ -522,7 +523,8 @@ describe("pantry reminders", () => {
     const out = await sendPantryReminders(env.ctx, g.merchant);
     expect(out.sent).toBe(1);
     // No credits left: nothing more goes.
-    await env.db.update(merchants).set({ smsCreditsUsed: 500 }).where(eq(merchants.id, g.merchant.id));
+    // The whole month's allowance (Studio's, since the grocer counter tools are Studio's: pro-value.md §2.2).
+    await env.db.update(merchants).set({ smsCreditsUsed: PLANS.studio.smsPerMonth }).where(eq(merchants.id, g.merchant.id));
     const c = await member(g);
     await log(g, c.memberId, itemId, true);
     env.clock.now = new Date("2027-01-25T15:00:00Z");
