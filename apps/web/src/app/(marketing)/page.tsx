@@ -11,7 +11,7 @@ import { CounterPhone, CounterTablet, MapPhone, PassPhone, PromoMock, TodayDeskt
 import "@/components/marketing/home/home.css";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { copy } from "@/copy/en-CA";
-import { marketingPlans, planLine, planNote, planVars } from "@/lib/marketing/plan-copy";
+import { marketingPlans, planLine, planNote, planVars, proHighlights } from "@/lib/marketing/plan-copy";
 import { fill } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
 
@@ -30,6 +30,8 @@ const VARS = { ...planVars(), orderFee: Number((FEES.orderBpsFree / 100).toFixed
 const f = (s: string) => fill(s, VARS);
 
 const ROUTER_ART: MapCategoryId[] = ["coffee", "beauty", "eat", "all"];
+/** The Pro section's pictures, one per money feature (public/icons3d). */
+const PRO_ART: Record<string, string> = { winback: "bell", reviews: "top", promos: "megaphone", report: "price_tag" };
 
 function Primary({ href = "/signup", cta, children, className }: { href?: string; cta: string; children: React.ReactNode; className?: string }) {
   return (
@@ -57,6 +59,11 @@ function Outcome({ i, children }: { i: number; children: React.ReactNode }) {
             </li>
           ))}
         </ul>
+        {r.id === "promos" ? (
+          <div className="hm-ctas hm-row-cta">
+            <Primary cta="promos">{L.outcomes.cta}</Primary>
+          </div>
+        ) : null}
       </div>
       <figure className="hm-row-art" role="img" aria-label={r.label}>
         {children}
@@ -78,13 +85,14 @@ function Outcome({ i, children }: { i: number; children: React.ReactNode }) {
 /**
  * The home page, landing v4 (scratchpad diagnosis: "Turn first visits into regulars"): the promise and the product (the Clear Today screen
  * and the customer's pass on an iPhone), four facts with a button, live network counts, how it works beside the counter, four outcome
- * rows with real-screen mocks, where-do-you-fit, the two plans (lib/marketing/plan-copy.ts), the dated comparison, questions, a visit,
+ * rows with real-screen mocks, where-do-you-fit, why Pro (the money features, with the trial as the ask), the three plans (lib/marketing/plan-copy.ts), the dated comparison, questions, a visit,
  * and the closing ask; on phones a sticky bar keeps the button in reach. Static (re-generated every 5 minutes for the live counts),
  * CSS-only motion, no client script of its own beyond the visit form.
  */
 export default function Home() {
   const waUrl = whatsappUrl(L.book.whatsappText);
   const plans = marketingPlans("shop");
+  const pro = proHighlights("shop");
   return (
     <div className="hm">
       {/* 1. Hero */}
@@ -246,8 +254,43 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 7. Pricing: every word from lib/marketing/plan-copy.ts, every number from PLANS */}
-      <section className="hm-sec" id="pricing" aria-labelledby="hm-pricing">
+      {/* 7. Why Pro: the money features (lib/marketing/plan-copy.ts), illustrative samples, and the trial as the ask before the prices */}
+      <section className="hm-sec" id="pro" aria-labelledby="hm-pro">
+        <div className="hm-wrap">
+          <div className="hm-head">
+            <h2 className="hm-h2" id="hm-pro">
+              {pro.title}
+            </h2>
+            <p className="hm-lede">{pro.sub}</p>
+          </div>
+          <ul className="hm-pro">
+            {pro.items.map((x) => (
+              <li key={x.id} className="hm-pro-card" data-pro={x.id}>
+                <div className="hm-pro-demo" aria-hidden>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/icons3d/${PRO_ART[x.id]}@2x.png`} alt="" width={30} height={30} loading="lazy" decoding="async" />
+                  <span>
+                    <b>{x.sample}</b>
+                    <small>{x.sampleLine}</small>
+                  </span>
+                </div>
+                <h3>{x.title}</h3>
+                <p>{x.body}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="hm-pro-note">{pro.caption}</p>
+          <div className="hm-ctarow hm-ctarow-start">
+            <Primary cta="pro">{pro.trialCta}</Primary>
+            <a className="hm-link" href="#pricing" data-cta="seepricing">
+              {L.outcomes.pricing}
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. Pricing: every word from lib/marketing/plan-copy.ts, every number from PLANS */}
+      <section className="hm-sec hm-white" id="pricing" aria-labelledby="hm-pricing">
         <div className="hm-wrap">
           <div className="hm-head hm-center">
             <h2 className="hm-h2" id="hm-pricing">
@@ -307,11 +350,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 8. How we compare: named, dated, sourced */}
+      {/* 9. How we compare: named, dated, sourced */}
       <CompetitorTable />
 
-      {/* 9. Questions */}
-      <section className="hm-sec" aria-labelledby="hm-faq">
+      {/* 10. Questions */}
+      <section className="hm-sec hm-white" aria-labelledby="hm-faq">
         <div className="hm-wrap hm-faq">
           <h2 className="hm-h2" id="hm-faq">
             {L.faqTitle}
@@ -330,8 +373,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 10. A hand getting set up */}
-      <section className="hm-sec hm-white" id="book" aria-labelledby="hm-book">
+      {/* 11. A hand getting set up */}
+      <section className="hm-sec" id="book" aria-labelledby="hm-book">
         <div className="hm-wrap hm-book">
           <div>
             <h2 className="hm-h2" id="hm-book">
@@ -350,7 +393,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 11. The closing ask */}
+      {/* 12. The closing ask */}
       <section className="hm-final" aria-labelledby="hm-final">
         <div className="hm-wrap hm-final-in">
           <div>
@@ -359,9 +402,14 @@ export default function Home() {
             </h2>
             <p>{L.final.sub}</p>
           </div>
-          <Primary cta="final" className="hm-btn-inv">
-            {L.final.cta}
-          </Primary>
+          <div className="hm-ctas">
+            <Primary cta="final" className="hm-btn-inv">
+              {L.final.cta}
+            </Primary>
+            <a className="hm-btn2 hm-btn2-inv" href="#pricing" data-cta="seepricing">
+              {L.final.pricing}
+            </a>
+          </div>
         </div>
       </section>
 

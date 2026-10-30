@@ -15,7 +15,7 @@ export function CompetitorTable() {
   const notes = [...new Set(COMPETITORS.map((x) => x.currencyNote).filter(Boolean))];
   const get = (x: (typeof COMPETITORS)[number], row: number) => [x.monthlyFee, x.locations, x.salesFee][row]!;
   return (
-    <section className="hm-sec hm-white" aria-labelledby="hm-compare">
+    <section className="hm-sec" aria-labelledby="hm-compare">
       <div className="hm-wrap">
       <div className="hm-head">
         <h2 className="hm-h2" id="hm-compare">

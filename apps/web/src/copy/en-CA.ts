@@ -305,6 +305,7 @@ export const copy = {
       title: "Start bringing customers back.",
       sub: "Free forever for loyalty. Set up in about 5 minutes.",
       cta: "Start free",
+      pricing: "See pricing",
     },
     sticky: "Start free",
     /** The product mocks. Sample shop, sample people, sample numbers: the captions say so. Mirrors the Clear Today, counter, pass and map screens. */

@@ -109,12 +109,13 @@
 }
 
 /* A floating fact beside a phone (never over its screen on wide layouts). */
-.hm-float { position: absolute; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 18px; font-size: 14px; line-height: 1.3; max-width: 230px; }
+.hm-float { position: absolute; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 16px; font-size: 13px; line-height: 1.3; max-width: 172px; }
 .hm-float b { display: block; font-weight: 650; }
-.hm-float small { display: block; font-size: 12px; color: var(--muted-foreground); }
-.hm-float img { width: 32px; height: 32px; flex: none; }
-.hm-float-a { inset-inline-start: 6%; top: 18%; }
-.hm-float-b { inset-inline-end: 6%; bottom: 16%; }
+.hm-float small { display: block; font-size: 11.5px; color: var(--muted-foreground); }
+.hm-float img { width: 28px; height: 28px; flex: none; object-fit: contain; }
+/* In the margins beside the phone (the art box is ~2.2x the phone wide), clear of the screen's heading and its tab bar. */
+.hm-float-a { inset-inline-start: 3%; top: 34%; }
+.hm-float-b { inset-inline-end: 3%; bottom: 24%; }
 @media (max-width: 1099.98px) { .hm-float { display: none; } }
 
 /* Promo composer: the card, the notification it sends and what it brought. */
@@ -166,6 +167,24 @@
 .hm-chips a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; color: var(--foreground); text-decoration: none; box-shadow: inset 0 0 0 1px var(--border-strong); }
 .hm-chips a:hover { background: var(--muted); }
 
+/* ---------- Why Pro: four money features, each with an illustrative sample ---------- */
+.hm-pro { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+@media (min-width: 700px) { .hm-pro { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1100px) { .hm-pro { grid-template-columns: repeat(4, 1fr); } }
+.hm-pro-card { display: grid; align-content: start; gap: 8px; padding: 16px 16px 24px; border-radius: 24px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+.hm-pro-card h3 { margin-top: 12px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; padding-inline: 8px; }
+.hm-pro-card p { font-size: 15px; line-height: 1.45; color: var(--muted-foreground); padding-inline: 8px; }
+.hm-pro-demo { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--background); }
+.hm-pro-demo img { width: 30px; height: 30px; flex: none; object-fit: contain; }
+.hm-pro-demo b { display: block; font-size: 14px; font-weight: 650; }
+.hm-pro-demo small { display: block; font-size: 12px; color: var(--muted-foreground); }
+.hm-pro-note { margin-top: 16px; font-size: 13px; color: var(--muted-foreground); }
+.hm-ctarow-start { justify-content: flex-start; margin-top: 32px; }
+.hm-row-cta { justify-content: flex-start; margin-top: 28px; }
+/* The closing band's quiet button, on the dark band. */
+.hm-btn2-inv { background: transparent; color: var(--primary-foreground); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-foreground) 40%, transparent); }
+.hm-btn2-inv:hover { background: color-mix(in srgb, var(--primary-foreground) 10%, transparent); }
+
 /* ---------- Pricing ---------- */
 .hm-plans { display: grid; gap: 16px; width: min(100%, 1120px); margin-inline: auto; }
 @media (min-width: 980px) { .hm-plans { grid-template-columns: repeat(3, 1fr); } }
@@ -185,7 +204,7 @@
 .hm-plan li svg { width: 16px; height: 16px; margin-top: 2px; color: var(--success); flex: none; }
 .hm-plan .hm-btn { margin-top: auto; width: 100%; }
 .hm-plan-pro { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--lg-shadow-lg); }
-.hm-plan-pro .hm-plan-price small, .hm-plan-pro .hm-plan-yearly { color: inherit; opacity: 0.8; }
+.hm-plan-pro .hm-plan-price small, .hm-plan-pro .hm-plan-yearly { color: inherit; }
 .hm-plan-pro ul { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--primary-foreground) 22%, transparent); }
 .hm-plan-pro li svg { color: inherit; }
 .hm-plans-note { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 20px; margin-top: 18px; font-size: 14px; color: var(--muted-foreground); text-align: center; }
@@ -206,7 +225,7 @@
 .hm-book { display: grid; gap: 32px; }
 .hm-book > div:first-child { display: grid; gap: 16px; align-content: start; justify-items: start; }
 @media (min-width: 900px) { .hm-book { grid-template-columns: 1fr 1fr; gap: 64px; } }
-.hm-book-form { padding: 24px; border-radius: 28px; background: var(--background); box-shadow: inset 0 0 0 1px var(--border); }
+.hm-book-form { padding: 24px; border-radius: 28px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
 
 /* ---------- Closing band ---------- */
 .hm-final { background: var(--primary); color: var(--primary-foreground); padding-block: clamp(56px, 7vw, 96px); }

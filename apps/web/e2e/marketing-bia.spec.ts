@@ -64,6 +64,7 @@ test.describe("landing", () => {
       page.getByRole("heading", { name: "Live at your counter today." }),
       page.getByRole("heading", { name: "Built to bring customers back." }),
       page.getByRole("region", { name: "Where do you fit?" }),
+      page.getByRole("heading", { name: "Get more from the customers you have." }),
       page.getByRole("heading", { name: "Simple, transparent pricing." }),
       page.getByRole("heading", { name: "How we compare." }),
       page.getByRole("heading", { name: "Frequently asked questions" }),
@@ -80,7 +81,7 @@ test.describe("landing", () => {
     await expect(router.getByRole("link", { name: /See restaurant plans/ })).toHaveAttribute("href", "/for-restaurants");
     await expect(router.getByRole("link", { name: /See the BIA page/ })).toHaveAttribute("href", "/for-bias");
     // Calls to action down the page (landing v4): every one carries data-cta.
-    for (const c of ["hero", "how", "afterhero", "outcomes", "pricing", "final"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
+    for (const c of ["hero", "how", "afterhero", "promos", "outcomes", "pro", "pricing", "final", "sticky", "seepricing"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
 
     await expect(page.locator("form")).toHaveCount(1);
     const text = await visibleText(page);
