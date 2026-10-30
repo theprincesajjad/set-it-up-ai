@@ -338,7 +338,7 @@
 /* ---------- 8. Price: three numbers, the middle one inverted ---------- */
 .sl-plans { display: grid; gap: 16px; width: min(100%, 1120px); margin-inline: auto; }
 @media (min-width: 980px) { .sl-plans { grid-template-columns: repeat(3, 1fr); } }
-.sl-plan .yearly s { opacity: 0.75; }
+.sl-plan .yearly s { text-decoration-thickness: 1.5px; }
 .sl-plan .yearly b { font-weight: 700; color: var(--foreground); }
 .sl-plan.featured .yearly b { color: inherit; }
 

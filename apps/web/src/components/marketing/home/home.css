@@ -188,7 +188,7 @@
 /* ---------- Pricing ---------- */
 .hm-plans { display: grid; gap: 16px; width: min(100%, 1120px); margin-inline: auto; }
 @media (min-width: 980px) { .hm-plans { grid-template-columns: repeat(3, 1fr); } }
-.hm-plan-yearly s { opacity: 0.75; }
+.hm-plan-yearly s { text-decoration-thickness: 1.5px; }
 .hm-plan-yearly b { font-weight: 700; color: var(--foreground); }
 .hm-plan-pro .hm-plan-yearly b { color: inherit; }
 .hm-plan { display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: 24px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border), var(--ll-shadow-card); }
