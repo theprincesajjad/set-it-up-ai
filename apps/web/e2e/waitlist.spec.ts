@@ -108,7 +108,7 @@ test("a client asks for a spot from a full day at 390", async ({ page }) => {
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("radio", { name: /^Just / })).toHaveAttribute("aria-checked", "true");
   await sheet.getByRole("radio", { name: "Morning" }).click();
-  await sheet.getByLabel("Your name").fill(ctx.client.name);
+  await sheet.getByLabel("Your first name").fill(ctx.client.name);
   await sheet.getByLabel("Phone or email").fill(ctx.client.phone);
   await page.screenshot({ path: shot("sheet-390") });
   await sheet.getByRole("button", { name: "Put me on the list" }).click();

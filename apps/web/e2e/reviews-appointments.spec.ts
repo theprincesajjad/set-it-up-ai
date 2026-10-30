@@ -66,7 +66,8 @@ async function visit(shop: Shop, name: string, userId?: string) {
 async function checkOut(page: Page, shop: Shop, a: { id: string; day: string }) {
   await page.goto(`/m/${shop.id}/calendar?date=${a.day}&lang=${LANG}`);
   await page.locator(`[data-appt="${a.id}"]`).click();
-  const side = page.getByRole("complementary").filter({ has: page.getByRole("button", { name: "Check in" }) });
+  // The appointment sheet: "Reschedule" stays on it through every status ("Check in" goes once it is used).
+  const side = page.getByRole("complementary").filter({ has: page.getByRole("button", { name: "Reschedule" }) });
   await side.getByRole("button", { name: "Check in" }).click();
   await side.getByRole("button", { name: "Start service" }).click();
   await side.getByRole("button", { name: /^Check out/ }).click();
@@ -84,7 +85,7 @@ test("1, 2: on Free the switch is locked, the missing link is warned about and s
   const card = page.getByTestId("review-settings");
   await expect(card).toBeVisible();
   await expect(card.getByTestId("review-locked")).toBeVisible();
-  await expect(card.getByTestId("review-locked").getByRole("link")).toHaveAttribute("href", `/m/${arch.id}/billing`);
+  await expect(card.getByTestId("review-locked").getByRole("link")).toHaveAttribute("href", `/m/${arch.id}/billing?plan=plus`);
   await expect(card.getByRole("switch")).toHaveCount(0);
   await expect(card.getByTestId("review-nolink")).toBeVisible();
   await expect(card.getByTestId("review-last30")).toContainText("0");
@@ -107,7 +108,7 @@ test("1, 2: on Free the switch is locked, the missing link is warned about and s
   const sheet = await checkOut(page, arch, a);
   const line = sheet.getByTestId("review-line-free");
   await expect(line).toBeVisible();
-  await expect(line.getByRole("link")).toHaveAttribute("href", `/m/${arch.id}/billing`);
+  await expect(line.getByRole("link")).toHaveAttribute("href", `/m/${arch.id}/billing?plan=plus`);
   if (LANG === "en") await expect(line).toContainText(/Ask Review for a Google review\? On Pro this goes out by itself two hours after every visit\./);
   await page.screenshot({ path: shot(`checkout-free-1440-${LANG}`) });
 });
@@ -118,7 +119,7 @@ test("3: on Pro the switch turns on and the checkout says when the request goes 
   // A regular who agreed to hear from the shop (text is the best channel she has).
   const phone = `+1${newPhone()}`;
   const start = await call<{ devCode: string }>("POST", "/v1/auth/otp/start", { phone });
-  const reg = await call<{ accessToken: string; user: { id: string } }>("POST", "/v1/auth/otp/verify", { phone, code: start.devCode, firstName: "Hina" });
+  const reg = await call<{ accessToken: string; user: { id: string } }>("POST", "/v1/auth/otp/verify", { phone, code: start.devCode, name: "Hina" });
   await call("POST", "/v1/me/memberships", { merchantId: rz.id, consent: { text: "Yes, send me offers from Rangrez Beauty Studio. I can opt out anytime." } }, reg.accessToken);
 
   await signIn(page, rz.email, `/m/${rz.id}/settings/reviews?lang=${LANG}`);

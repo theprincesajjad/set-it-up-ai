@@ -24,7 +24,7 @@ async function call<T>(method: string, path: string, body?: unknown, token?: str
 const login = (who: { email: string; password: string }) => call<{ accessToken: string }>("POST", "/v1/auth/login", who).then((r) => r.accessToken);
 
 type AddOn = { id: string; name: string };
-let ctx: { token: string; m: string; base: string; mani: { id: string }; made: AddOn[] };
+let ctx: { token: string; m: string; base: string; mani: { id: string }; made: AddOn[]; override: boolean };
 
 test.beforeAll(async () => {
   const token = await login(OWNER);
@@ -32,19 +32,24 @@ test.beforeAll(async () => {
   const base = `/v1/merchants/${m}`;
   const services = (await call<{ items: { id: string; name: string }[] }>("GET", `${base}/services`, undefined, token)).items;
   const mani = services.find((s) => s.name === "Gel manicure")!;
+  // Paid feature (Pro): on for the run unless the shop's plan already has it (the seed salon is on Free with a calendar pilot).
+  const feats = await call<{ features: { key: string; enabled: boolean }[] }>("GET", `${base}/features`, undefined, token);
+  const override = !feats.features.find((f) => f.key === "booking.add_ons")?.enabled;
+  if (override) await call("PUT", `/v1/admin/features/booking.add_ons/overrides`, { merchantId: m, enabled: true, reason: "e2e add-ons" }, await login(ADMIN));
   // Left over from an interrupted run: start clean.
   for (const a of (await call<{ items: AddOn[] }>("GET", `${base}/add-ons`, undefined, token)).items) await call("DELETE", `${base}/add-ons/${a.id}`, undefined, token);
   const made = [
     await call<AddOn>("POST", `${base}/add-ons`, { name: "Nail art", priceCents: 1000, durationMin: 15, offeredWith: [mani.id] }, token),
     await call<AddOn>("POST", `${base}/add-ons`, { name: "Gel removal", priceCents: 1500, durationMin: 20, offeredWith: [mani.id], sort: 1 }, token),
   ];
-  ctx = { token, m, base, mani, made };
+  ctx = { token, m, base, mani, made, override };
 });
 
 test.afterAll(async () => {
   if (!ctx) return;
   const token = await login(OWNER);
   for (const a of (await call<{ items: AddOn[] }>("GET", `${ctx.base}/add-ons`, undefined, token)).items) await call("DELETE", `${ctx.base}/add-ons/${a.id}`, undefined, token);
+  if (ctx.override) await call("DELETE", `/v1/admin/features/booking.add_ons/overrides/${ctx.m}`, undefined, await login(ADMIN)).catch(() => undefined);
 });
 
 async function signIn(page: Page) {
@@ -141,6 +146,7 @@ test("the Services page shows the Add-ons section at 1440; off the plan it carri
     const pub = await call<{ services: { name: string; addOns?: unknown[] }[] }>("GET", `/v1/public/shops/${SLUG}/services`);
     expect(pub.services.every((s) => s.addOns === undefined)).toBe(true);
   } finally {
-    await call("DELETE", `/v1/admin/features/booking.add_ons/overrides/${ctx.m}`, undefined, admin);
+    if (ctx.override) await call("PUT", `/v1/admin/features/booking.add_ons/overrides`, { merchantId: ctx.m, enabled: true, reason: "e2e add-ons" }, admin);
+    else await call("DELETE", `/v1/admin/features/booking.add_ons/overrides/${ctx.m}`, undefined, admin);
   }
 });

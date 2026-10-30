@@ -507,4 +507,7 @@ export async function backfillMilestones(db: DbOrTx): Promise<void> {
   await db.execute(sql`INSERT INTO merchant_milestones (merchant_id, key, reached_at) SELECT id, 'signed_up', created_at FROM merchants ON CONFLICT DO NOTHING`);
   await db.execute(sql`INSERT INTO merchant_milestones (merchant_id, key, reached_at) SELECT merchant_id, 'first_stamp', min(created_at) FROM visits GROUP BY merchant_id ON CONFLICT DO NOTHING`);
   await db.execute(sql`INSERT INTO merchant_milestones (merchant_id, key, reached_at) SELECT id, 'activated', activated_at FROM merchants WHERE activated_at IS NOT NULL ON CONFLICT DO NOTHING`);
+  // phase-pro: a seeded or imported shop whose booking link was already live (an active appointment service and someone with hours) went
+  // live before it reached us, so it records the milestone at its creation and does not start the new-shop Pro trial on its next visit.
+  await db.execute(sql`INSERT INTO merchant_milestones (merchant_id, key, reached_at, data) SELECT m.id, 'booking_link_live', m.created_at, '{"backfill": true}'::jsonb FROM merchants m WHERE EXISTS (SELECT 1 FROM services s WHERE s.merchant_id = m.id AND s.kind = 'appointment' AND s.active) AND EXISTS (SELECT 1 FROM staff_hours h WHERE h.merchant_id = m.id) ON CONFLICT DO NOTHING`);
 }

@@ -1,7 +1,7 @@
 /**
  * Pro value P7 · the in-product upgrade moments (docs/business/pro-value.md §5.1 to §5.3), audited end to end.
  *
- * Free shop (Rangrez Beauty Studio, seeded): each §5.1 line renders on its screen with its own count (a waitlist ask made here, a full
+ * Free shop (Arch & Thread Brow Bar, seeded; it stays on Free through the other Pro specs): each §5.1 line renders on its screen with its own count (a waitlist ask made here, a full
  * day looked at here), every "See Pro" goes to billing with Pro preselected, and the price comes from PLANS.
  * Trial shop (a new nail tech whose trial is started through the API, no card): the same screens carry none of the locked lines, and
  * Today shows the trial start card; with the shop's trial at day 11 (the usage answer moved three days from the end, because the clock
@@ -15,7 +15,7 @@ const SHOTS = process.env.E2E_SHOTS ?? "e2e/screenshots/pro-p7";
 const shot = (name: string) => `${SHOTS}/${name}.png`;
 const DEMO_PASSWORD = "localloyalty-demo";
 const TRIAL_PASSWORD = "localloyalty-e2e-moments";
-const FREE = { email: "owner+rangrez-beauty-studio@example.com", slug: "rangrez-beauty-studio" };
+const FREE = { email: "owner+arch-and-thread@example.com", slug: "arch-and-thread" };
 const SIZES = [
   { w: 390, h: 844 },
   { w: 1440, h: 900 },
@@ -60,10 +60,11 @@ async function makeFullDay(f: { token: string; id: string }): Promise<void> {
     if (av.days[0]!.times.length) open = day(n);
   }
   if (!open) return;
-  for (const s of pub.staff) {
-    await call("POST", `/v1/merchants/${f.id}/staff/${s.id}/time-off`, { startsAt: `${open}T00:00:00Z`, endsAt: `${open}T23:59:59Z`, reason: "e2e full day" }, f.token).catch(() => undefined);
-    await call("POST", `/v1/merchants/${f.id}/staff/${s.id}/time-off`, { startsAt: `${open}T05:00:00Z`, endsAt: `${open}T23:00:00Z`, reason: "e2e full day" }, f.token).catch(() => undefined);
-  }
+  // The whole local day off for everyone: Toronto's evening runs past midnight UTC, so the block ends at 06:00 UTC the next day.
+  const next = new Date(new Date(`${open}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
+  for (const s of pub.staff) await call("POST", `/v1/merchants/${f.id}/staff/${s.id}/time-off`, { startsAt: `${open}T04:00:00Z`, endsAt: `${next}T06:00:00Z`, reason: "e2e full day" }, f.token);
+  const after = await call<{ days: { date: string; times: unknown[] }[] }>("GET", `/v1/public/shops/${FREE.slug}/availability?${q(open)}`);
+  expect(after.days[0]!.times).toHaveLength(0);
   await call("GET", `/v1/public/shops/${FREE.slug}/availability?${q(open)}`);
 }
 

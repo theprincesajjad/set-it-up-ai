@@ -116,6 +116,8 @@ test.describe("customer, phone width", () => {
     await expect(page.getByLabel("6-digit code")).toHaveValue(/^\d{6}$/);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+    // /me signs in in place, so the URL says nothing: wait for the session cookie before the server-rendered booking page reads it.
+    await expect.poll(async () => (await page.context().cookies()).some((c) => c.name === "ll_at")).toBe(true);
     await page.goto(`/shops/${slug}/book?service=${cut.id}&rebook=00000000-0000-0000-0000-000000000009`);
     await expect(page.getByText(/^Welcome back/)).toBeVisible();
     await expect(page.getByRole("checkbox", { name: /Cut and blow-dry/ })).toBeChecked();

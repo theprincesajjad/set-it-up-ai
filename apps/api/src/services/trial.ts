@@ -12,7 +12,7 @@
  * This module imports no other billing module (billing.ts imports it). The rebooking mode is loaded when the trial starts (dynamic
  * import), because rebooking.ts sits in the messaging graph that imports billing.ts at load time.
  */
-import { and, eq, gte, isNotNull, isNull, lte } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { auditLogs, merchantMilestones, merchants } from "@ll/db";
 import { PLANS, TRIAL_PLAN, effectivePlan, trialEndsAt, type MilestoneKey, type PlanId, type billingApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
@@ -124,7 +124,8 @@ export async function startMissedTrials(ctx: AppContext): Promise<number> {
     .select({ id: merchants.id })
     .from(merchants)
     .innerJoin(merchantMilestones, and(eq(merchantMilestones.merchantId, merchants.id), eq(merchantMilestones.key, "booking_link_live")))
-    .where(and(eq(merchants.trialUsed, false), eq(merchants.plan, "free"), isNull(merchants.restaurantTier), gte(merchantMilestones.reachedAt, since)));
+    // A backfilled milestone (a seeded or imported shop that was live before it reached us) never starts a trial.
+    .where(and(eq(merchants.trialUsed, false), eq(merchants.plan, "free"), isNull(merchants.restaurantTier), gte(merchantMilestones.reachedAt, since), sql`coalesce(${merchantMilestones.data}->>'backfill', '') <> 'true'`));
   let n = 0;
   for (const r of rows) if (await startTrialOnLinkLive(ctx, r.id)) n += 1;
   return n;
