@@ -58,7 +58,7 @@ describe("founder Today: MRR includes add-ons and restaurant tiers, and shows th
     expect(o.money.mrrSplit).toEqual(expected);
     expect(o.money.mrrCents).toBe(Object.values(expected).reduce((a, b) => a + b, 0));
     expect(o.money.payingShops).toBe(3);
-    expect(o.money.byPlan).toEqual({ plus: 1, pro: 0, restaurant: 2 });
+    expect(o.money.byPlan).toEqual({ plus: 1, studio: 0, pro: 0, restaurant: 2 });
 
     // One shop's money view and the costs table agree with the overview.
     const money = await get(`/v1/admin/merchants/${resto.merchant.id}/money`, token);
