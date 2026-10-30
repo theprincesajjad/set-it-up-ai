@@ -76,7 +76,7 @@ export function ProFeatures({ v }: { v: SoloView }) {
           {P.items.map((x, i) => (
             <article key={x.id} className="sl-pro-card card-clear" data-pro={x.id}>
               <div className="sl-pro-demo" aria-hidden>
-                <Obj name={["calendar_week", "regulars", "check_done", "price_tag"][i]!} size={30} />
+                <Obj name={["calendar_week", "bell", "top", "price_tag"][i]!} size={30} />
                 <div>
                   <b>{x.sample}</b>
                   <small>{x.sampleLine}</small>

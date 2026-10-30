@@ -367,7 +367,7 @@
 .sl-plan li svg { width: 16px; height: 16px; margin-top: 2px; color: var(--success); flex: none; }
 .sl-plan > .sl-btn { margin-top: auto; width: 100%; }
 .sl-plan.featured { background: var(--primary); color: var(--primary-foreground); box-shadow: var(--lg-shadow-lg); }
-.sl-plan.featured .price small, .sl-plan.featured .yearly, .sl-plan.featured .sl-note { color: inherit; opacity: 0.8; }
+.sl-plan.featured .price small, .sl-plan.featured .yearly, .sl-plan.featured .sl-note { color: inherit; }
 .sl-plan.featured ul { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--primary-foreground) 22%, transparent); }
 .sl-plan.featured li svg { color: inherit; }
 .sl-plans-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 16px; margin-top: 14px; font-size: 14px; color: var(--muted-foreground); }
@@ -470,3 +470,6 @@
   @keyframes sl-stamp { 0%, 20% { opacity: 0; transform: scale(0.6); } 28%, 100% { opacity: 1; transform: none; } }
   @keyframes sl-stamp-tick { 0%, 24% { opacity: 0; transform: scale(0.4); } 32%, 100% { opacity: 1; transform: none; } }
 }
+
+/* The 3D objects (parts.tsx Obj) are drawn at a few aspect ratios; fit each one inside its square box. */
+.sl-obj { object-fit: contain; }

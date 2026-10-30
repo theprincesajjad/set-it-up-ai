@@ -40,7 +40,10 @@ describe("price block", () => {
   it("reads every plan name, price and paid feature from plan-copy.ts and PLANS", () => {
     const v = soloView("nail");
     const P = planVars();
-    expect(v.price.plans).toEqual(marketingPlans("solo"));
+    expect(v.price.plans).toEqual(marketingPlans("solo", { chairs: false }));
+    // Per-chair talk only on the barber page (founder, Oct 29).
+    expect(JSON.stringify(v.price.plans)).not.toMatch(/chair/i);
+    expect(JSON.stringify(soloView("barber").price.plans)).toMatch(/per-chair/);
     expect(v.price.plans.map((p) => p.price)).toEqual([moneyShort(0), moneyShort(PLANS.plus.priceCents), String(P.studioMonthly)]);
     expect(v.price.plans.map((p) => p.name)).toEqual(["Free", PLANS.plus.name, String(P.studio)]);
     expect(v.price.plans[1]!.features).toContain(`${PROMOS_PER_MONTH_PLUS} promos a month`);

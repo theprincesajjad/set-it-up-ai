@@ -85,7 +85,7 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
     notes: T.notes.map(f),
     card: fill(C.regulars.card, { client: T.client, have: goal - 1, goal }),
     /** The two plan cards and the note under them: lib/marketing/plan-copy.ts, the one place the plans are described. */
-    price: { title: C.price.title, sub: C.price.sub, plans: marketingPlans("solo"), note: planNote("solo") },
+    price: { title: C.price.title, sub: C.price.sub, plans: marketingPlans("solo", { chairs: id === "barber" }), note: planNote("solo") },
     /** The Pro money features (waitlist, rebooking, reviews, the weekly report), from plan-copy.ts. */
     pro: proHighlights(),
     trialCta: planLine("trialCta"),

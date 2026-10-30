@@ -28,7 +28,7 @@ export function Photo({ photo, sizes, alt = "", eager, priority }: { photo: Solo
 
 /** One of our 3D objects as its 96 px PNG (public/icons3d), shown at 28 to 30 px inside chips and rows. Lighter than the sprite. */
 export function Obj({ name, size = 28 }: { name: string; size?: number }) {
-  return <img src={`/icons3d/${name}@2x.png`} alt="" width={size} height={size} loading="lazy" decoding="async" />;
+  return <img className="sl-obj" src={`/icons3d/${name}@2x.png`} alt="" width={size} height={size} loading="lazy" decoding="async" />;
 }
 
 export function Check({ width = 3 }: { width?: number }) {

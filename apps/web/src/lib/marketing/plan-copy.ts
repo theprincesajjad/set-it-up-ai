@@ -50,7 +50,7 @@ export const PLAN_COPY = {
     tagline: { solo: "For one person who wants a fuller week.", shop: "For owners who want customers back sooner." },
     features: {
       solo: ["A waitlist that fills cancelled slots", "Automatic rebooking and win-back", "Google review requests after every visit", "A weekly money report with a goal", "Add-ons at booking", "{promos} promos a month", "No “Powered by” badge"],
-      shop: ["{promos} promos a month to your regulars", "Automatic win-back for quiet regulars", "Google review requests after every visit", "A weekly report with a goal and your best day", "No “Powered by” badge"],
+      shop: ["{promos} promos a month to your regulars", "Automatic win-back for quiet regulars", "VIP levels, birthday rewards and referrals", "A weekly report with a goal and your best day", "No “Powered by” badge"],
     },
     yearly: "or {yearly} a year",
     /** With the first-year price: "or ~~$290~~ $199 first year, billed yearly". */
@@ -60,9 +60,11 @@ export const PLAN_COPY = {
     cta: "Start your {trial}-day trial",
   },
   studio: {
-    tagline: { solo: "For teams and shops with chairs.", shop: "For teams with more than one person." },
+    tagline: { solo: "For studios with a team.", shop: "For teams with more than one person.", chairs: "For shops with more than one chair." },
     features: {
-      solo: ["Everything in {pro}", "Unlimited chairs, no per-chair charge", "A walk-in line clients join from their phone", "Payouts and chair rent for your team", "{studioPromos} promos a month"],
+      solo: ["Everything in {pro}", "A calendar for every team member", "A booking link for each person", "Payouts for your team", "{studioPromos} promos a month"],
+      /** Barbershops (and salons) only: per-chair talk stays on those pages. */
+      chairs: ["Everything in {pro}", "Unlimited chairs, no per-chair charge", "A walk-in line clients join from their phone", "Payouts and chair rent for your team", "{studioPromos} promos a month"],
       shop: ["Everything in {pro}", "Unlimited team members", "Order-ahead and pickup times", "POS auto-award, webhooks and the API", "{studioPromos} promos a month"],
     },
     yearly: "or {studioYearly} a year",
@@ -78,11 +80,22 @@ export const PLAN_COPY = {
     caption: "Illustrative examples, not a promise of earnings.",
     items: [
       { id: "waitlist", title: "A waitlist that fills cancellations.", body: "When someone cancels, the next client on the list is offered the slot.", sample: "Sat 1:00 pm cancelled", sampleLine: "Offered to the waitlist · filled" },
-      { id: "rebook", title: "Rebooking that runs itself.", body: "Clients get a reminder when they are due, and a win-back if they go quiet.", sample: "Due for a fill", sampleLine: "Rebooking reminder sent · booked" },
+      { id: "rebook", title: "Rebooking that runs itself.", body: "Clients get a reminder when they are due, and a win-back if they go quiet.", sample: "Due for the next visit", sampleLine: "Rebooking reminder sent · booked" },
       { id: "reviews", title: "More Google reviews.", body: "A review request goes out after every visit, so happy clients say so.", sample: "How was your visit?", sampleLine: "Review request sent after the visit" },
       { id: "report", title: "Your week in dollars.", body: "A weekly report with your total, your goal and your best day.", sample: "$1,240 of $1,500 goal", sampleLine: "Best day: Saturday" },
     ],
     cta: "Start your {trial}-day trial",
+    /** The home page's version for shops (cafés, bakeries, retail): the same money features, in a shop's terms. */
+    shop: {
+      title: "Get more from the customers you have.",
+      sub: "{pro} adds the tools that bring regulars back sooner.",
+      items: [
+        { id: "winback", title: "Win back quiet regulars.", body: "Customers who stop coming in get an offer to return, automatically.", sample: "Maya · away for 5 weeks", sampleLine: "Win-back offer sent · back Friday" },
+        { id: "reviews", title: "Birthdays and VIP levels.", body: "A birthday treat and a level to reach keep regulars coming.", sample: "Happy birthday, Maya", sampleLine: "Birthday treat sent · Gold level" },
+        { id: "promos", title: "{promos} promos a month.", body: "Double stamps, birthday treats and launches, to customers who opted in.", sample: "Double stamps, 2 to 4 p.m.", sampleLine: "+38 visits during promo hours" },
+        { id: "report", title: "Your week in dollars.", body: "A weekly report with your total, your goal and your best day.", sample: "$3,860 of $4,000 goal", sampleLine: "Best day: Saturday" },
+      ],
+    },
   },
 } as const;
 
@@ -124,11 +137,16 @@ export interface MarketingPlan {
   badge?: string;
 }
 
-/** The three plan cards, words from PLAN_COPY and numbers from PLANS / PLAN_MARKETING. */
-export function marketingPlans(audience: PlanAudience): MarketingPlan[] {
+/**
+ * The three plan cards, words from PLAN_COPY and numbers from PLANS / PLAN_MARKETING. `chairs` (solo only, on unless set to false):
+ * Studio sold per shop with no per-chair charge, for the barber page and /pricing; the nail, brow, lash, makeup and groomer pages pass
+ * `chairs: false` and describe Studio as a team plan (per-chair talk belongs to barbershops and salons).
+ */
+export function marketingPlans(audience: PlanAudience, opts: { chairs?: boolean } = {}): MarketingPlan[] {
   const v = planVars();
   const f = (s: string) => fill(s, v);
   const C = PLAN_COPY;
+  const chairs = audience === "solo" && opts.chairs !== false;
   const firstYearDeal = PLAN_MARKETING.proFirstYearCents !== null && PLAN_MARKETING.proFirstYearCents < PLANS.plus.annualPriceCents;
   return [
     { key: "free", name: PLANS.free.name, price: String(v.free), per: "", tagline: C.free.tagline[audience], features: C.free.features[audience].map(f), cta: f(C.free.cta) },
@@ -143,7 +161,7 @@ export function marketingPlans(audience: PlanAudience): MarketingPlan[] {
       yearly: firstYearDeal ? { line: f(C.pro.yearly), or: C.pro.or, was: String(v.yearly), now: String(v.firstYear), label: C.pro.firstYear } : { line: f(C.pro.yearly) },
       badge: C.pro.badge,
     },
-    { key: "studio", name: STUDIO.name, price: String(v.studioMonthly), per: C.perMonth, tagline: C.studio.tagline[audience], features: C.studio.features[audience].map(f), cta: f(C.studio.cta), yearly: { line: f(C.studio.yearly) } },
+    { key: "studio", name: STUDIO.name, price: String(v.studioMonthly), per: C.perMonth, tagline: chairs ? C.studio.tagline.chairs : C.studio.tagline[audience], features: (chairs ? C.studio.features.chairs : C.studio.features[audience]).map(f), cta: f(C.studio.cta), yearly: { line: f(C.studio.yearly) } },
   ];
 }
 
@@ -152,9 +170,10 @@ export function planNote(audience: PlanAudience): string {
   return [planLine(audience === "solo" ? "noteSolo" : "noteShop"), ANNUAL_INCLUDES_WEBSITE ? planLine("website") : ""].filter(Boolean).join(" ");
 }
 
-/** The solo pages' Pro section, filled. */
-export function proHighlights() {
+/** The Pro section, filled: the solo pages' version by default, the home page's with `shop`. The button is the trial. */
+export function proHighlights(audience: PlanAudience = "solo") {
   const v = planVars();
   const H = PLAN_COPY.highlights;
-  return { title: H.title, sub: fill(H.sub, v), caption: H.caption, cta: fill(H.cta, v), items: H.items.map((x) => ({ ...x })) };
+  const src = audience === "shop" ? H.shop : H;
+  return { title: src.title, sub: fill(src.sub, v), caption: H.caption, cta: fill(H.cta, v), trialCta: planLine("trialCta"), items: src.items.map((x) => ({ ...x, title: fill(x.title, v) })) };
 }
