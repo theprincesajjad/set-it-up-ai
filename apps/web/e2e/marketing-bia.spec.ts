@@ -141,22 +141,32 @@ test.describe("landing", () => {
 test.describe("pricing", () => {
   test("paid cards show real prices in the text colour with a status badge; compare is closed until ?compare=1", async ({ page }) => {
     await page.goto("/pricing");
+    // Free, Pro and Studio as cards, Service as a line under them (pro-value.md §2.2); prices from PLANS through plan-copy.ts.
     const free = page.locator("#shops").getByText("$0", { exact: true }).first();
-    const plus = page.locator("#shops").getByText("$39", { exact: true });
-    const pro = page.locator("#shops").getByText("$99", { exact: true });
+    const plus = page.locator("#shops [data-plan=plus]").getByText("$29", { exact: true });
+    const studio = page.locator("#shops [data-plan=studio]").getByText("$59", { exact: true });
+    const pro = page.locator("#shops [data-plan=pro]").getByText("$99", { exact: true });
     await expect(plus).toBeVisible();
+    await expect(studio).toBeVisible();
     await expect(pro).toBeVisible();
+    // Annual Pro's first-year price: the list price struck through, never called "founding".
+    await expect(page.locator("#shops [data-plan=plus] s")).toHaveText("$290");
+    await expect(page.locator("#shops [data-plan=plus]")).toContainText("$199");
+    await expect(page.locator("#shops")).not.toContainText(/founding/i);
     const color = (l: typeof plus) => l.evaluate((e) => getComputedStyle(e).color);
     // Both paid prices share one colour that differs from Free, and none is a subdued grey. The marketing site draws in Clear (the default
     // theme), where the paid prices (`text-primary-text`) are link blue #0066CC (Main Street Warm: forest Free, terracotta paid, rgb(178, 58, 35)).
     expect(await color(pro)).toBe(await color(plus));
+    expect(await color(studio)).toBe(await color(plus));
     expect(await color(plus)).not.toBe(await color(free));
     expect(await color(plus)).toBe("rgb(0, 102, 204)");
     // Trade tools self-serve: both paid plans can be bought today, so no pilot badge and a working Start button on each.
     const plans = (await call<{ items: { id: string; available: boolean }[] }>("GET", "/v1/public/plans")).json.items;
     expect(plans.filter((p) => p.id !== "free").every((p) => p.available)).toBe(true);
     await expect(page.locator("#shops").getByText("Early access")).toHaveCount(0);
-    await expect(page.locator("#shops").getByRole("link", { name: "Start Pro" })).toHaveAttribute("href", "/signup?plan=plus");
+    // Pro starts as the 14-day trial with no card (plain signup); Studio and Service open their checkout after signup.
+    await expect(page.locator("#shops [data-plan=plus]").getByRole("link", { name: "Start free, with 14 days of Pro" })).toHaveAttribute("href", "/signup");
+    await expect(page.locator("#shops").getByRole("link", { name: "Start Studio" })).toHaveAttribute("href", "/signup?plan=studio");
     await expect(page.locator("#shops").getByRole("link", { name: "Start Service" })).toHaveAttribute("href", "/signup?plan=pro");
     await expect(page.locator("#trades")).toContainText("Pharmacies");
     await expect(page.getByTestId("compare")).not.toHaveAttribute("open", "");
@@ -193,7 +203,7 @@ test.describe("pricing", () => {
     await expect(page.getByTestId("calc-delivery")).toContainText("up to $2,900");
     const text = await visibleText(page);
     expect(text).not.toMatch(/15 to 30%|\$750 to \$1,500/);
-    for (const q of ["Are the prices before HST?", "Do I keep DoorDash or Uber Eats?"]) await expect(page.getByText(q)).toBeVisible();
+    for (const q of ["Are the prices before HST?", "Pro or Studio?", "Is the restaurant plan a different plan?"]) await expect(page.getByText(q)).toBeVisible();
     await expect(page.getByText("they're coming soon")).toHaveCount(0);
   });
 });
