@@ -11,3 +11,6 @@ android/
 *.mobileprovision
 .env*.local
 dist-web/
+# Local Expo modules keep their native sources (the prebuild ios/ and android/ above stay ignored).
+!modules/*/ios/
+!modules/*/android/
