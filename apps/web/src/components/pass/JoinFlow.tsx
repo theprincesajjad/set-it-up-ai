@@ -403,6 +403,8 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
   const fname = firstName(name);
   const bonus = result.bonusPoints > 0 ? (locale === "en" ? formatPoints(result.bonusPoints, m.terminology, false) : unitText(t, program, result.bonusPoints)) : null;
   const goal = m.nextReward?.pointsCost ?? program?.stampGoal ?? 0;
+  // The shop's own card for this phone's wallet (both + a QR on a computer); hidden or "coming soon" without credentials.
+  const wallet = <ShopWalletCard merchantId={info.merchant.id} shopName={info.merchant.name} slug={info.merchant.slug} terminology={m.terminology} load={deps.shopWallet} os={os} />;
 
   return (
     <div className="flex flex-col gap-7 pt-2">
@@ -435,14 +437,17 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
         <p className="text-meta text-fg-muted" {...(locale === "en" ? {} : { lang: "en", dir: "ltr" as const })}>{m.expiryDisclosure}</p>
       </div>
 
+      {/* On a phone the wallet button comes right under the card, above the fold: it is the one thing to do here. A computer keeps it
+          under the member QR, since it brings its own "open on your phone" QR. */}
+      {os !== "other" ? wallet : null}
+
       <section aria-label={t("auth.joined.cardLabel")} className="flex flex-col items-center gap-3 rounded-card border border-line px-4 py-6">
         <p className="text-body-strong text-fg">{t("auth.joined.showStaff")}</p>
         {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={220} caption={t("auth.joined.brightness")} /> : <div className="skeleton aspect-square w-[240px] rounded-card" aria-busy="true" />}
       </section>
 
       <div className="flex flex-col gap-2">
-        {/* The shop's own card for this phone's wallet (both + a QR on a computer); hidden or "coming soon" without credentials. */}
-        <ShopWalletCard merchantId={info.merchant.id} shopName={info.merchant.name} slug={info.merchant.slug} terminology={m.terminology} load={deps.shopWallet} os={os} />
+        {os === "other" ? wallet : null}
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta">
           <span className="text-fg-muted">{t("auth.joined.getApp")}</span>
           {os !== "android" ? (

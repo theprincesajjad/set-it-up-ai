@@ -6,7 +6,7 @@
  */
 import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
@@ -59,8 +59,19 @@ export function Segmented<T extends string>({ options, value, onChange, label, c
 
 /** Underline tabs for in-page views. */
 export function PageTabs<T extends string>({ items, value, onChange, label, className }: { items: { id: T; label: ReactNode; count?: number | null }[]; value: T; onChange: (v: T) => void; label: string; className?: string }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  // On a phone the row scrolls sideways: a page opened on a later tab (?tab=wallet) shows that tab, not a cut-off "W".
+  useEffect(() => {
+    const list = listRef.current;
+    const tab = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!list || !tab) return;
+    const l = list.getBoundingClientRect();
+    const r = tab.getBoundingClientRect();
+    if (r.left < l.left) list.scrollLeft += r.left - l.left - 16;
+    else if (r.right > l.right) list.scrollLeft += r.right - l.right + 16;
+  }, [value]);
   return (
-    <div role="tablist" aria-label={label} className={cn("kit-tabs flex gap-5 overflow-x-auto border-b border-line [scrollbar-width:none]", className)}>
+    <div ref={listRef} role="tablist" aria-label={label} className={cn("kit-tabs flex gap-5 overflow-x-auto border-b border-line [scrollbar-width:none]", className)}>
       {items.map((t) => {
         const on = t.id === value;
         return (

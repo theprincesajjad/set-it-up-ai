@@ -26,7 +26,7 @@ import { browserApi, sessionApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { newIdempotencyKey } from "@/lib/api/client";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
-import { formatDate, rewardInSentence } from "@/lib/format";
+import { formatDate, rewardInSentence, withArticle } from "@/lib/format";
 import { hideQuickUndos, walletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
 import { StatusDot } from "@/components/ui/Badge";
@@ -268,7 +268,7 @@ type Tr = (key: MessageKey, vars?: Record<string, string | number | null | undef
 
 /** The grey line under a shop name: what's left to the next reward, else the expiry rule. English keeps the shop's own wording. */
 function progressLine(m: customerApi.MembershipDto, t: Tr, locale: string) {
-  if (locale === "en") return m.nextReward ? t("ui.stampMore", { n: m.nextReward.pointsNeeded, reward: rewardInSentence(m.nextReward.name) }) : m.expiryDisclosure;
+  if (locale === "en") return m.nextReward ? t("ui.stampMore", { n: m.nextReward.pointsNeeded, reward: withArticle(rewardInSentence(m.nextReward.name)) }) : m.expiryDisclosure;
   if (m.nextReward) return t("sh.n.earnNext", { need: unitsText(locale as never, m.nextReward.pointsNeeded, m.terminology, false), reward: m.nextReward.name }).replace(/[.।۔]$/, "");
   const unit = unitCaption(locale as never, 2, m.terminology);
   const months = m.program?.expiryMonths;

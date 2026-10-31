@@ -69,11 +69,12 @@ export function WeekStrip({ days, selected, onSelect, hours, onHoursChange, labe
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-body text-muted-foreground">
-          {labels.start}
+          {/* Same width for both words, so the two time boxes line up when they wrap onto two rows (phones). */}
+          <span className="min-w-10">{labels.start}</span>
           <input type="time" value={hours.start} onChange={(e) => onHoursChange({ ...hours, start: e.target.value })} className={time} />
         </label>
         <label className="flex items-center gap-2 text-body text-muted-foreground">
-          {labels.end}
+          <span className="min-w-10">{labels.end}</span>
           <input type="time" value={hours.end} onChange={(e) => onHoursChange({ ...hours, end: e.target.value })} className={time} />
         </label>
         {onSameEveryDay ? (

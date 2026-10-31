@@ -36,12 +36,14 @@ const DAYS = 14;
  * card or deposit row (M2), pay the deposit or save a card, then a confirmation with a calendar file.
  * The bridal row is a quote, not a slot.
  */
-export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: { service?: string; staff?: string; pet?: string; rebook?: string }; meName?: string | null }) {
+export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null; terminology?: string }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: { service?: string; staff?: string; pet?: string; rebook?: string }; meName?: string | null }) {
   const f = useFmt();
   const { t, money, date, time, pick } = f;
   const dur = (min: number) => durationText(t as never, min);
   const [step, setStep] = useState<"services" | "addons" | "time" | "pay" | "done">("services"); // phase-pro: P5 "addons"
-  const [staffId, setStaffId] = useState<string | null>(initial?.staff && data.staff.some((s) => s.id === initial.staff) ? initial.staff : null);
+  // A one-person shop (a solo nail tech) has nobody to choose between: book with her, and skip the "Anyone" picker.
+  const solo = data.staff.length === 1;
+  const [staffId, setStaffId] = useState<string | null>(initial?.staff && data.staff.some((s) => s.id === initial.staff) ? initial.staff : solo ? data.staff[0]!.id : null);
   const [category, setCategory] = useState<string>("all");
   const [ids, setIds] = useState<string[]>(initial?.service && data.services.some((s) => s.id === initial.service) ? [initial.service] : []);
   const [day, setDay] = useState<string>(() => todayIso());
@@ -261,7 +263,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           <CircleCheck aria-hidden className="size-7 text-positive" strokeWidth={1.5} />
           <Heading level={2}>{t("bk.done.title")}</Heading>
           <p className="text-body text-fg-muted">{t("bk.done.body", { services: finished.items.map((i) => i.name).join(", "), shop: shop.name, when: when(finished.startsAt).replace(/\s([ap])\.m\.$/i, (_, x: string) => ` ${x.toUpperCase()}M`) })}</p>
-          {finished.staffName ? <p className="text-meta text-fg-muted">{finished.staffName}</p> : null}
+          {finished.staffName && finished.staffName !== shop.name ? <p className="text-meta text-fg-muted">{finished.staffName}</p> : null}
           {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta text-positive-text">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
           {/* The confirmation is where a home studio's address is first shown (it arrives only once the booking is confirmed). */}
           {finished.merchant.addressPrivate && finished.merchant.address ? (
@@ -273,7 +275,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         </section>
         {!pharmacy ? <NextVisitCard appt={finished} showManage={false} /> : null}
         {/* The shop's wallet card, with this visit on it (pharmacies keep visits off the card). */}
-        <ShopWalletCard merchantId={finished.merchant.id} shopName={shop.name} slug={shop.slug} className="rounded-sheet border border-line p-5" />
+        <ShopWalletCard merchantId={finished.merchant.id} shopName={shop.name} slug={shop.slug} terminology={shop.terminology} className="rounded-sheet border border-line p-5" />
         <ReminderCard text={finished.reminderText} />
         {/* phase-solo D: the free reminder channel for a client who booked on the web. */}
         <NotifyPrompt />
@@ -473,7 +475,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           </p>
         ) : null}
       </div>
-      <div role="radiogroup" aria-label={t("bk.anyone")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      {solo ? null : <div role="radiogroup" aria-label={t("bk.anyone")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {[{ id: null as string | null, name: t("bk.anyone"), initials: "Any" }, ...data.staff].map((s) => {
           const on = s.id === staffId;
           return (
@@ -483,7 +485,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             </button>
           );
         })}
-      </div>
+      </div>}
       {petShop && signedIn ? (
         <div className="flex flex-col gap-2">
           <p className="text-meta-strong text-fg">{t("bk.pet.title")}</p>
@@ -518,7 +520,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
                 <span aria-hidden className={cn("flex size-7 shrink-0 items-center justify-center rounded-full border", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line-strong")}>{on ? <CircleCheck className="size-5" strokeWidth={2} /> : null}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-body-strong text-fg">{p.name}</span>
-                  <span className="block text-meta text-fg-muted">{staffName ? t("bk.withStaff", { duration: dur(v.durationMin), staff: staffName }) : dur(v.durationMin)}{s.depositCents > 0 && takesCards ? ` · ${t("bk.depositHold", { amount: money(s.depositCents) })}` : ""}</span>
+                  <span className="block text-meta text-fg-muted">{staffName && !solo ? t("bk.withStaff", { duration: dur(v.durationMin), staff: staffName }) : dur(v.durationMin)}{s.depositCents > 0 && takesCards ? ` · ${t("bk.depositHold", { amount: money(s.depositCents) })}` : ""}</span>
                 </span>
                 <span className="shrink-0 text-headline tabular-nums text-fg">{pharmacy ? <span className="text-meta font-normal text-fg-muted">{t("rx.book.noCharge")}</span> : s.priceFrom ? <span className="text-body font-normal">{t("bk.from", { price: money(v.priceCents) })}</span> : money(v.priceCents)}</span>
               </button>

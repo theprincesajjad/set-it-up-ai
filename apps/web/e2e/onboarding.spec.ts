@@ -43,7 +43,7 @@ const stamp = (id: string, token: string) => call("POST", `/v1/merchants/${id}/c
 test("signup is one screen and lands on the first stamp; the stamp shows up by itself; Home shows the activation view", async ({ page }) => {
   const email = `owner-${rand()}@example.com`;
   await page.goto("/signup");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("get your shop on the street");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Set up your shop, free");
   await expect(page.getByRole("radio", { name: "Tiffin kitchen" })).toBeVisible();
   await expect(page.getByRole("radio", { name: "South Asian restaurant" })).toBeVisible();
   // Gym / studio, pet shops, caterers and banquet halls are first-class choices, not hidden under "More types".

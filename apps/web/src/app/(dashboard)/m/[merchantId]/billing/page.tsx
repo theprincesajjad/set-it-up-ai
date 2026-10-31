@@ -2,7 +2,7 @@
 import { Check, CreditCard } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PAID_PLAN_IDS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type PaidPlanId, type PlanId, type billingApi } from "@ll/shared";
+import { APPOINTMENT_VERTICALS, FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PAID_PLAN_IDS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type PaidPlanId, type PlanId, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Dot, PageHeader, Panel, Section, Segmented, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -127,8 +127,15 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       <Panel>
         <p className="text-meta text-fg-muted">Current plan</p>
         <h2 className="mt-1 text-title text-fg">
-          You&apos;re on {b.plan === "free" ? "Free" : b.plans.find((p) => p.id === b.plan)?.name}
-          {b.plan === "free" ? ". Forever." : "."}
+          {/* On the free trial the shop is still on Free underneath: say the trial, not "Free. Forever." (the line below has the date). */}
+          {b.plan === "free" && b.usage?.trial ? (
+            <>You&apos;re on the {PLANS[b.usage.trial.plan].name} trial.</>
+          ) : (
+            <>
+              You&apos;re on {b.plan === "free" ? "Free" : b.plans.find((p) => p.id === b.plan)?.name}
+              {b.plan === "free" ? ". Forever." : "."}
+            </>
+          )}
         </h2>
         {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, {PLANS.studio.name} tools are included.</p> : null}
         {b.usage?.trial ? <p className="mt-1 text-meta text-fg-muted" data-testid="trial-on">{PLANS[b.usage.trial.plan].name} · {fill(PB.trialOn, { date: formatDateYear(b.usage.trial.endsAt) })}</p> : null}
@@ -238,7 +245,8 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       </ul>
       <p className="text-meta text-fg-muted">{copy.soon.pricingPromise}</p>
 
-      {restaurantFirst ? null : restaurant}
+      {/* A nail tech, a barber or a groomer never needs the restaurant ladder: it is only noise between their plans and the FAQ. */}
+      {restaurantFirst || APPOINTMENT_VERTICALS.includes(detail.merchant.vertical) ? null : restaurant}
 
       {enabled("payments.in_app") ? (
         <Section title="Payments in the app">

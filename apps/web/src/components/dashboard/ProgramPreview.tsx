@@ -5,7 +5,7 @@ import { PointsRing } from "@/components/ui/PointsRing";
 import { RewardCard } from "@/components/ui/RewardCard";
 import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
 import { StampCard } from "@/components/ui/StampCard";
-import { formatNumber, formatPoints, rewardInSentence } from "@/lib/format";
+import { formatNumber, formatPoints, rewardInSentence, withArticle } from "@/lib/format";
 import type { PreviewModel } from "@/lib/dashboard/program";
 import { Segmented } from "./kit";
 import { WalletPassPreview } from "./program/WalletPassPreview";
@@ -40,7 +40,7 @@ interface Shop {
 
 /** The wallet row's one line, as the app writes it: "4 more for a free drink" / "120 pts to $5 off" (D13). */
 function progressSubtitle(model: PreviewModel): string {
-  if (model.kind === "stamps") return model.goal - model.stamps > 0 ? `${model.goal - model.stamps} more for a ${rewardInSentence(model.rewardName)}` : "reward ready";
+  if (model.kind === "stamps") return model.goal - model.stamps > 0 ? `${model.goal - model.stamps} more for ${withArticle(rewardInSentence(model.rewardName))}` : "reward ready";
   if (!model.rewardName || model.goal <= 0) return model.expiry;
   return model.balance >= model.goal ? "reward ready" : `${model.goal - model.balance} ${model.terminology === "points" ? "pts" : model.terminology} to ${rewardInSentence(model.rewardName)}`;
 }
@@ -127,7 +127,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange, defa
               <p className="mt-3 font-display text-display-number text-points-text tabular">{formatNumber(balance)}</p>
               <p className="text-meta text-fg-muted">
                 Sam has {formatPoints(balance, model.terminology)}
-                {model.kind === "stamps" ? ` · ${model.goal - model.stamps} more for a ${model.rewardName.toLowerCase()}` : model.rewardName ? (model.balance >= model.goal ? ` · ${model.rewardName} ready` : ` · ${model.goal - model.balance} to ${model.rewardName}`) : ""}
+                {model.kind === "stamps" ? ` · ${model.goal - model.stamps} more for ${withArticle(model.rewardName.toLowerCase())}` : model.rewardName ? (model.balance >= model.goal ? ` · ${model.rewardName} ready` : ` · ${model.goal - model.balance} to ${model.rewardName}`) : ""}
               </p>
             </div>
             <p className="mt-auto text-caption font-normal text-fg-muted">What staff see after an award. Customers get the same balance on their card.</p>

@@ -3,6 +3,7 @@
  * `{brand}` is always BRAND.name from @ll/shared, never hard-coded.
  */
 import { BRAND, PLANS } from "@ll/shared";
+import { withArticle } from "@/lib/format";
 
 /** List prices as the copy shows them ("$29"), from PLANS: never typed (phase-pro). */
 const per = (cents: number) => `$${Math.round(cents / 100)}`;
@@ -91,7 +92,7 @@ export const copy = {
   },
   misc: {
     pointsNeverExpire: (terminology: string) => `Your ${terminology} never expire.`,
-    stampsToGo: (n: number, reward: string) => `${n} more for a ${reward.charAt(0).toLowerCase()}${reward.slice(1)}`,
+    stampsToGo: (n: number, reward: string) => `${n} more for ${withArticle(`${reward.charAt(0).toLowerCase()}${reward.slice(1)}`)}`,
     ptsToGo: (n: number, reward: string) => `${n} pts to ${reward}`,
     showAtCounter: "Show this at the counter",
     freeForever: "Free forever · No subscription, no fee on loyalty · Unlimited locations",

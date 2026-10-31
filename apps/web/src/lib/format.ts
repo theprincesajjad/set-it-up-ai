@@ -80,6 +80,16 @@ export function formatSigned(n: number): string {
   return "0";
 }
 
+/**
+ * English only: the article a reward needs after "for" ("6 more for a free drink", "6 more for $10 off your next visit"). A name that
+ * starts with a price, a number or a percentage, or already has an article, takes none.
+ */
+export function withArticle(reward: string): string {
+  const r = reward.trim();
+  if (!r || /^[^A-Za-z]/.test(r) || /^(a|an|the|one|your|any)\s/i.test(r)) return r;
+  return `${/^[aeiou]/i.test(r) ? "an" : "a"} ${r}`;
+}
+
 /** A reward name inside a sentence: "Free drink" → "free drink"; "$10 off" and "VIP night" stay. */
 export function rewardInSentence(name: string): string {
   const m = /^([A-Z][a-z]+)(\b.*)$/.exec(name);

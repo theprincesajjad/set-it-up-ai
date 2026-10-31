@@ -22,7 +22,8 @@ const TEXT = "Inter, var(--font-inter), ui-sans-serif, system-ui, -apple-system,
  * one points dot (the tokens are pinned to light, so it prints the same in dark mode). Filled with the shop name, street and join URL, with a real QR (QrCode, black on
  * white, ECC M) in the 50 mm slot.
  */
-export function QrStand({ shopName, street, joinUrl, scale = 1 }: { shopName: string; street: string; joinUrl: string; scale?: number }) {
+export function QrStand({ shopName, street, joinUrl, scale = 1, unit = "points" }: { shopName: string; street: string; joinUrl: string; scale?: number; /** The program's word ("stamps" for a stamp card). */ unit?: string }) {
+  const word = (unit || "points").toLowerCase();
   const short = joinUrl.replace(/^https?:\/\//, "");
   const longName = shopName.length > 28;
   return (
@@ -46,10 +47,10 @@ export function QrStand({ shopName, street, joinUrl, scale = 1 }: { shopName: st
           <g fontFamily={TEXT} fontSize="4.2" fontWeight="500" className="fill-muted-foreground">
             <text x="52.5" y="54">
               {longName ? (
-                <tspan fontWeight="600" className="fill-foreground">earn points here</tspan>
+                <tspan fontWeight="600" className="fill-foreground">earn {word} here</tspan>
               ) : (
                 <>
-                  earn points at{" "}
+                  earn {word} at{" "}
                   <tspan fontWeight="600" className="fill-foreground">
                     {shopName}
                   </tspan>
@@ -149,7 +150,7 @@ export function QrKitPrint({ kit, street, initialLocationId, initialSize, localS
       {loc ? (
         <div className="qr-kit-canvas flex justify-center overflow-x-auto rounded-card bg-bg-subtle px-4 py-10 print:block print:rounded-none print:bg-transparent print:p-0">
         <div className="qr-kit-sheet border border-line print:border-0">
-          {size === "script" ? <ScriptCard kit={kit} street={street} local={localScript} /> : <QrStand shopName={kit.merchant.name} street={street} joinUrl={loc.joinUrl} scale={size === "a4" ? 2 : 1} />}
+          {size === "script" ? <ScriptCard kit={kit} street={street} local={localScript} /> : <QrStand shopName={kit.merchant.name} street={street} joinUrl={loc.joinUrl} scale={size === "a4" ? 2 : 1} unit={kit.program?.terminology} />}
         </div>
         </div>
       ) : (

@@ -2,6 +2,7 @@
 import { Gift } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { withArticle } from "@/lib/format";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { unitCaption } from "@/lib/units";
 import { stampIcon } from "@/components/pass/stampIcons";
@@ -47,14 +48,15 @@ export function StampCard({ stamps, goal, rewardName, vertical, newlyEarned = []
       {bare ? null : <div className="mb-4 flex items-baseline justify-between gap-3">
         <div className="min-w-0 flex-1">
           {header ?? (
-            <p className="text-body-strong text-fg">{ready ? <span className="text-points-text">{t("ui.stampReady", { reward: rewardLabel })}</span> : t("ui.stampMore", { n: toGo, reward })}</p>
+            <p className="text-body-strong text-fg">{ready ? <span className="text-points-text">{t("ui.stampReady", { reward: rewardLabel })}</span> : t("ui.stampMore", { n: toGo, reward: locale === "en" ? withArticle(reward) : reward })}</p>
           )}
         </div>
-        <span className="shrink-0 text-meta tabular-nums text-fg-muted">
+        {/* "2 / 6" reads left to right in every language (an Urdu page would otherwise show "6 / 2"). */}
+        <span dir="ltr" className="shrink-0 text-meta tabular-nums text-fg-muted">
           <span className="font-semibold text-fg">{onCard}</span> / {g}
         </span>
       </div>}
-      <div role="img" aria-label={`${t("sh.rc.progress", { have: onCard, need: g, unit: unitCaption(locale, 2, terminology) })}. ${ready ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: toGo, reward: rewardLabel })}.`} className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      <div role="img" aria-label={`${t("sh.rc.progress", { have: onCard, need: g, unit: unitCaption(locale, 2, terminology) })}. ${ready ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: toGo, reward: locale === "en" ? withArticle(rewardLabel) : rewardLabel })}.`} className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {Array.from({ length: g }, (_, i) => {
           const filled = i < onCard;
           const last = i === g - 1;

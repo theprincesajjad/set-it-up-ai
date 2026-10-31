@@ -42,7 +42,7 @@ export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, 
     <div className={cn(layout === "card" ? "rounded-card border border-border bg-card p-4" : "py-3.5", className)}>
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-body-strong text-fg">{rewardNameIn(locale, t, reward.name)}</p>
+          <p className="text-body-strong text-fg"><bdi>{rewardNameIn(locale, t, reward.name)}</bdi></p>
           <p className="text-meta tabular-nums text-fg-muted">
             {state === "available" ? (
               <>

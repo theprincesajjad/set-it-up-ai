@@ -8,7 +8,7 @@
  */
 import { Target } from "lucide-react";
 import Link from "next/link";
-import { PLANS } from "@ll/shared";
+import { APPOINTMENT_VERTICALS, PLANS } from "@ll/shared";
 import { Panel, QuietLink, SkeletonRows } from "@/components/dashboard/kit";
 import { PlanLine } from "@/components/onboarding/PlanLine";
 import { useApi } from "@/lib/dashboard/useApi";
@@ -18,7 +18,7 @@ import { useMerchant } from "../MerchantContext";
 import { DeltaChips, GoalBar, TrendBars } from "./WeekParts";
 
 export function ThisWeekTile() {
-  const { api, base, role, enabled } = useMerchant();
+  const { api, base, role, enabled, detail } = useMerchant();
   const loc = useLocaleOrEnglish();
   const { t } = loc;
   const manager = role !== "staff";
@@ -47,7 +47,8 @@ export function ThisWeekTile() {
           <div className="flex min-w-0 flex-col gap-2">
             <p className="flex flex-wrap items-baseline gap-x-2 text-fg">
               <span data-testid="week-revenue" className="text-display-number tabular-nums">{loc.money(w.revenueCents)}</span>
-              <span className="text-body text-fg-muted">{t("insights.tile.booked")}</span>
+              {/* A shop without appointments takes money at the till: "in sales", not "booked". */}
+              <span className="text-body text-fg-muted">{t(APPOINTMENT_VERTICALS.includes(detail.merchant.vertical) ? "insights.tile.booked" : "insights.tile.sales")}</span>
             </p>
             {active ? <DeltaChips w={w} /> : <p className="text-body text-fg-muted">{t("insights.tile.empty")}</p>}
           </div>

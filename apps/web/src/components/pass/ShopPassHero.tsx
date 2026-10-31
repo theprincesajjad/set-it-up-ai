@@ -11,7 +11,7 @@ import { useState } from "react";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { StampCard } from "@/components/ui/StampCard";
 import { shopInitials } from "@/lib/shopAvatar";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, withArticle } from "@/lib/format";
 import { unitCaption } from "@/lib/units";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { rewardNameIn } from "@/lib/i18n/rewardName";
@@ -107,7 +107,7 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
         {stampGoal > 0 ? (
           <div
             role="img"
-            aria-label={`${t("sh.rc.progress", { have: shown, need: stampGoal, unit })}. ${ready || shown >= stampGoal ? t("ui.stampReady", { reward: rewardName ?? t("ui.reward").toLowerCase() }) : t("ui.stampMore", { n: toGo, reward: rewardName ?? t("ui.reward").toLowerCase() })}.`}
+            aria-label={`${t("sh.rc.progress", { have: shown, need: stampGoal, unit })}. ${ready || shown >= stampGoal ? t("ui.stampReady", { reward: rewardName ?? t("ui.reward").toLowerCase() }) : t("ui.stampMore", { n: toGo, reward: locale === "en" ? withArticle(rewardName ?? t("ui.reward").toLowerCase()) : (rewardName ?? t("ui.reward").toLowerCase()) })}.`}
             className={cn(styles.stamps, "pb-4")}
             style={{ "--cols": cols, "--size": `${size}px` } as React.CSSProperties}
           >

@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PHARMACY_FRONT_STORE_CAPTION_EN, PHARMACY_FRONT_STORE_TICK_EN, type authApi, type staffApi } from "@ll/shared";
+import { APPOINTMENT_VERTICALS, PHARMACY_FRONT_STORE_CAPTION_EN, PHARMACY_FRONT_STORE_TICK_EN, type authApi, type staffApi } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { Awning } from "@/components/ui/Awning";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -1183,6 +1183,7 @@ export function CounterApp({
               onVerify={() => setMode("verify")}
               onClear={reset}
               icon={stampIcon}
+              vertical={vertical}
               excludedCents={grocery ? Math.min(notCountedCents(notCounted), centsFromKeypad(cents)) : 0}
               extras={grocery ? <GroceryExtras grocery={grocery} cents={cents} notCounted={notCounted} setNotCounted={setNotCounted} bulk={bulk} setBulk={setBulk} remind={bulkRemind} setRemind={setBulkRemind} /> : null}
             />
@@ -1380,15 +1381,17 @@ function recentKind(type: string, stamp?: LucideIcon): { icon: LucideIcon; tone:
 const KEY_ESC = "Esc"; // l10n-ok: a key cap label
 
 /** "Esc for the next customer" with Esc as a key cap, in whichever order the language puts the words. */
-function EscHint() {
+function EscHint({ lead = "" }: { lead?: string }) {
   const { t } = useCounterText();
   const [before = "", after = ""] = t("counter.escNext", { key: "\u0001" }).split("\u0001");
+  // A keyboard hint: a phone or a tablet at the till has no Esc key, so it is hidden on touch screens.
   return (
-    <>
+    <span className="pointer-coarse:hidden">
+      {lead}
       {before}
       <kbd dir="ltr" className="rounded-sm border border-border px-1.5 text-caption">{KEY_ESC}</kbd>
       {after}
-    </>
+    </span>
   );
 }
 
@@ -1606,8 +1609,11 @@ function MemberPanel({
   extras,
   excludedCents = 0,
   icon,
+  vertical,
 }: {
   icon?: LucideIcon;
+  /** The trade: a nail tech or a barber stamps per service, not per drink. */
+  vertical?: string;
   extras?: React.ReactNode;
   /** Grocers: the part of the total that never earns ("Not counted"); the button shows points for the rest. */
   excludedCents?: number;
@@ -1710,7 +1716,7 @@ function MemberPanel({
               </button>
             ))}
           </div>
-          <p className="mt-2 text-caption text-muted-foreground">{stamps ? t("counter.onePerDrink") : t("counter.onePerItem")}</p>
+          <p className="mt-2 text-caption text-muted-foreground">{vertical && APPOINTMENT_VERTICALS.includes(vertical) ? t("counter.onePerService") : stamps ? t("counter.onePerDrink") : t("counter.onePerItem")}</p>
         </div>
       )}
 
@@ -1757,7 +1763,7 @@ function MemberPanel({
       ) : null}
       {member.discountCards.length ? <p className="text-meta text-muted-foreground">{t("counter.discountCards", { names: member.discountCards.map((d) => d.name).join(", ") })}</p> : null}
       <p className="text-center text-caption text-muted-foreground">
-        {member.expiryDisclosure} · <EscHint />
+        {member.expiryDisclosure}<EscHint lead=" · " />
       </p>
     </section>
   );

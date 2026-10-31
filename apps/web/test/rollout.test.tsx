@@ -42,8 +42,8 @@ describe("rollout control rules", () => {
   });
 
   it("groups by phase and plan", () => {
-    const g = groupFeatures([feat({}), feat({ key: "service.tickets", minPlan: "pro" }), feat({ key: "ads.map_pin", phase: 3, minPlan: "free" }), feat({ key: "loyalty.points", freeForever: true, phase: 1, minPlan: "free" })]);
-    expect(g.map((x) => x.items.map((i) => i.key))).toEqual([["orders.order_ahead"], ["service.tickets"], ["ads.map_pin"], ["loyalty.points"]]);
+    const g = groupFeatures([feat({}), feat({ key: "integrations.pos_auto_award", minPlan: "studio" }), feat({ key: "service.tickets", minPlan: "pro" }), feat({ key: "ads.map_pin", phase: 3, minPlan: "free" }), feat({ key: "loyalty.points", freeForever: true, phase: 1, minPlan: "free" })]);
+    expect(g.map((x) => x.items.map((i) => i.key))).toEqual([["orders.order_ahead"], ["integrations.pos_auto_award"], ["service.tickets"], ["ads.map_pin"], ["loyalty.points"]]);
   });
 });
 

@@ -51,6 +51,8 @@ export function canForceOff(f: Pick<adminApi.AdminFeature, "freeForever">): bool
 export function groupFeatures(items: adminApi.AdminFeature[]): { id: string; title: string; items: adminApi.AdminFeature[] }[] {
   const groups = [
     { id: "plus", title: "Phase 2 · Pro", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "plus" },
+    // Studio (founder packaging, Oct 29): its own plan now, so its features (order-ahead, POS auto-award …) need their own group or the page drops them.
+    { id: "studio", title: "Phase 2 · Studio", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "studio" },
     { id: "pro", title: "Phase 2 · Service", test: (f: adminApi.AdminFeature) => f.phase === 2 && f.minPlan === "pro" },
     { id: "network", title: "Phase 3 · Needs many shops", test: (f: adminApi.AdminFeature) => f.phase === 3 },
     { id: "free", title: "Free forever · Phase 1", test: (f: adminApi.AdminFeature) => f.freeForever || (f.phase === 1 && f.minPlan === "free") },

@@ -1,6 +1,6 @@
 "use client";
 import { CircleAlert } from "lucide-react";
-import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { adoptedChangeEvent, useHydratedValue } from "@/lib/useHydratedValue";
@@ -80,6 +80,14 @@ export function TextField(props: TextFieldProps) {
   const autoId = useId();
   const { label, hint, error, optionalLabel, prefix, suffix, showCount, hideLabel, ...rest } = props;
   const id = rest.id ?? autoId;
+  // The input is padded past its prefix ("$", "@", "localloyalty.ca/") by the prefix's measured width (an estimate in ch until then),
+  // at least the old 2rem. Inline, so the theme's own padding classes (clear:px-3) cannot win over it.
+  const hasPrefix = !!prefix;
+  const prefixRef = useRef<HTMLSpanElement>(null);
+  const [prefixWidth, setPrefixWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (hasPrefix && prefixRef.current) setPrefixWidth(prefixRef.current.offsetWidth);
+  }, [hasPrefix, prefix]);
   const len = typeof rest.value === "string" ? rest.value.length : 0;
   const count = showCount && rest.maxLength ? `${len}/${rest.maxLength}` : undefined;
   const aria = { "aria-invalid": error ? true : undefined, "aria-describedby": describedBy(id, error, hint) };
@@ -98,14 +106,16 @@ export function TextField(props: TextFieldProps) {
       {rest.type === "textarea" ? (
         <textarea {...(fieldProps as TextareaHTMLAttributes<HTMLTextAreaElement>)} ref={fieldRef as React.Ref<HTMLTextAreaElement>} id={id} {...aria} className={cn(inputBase, "min-h-28 py-3 clear:md:min-h-28 clear:py-1.5", rest.className)} />
       ) : (
-        <div className="relative flex items-center">
-          {prefix ? <span className="pointer-events-none absolute start-3 text-body text-fg-muted">{prefix}</span> : null}
+        // A field forced to dir="ltr" (a link, a phone) keeps its prefix on the same side as its text in a right-to-left page.
+        <div className="relative flex items-center" dir={(fieldProps as InputHTMLAttributes<HTMLInputElement>).dir}>
+          {prefix ? <span ref={prefixRef} className="pointer-events-none absolute start-3 text-body text-fg-muted">{prefix}</span> : null}
           <input
             {...(fieldProps as InputHTMLAttributes<HTMLInputElement>)}
             ref={fieldRef as React.Ref<HTMLInputElement>}
             id={id}
             {...aria}
-            className={cn(inputBase, prefix && "ps-8", suffix && (suffix.length > 4 ? "pe-[4.5rem]" : "pe-12"), rest.className)}
+            className={cn(inputBase, suffix && (suffix.length > 4 ? "pe-[4.5rem]" : "pe-12"), rest.className)}
+            style={hasPrefix ? { ...(fieldProps as InputHTMLAttributes<HTMLInputElement>).style, paddingInlineStart: prefixWidth != null ? `${Math.max(32, prefixWidth + 14)}px` : `max(2rem, calc(${prefix!.length}ch + 0.875rem))` } : (fieldProps as InputHTMLAttributes<HTMLInputElement>).style}
           />
           {suffix ? <span className="pointer-events-none absolute end-3 text-body text-fg-muted">{suffix}</span> : null}
         </div>

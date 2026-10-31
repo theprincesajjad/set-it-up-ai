@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { catalogItems, merchants, neighbourhoods } from "@ll/db";
+import { catalogItems, classTypes, merchants, neighbourhoods } from "@ll/db";
 import { activationFor, FEATURE_KEYS, FEATURES } from "@ll/shared";
 import { awardPurchase } from "../src/services/ledger.js";
 import type { Geocoder } from "../src/providers/geocoder.js";
@@ -223,5 +223,20 @@ describe("onboarding by trade", () => {
     // A tenth member makes the shop active.
     for (let i = 0; i < 7; i++) await awardPurchase(env.ctx, { merchantId: id, phone: nextPhone(), amountCents: 3000, source: "staff_app" });
     expect((await env.db.select().from(merchants).where(eq(merchants.id, id)))[0]!.status).toBe("active");
+  });
+});
+
+describe("customer entry points need something behind them", () => {
+  it("a shop on Pro shows \"Classes and memberships\" to customers only once it has a class to sell", async () => {
+    const token = await owner();
+    const made = await signup(token, { name: "Studio Nails", vertical: "nails" });
+    const id = made.body.merchant.id as string;
+    await setPlan(env, id, "plus");
+    expect((await features(token, id))["booking.classes"].enabled).toBe(true);
+    const slug = (await env.db.select({ slug: merchants.slug }).from(merchants).where(eq(merchants.id, id)))[0]!.slug;
+    const shop = async () => (await call(env, null, "GET", `/v1/public/shops/${slug}`)).body.features;
+    expect((await shop()).classes).toBe(false);
+    await env.db.insert(classTypes).values({ merchantId: id, name: "Nail art workshop" });
+    expect((await shop()).classes).toBe(true);
   });
 });

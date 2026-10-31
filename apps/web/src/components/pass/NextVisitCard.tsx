@@ -26,7 +26,7 @@ export function NextVisitCard({ appt, showManage = true }: { appt: appointmentsA
             <bdi>{appt.merchant.name}</bdi>
             {services ? ` · ${services}` : ""}
             {appt.petName ? ` · ${t("bk.next.for", { pet: appt.petName })}` : ""}
-            {appt.staffName ? ` · ${appt.staffName}` : ""}
+            {appt.staffName && appt.staffName !== appt.merchant.name ? ` · ${appt.staffName}` : ""}
           </p>
         </div>
       </div>
@@ -34,7 +34,7 @@ export function NextVisitCard({ appt, showManage = true }: { appt: appointmentsA
         <div className="flex items-start gap-3">
           <MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-fg" strokeWidth={1.5} />
           <div className="min-w-0">
-            <p className="text-body text-fg">{appt.merchant.address}</p>
+            <p className="text-body text-fg"><bdi>{appt.merchant.address}</bdi></p>
             {map ? <a href={map} target="_blank" rel="noopener noreferrer" className="text-meta text-fg underline underline-offset-2">{t("bk.next.directions")}</a> : null}
           </div>
         </div>

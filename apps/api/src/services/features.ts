@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { featureInterest, featureOverrides, featureRollouts, merchantAddOns, merchants, services } from "@ll/db";
+import { classProducts, classTypes, featureInterest, featureOverrides, featureRollouts, merchantAddOns, merchants, services } from "@ll/db";
 import { FEATURE_KEYS, FEATURES, PLAN_IDS, bookableCalendarLimit, isFeatureEnabled, type FeatureKey, type PlanId, type RestaurantTier, type RolloutStage } from "@ll/shared";
 import type { DbOrTx } from "@ll/db";
 import { HttpError, featureLocked, notFound } from "../lib/errors.js";
@@ -221,10 +221,22 @@ export async function customerFeaturesFor(db: DbOrTx, list: Merchant[]): Promise
       ? (await db.selectDistinct({ merchantId: services.merchantId }).from(services).where(and(inArray(services.merchantId, maybeBooking), eq(services.kind, "appointment"), eq(services.active, true)))).map((r) => r.merchantId)
       : [],
   );
+  // The same for classes (on with Pro and the trial): "Classes and memberships" only once there is a class or a pass to sell, so a
+  // nail tech on her trial does not show customers an empty classes page.
+  const maybeClasses = list.filter((m) => on.get(m.id)?.has("booking.classes")).map((m) => m.id);
+  const withClasses = new Set(
+    maybeClasses.length
+      ? [
+          ...(await db.selectDistinct({ merchantId: classTypes.merchantId }).from(classTypes).where(and(inArray(classTypes.merchantId, maybeClasses), eq(classTypes.active, true)))),
+          ...(await db.selectDistinct({ merchantId: classProducts.merchantId }).from(classProducts).where(and(inArray(classProducts.merchantId, maybeClasses), eq(classProducts.active, true)))),
+        ].map((r) => r.merchantId)
+      : [],
+  );
   for (const m of list) {
     const set = on.get(m.id) ?? new Set<FeatureKey>();
     const row = Object.fromEntries(Object.entries(CUSTOMER_FEATURE_KEYS).map(([k, key]) => [k, set.has(key)])) as unknown as CustomerFeatures;
     if (row.appointments && !bookable.has(m.id)) row.appointments = false;
+    if (row.classes && !withClasses.has(m.id)) row.classes = false;
     out.set(m.id, row);
   }
   return out;

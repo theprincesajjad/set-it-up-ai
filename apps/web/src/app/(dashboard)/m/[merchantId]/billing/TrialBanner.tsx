@@ -43,7 +43,7 @@ export function TrialBanner({
       <Button loading={busy} onClick={() => onKeep("month")} data-testid="keep-monthly">
         {t("trial.card.keep", { plan })} · {t("trial.banner.perMonth", { price: short(PLANS.plus.priceCents) })}
       </Button>
-      <Button variant="secondary" loading={busy} onClick={() => onKeep("year")} data-testid="keep-yearly">
+      <Button variant="secondary" loading={busy} onClick={() => onKeep("year")} data-testid="keep-yearly" className="gap-1.5">
         <span>{t("trial.banner.keepYearly", { plan })} ·</span>
         {fy ? (
           <span className="inline-flex items-baseline gap-1">
@@ -60,7 +60,8 @@ export function TrialBanner({
   );
 
   if (moment?.kind === "start" || moment?.kind === "ending") {
-    const weekday = loc.date(moment.trial.endsAt, { weekday: "long" });
+    // "ends Friday" is only clear inside the coming week; further out (and on the same weekday as today) it names the date.
+    const weekday = loc.date(moment.trial.endsAt, moment.trial.daysLeft > 6 ? { weekday: "long", month: "long", day: "numeric" } : { weekday: "long" });
     return (
       <Panel>
         <div data-testid="trial-banner" data-moment="live" className="flex flex-col gap-3">

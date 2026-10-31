@@ -25,6 +25,7 @@ import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 import { env } from "@/lib/env";
 import { unitsText } from "@/lib/units";
+import { withArticle } from "@/lib/format";
 import { expiryLineL, howYouEarnL, kindL, openStatusL, rewardInSentenceL, weekRowsL } from "@/lib/i18n/formatL";
 import { PetShopBlock } from "@/components/pass/PetShopBlock";
 import { ShopWalletCard } from "@/components/pass/ShopWalletCard";
@@ -71,6 +72,11 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const locale = await getLocale(sp);
   const t = translator(locale);
   const L = { locale, t };
+  /** A reward name inside "6 more for …": English takes its article; a right-to-left page isolates the (usually English) name. */
+  const rewardWord = (name: string) => {
+    const r = rewardInSentenceL(L, name);
+    return locale === "en" ? withArticle(r) : LOCALES[locale].dir === "rtl" ? `\u2068${r}\u2069` : r;
+  };
   const ref = typeof sp.ref === "string" ? sp.ref.slice(0, 32) : null;
   let shop: networkApi.PublicShopResponse;
   try {
@@ -243,7 +249,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
           <div className="min-w-0 flex-1">
             <p className="text-meta text-fg-muted">{t("wp.shop.youHave")}</p>
             <p className="display text-title tabular-nums text-points-text">{unitsText(locale, membership.balance, membership.terminology, false)}</p>
-            <p className="text-meta text-fg-muted">{membership.nextReward ? t("ui.stampMore", { n: membership.nextReward.pointsNeeded, reward: rewardInSentenceL(L, membership.nextReward.name) }) : expiryLineL(L, membership)}</p>
+            <p className="text-meta text-fg-muted">{membership.nextReward ? t("ui.stampMore", { n: membership.nextReward.pointsNeeded, reward: rewardWord(membership.nextReward.name) }) : expiryLineL(L, membership)}</p>
           </div>
           <Button variant="secondary" size="sm" href="/me">
             {t("sh.fs.ctaCard")}

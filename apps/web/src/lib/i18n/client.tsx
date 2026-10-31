@@ -2,7 +2,7 @@
 import { createContext, use, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LOCALES, formatCurrency, formatDate, formatNumber, formatTime, pickTranslation, withRtlMark, type Locale, type LocaleInfo, type MessageKey, type Messages, type TranslationsJson, type Vars } from "@ll/shared";
-import { catalogNow, loadCatalog, translateWith, useCatalog } from "./catalog";
+import { catalogNow, loadCatalog, translateWith } from "./catalog";
 
 export const LOCALE_COOKIE = "ll_lang";
 
@@ -120,9 +120,12 @@ export function LocaleProvider({ locale, catalogHref, children }: { locale: Loca
     [router, pathname, params],
   );
 
-  // Only this scope's language is downloaded (lib/i18n/catalog.ts), never all four.
-  const messages = useCatalog(locale, catalogHref);
-  const value = useMemo<LocaleValue>(() => buildValue(locale, messages, setLocale), [locale, messages, setLocale]);
+  // Only this scope's language is downloaded (lib/i18n/catalog.ts), never all four. Every hook runs before the conditional `use()`:
+  // a hook after a suspending `use()` changes the hook list between the suspended render and its replay, which a scope mounted by a
+  // client-side navigation (landing page → /signup in Urdu) hit as React error #467.
+  const now = catalogNow(locale);
+  const memo = useMemo<LocaleValue | null>(() => (now ? buildValue(locale, now, setLocale) : null), [locale, now, setLocale]);
+  const value = memo ?? buildValue(locale, use(loadCatalog(locale, catalogHref)), setLocale);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

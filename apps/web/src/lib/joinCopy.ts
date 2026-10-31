@@ -5,6 +5,7 @@
  */
 import { verticalCategory } from "@ll/design-tokens";
 import { rewardNameIn } from "./i18n/rewardName";
+import { withArticle } from "./format";
 import type { Locale, MessageKey, Vars } from "@ll/shared";
 import { placeKind } from "./place";
 
@@ -106,5 +107,5 @@ export function alsoEarningT(t: T, locale: Locale, others: { vertical: string }[
 }
 
 export function stampsToGoT(t: T, locale: Locale, n: number, reward: string): string {
-  return locale === "en" ? `${n} more for a ${reward.charAt(0).toLowerCase()}${reward.slice(1)}` : t("auth.joined.toGo", { n, reward: rewardNameIn(locale, t, reward) });
+  return locale === "en" ? `${n} more for ${withArticle(`${reward.charAt(0).toLowerCase()}${reward.slice(1)}`)}` : t("auth.joined.toGo", { n, reward: rewardNameIn(locale, t, reward) });
 }
