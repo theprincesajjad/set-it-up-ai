@@ -32,7 +32,7 @@ export async function LiveProof() {
   if (!stats || !network) return null;
   return (
     <section
-      aria-label="The network today"
+      aria-label="Live counts"
       className="py-10 md:py-14"
       data-shops={network.activeMerchants}
       data-streets={network.liveStreets}

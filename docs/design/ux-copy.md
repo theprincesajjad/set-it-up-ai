@@ -21,10 +21,10 @@ Reports.
 | Say | Never say | Notes |
 | --- | --- | --- |
 | customer | member, guest, user | The person in a shop's program. "Membership" stays for a paid studio membership, and "Member code" and "Member number" stay on the customer's own card. |
-| shop | merchant, business, store, vendor | "Merchant" is allowed only in the legal documents' titles. The admin console says shop too. |
+| shop | merchant, business, store, vendor | "Merchant" is allowed only in the legal documents' titles and "merchant of record" on the admin payments page. The admin and rep consoles say shop too ("My shops", "Set up a shop"). The marketing pages may say "business" when they speak to every kind of shop at once ("a loyalty program for local businesses"), because a nail tech or a groomer does not think of themselves as a shop. |
 | stamps, points (the shop's own unit) | "points" for a stamp shop, "stamps" for a points shop | Ask the program (`terminology`). Where the screen cannot know the unit, say "rewards". |
 | reward | perk, prize, freebie | What a customer earns toward ("Free drink"). A draw prize is a "prize". |
-| offer (what a customer sees), promo (what an owner makes) | deal, special | A shop's "Promos" page makes the "Offers" tab on its shop page. |
+| offer (what a customer sees), promo (what an owner makes) | deal, special | A shop's "Promos" page makes the "Offers" tab on its shop page and the customer's **Offers** inbox on /me (it was "Deals" until Nov 1, 2026), the wallet pass field "Offer" and "New offer at {shop}". "Door crasher" stays as a promo type. The CASL consent text `deal.consentText` still says "offers and deals": consent text is never reworded here. |
 | neighbourhood bonus | network bonus, perk, street perk | The bonus for visiting several shops on one street. |
 | street event, passport | campaign (customer side) | "Campaign" is fine for BIAs and owners ("Street campaigns"). Customers see an "event". |
 | visit | transaction | One trip to the shop. A purchase is a "purchase". Studios keep "door check-in" for their class door. |
@@ -37,7 +37,9 @@ Reports.
 | add-on | extra, upsell, upgrade | Something a client adds to a service when they book ("Nail art +$10 · +15 min"). Never "upsell" on a client's screen. |
 | weekly report, your week | digest, newsletter, analytics | The Sunday push and email, and Reports > Week. On Today the tile is "This week". |
 | trial, "Pro is on for 14 days" | free trial period, demo, freemium | Fourteen days of Pro, no card, from the day the booking link goes live. Say what happens at the end ("goes back to Free; your bookings and clients stay"). The length comes from `TRIAL_DAYS`. |
-| first year (the struck-through price) | founding, founding member, early bird, launch price | Annual Pro's first-year price shows only as "~~$290~~ $199 first year". The word "founding" never appears in the product, and the spots counter stays internal. |
+| first year (the struck-through price) | founding, founding member, early bird, launch price | Annual Pro's first-year price shows only as "~~$290~~ $199 first year". The word "founding" never appears in the product, and the spots counter stays internal. The restaurant offer is the "first-year offer" ("14 of 20 first-year offer spots left on Ridgeway Plaza"; on the Stripe invoice "First-year offer: 50% off for 12 months"), never "founding restaurant". |
+| your street, map listing | the network, network listing, network perks, corridor | What a shop or a customer sees. "Network" is an internal word ("Reports > Your street", "A listing on the local map", "Neighbourhood bonuses"). |
+| balance, card | points (when the unit is not known) | When a sentence cannot know whether the shop uses stamps or points, talk about the card or the balance: "Cancelled. Nothing was used.", "Your cards and rewards stay safe." Never "Your points are back" to a stamp customer. Pass the shop's `terminology` wherever a count is shown ("2x stamps", never "2x points"). |
 | early access, live | beta, GA | |
 | your kind of shop | your trade, vertical | "Trade" is a design-system word (trade colour), not a word for people. |
 | once N shops have joined | network-gated, network-wide | Why a feature is not open yet, in plain words. |
@@ -48,6 +50,30 @@ Capitals: sentence case for everything a person reads or taps: buttons, field la
 headers, empty states, toasts and errors. The brand voice keeps lowercase for display titles only (page
 titles, marketing headlines, the wallet and map labels, category chips; see [brand.md](./brand.md#2-voice-and-tone)).
 A sentence is never lowercase, even under a lowercase title ("Nothing matches these filters.").
+
+### 0.1 Words by kind of shop (copy pass, Nov 1, 2026)
+
+| Context | The people | The unit | The place |
+| --- | --- | --- | --- |
+| Shared screens: Today, counter, Customers, Rewards, Reports, Promos, admin | customers | the program's `terminology` (stamps or points); "visits" only for what is counted | shop |
+| Booking trades (nails, brows and lashes, barbers, salons, groomers, makeup) inside booking, calendar, waitlist, rebooking and the solo marketing pages | clients | stamps | your link, your chair, your studio (only the owner's own word for their place) |
+| Studios with classes | students in the class tools; "members" only for people with a paid membership | classes, passes | studio |
+| Restaurants and tiffin | customers; "guests" only at a banquet | orders | restaurant, kitchen |
+| The customer, about themselves | "you" (never "member" except "Member since" and "Member code" on their own card) | their shop's unit | shop |
+| Marketing to owners of every kind | customers; clients on the solo pages | stamps (the hero example) | business, when addressing every kind at once |
+
+### 0.2 Mechanics added in the Nov 1, 2026 pass
+
+- Counts always go through an ICU plural or a `=== 1` branch: never "(s)", never "1 customers". Catalog strings use `{n, plural, one {# customer} other {# customers}}`.
+- Load errors: "Couldn't load your customers." (title) with a Try again button. Never "We could not".
+- "Not found" from the API reads in product words: `notFound("Merchant")` says "We couldn't find that shop." (also member → customer, user → account, deal → offer; `apps/api/src/lib/errors.ts`).
+- Phone errors: "Enter a 10-digit mobile number." (customer) or "Enter a 10-digit phone number." (shop and staff forms). Never "valid" or "Invalid".
+- Labels use words, not slashes: "Bar or pub", "Gym or studio", "Tailor or alterations".
+- Message templates (email, text, push, automations): no exclamation marks and no em dashes (an em dash turns a text into UCS-2 and halves its length).
+- "beta" is "early access" everywhere a shop owner or the admin reads it ("You have early access", "Try it early", "is now in early access").
+- Times are "8 am", never "8:00" or "21:00".
+- Restaurant plans include Studio (`effectivePlan`): say "Every restaurant plan includes Studio", never "Includes Pro".
+- Prices on the comparison tables come from `PLANS`: one person is Pro ($29), the whole shop with any number of chairs is Studio ($59).
 
 Never: OK, Submit, Click here, Yes or No as a button (say the verb), "Upgrade", "Invalid", "Error", "Oops",
 and developer words (cursor, slug, payload, token, endpoint, override, flight, cohort, ledger, "the server").

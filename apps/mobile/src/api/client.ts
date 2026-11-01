@@ -160,7 +160,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     } catch (e) {
       if (init.signal?.aborted) throw new ApiError(0, "aborted", "Request cancelled");
       const timedOut = controller.signal.aborted;
-      throw new ApiError(0, "network", timedOut ? "The request timed out" : "Can't connect right now. Check your connection and try again.", {
+      throw new ApiError(0, "network", timedOut ? "This is taking too long and timed out. Check your connection and try again." : "Can't connect right now. Check your connection and try again.", {
         cause: e instanceof Error ? e.message : String(e),
       });
     } finally {

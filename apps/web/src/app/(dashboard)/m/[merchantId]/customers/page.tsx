@@ -55,7 +55,7 @@ function AppointmentCustomers({ toggle }: { toggle: ReactNode }) {
   };
   return (
     <div>
-      <PageHeader title="Customers" description="Phone numbers are hidden here, and each time you reveal one it's logged" actions={toggle} />
+      <PageHeader title="Customers" description="Phone numbers stay hidden. Each one you reveal is logged." actions={toggle} />
       <ClientsList openId={open} onOpen={setOpen} />
       <CustomerPanel memberId={open} onClose={() => setOpen(null)} onChanged={() => undefined} />
     </div>
@@ -159,7 +159,7 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
     <div>
       <PageHeader
         title="Customers"
-        description={counts.data && !filtered ? `${formatNumber(counts.data.all)} customers · ${formatNumber(counts.data.canText)} can be texted · Phone numbers are hidden here, and each time you reveal one it's logged` : total != null ? `${formatNumber(total)} ${filtered ? "matching" : "customers"} · Phone numbers are hidden here, and each time you reveal one it's logged` : "Everyone in your program"}
+        description={counts.data && !filtered ? `${formatNumber(counts.data.all)} ${counts.data.all === 1 ? "customer" : "customers"} · ${formatNumber(counts.data.canText)} can get texts · Phone numbers stay hidden. Each one you reveal is logged.` : total != null ? `${formatNumber(total)} ${filtered ? "matching" : total === 1 ? "customer" : "customers"} · Phone numbers stay hidden. Each one you reveal is logged.` : "Everyone in your program"}
         actions={
           role !== "staff" && (canImport || enabled("customers.csv_export")) ? (
             <>
@@ -184,7 +184,7 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
       </div>
 
       {error && !rows.length ? (
-        <ListError title="We could not load your customers." onRetry={() => setNonce((n) => n + 1)} detail={error} />
+        <ListError title="Couldn't load your customers." onRetry={() => setNonce((n) => n + 1)} detail={error} />
       ) : loading && !rows.length ? (
         <ListLoading label="Loading customers" rows={8} />
       ) : !rows.length ? (
@@ -218,7 +218,7 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
         )
       ) : (
         <>
-          {error ? <ListError className="mb-3" title="We could not load more customers." onRetry={() => setNonce((n) => n + 1)} detail={error} /> : null}
+          {error ? <ListError className="mb-3" title="Couldn't load more customers." onRetry={() => setNonce((n) => n + 1)} detail={error} /> : null}
           <CustomersGrid
             rows={rows}
             term={term}

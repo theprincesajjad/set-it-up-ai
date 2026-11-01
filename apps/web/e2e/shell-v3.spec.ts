@@ -77,7 +77,7 @@ test.describe("desktop", () => {
     await expect(page).toHaveURL(/\/admin$/);
     const nav = page.getByRole("navigation", { name: "Main" }).first();
     await expect(nav.getByText("today", { exact: true })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Merchants" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Plans and payments" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Language/ })).toBeVisible();
   });
 });

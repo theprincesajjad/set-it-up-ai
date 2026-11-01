@@ -302,7 +302,7 @@ export function CompareStrip() {
                 <div key={r.key}>
                   <dt className="text-meta text-muted-foreground">{r.label}</dt>
                   <dd className="text-meta text-foreground">
-                    {c.cells[r.key].text} <span className="text-muted-foreground">({TAG_WORD[c.cells[r.key].tag]}, {c.cells[r.key].note})</span>
+                    {c.cells[r.key].text} <span className="text-muted-foreground">({c.cells[r.key].note.includes(TAG_WORD[c.cells[r.key].tag]) ? c.cells[r.key].note : `${TAG_WORD[c.cells[r.key].tag]}, ${c.cells[r.key].note}`})</span>
                   </dd>
                 </div>
               ))}

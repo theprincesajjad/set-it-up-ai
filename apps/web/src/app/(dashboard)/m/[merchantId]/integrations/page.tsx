@@ -119,7 +119,7 @@ export default function IntegrationsPage() {
               ))}
               {lockedCount ? (
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-meta text-fg-muted">
-                  <span className="text-fg">POS auto-award, Mailchimp, Zapier and webhooks</span>
+                  <span className="text-fg">Automatic stamps from your POS, Mailchimp and Zapier</span>
                   <span aria-hidden>·</span>
                   <span>part of {PLANS.studio.name}, ${PLANS.studio.priceCents / 100} a month</span>
                   <span aria-hidden>·</span>
@@ -132,7 +132,7 @@ export default function IntegrationsPage() {
       </Async>
 
       {posOn ? (
-        <Section title="Purchases without a customer" description="POS sales where we couldn't tell who the customer was. Attach a phone number to give them their points (within 30 days).">
+        <Section title="Purchases without a customer" description="POS sales we couldn't match to a customer. Add a phone number within 30 days to give them their points.">
           {unmatched.data?.items.length ? (
             <ul className="divide-y divide-line border-y border-line">
               {unmatched.data.items.map((u) => (

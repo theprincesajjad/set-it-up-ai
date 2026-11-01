@@ -8,6 +8,7 @@ import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { PageHeader, PageTabs, Panel, SaveBar } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { YourDataPanel } from "@/components/dashboard/YourDataPanel";
+import { SiteRefresh } from "@/components/dashboard/SiteRefresh";
 import { WalletCardSettings } from "@/components/dashboard/wallet/WalletCardSettings";
 import { PeopleSettings } from "@/components/dashboard/inbox/PeopleSettings";
 import { TaxStatus } from "@/components/dashboard/TaxStatus";
@@ -34,6 +35,8 @@ export default function SettingsPage() {
   const params = useSearchParams();
   const want = params.get("tab");
   const [tab, setTab] = useState<Tab>(want === "tax" || want === "hours" || want === "appearance" || want === "messages" || want === "wallet" ? want : "profile");
+  // Remounts the profile form after "Refresh from my website" saved, so its draft starts from the new values.
+  const [profileKey, setProfileKey] = useState(0);
   const items: { id: Tab; label: string }[] = [
     { id: "profile", label: "Shop profile" },
     { id: "hours", label: "Hours" },
@@ -51,7 +54,11 @@ export default function SettingsPage() {
       <PageHeader flush title="Settings" description={detail.merchant.name} />
       <PageTabs<Tab> label="Settings" items={items} value={tab} onChange={setTab} />
       {/* Profile and Hours stay mounted so an unsaved draft survives a tab switch; only the active tab shows its save bar. */}
-      <div role="tabpanel" hidden={tab !== "profile"}><Profile active={tab === "profile"} /></div>
+      <div role="tabpanel" hidden={tab !== "profile"} className="flex flex-col gap-6">
+        {/* Wave O: read the shop's website again and take the fields that changed (owner and manager). */}
+        {role === "owner" || role === "manager" ? <SiteRefresh onApplied={() => setProfileKey((k) => k + 1)} /> : null}
+        <Profile key={profileKey} active={tab === "profile"} />
+      </div>
       <div role="tabpanel" hidden={tab !== "hours"}><HoursTab active={tab === "hours"} /></div>
       {tab === "tax" ? <div role="tabpanel"><TaxStatus owner={role === "owner"} /></div> : null}
       {tab === "counter" || tab === "privacy" || tab === "danger" ? <div role="tabpanel">{tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}</div> : null}
@@ -119,7 +126,7 @@ function Profile({ active }: { active: boolean }) {
           <TextField type="url" label="Cover photo URL" optionalLabel value={f.coverUrl} error={shown.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <TextField label="Brand colour" value={f.brandColor} error={shown.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Shown only inside your shop avatar." />
+              <TextField label="Brand colour" value={f.brandColor} error={shown.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Colours your shop page, join page and customer card. We adjust it if text would be hard to read." />
             </div>
             <input type="color" aria-label="Pick brand colour" value={HEX.test(f.brandColor) ? f.brandColor : DEFAULT_BRAND} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mt-[26px] h-12 w-14 shrink-0 cursor-pointer rounded-input border border-line bg-bg p-1" />
           </div>

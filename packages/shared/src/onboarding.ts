@@ -333,7 +333,7 @@ export function upsellMoment(i: UpsellInput): Upsell {
   const base: Upsell = { moment: "none", plan: pb.upsell.plan, headline: pb.upsell.headline, body: pb.upsell.body, priceLine: priceLine(pb.upsell.plan), foundingLine: null };
   if (restaurant) {
     const left = i.foundingSpotsLeft;
-    base.foundingLine = `Founding offer: ${FOUNDING_OFFER.firstYearPct}% off for 12 months, then ${FOUNDING_OFFER.lifetimePct}% off for life.${typeof left === "number" ? ` ${Math.max(0, left)} of ${FOUNDING_OFFER.slotsPerCorridor} spots left on your street.` : ""}`;
+    base.foundingLine = `First-year offer: ${FOUNDING_OFFER.firstYearPct}% off for 12 months, then ${FOUNDING_OFFER.lifetimePct}% off for life.${typeof left === "number" ? ` ${Math.max(0, left)} of ${FOUNDING_OFFER.slotsPerCorridor} spots left on your street.` : ""}`;
   }
   if (i.activated) return { ...base, moment: "offer" };
   if (restaurant && i.members >= ACTIVATION.previewMembers && (i.pace === "ahead" || i.pace === "on_track")) return { ...base, moment: "preview" };

@@ -58,7 +58,7 @@ function Invoices() {
       />
       <TextField type="search" label="Search invoices" hideLabel placeholder="Customer, phone, invoice or ticket number" value={q} onChange={(e) => setQ(e.target.value)} />
       {list.error && !list.data ? (
-        <ListError title="We could not load your invoices." detail={list.error} onRetry={list.reload} />
+        <ListError title="Couldn't load your invoices." detail={list.error} onRetry={list.reload} />
       ) : list.loading && !list.data ? (
         <ListLoading label="Loading invoices" rows={6} avatar={false} />
       ) : rows.length ? (

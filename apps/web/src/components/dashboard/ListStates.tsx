@@ -33,7 +33,7 @@ export function ListLoading({ rows = 5, label = "Loading", avatar = true, classN
 }
 
 /** A list that could not load: what happened, that the data is safe, and one way forward. */
-export function ListError({ title = "We could not load this.", description = "Check your connection and try again. Your data is safe.", onRetry, detail, className }: { title?: string; description?: ReactNode; onRetry?: () => void; /** The server's message, shown small under the description. */ detail?: string | null; className?: string }) {
+export function ListError({ title = "Couldn't load this.", description = "Check your connection and try again. Your data is safe.", onRetry, detail, className }: { title?: string; description?: ReactNode; onRetry?: () => void; /** The server's message, shown small under the description. */ detail?: string | null; className?: string }) {
   return (
     <div role="alert" data-state="error" className={cn("rounded-card border border-line bg-card p-5", className)}>
       <p className="text-body-strong text-fg">{title}</p>

@@ -49,7 +49,7 @@ export const PLAN_COPY = {
   pro: {
     tagline: { solo: "For one person who wants a fuller week.", shop: "For owners who want customers back sooner." },
     features: {
-      solo: ["A waitlist that fills cancelled slots", "Automatic rebooking and win-back", "Google review requests after every visit", "A weekly money report with a goal", "Add-ons at booking", "{promos} promos a month", "No “Powered by” badge"],
+      solo: ["A waitlist that fills cancelled slots", "Automatic rebooking and win-back", "Google review requests after every visit", "A weekly report with a goal", "Add-ons at booking", "{promos} promos a month", "No “Powered by” badge"],
       shop: ["{promos} promos a month to your regulars", "Automatic win-back for quiet regulars", "VIP levels, birthday rewards and referrals", "A weekly report with a goal and your best day", "No “Powered by” badge"],
     },
     yearly: "or {yearly} a year",

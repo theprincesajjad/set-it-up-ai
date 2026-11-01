@@ -66,7 +66,7 @@ export function Overview({ hood }: { hood: networkApi.NeighbourhoodDto }) {
           </div>
         }
       />
-      <ListAsync state={overview} errorTitle="We could not load the overview.">
+      <ListAsync state={overview} errorTitle="Couldn't load the overview.">
         {(o) => (
           <>
             <StatBlock tiles label="Street key numbers" items={overviewStats(o, `vs prior ${period.days} days`)} />

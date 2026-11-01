@@ -71,7 +71,7 @@ export function QrStand({ shopName, street, joinUrl, scale = 1, unit = "points" 
             No app needed · Free · Takes 30 seconds
           </text>
           <text x="52.5" y="135.5" fontSize="3.3" fontWeight="500" className="fill-muted-foreground">
-            No phone camera? Just tell us your number.
+            No camera? Tell us your number instead.
           </text>
         </g>
         <rect y="139" width="105" height="9" className="fill-foreground" />
@@ -101,7 +101,7 @@ function ScriptCard({ kit, street, local }: { kit: merchantApi.QrKit; street: st
         <strong>Yes</strong> · &quot;Scan your card, or what&apos;s your number?&quot; Then tap <strong>Add stamp</strong> or <strong>Award</strong>.
       </p>
       <p style={row}>
-        <strong>No</strong> · &quot;Just scan this. Takes 30 seconds, no app.&quot; Point at the stand.
+        <strong>No</strong> · &quot;Scan this. It takes 30 seconds, no app.&quot; Point at the stand.
       </p>
       <p style={row}>
         <strong>Mistake?</strong> Tap <strong>Undo</strong> right away.
@@ -140,7 +140,7 @@ export function QrKitPrint({ kit, street, initialLocationId, initialSize, localS
             Print or save as PDF
           </Button>
         </div>
-        <p className="text-meta text-fg-muted">The QR is always black on white: it scans best under shop lights. A6 prints on 4x6&quot; card with &quot;fit to page&quot;.</p>
+        <p className="text-meta text-fg-muted">The QR code is always black on white, so it scans under shop lights. For A6, print on 4x6&quot; card with &quot;Fit to page&quot; on.</p>
         {loc ? (
           <p className="text-meta text-fg">
             Join link: <span className="font-mono">{loc.joinUrl.replace(/^https?:\/\//, "")}</span>

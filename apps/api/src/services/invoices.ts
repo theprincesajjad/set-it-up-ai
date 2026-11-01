@@ -363,12 +363,16 @@ export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts
     await addTicketEvent(ctx.db, paid.ticketId, { note: `Invoice #${paid.number} paid${opts.note ? ` (${opts.note})` : ""}`, visibleToCustomer: true, actorUserId: opts.actorUserId ?? null });
   }
   if (merchant) {
+    // The shop's own unit ("2 stamps", "1 point"), never "points" to a stamp customer.
+    const [prog] = points > 0 ? await ctx.db.select({ terminology: loyaltyPrograms.terminology }).from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchant.id)).limit(1) : [];
+    const word = prog?.terminology ?? "points";
+    const unit = points === 1 ? word.replace(/s$/, "") : word;
     await notifyCustomer(ctx, {
       userId: paid.userId,
       merchantId: merchant.id,
       title: `${merchant.name}: payment received`,
       // A visit paid from the calendar also says what the tip was, links the receipt and offers the next booking.
-      body: `Thanks! Invoice #${paid.number} is paid.${points > 0 ? ` You earned ${points} points at ${merchant.name}.` : ""}${
+      body: `Thanks. Invoice #${paid.number} is paid.${points > 0 ? ` You earned ${points} ${unit} at ${merchant.name}.` : ""}${
         paid.appointmentId
           ? `${paid.tipCents > 0 ? ` Your $${(paid.tipCents / 100).toFixed(2)} tip went to the team.` : ""} Receipt: ${ctx.config.publicWebUrl}/i/${paid.payToken}. Book your next visit: ${ctx.config.publicWebUrl}/shops/${merchant.slug}/book`
           : ""

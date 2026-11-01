@@ -28,7 +28,7 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
 const promoCols: Column<reportsApi.PromoResult>[] = [
   { key: "promo", header: "Promo", mobile: "title", cell: (x) => <span className="font-medium">{x.title}</span> },
   { key: "window", header: "Visits in window", align: "end", mobile: "subtitle", cell: (x) => `${formatNumber(x.windowVisits)} in the window` },
-  { key: "typical", header: "Typical", align: "end", mobile: "hidden", cell: (x) => (x.typicalVisits == null ? "Not enough history" : formatNumber(x.typicalVisits)) },
+  { key: "typical", header: "Typical", align: "end", mobile: "hidden", cell: (x) => (x.typicalVisits == null ? "Not enough visits yet" : formatNumber(x.typicalVisits)) },
   { key: "extra", header: "Extra visits", align: "end", mobile: "trailing", cell: (x) => (x.extraVisits == null ? "–" : `${x.extraVisits > 0 ? "+" : ""}${x.extraVisits}`) },
   { key: "free", header: "Free items given", align: "end", mobile: "hidden", cell: (x) => formatNumber(x.freeItemsGiven) },
 ];
@@ -72,7 +72,7 @@ export default function ReportsPage() {
   const joiners = retention.data?.joinerReturn ?? null;
   const back = joiners ? cameBackShare(joiners, 14) : null;
   const slowPromo = (livePromos.data?.items ?? []).find((x) => x.startTime && x.endTime);
-  const heatNote = slowPromo ? `The glow at ${promoWhen(slowPromo).toLowerCase()} is the ${slowPromo.title} promo.` : undefined;
+  const heatNote = slowPromo ? `The busy patch at ${promoWhen(slowPromo).toLowerCase()} is your ${slowPromo.title} promo.` : undefined;
   const cost = owed.data;
   const dayRange = range === "week" ? "This week" : range === "4w" ? "4 weeks" : "12 weeks";
 
@@ -89,7 +89,7 @@ export default function ReportsPage() {
           ...(advanced ? [{ id: "retention" as const, label: "Retention" }] : []),
           { id: "rewards", label: "Rewards" },
           ...(promosOn ? [{ id: "promos" as const, label: "Promos" }] : []),
-          ...(advanced ? [{ id: "network" as const, label: "Network" }] : []),
+          ...(advanced ? [{ id: "network" as const, label: "Your street" }] : []),
         ]}
       />
 
@@ -98,7 +98,7 @@ export default function ReportsPage() {
           Prescriptions, pharmacy services and appointments are never counted, so nothing here can reveal who uses the dispensary.
         </Banner>
       ) : null}
-      {overview.error && !overview.data ? <ListError title="We could not load your reports." detail={overview.error} onRetry={overview.reload} /> : null}
+      {overview.error && !overview.data ? <ListError title="Couldn't load your reports." detail={overview.error} onRetry={overview.reload} /> : null}
 
       {tab === "overview" ? (
         <>
@@ -206,7 +206,7 @@ export default function ReportsPage() {
       {tab === "rewards" ? (
         <>
           <Panel title={"Redemptions by reward"} action={rewards.data ? exportBtn("rewards.csv", [["reward", "cost", "redemptions", "members", "points_spent", "discount"], ...rewards.data.items.map((x) => [x.name, x.pointsCost, x.redemptions, x.uniqueMembers, x.pointsSpent, (x.discountCents / 100).toFixed(2)])]) : null}>
-            {rewards.data ? (rewards.data.items.length ? <HBarList rows={rewards.data.items.map((x) => ({ key: x.rewardId, label: x.name, value: x.redemptions, hint: `${x.uniqueMembers} members` }))} /> : <Empty className="py-2">Not enough data yet. Check back after a week of visits.</Empty>) : <SkeletonRows rows={5} />}
+            {rewards.data ? (rewards.data.items.length ? <HBarList rows={rewards.data.items.map((x) => ({ key: x.rewardId, label: x.name, value: x.redemptions, hint: `${x.uniqueMembers} ${x.uniqueMembers === 1 ? "customer" : "customers"}` }))} /> : <Empty className="py-2">Not enough data yet. Check back after a week of visits.</Empty>) : <SkeletonRows rows={5} />}
           </Panel>
           {overview.data ? <LiabilityCard l={overview.data.pointsLiability} term={term} /> : null}
         </>
@@ -231,7 +231,7 @@ export default function ReportsPage() {
           <>
             <StatBlock tiles
               items={[
-                { label: "Also shop on your street", value: pct(overlap.data.sharedPct), caption: `${formatNumber(overlap.data.sharedMembers)} of ${formatNumber(overlap.data.myMembers)} members, last ${overlap.data.windowDays} days` },
+                { label: "Also shop on your street", value: pct(overlap.data.sharedPct), caption: `${formatNumber(overlap.data.sharedMembers)} of ${formatNumber(overlap.data.myMembers)} customers, last ${overlap.data.windowDays} days` },
                 { label: "Other shops they visit", value: overlap.data.avgOtherShops.toFixed(1), caption: "On average" },
               ]}
             />
@@ -250,7 +250,7 @@ export default function ReportsPage() {
 /** Outstanding points liability (method: docs/engineering/api/reports.md). */
 function LiabilityCard({ l, term }: { l: reportsApi.PointsLiability; term: string }) {
   return (
-    <Section title={`Unredeemed ${term}`} description="What your members are holding right now, not just in this date range.">
+    <Section title={`Unredeemed ${term}`} description="What your customers hold right now, across all dates.">
       <StatBlock tiles
         items={[
           { label: "Outstanding", value: <>{formatNumber(l.outstandingPoints)}<span className="ms-1.5 text-body font-normal text-fg-muted">{l.outstandingPoints === 1 ? term.replace(/s$/, "") : term}</span></>, caption: `${formatNumber(l.membersWithBalance)} ${l.membersWithBalance === 1 ? "member" : "members"} with a balance` },

@@ -90,7 +90,7 @@ async function getStaff(db: DbOrTx, merchantId: string, userId: string) {
 /** Send a transactional invite (email preferred, SMS fallback). Not marketing: no consent needed. */
 export async function sendStaffInvite(ctx: AppContext, opts: { merchantName: string; role: StaffRole; email?: string | null; phone?: string | null }) {
   const loginUrl = `${ctx.config.publicWebUrl.replace(/\/$/, "")}/login`;
-  const text = `You've been added as ${opts.role === "owner" ? "an owner" : `a ${opts.role}`} at ${opts.merchantName} on ${BRAND.name}. Sign in with this ${opts.email ? "email" : "phone number"}: ${loginUrl}`;
+  const text = `${opts.merchantName} added you to their team on ${BRAND.name} as ${opts.role === "owner" ? "an owner" : `a ${opts.role}`}. Sign in with this ${opts.email ? "email" : "phone number"}: ${loginUrl}`;
   if (opts.email) await ctx.providers.email.send({ to: opts.email, subject: `You're on the ${opts.merchantName} team`, text });
   else if (opts.phone) await ctx.providers.sms.send(opts.phone, text);
 }

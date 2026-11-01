@@ -41,3 +41,5 @@ export * as reviewsApi from "./reviews.js";
 export * as adminCockpitApi from "./admin-cockpit.js";
 // ---- wave N: promo ----
 export * as promosApi from "./promos.js";
+// ---- wave O: import ----
+export * as siteImportApi from "./site-import.js";

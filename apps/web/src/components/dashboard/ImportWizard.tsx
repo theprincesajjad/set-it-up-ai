@@ -76,7 +76,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
       {step === "upload" ? (
         <Panel>
           <h2 className="text-body-strong text-fg">Upload a CSV file</h2>
-          <p className="mt-1 text-body text-fg-muted">Export your members from your old loyalty app or spreadsheet. We need at least a phone number for each customer. Re-importing the same file never doubles anyone&apos;s balance.</p>
+          <p className="mt-1 text-body text-fg-muted">Export your customers from your old loyalty app or spreadsheet. Each customer needs a phone number. Importing the same file twice never doubles a balance.</p>
           <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-strong p-6 text-center hover:bg-bg-subtle focus-within:focus-ring">
             <FileUp aria-hidden className="size-8 text-fg" />
             <span className="text-body-strong text-fg">Choose a CSV file</span>
@@ -103,7 +103,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
         <Panel>
           <h2 className="text-body-strong text-fg">Match your columns</h2>
           <p className="mt-1 text-body text-fg-muted">
-            {fileName}: {formatNumber(rows.length - 1)} rows. We guessed the matches; check them.
+            {fileName}: {formatNumber(rows.length - 1)} rows. We matched the columns for you. Check them before you go on.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {IMPORT_FIELDS.map((f) => (
@@ -176,7 +176,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
               <div className="mt-3 flex flex-col gap-2">
                 {(
                   [
-                    ["no", "No, or I'm not sure", "They're imported without marketing consent. They can opt in at the counter or in the app."],
+                    ["no", "No, or I'm not sure", "We import them without permission to send offers. They can opt in at the counter or in the app."],
                     ["yes", "Yes, and I have records of it", `Only rows with a "yes" and a past consent date are opted in (${formatNumber(preview.withConsent)} rows). Keep your records: CASL may ask for them.`],
                   ] as const
                 ).map(([v, label, cap]) => (

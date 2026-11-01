@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Local Loyalty API. Build from the REPO ROOT:
 #   docker build -f apps/api/Dockerfile -t ll-api .
-# The API (and the @ll/db and @ll/shared workspace packages it imports) ships TypeScript source and runs under tsx,
+# The API (and the @ll/db, @ll/shared and @ll/design-tokens workspace packages it imports) ships TypeScript source and runs under tsx,
 # the same way `pnpm --filter @ll/api start` does; there is no separate compile step.
 # NODE_IMAGE can point at a registry mirror if Docker Hub rate-limits you.
 ARG NODE_IMAGE=node:22-slim
@@ -38,6 +38,9 @@ COPY --chown=node:node apps/api/src ./apps/api/src
 COPY --chown=node:node apps/api/assets ./apps/api/assets
 COPY --chown=node:node packages/db ./packages/db
 COPY --chown=node:node packages/shared ./packages/shared
+# The shop colour and contrast helpers (website import: brand colours run through shopColor).
+COPY --chown=node:node packages/design-tokens/package.json ./packages/design-tokens/
+COPY --chown=node:node packages/design-tokens/src ./packages/design-tokens/src
 COPY --chown=node:node tsconfig.base.json ./
 # The sales assistant reads these at runtime (DOCS_DIR).
 COPY --chown=node:node docs/sales/agent-faq.md ./docs/sales/agent-faq.md

@@ -191,7 +191,7 @@ export async function createTicket(ctx: AppContext, staff: StaffContext, input: 
   const body = serviceApi.createTicketBody.parse(input);
   const merchant = staff.merchant;
   const phone = normalizePhone(body.customer.phone);
-  if (!phone) throw badRequest("Enter a valid phone number");
+  if (!phone) throw badRequest("Enter a 10-digit phone number.");
   await assertLocation(ctx.db, merchant.id, body.locationId);
   await assertStaffMember(ctx.db, merchant.id, body.assignedStaffId);
   const terms = merchant.intakeTerms?.trim();

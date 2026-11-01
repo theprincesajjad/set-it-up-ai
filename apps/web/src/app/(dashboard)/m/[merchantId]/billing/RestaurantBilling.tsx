@@ -1,7 +1,7 @@
 "use client";
 import { Check, Minus, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { FEATURES, RESTAURANT_FEATURES, type RestaurantTier, type billingApi } from "@ll/shared";
+import { FEATURES, PLANS, RESTAURANT_FEATURES, type RestaurantTier, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Dot, Meter, Panel, Section, Segmented, Table, TableWrap, Td, Th } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -73,7 +73,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
 
   return (
     <>
-      <Section title="Restaurant plan" description="For restaurants, sweet shops and tiffin kitchens. Any tier includes Pro.">
+      <Section title="Restaurant plan" description={`For restaurants, sweet shops and tiffin kitchens. Every restaurant plan includes ${PLANS.studio.name}.`}>
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         <Panel>
           <p className="text-meta text-fg-muted">Current restaurant plan</p>
@@ -100,11 +100,11 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
               )}
             </div>
           ) : (
-            <p className="mt-3 text-meta text-fg-muted">Commission-free ordering, your own ordering page, WhatsApp updates and more. Pick a tier below.</p>
+            <p className="mt-3 text-meta text-fg-muted">Commission-free ordering, your own ordering page, WhatsApp updates and more. Pick a plan below.</p>
           )}
           {founding.eligible ? (
             <p className="mt-4 border-t border-line pt-3 text-meta text-fg">
-              Founding restaurant: {founding.firstYearPct}% off for your first 12 months, then {founding.lifetimePct}% off for as long as you stay.
+              First-year offer: {founding.firstYearPct}% off your first 12 months, then {founding.lifetimePct}% off for as long as you stay.
             </p>
           ) : null}
         </Panel>
@@ -134,7 +134,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
                   ) : null}
                   <p className="text-meta text-fg">{p.blurb}</p>
                   <ul className="flex flex-col gap-1.5 border-t border-line pt-3 text-meta text-fg">
-                    {lower.length ? <li className="text-fg-muted">Everything in {lower[lower.length - 1]!.name}, plus</li> : <li className="text-fg-muted">Includes Pro</li>}
+                    {lower.length ? <li className="text-fg-muted">Everything in {lower[lower.length - 1]!.name}, plus</li> : <li className="text-fg-muted">Includes {PLANS.studio.name}</li>}
                     {feats.map((f) => (
                       <li key={f} className="flex items-start gap-2">
                         <Check aria-hidden className="mt-0.5 size-3.5 shrink-0 text-fg-muted" />
@@ -173,7 +173,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
             ))}
           </div>
         ) : (
-          <p className="text-meta text-fg-muted">Add-ons unlock once you&apos;re on a restaurant plan.</p>
+          <p className="text-meta text-fg-muted">Add-ons are available on any restaurant plan.</p>
         )}
         {r.tier ? (
           <div className="max-w-[420px]">

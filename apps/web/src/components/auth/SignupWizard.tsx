@@ -10,7 +10,7 @@
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { AID_OFF, AID_PATTERN, LANDING_COOKIES, SOLO_ONLY_VERTICALS, VERTICALS, VERTICAL_TEMPLATES, normalizePostal, parseVariantCookie, type MessageKey, type merchantApi } from "@ll/shared";
 import { browserClient, sessionApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
@@ -20,7 +20,7 @@ import { routes } from "@/lib/routes";
 import { afterSignupPath } from "@/lib/signupRoute";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n";
-import { ChoiceGroup, ChoiceTile } from "@/components/onboarding";
+import { ChoiceGroup, ChoiceTile, SiteImportStep, applyBodyFor, type SiteImportAccepted } from "@/components/onboarding";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
@@ -104,6 +104,18 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
   const [busy, setBusy] = useState(false);
   // Once the account exists a retry (after a shop error) must not register again.
   const [registered, setRegistered] = useState(!!signedInName);
+  // Wave O: step 1, "Have a website or Instagram?". A link from the sales assistant already carries the shop, so it starts skipped.
+  const [imp, setImp] = useState<{ phase: "ask" | "done" | "skipped"; accepted?: SiteImportAccepted }>({ phase: prefill?.shop ? "skipped" : "ask" });
+  const [impBusy, setImpBusy] = useState(false);
+  const onImportPhase = useCallback((p: "form" | "loading" | "review") => setImpBusy(p !== "form"), []);
+  function takeImport(a: SiteImportAccepted) {
+    setImp({ phase: "done", accepted: a });
+    setImpBusy(false);
+    setShop((s) => ({ ...s, name: a.name ?? s.name, address: a.address ?? s.address }));
+    if (a.vertical) pickVertical(a.vertical);
+    if (a.phone) setPhone(a.phone.replace(/^\+1/, ""));
+    requestAnimationFrame(() => document.querySelector<HTMLInputElement>("input[name=shopName]")?.focus());
+  }
 
   const template = shop.vertical ? VERTICAL_TEMPLATES[shop.vertical as keyof typeof VERTICAL_TEMPLATES] : null;
   const otherOptions = useMemo(() => VERTICALS.filter((v) => !CHIPS.includes(v)).map((v) => ({ value: v, label: VERTICAL_TEMPLATES[v].label })).sort((a, b) => a.label.localeCompare(b.label)), []);
@@ -169,6 +181,9 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
         ...(shop.vertical === "other" && shop.sells.trim() ? { description: shop.sells.trim() } : {}),
       };
       const r = await browserClient.post<merchantApi.MerchantDetail>("/v1/merchants", body);
+      // The rest of what the owner kept from their website (logo, colour, links, hours, services): saved now that the shop exists.
+      const kept = imp.phase === "done" && imp.accepted ? applyBodyFor(imp.accepted) : null;
+      if (kept) await browserClient.post(`/v1/merchants/${r.merchant.id}/site-import/apply`, kept).catch(() => undefined);
       router.push(afterSignupPath(routes.dashboard(r.merchant.id), body.vertical, prefill?.plan, work, prefill?.interval));
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
@@ -182,7 +197,22 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
 
   const reward = template?.rewards[0] ? `${template.earnType === "stamps" ? template.stampGoal : template.rewards[0].pointsCost} ${template.terminology} = ${template.rewards[0].name}.` : "";
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      {imp.phase === "ask" ? <SiteImportStep onDone={takeImport} onSkip={() => { setImp({ phase: "skipped" }); setImpBusy(false); }} onPhase={onImportPhase} vertical={shop.vertical || null} /> : null}
+      {imp.phase === "done" && imp.accepted ? (
+        <Banner tone="success" action={<button type="button" className="inline-flex h-11 items-center rounded-r2 px-1 text-meta-strong text-link hover:underline focus-visible:focus-ring" onClick={() => setImp({ phase: "ask" })}>{t("imp.done.change")}</button>}>
+          <span className="flex items-center gap-3" data-import-done>
+            {imp.accepted.logoPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={imp.accepted.logoPreview} alt="" width={32} height={32} className="size-8 shrink-0 rounded-full border border-border bg-card object-cover" />
+            ) : null}
+            <span>
+              {t("imp.done", { site: imp.accepted.from })} {applyBodyFor(imp.accepted) ? t("imp.done.extra") : null}
+            </span>
+          </span>
+        </Banner>
+      ) : null}
+    <form onSubmit={submit} noValidate className={cn("flex flex-col gap-4", impBusy && imp.phase === "ask" && "hidden")}>
       {banner ? <Banner tone="warning">{banner}</Banner> : null}
       <TextField name="shopName" label={t("su.shopName")} hint={work !== "shop" ? t("su.privateNote") : t("su.shopNameHint")} value={shop.name} onChange={(e) => setShop({ ...shop, name: e.target.value })} error={errors.shopName} maxLength={120} autoComplete="organization" />
 
@@ -252,6 +282,7 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
         })}
       </p>
     </form>
+    </div>
   );
 }
 

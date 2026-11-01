@@ -21,7 +21,7 @@ export default function OnboardingFunnelPage() {
         description="Signup to 25 members who have visited. Goal: 60% inside 30 days."
         actions={<Segmented label="Period" value={days} onChange={setDays} options={[{ value: "30", label: "30 days" }, { value: "90", label: "90 days" }, { value: "365", label: "Year" }]} />}
       />
-      <ListAsync state={f} errorTitle="We could not load the onboarding list.">
+      <ListAsync state={f} errorTitle="Couldn't load the onboarding list.">
         {(d) => (
           <>
             <StatBlock

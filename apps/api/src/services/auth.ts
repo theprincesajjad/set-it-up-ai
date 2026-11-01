@@ -34,7 +34,7 @@ const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", BCRYPT_ROUNDS);
 
 export function requirePhone(input: string): string {
   const phone = normalizePhone(input);
-  if (!phone) throw badRequest("Enter a valid phone number", [{ path: "phone", message: "Invalid phone number" }]);
+  if (!phone) throw badRequest("Enter a 10-digit phone number.", [{ path: "phone", message: "That doesn't look like a mobile number. Check it and try again." }]);
   return phone;
 }
 

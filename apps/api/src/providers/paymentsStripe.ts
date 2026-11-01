@@ -419,7 +419,7 @@ export class StripePayments implements PaymentsProvider {
 
   async foundingCouponId(): Promise<string> {
     return this.coupon("founding_year_one", {
-      name: `Founding restaurant: ${FOUNDING_OFFER.firstYearPct}% off for 12 months`,
+      name: `First-year offer: ${FOUNDING_OFFER.firstYearPct}% off for 12 months`,
       percent_off: FOUNDING_OFFER.firstYearPct,
       duration: "repeating",
       duration_in_months: 12,
@@ -442,7 +442,7 @@ export class StripePayments implements PaymentsProvider {
   async scheduleFoundingOffer(subscriptionId: string): Promise<void> {
     const yearOne = await this.foundingCouponId();
     const lifetime = await this.coupon("founding_lifetime", {
-      name: `Founding restaurant: ${FOUNDING_OFFER.lifetimePct}% off for life`,
+      name: `Restaurant offer: ${FOUNDING_OFFER.lifetimePct}% off for life`,
       percent_off: FOUNDING_OFFER.lifetimePct,
       duration: "forever",
     });

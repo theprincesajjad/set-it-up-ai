@@ -21,7 +21,7 @@ export async function loadFounding(): Promise<networkApi.FoundingCorridorDto[] |
 }
 
 /** "14 of 20 founding spots left on Ridgeway Plaza". */
-export const foundingHeadline = (c: networkApi.FoundingCorridorDto) => `${spotsLeft(c)} of ${c.total} founding spots left on ${c.name}`;
+export const foundingHeadline = (c: networkApi.FoundingCorridorDto) => `${spotsLeft(c)} of ${c.total} first-year offer spots left on ${c.name}`;
 
 /** One sentence for the pricing page: the live count, or an invitation to ask when the API is down. */
 export async function FoundingLine() {
@@ -36,7 +36,7 @@ export async function FoundingStrip() {
   if (!open) return null;
   const [first, ...rest] = open;
   return (
-    <section aria-label="Founding offer" className="mkt-band-butter">
+    <section aria-label="First-year offer" className="mkt-band-butter">
       <div className="mx-auto grid max-w-[1200px] gap-6 px-4 py-10 md:grid-cols-[1fr_1fr] md:items-center md:gap-14 md:px-8 md:py-12">
         <div>
           <h2 data-testid="founding-headline" className="display text-mkt-sm text-balance md:text-mkt-md">

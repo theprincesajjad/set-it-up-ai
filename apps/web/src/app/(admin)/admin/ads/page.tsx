@@ -34,7 +34,7 @@ export default function AdsReviewPage() {
       <PageHeader title="Ads review" description="Every sponsored item is checked before it serves." />
       <Tabs label="Status" value={status} onChange={(v) => setStatus(v as adsApi.AdStatus)} items={[{ id: "pending_review", label: "Waiting" }, { id: "active", label: "Live" }, { id: "rejected", label: "Rejected" }, { id: "ended", label: "Ended" }]} />
       {act.error ? <p className="text-negative">{act.error}</p> : null}
-      <ListAsync state={list} errorTitle="We could not load the ads.">
+      <ListAsync state={list} errorTitle="Couldn't load the ads.">
         {(d) =>
           d.items.length ? (
             <ul className="flex flex-col gap-4">

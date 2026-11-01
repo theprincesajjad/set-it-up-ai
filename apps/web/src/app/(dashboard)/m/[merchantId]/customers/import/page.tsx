@@ -11,7 +11,7 @@ export default function ImportPage() {
   return (
     <div className="max-w-[860px]">
       {/* A locked shop sees the teaser alone: it carries its own title, so no second heading above it. */}
-      {locked ? null : <PageHeader back={{ href: `${base}/customers`, label: "Customers" }} title="Import customers" description={viewingAs ? "Done-for-you migration: import this shop's members and balances. No welcome bonus is given on import." : "Bring your members and balances from another loyalty app. No welcome bonus is given on import."} />}
+      {locked ? null : <PageHeader back={{ href: `${base}/customers`, label: "Customers" }} title="Import customers" description={viewingAs ? "Import this shop's customers and balances for them. Imported customers don't get a welcome bonus." : "Bring your customers and their balances from another loyalty app. Imported customers don't get a welcome bonus."} />}
       {/* CSV import is Plus for owners; reps and admins can import for any shop (the API skips the gate for them). */}
       {viewingAs ? wizard : <FeatureGate keys={["customers.csv_import"]} title="Import customers">{wizard}</FeatureGate>}
     </div>

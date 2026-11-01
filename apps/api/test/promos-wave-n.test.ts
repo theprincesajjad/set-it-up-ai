@@ -531,8 +531,8 @@ describe("customer Deals inbox", () => {
     const { model, locations } = await shopPassModel(env.ctx, m.user.id, s.merchant.id);
     expect(model.deal).toMatchObject({ title: "Free cookie Fridays" });
     const pass = buildShopPassJson(env.ctx.config, { passTypeId: "pass.test", teamId: "TEAM" }, { serialNumber: "S1", authToken: "a".repeat(24) }, model, locations);
-    expect(pass.storeCard.auxiliaryFields).toContainEqual(expect.objectContaining({ key: "deal", value: "Free cookie Fridays", changeMessage: "New deal at Corner Bakery: %@" }));
-    expect(shopLoyaltyObject(env.ctx.config, "issuer", m.user.id, model).textModulesData).toContainEqual({ id: "deal", header: "Deal", body: "Free cookie Fridays" });
+    expect(pass.storeCard.auxiliaryFields).toContainEqual(expect.objectContaining({ key: "deal", value: "Free cookie Fridays", changeMessage: "New offer at Corner Bakery: %@" }));
+    expect(shopLoyaltyObject(env.ctx.config, "issuer", m.user.id, model).textModulesData).toContainEqual({ id: "deal", header: "Offer", body: "Free cookie Fridays" });
     // No consent for offers: no deal on the card.
     await env.db.update(merchantMembers).set({ marketingConsentAt: null }).where(eq(merchantMembers.id, m.member.id));
     expect((await shopPassModel(env.ctx, m.user.id, s.merchant.id)).model.deal ?? null).toBeNull();

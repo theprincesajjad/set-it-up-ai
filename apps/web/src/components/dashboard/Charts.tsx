@@ -121,7 +121,7 @@ function Plot({ data, format, height, kind, title, valueLabel, compareLabel }: P
   return (
     <figure aria-labelledby={`${id}-cap`} className="relative">
       <figcaption id={`${id}-cap`} className="sr-only">
-        {title}: {data.length} days, total {format(total)}, highest {format(raw)}.
+        {title}: {data.length} {/week/i.test(title) ? "weeks" : /month/i.test(title) ? "months" : "days"}, total {format(total)}, highest {format(raw)}.
       </figcaption>
       <ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
         {kind === "bar" ? (

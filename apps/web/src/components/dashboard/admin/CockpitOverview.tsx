@@ -33,7 +33,7 @@ export function CockpitOverview() {
         </div>
         <PeriodPicker value={days} onChange={setDays} />
       </div>
-      <ListAsync state={s} errorTitle="We could not load the overview. Reload the page to try again." rows={3}>
+      <ListAsync state={s} errorTitle="Couldn't load the overview. Reload the page to try again." rows={3}>
         {(d) => {
           const plans = d.shops.payingByPlan;
           return (

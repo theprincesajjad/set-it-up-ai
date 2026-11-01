@@ -29,6 +29,9 @@ importers:
       '@ll/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@ll/design-tokens':
+        specifier: workspace:*
+        version: link:../../packages/design-tokens
       '@ll/shared':
         specifier: workspace:*
         version: link:../../packages/shared

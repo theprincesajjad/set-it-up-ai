@@ -26,7 +26,7 @@ export default function AdminAiPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="AI" description="The Claude key every AI feature uses (promo writer, website copy, sales agent), the limits, and who is using it." />
-      <ListAsync state={s} errorTitle="We could not load the AI settings.">
+      <ListAsync state={s} errorTitle="Couldn't load the AI settings.">
         {(d) => <Body d={d} onChange={(n) => s.setData(n)} />}
       </ListAsync>
     </div>
@@ -90,7 +90,7 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
                 {d.key.setAt ? <span className="text-fg-muted"> · saved {new Date(d.key.setAt).toLocaleDateString("en-CA")}</span> : null}
               </>
             ) : d.key.source === "env" ? (
-              "In use: the server's ANTHROPIC_API_KEY. Save a key here to replace it."
+              "Using the key set on the server (ANTHROPIC_API_KEY). Save a key here to replace it."
             ) : (
               "No key yet. AI features are off until you add one."
             )}

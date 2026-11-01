@@ -19,7 +19,7 @@ const ASOF = "2026-10-28";
 
 /** Our cells: every number from PLANS and FEES, so a price change shows here without an edit. */
 function usCells(c: SoloCompareCopy): Record<SoloRow | "chairs", string> {
-  const vars = { plus: moneyShort(PLANS.plus.priceCents), fee: String(FEES.depositInvoiceBps / 100), free: FREE_REMINDER_SMS_PER_MONTH, paid: PLANS.plus.smsPerMonth };
+  const vars = { plus: moneyShort(PLANS.plus.priceCents), studio: moneyShort(PLANS.studio.priceCents), fee: String(FEES.depositInvoiceBps / 100), free: FREE_REMINDER_SMS_PER_MONTH, paid: PLANS.plus.smsPerMonth };
   return Object.fromEntries(Object.entries(c.us).map(([k, v]) => [k, fill(v, vars)])) as Record<SoloRow | "chairs", string>;
 }
 

@@ -29,10 +29,10 @@ export default function RepMerchantsPage() {
   ];
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="My merchants" description="Goal: 25 active members within 30 days of signing." actions={<Button size="sm" href="/rep/new">Set up a merchant</Button>} />
-      <DataTable caption="My merchants" columns={cols} rows={rows} rowKey={(m) => m.merchantId} loading={list.loading} error={list.error} onRetry={list.reload} onRowClick={(m) => router.push(`/rep/merchants/${m.merchantId}`)}
+      <PageHeader title="My shops" description="Goal: 25 customers who have visited, within 30 days of signing." actions={<Button size="sm" href="/rep/new">Set up a shop</Button>} />
+      <DataTable caption="My shops" columns={cols} rows={rows} rowKey={(m) => m.merchantId} loading={list.loading} error={list.error} onRetry={list.reload} onRowClick={(m) => router.push(`/rep/merchants/${m.merchantId}`)}
         toolbar={<ChipGroup label="Filter">{([["all", "All"], ["activating", "Activating"], ["activated", "Activated"], ["due", "Check-in due"]] as const).map(([k, l]) => <Chip key={k} selected={filter === k} onClick={() => setFilter(k)}>{l}</Chip>)}</ChipGroup>}
-        empty={<EmptyState icon={Store} title="No merchants yet" description="Your first setup takes about 20 minutes." action={<Button variant="secondary" size="sm" href="/rep/new">Set up a merchant</Button>} />} />
+        empty={<EmptyState icon={Store} title="No shops yet" description="Your first setup takes about 20 minutes." action={<Button variant="secondary" size="sm" href="/rep/new">Set up a shop</Button>} />} />
     </div>
   );
 }

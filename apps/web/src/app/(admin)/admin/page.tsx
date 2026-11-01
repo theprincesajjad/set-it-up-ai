@@ -28,7 +28,7 @@ export default function AdminToday() {
       <PageHeader flush title="Today" description={longDate()} actions={<Button size="sm" variant="secondary" href="/admin/neighbourhoods">Plan areas</Button>} />
       <CockpitOverview />
       <h2 className="font-display text-headline font-bold text-fg">Launch plan and calls</h2>
-      <ListAsync state={o} errorTitle="We could not load the overview. Reload the page to try again.">
+      <ListAsync state={o} errorTitle="Couldn't load the overview. Reload the page to try again.">
         {(d) => {
           const behind = d.pace.delta < 0;
           const risk = all ?? d.atRisk.items.slice(0, AT_RISK_PREVIEW);
@@ -47,7 +47,7 @@ export default function AdminToday() {
                 items={[
                   { label: "MRR", value: formatMoney(d.money.mrrCents), caption: d.money.payingShops ? `${d.money.payingShops} paying · Pro ${d.money.byPlan.plus}, Studio ${d.money.byPlan.studio}, Service ${d.money.byPlan.pro}${d.money.byPlan.restaurant ? `, Restaurant ${d.money.byPlan.restaurant}` : ""}` : "Paid plans start in month 4", href: "/admin/costs" },
                   { label: "Fee revenue, 30 days", value: formatMoney(d.money.feeRevenue30dCents), caption: `On ${formatMoney(d.money.volume30dCents)} paid through the app` },
-                  { label: "At member goal", value: pct(d.activation.rate), caption: `${formatNumber(d.activation.activated)} of ${formatNumber(d.activation.signed)} shops reached their member target · goal ${pct(d.activation.goal)}`, dot: d.activation.rate < d.activation.goal && d.activation.signed >= 10 ? "accent" : undefined },
+                  { label: "At customer goal", value: pct(d.activation.rate), caption: `${formatNumber(d.activation.activated)} of ${formatNumber(d.activation.signed)} shops reached their customer goal · target ${pct(d.activation.goal)}`, dot: d.activation.rate < d.activation.goal && d.activation.signed >= 10 ? "accent" : undefined },
                   { label: "Cost per shop", value: formatMoney(d.costs.perShopCents), caption: `${formatMoney(d.costs.monthCents)} this month for ${formatNumber(d.costs.shops)} shops`, href: "/admin/costs" },
                 ]}
               />
@@ -126,7 +126,7 @@ export default function AdminToday() {
           );
         }}
       </ListAsync>
-      <ListAsync state={net} errorTitle="We could not load the overview. Reload the page to try again.">
+      <ListAsync state={net} errorTitle="Couldn't load the overview. Reload the page to try again.">
         {(n) => (
           <>
             <NetworkGauges activeMerchants={n.merchants.byStatus.active} multiShopPct={n.multiShopPct} />

@@ -88,7 +88,8 @@ export interface PromoAudiencePreview {
 // ---------------------------------------------------------------------------
 export interface DealDto {
   id: string;
-  merchant: { id: string; name: string; slug: string; brandColor: string | null; vertical: string; logoUrl: string | null };
+  /** terminology: the shop's unit ("stamps", "points"), so "2x stamps" never reads "2x points" to a stamp customer. */
+  merchant: { id: string; name: string; slug: string; brandColor: string | null; vertical: string; logoUrl: string | null; terminology?: string };
   memberId: string | null;
   title: string;
   body: string | null;

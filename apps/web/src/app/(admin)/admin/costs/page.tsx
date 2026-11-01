@@ -25,7 +25,7 @@ export default function CostsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Costs" description="Texts, WhatsApp and hosting per shop this month, against plan revenue and the last 30 days of fees." />
-      <ListAsync state={c} errorTitle="We could not load the costs.">
+      <ListAsync state={c} errorTitle="Couldn't load the costs.">
         {(d) => (
           <>
             <StatBlock

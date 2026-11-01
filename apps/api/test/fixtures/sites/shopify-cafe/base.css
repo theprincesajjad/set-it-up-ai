@@ -1,0 +1,6 @@
+:root{--color-base-text:18,18,18;--color-base-background-1:255,255,255;--color-base-accent-1:107,66,38}
+.button{background:#6B4226;color:#fff}
+.badge--sale{background:#1F7A8C}
+.link{color:#6B4226}
+.announcement-bar{background:#1F7A8C;color:#1a1a1a}
+.price--on-sale{color:#1F7A8C}

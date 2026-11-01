@@ -76,7 +76,7 @@ function Schedule() {
           { label: "Late cancels", value: summary.data?.lateCancelsThisWeek ?? 0, caption: "This calendar week" },
         ]}
       />
-      <ListAsync state={sessions} label="Loading classes" errorTitle="We could not load your classes.">
+      <ListAsync state={sessions} label="Loading classes" errorTitle="Couldn't load your classes.">
         {() =>
           days.length === 0 ? (
             <EmptyState title="No classes this week" description="Add a class and repeat it weekly. Members can book it as soon as it is on the schedule." action={manager ? <Button onClick={() => setAdding(true)}>Add class</Button> : undefined} />

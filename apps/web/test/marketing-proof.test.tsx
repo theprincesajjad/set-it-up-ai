@@ -27,7 +27,7 @@ describe("founding spots", () => {
     const open = openCorridors([c("b", 20), c("c", 6), c("a", 6), c("d", 1)]);
     expect(open.map((x) => x.slug)).toEqual(["d", "a", "c"]);
     expect(spotsLeft(c("x", 25))).toBe(0);
-    expect(foundingHeadline(open[0]!)).toBe("19 of 20 founding spots left on d");
+    expect(foundingHeadline(open[0]!)).toBe("19 of 20 first-year offer spots left on d");
   });
 });
 

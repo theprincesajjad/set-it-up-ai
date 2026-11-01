@@ -49,14 +49,14 @@ export default function AdminMerchantsPage() {
   ];
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Merchants" />
-      <DataTable caption="Merchants" columns={cols} rows={rows} rowKey={(m) => m.id} loading={loading} error={error} onRowClick={(m) => router.push(`/admin/merchants/${m.id}`)} hasMore={!!cursor} onLoadMore={async () => {
+      <PageHeader title="Plans and payments" description="Each shop's plan, payment setup and overrides." />
+      <DataTable caption="Shops" columns={cols} rows={rows} rowKey={(m) => m.id} loading={loading} error={error} onRowClick={(m) => router.push(`/admin/merchants/${m.id}`)} hasMore={!!cursor} onLoadMore={async () => {
         const r = await browserApi.admin.merchants({ q: q.trim() || undefined, status: status || undefined, limit: 50, cursor: cursor! });
         setRows((x) => [...x, ...r.items]);
         setCursor(r.nextCursor);
       }} toolbar={
         <div className="flex flex-col gap-3">
-          <TextField type="search" label="Search merchants" hideLabel placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
+          <TextField type="search" label="Search shops" hideLabel placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
           <ChipGroup label="Status">{(["", "onboarding", "active", "paused", "closed"] as St[]).map((s) => <Chip key={s || "all"} selected={status === s} onClick={() => setStatus(s)}>{s ? s[0]!.toUpperCase() + s.slice(1) : "All"}</Chip>)}</ChipGroup>
         </div>
       } />

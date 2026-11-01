@@ -77,6 +77,12 @@ export interface Providers {
   /** Validates a Claude key with a cheap call (the Models API). Optional: tests inject one. */
   aiKeyValidator?: (apiKey: string) => Promise<"ok" | "invalid" | "unreachable">;
   // ---- end wave-n: promo ----
+  // ---- wave-o: import ----
+  /** The website import's network (DNS lookup and the address actually dialled). Optional: tests map fixture hosts to a local server. Use siteImportNet(ctx). */
+  siteImportNet?: import("../services/site-import/net.js").SiteImportNet;
+  /** The website import's tidy-up model. Optional: undefined = built from the resolved key; null = none; tests inject a fake. */
+  siteImportAi?: import("../services/site-import/ai.js").SiteImportAiClient | null;
+  // ---- end wave-o: import ----
   /** Object storage for uploads (ticket photos). Optional: use getStorage(ctx) from ./storage.js, which falls back to memory (tests) or disk. */
   storage?: import("./storage.js").StorageProvider;
   /** Address to map pin at signup. Optional: use geocoderFor(ctx) from services/geocode.ts, which builds it from config.geocoder. */

@@ -57,7 +57,7 @@ export default function AdminPerformancePage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Performance" description="How fast the API answers, from its own timings" actions={<Segmented label="Window" options={[...HOURS]} value={hours} onChange={setHours} />} />
-      <ListAsync state={s} errorTitle="We could not load performance. Reload the page to try again." rows={5}>
+      <ListAsync state={s} errorTitle="Couldn't load performance. Reload the page to try again." rows={5}>
         {(d) => (
           <>
             <StatBlock

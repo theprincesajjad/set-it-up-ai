@@ -54,7 +54,7 @@ function Payouts() {
           ...(mine ? [] : [{ label: "Shop income", value: money((d?.totals.shopKeepsCents ?? 0) + (d?.totals.rentCents ?? 0)), caption: "what the shop keeps plus rent" }]),
         ]}
       />
-      <ListAsync state={state} label="Loading payouts" errorTitle="We could not load your payouts." rows={4}>
+      <ListAsync state={state} label="Loading payouts" errorTitle="Couldn't load your payouts." rows={4}>
         {(r) => (
           <TableWrap>
             <Table label="Payouts by barber">

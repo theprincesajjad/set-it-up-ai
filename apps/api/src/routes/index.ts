@@ -43,6 +43,8 @@ import auto from "./auto/index.js";
 import site from "./site/index.js";
 // ---- wave-n: promo ----
 import promosWaveN from "./promos/index.js";
+// ---- wave-o: import ----
+import siteImport from "./site-import/index.js";
 
 /** Each area owns its folder and registers its own paths under /v1. */
 export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -89,4 +91,6 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await site(app, ctx);
   // ---- wave-n: promo ----
   await promosWaveN(app, ctx);
+  // ---- wave-o: import ----
+  await siteImport(app, ctx);
 }

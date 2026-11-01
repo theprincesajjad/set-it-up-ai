@@ -18,7 +18,7 @@ export function activityTitle(tx: { type: string; points: number; description: s
     case "referral_bonus":
       return "Referral bonus";
     case "promo_bonus":
-      return "Double points bonus";
+      return "Promo bonus";
     case "network_bonus":
       return "Neighbourhood bonus";
     case "campaign_bonus":

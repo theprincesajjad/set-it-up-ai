@@ -86,9 +86,9 @@ export default function CounterSettings() {
         <Text variant="meta" color="fgMuted">{style === "clear" ? tr("settings.appearance.clearHint") : tr("settings.appearance.warmHint")}</Text>
       </Section>
       <Section title="This device">
-        <SwitchRow label="Dark theme" description="Light is easier to read in bright shops." value={config.theme === "dark"} onValueChange={(v) => setConfig({ theme: v ? "dark" : "light" })} divider />
+        <SwitchRow label="Dark theme" description="Light is easier to read in a bright shop." value={config.theme === "dark"} onValueChange={(v) => setConfig({ theme: v ? "dark" : "light" })} divider />
         <SwitchRow label="Scanner faces customer" description="Use the front camera and mirror the preview." value={config.scannerFront} onValueChange={(v) => setConfig({ scannerFront: v })} divider />
-        <SwitchRow label="Sound on award" description="A short chime when points go on." value={config.sound} onValueChange={(v) => setConfig({ sound: v })} divider />
+        <SwitchRow label="Sound when you add" description="A short chime each time stamps or points are added." value={config.sound} onValueChange={(v) => setConfig({ sound: v })} divider />
         <SwitchRow label="Shared shop device" description="Staff switch with a PIN. Exit needs a manager." value={config.sharedDevice} onValueChange={(v) => setConfig({ sharedDevice: v })} />
       </Section>
       <Section title={tr("lang.label")} spaced>
@@ -124,7 +124,7 @@ export default function CounterSettings() {
       <ConfirmDialog
         visible={exitOpen}
         title="Sign out of this device?"
-        body="Staff won't be able to award points here until someone signs in again."
+        body="Staff can't add stamps or points on this device until someone signs in again."
         confirmLabel="Sign out"
         onCancel={() => setExitOpen(false)}
         onConfirm={() => {

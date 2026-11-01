@@ -34,7 +34,7 @@ export function owedHeadline(r: reportsApi.RewardsOwedReport, noun: string): str
 
 /** "248 stamps held by 39 members. About $96 at cost, from your $4.00 cost per drink (estimate; edit the cost in Rewards)." */
 export function owedDetail(r: reportsApi.RewardsOwedReport, terminology: string, perNoun: string): string {
-  const held = `${r.stampsOutstanding} ${r.stampsOutstanding === 1 ? terminology.replace(/s$/, "") : terminology} held by ${r.members} ${r.members === 1 ? "member" : "members"}.`;
+  const held = `${r.stampsOutstanding} ${r.stampsOutstanding === 1 ? terminology.replace(/s$/, "") : terminology} held by ${r.members} ${r.members === 1 ? "customer" : "customers"}.`;
   if (r.estCostCents == null || r.rewardCostCents == null) return `${held} Add what a ${perNoun} costs you in Rewards for a dollar estimate.`;
   return `${held} About ${formatMoney(r.estCostCents).replace(/\.00$/, "")} at cost, from your ${formatMoney(r.rewardCostCents)} cost per ${perNoun} (estimate; edit the cost in Rewards).`;
 }
@@ -44,7 +44,7 @@ export function cameBackShare(j: reportsApi.JoinerReturnReport, days = 14): { pc
   const w = j.windows.find((x) => x.days === days);
   if (!j.joined || !w) return { pct: null, caption: "No joiners in this window yet" };
   const weeksAgo = (iso: string) => Math.round((Date.now() - Date.parse(iso)) / (7 * 86_400_000));
-  return { pct: Math.round((w.cameBack / j.joined) * 100), caption: `of members who joined ${weeksAgo(j.to)} to ${weeksAgo(j.from)} weeks ago (${w.cameBack} of ${j.joined})` };
+  return { pct: Math.round((w.cameBack / j.joined) * 100), caption: `of customers who joined ${weeksAgo(j.to)} to ${weeksAgo(j.from)} weeks ago (${w.cameBack} of ${j.joined})` };
 }
 
 /** "Joined Sep 11 to Oct 9: 17 members" */

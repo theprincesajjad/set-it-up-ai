@@ -12,7 +12,7 @@ describe("founding strip", () => {
   it("shows the live count from the API", async () => {
     founding.mockResolvedValue({ corridors: [{ slug: "ridgeway-plaza", name: "Ridgeway Plaza", taken: 6, total: 20 }] });
     const html = renderToStaticMarkup(await FoundingStrip());
-    expect(html).toContain("14 of 20 founding spots left on Ridgeway Plaza");
+    expect(html).toContain("14 of 20 first-year offer spots left on Ridgeway Plaza");
     expect(html).toContain("50% off for 12 months, then 25% off for life");
   });
   it("hides when the API fails, when no corridor has a spot, or when there are no corridors", async () => {

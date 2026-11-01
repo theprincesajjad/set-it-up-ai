@@ -151,7 +151,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     upsellPlan: "plus",
   },
   bar: {
-    label: "Bar / Pub",
+    label: "Bar or pub",
     earnType: "per_dollar",
     pointsPerDollar: 5,
     pointsPerVisit: 0,
@@ -164,7 +164,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     upsellPlan: "plus",
   },
   grocery: {
-    label: "Grocery / Market",
+    label: "Grocery or market",
     earnType: "per_dollar",
     pointsPerDollar: 1,
     pointsPerVisit: 0,
@@ -248,7 +248,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     upsellPlan: "plus",
   },
   pet: {
-    label: "Pet store / groomer",
+    label: "Pet store or groomer",
     earnType: "per_dollar",
     pointsPerDollar: 1,
     pointsPerVisit: 0,
@@ -260,7 +260,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     upsellPlan: "pro",
   },
   salon: {
-    label: "Hair / nail salon",
+    label: "Hair or nail salon",
     earnType: "per_visit",
     pointsPerDollar: 0,
     pointsPerVisit: 10,
@@ -321,7 +321,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     upsellPlan: "plus",
   },
   spa: {
-    label: "Spa / wellness",
+    label: "Spa or wellness",
     earnType: "per_dollar",
     pointsPerDollar: 1,
     pointsPerVisit: 0,
@@ -353,7 +353,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     upsellPlan: "plus",
   },
   fitness: {
-    label: "Gym / studio",
+    label: "Gym or studio",
     earnType: "per_visit",
     pointsPerDollar: 0,
     pointsPerVisit: 10,
@@ -369,7 +369,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     upsellPlan: "plus",
   },
   repair_electronics: {
-    label: "Phone / computer repair",
+    label: "Phone or computer repair",
     earnType: "per_dollar",
     pointsPerDollar: 1,
     pointsPerVisit: 0,
@@ -414,7 +414,7 @@ export const VERTICAL_TEMPLATES: Record<Vertical, ProgramTemplate> = {
     upsellPlan: "plus",
   },
   alterations: {
-    label: "Tailor / alterations",
+    label: "Tailor or alterations",
     earnType: "per_dollar",
     pointsPerDollar: 1,
     pointsPerVisit: 0,

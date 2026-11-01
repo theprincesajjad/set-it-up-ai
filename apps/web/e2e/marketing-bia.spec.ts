@@ -60,12 +60,12 @@ test.describe("landing", () => {
     const y = async (loc: ReturnType<Page["locator"]>) => (await loc.first().boundingBox())!.y;
     const order = [
       page.getByRole("heading", { level: 1 }),
-      page.getByRole("region", { name: "The network today" }),
+      page.getByRole("region", { name: "Live counts" }),
       page.getByRole("heading", { name: "Live at your counter today." }),
       page.getByRole("heading", { name: "Built to bring customers back." }),
       page.getByRole("region", { name: "Where do you fit?" }),
       page.getByRole("heading", { name: "Get more from the customers you have." }),
-      page.getByRole("heading", { name: "Simple, transparent pricing." }),
+      page.getByRole("heading", { name: "Simple pricing." }),
       page.getByRole("heading", { name: "How we compare." }),
       page.getByRole("heading", { name: "Frequently asked questions" }),
       page.getByRole("heading", { name: "Prefer a hand getting set up?" }),
@@ -99,7 +99,7 @@ test.describe("landing", () => {
     // only ever adds shops and streets, so a render can be behind but never ahead.
     const plans = (await call<{ network: { activeMerchants: number; liveStreets: number; multiShopMemberPct: number } }>("GET", "/v1/public/plans")).json.network;
     await page.goto("/");
-    const strip = page.getByRole("region", { name: "The network today" });
+    const strip = page.getByRole("region", { name: "Live counts" });
     if (plans.activeMerchants < 10) {
       await expect(strip).toHaveCount(0);
       return;
@@ -214,7 +214,7 @@ test.describe("for restaurants", () => {
     test("the content is in the page", async ({ page }) => {
       await page.goto("/for-restaurants");
       await expect(page.getByRole("heading", { level: 1, name: "keep the whole order." })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "built for how a Desi kitchen actually runs." })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "built for how a Desi kitchen runs." })).toBeVisible();
       await expect(page.locator("#festivals li").first()).toContainText(" · ");
       await expect(page.getByRole("heading", { name: "flat prices, no commission." })).toBeVisible();
       await expect(page.getByText("Do you deliver?")).toBeVisible();
@@ -225,7 +225,7 @@ test.describe("for restaurants", () => {
     const founding = (await call<{ corridors: { name: string; taken: number; total: number }[] }>("GET", "/v1/public/restaurants/founding")).json.corridors;
     await page.goto("/for-restaurants");
     const open = founding.filter((c) => c.total - c.taken > 0).sort((a, b) => b.total - b.taken - (a.total - a.taken) || a.name.localeCompare(b.name));
-    if (open.length) await expect(page.getByTestId("founding-headline")).toHaveText(`${open[0]!.total - open[0]!.taken} of ${open[0]!.total} founding spots left on ${open[0]!.name}`);
+    if (open.length) await expect(page.getByTestId("founding-headline")).toHaveText(`${open[0]!.total - open[0]!.taken} of ${open[0]!.total} first-year offer spots left on ${open[0]!.name}`);
     else await expect(page.getByTestId("founding-headline")).toHaveCount(0);
     const ticket = page.getByTestId("kitchen-ticket");
     await expect(ticket).toContainText("چکن بریانی");

@@ -24,9 +24,9 @@ export function YourDataPanel() {
 
   if (!paid && !until)
     return (
-      <Panel title="Your data" description="Your members and their history belong to you.">
+      <Panel title="Your data" description="Your customers and their history belong to you.">
         <p className="text-meta text-fg">
-          Downloads of your members, orders, bookings, reviews and messages come with a paid plan. If you close your shop or move back to Free, you keep a free export of all of it for {RETENTION.leaverExportDays} days.
+          Downloads of your customers, orders, bookings, reviews and messages come with a paid plan. If you close your shop or move back to Free, you keep a free export of all of it for {RETENTION.leaverExportDays} days.
         </p>
         <p className="mt-3 text-meta text-fg">Need a copy now? Email help@localloyalty.example and we&apos;ll send it within 30 days.</p>
         <p className="mt-3 text-meta text-fg-muted">We keep balance and purchase history for 7 years for tax and dispute reasons. Phone numbers stay hidden in lists.</p>
@@ -58,7 +58,7 @@ export function YourDataPanel() {
         ))}
       </RowList>
       <p className="mt-3 text-meta text-fg-muted">
-        You are responsible for using these files lawfully. Message only members who agreed (marketing_consent_at in Members) and have not replied STOP, and check may_follow_up in Reviews before you reach out. Customers who deleted their account have no personal details in these files.
+        You are responsible for using these files lawfully. Only message customers who agreed (the marketing_consent_at column in the customers file) and haven&apos;t replied STOP. Check may_follow_up in the reviews file before you reach out. Customers who deleted their account have no personal details in these files.
       </p>
       <p className="mt-2 text-meta text-fg-muted">We keep balance and purchase history for 7 years for tax and dispute reasons. Phone numbers stay hidden in lists.</p>
     </Panel>

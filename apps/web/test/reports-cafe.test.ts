@@ -31,7 +31,7 @@ describe("rewards owed", () => {
     expect(owedHeadline(owed(), "free drink")).toBe("24 free drinks");
     expect(owedHeadline(owed({ rewardsOwed: 1 }), "free drink")).toBe("1 free drink");
     const text = owedDetail(owed(), "stamps", "free drink");
-    expect(text).toBe("248 stamps held by 39 members. About $96 at cost, from your $4.00 cost per free drink (estimate; edit the cost in Rewards).");
+    expect(text).toBe("248 stamps held by 39 customers. About $96 at cost, from your $4.00 cost per free drink (estimate; edit the cost in Rewards).");
     expect(text).toContain("estimate");
   });
   it("asks for the cost instead of guessing one", () => {

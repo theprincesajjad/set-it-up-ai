@@ -23,7 +23,7 @@ export default function RepMerchantPage() {
   const r = rm.data?.items.find((x) => x.merchantId === merchantId);
   return (
     <div className="flex flex-col gap-4">
-      <BackLink href="/rep/merchants">My merchants</BackLink>
+      <BackLink href="/rep/merchants">My shops</BackLink>
       <Async state={detail}>
         {(d) => (
           <>
@@ -32,7 +32,7 @@ export default function RepMerchantPage() {
                 <Button size="sm" variant="secondary" iconStart={Printer} href={`/rep/merchants/${merchantId}/kit`}>QR kit</Button>
                 {/* Done-for-you migration: reps can import members on any plan. */}
                 <Button size="sm" variant="secondary" iconStart={Upload} href={`/m/${merchantId}/customers/import`}>Import customers</Button>
-                <Button size="sm" iconStart={ExternalLink} href={`/m/${merchantId}`}>Open as merchant</Button>
+                <Button size="sm" iconStart={ExternalLink} href={`/m/${merchantId}`}>Open their dashboard</Button>
               </>
             } />
             {r ? (

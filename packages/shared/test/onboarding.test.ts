@@ -89,7 +89,7 @@ describe("nudges", () => {
   });
   it("English is word for word what owners got before the texts were translated", () => {
     const a = { shopName: "Sunrise Bakery", members: 6, daysLeft: 5, target: 25, tillLine: "Want a stamp on that today?", url: "https://example.ca/m/1/setup" };
-    expect(nudgeText("nudge_d1", a)).toEqual({ subject: "Give your first stamp at Sunrise Bakery", body: "Sunrise Bakery is set up but nobody has been stamped yet. It takes three minutes: scan your own QR, then add a stamp. https://example.ca/m/1/setup" });
+    expect(nudgeText("nudge_d1", a)).toEqual({ subject: "Give your first stamp at Sunrise Bakery", body: "Sunrise Bakery is ready, but no one has a stamp yet. Try it on yourself in three minutes: scan your QR, then add a stamp. https://example.ca/m/1/setup" });
     expect(nudgeText("nudge_d3", a)).toEqual({ subject: "6 on the card so far", body: 'Sunrise Bakery: 6 customers so far. Try saying this at the till today: "Want a stamp on that today?" https://example.ca/m/1/setup' });
     expect(nudgeText("nudge_d3", { ...a, members: 1 }).body).toContain("1 customer so far");
     expect(nudgeText("nudge_d7", a)).toEqual({ subject: "A week in: 6 customers", body: "Sunrise Bakery has 6 customers after a week. Shops that reach 12 by day 14 almost always reach 25. 19 to go. https://example.ca/m/1/setup" });

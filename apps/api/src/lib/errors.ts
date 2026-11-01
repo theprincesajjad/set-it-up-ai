@@ -14,7 +14,9 @@ export const unauthorized = (message = "Please sign in to continue.") => new Htt
 export const forbidden = (message = "You don't have access to this. Ask the shop owner.") => new HttpError(403, "forbidden", message);
 /** "Shop" becomes "We couldn't find that shop." (a leading acronym such as "VIP level" keeps its capitals). */
 const lowerFirst = (s: string) => (/^[A-Z]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
-export const notFound = (what = "item") => new HttpError(404, "not_found", `We couldn't find that ${lowerFirst(what)}.`);
+/** Internal names read as the product's words: a person never sees "merchant", "member", "user" or "deal". */
+const SAY: Record<string, string> = { Merchant: "shop", Member: "customer", User: "account", Deal: "offer" };
+export const notFound = (what = "item") => new HttpError(404, "not_found", `We couldn't find that ${SAY[what] ?? lowerFirst(what)}.`);
 export const conflict = (message: string) => new HttpError(409, "conflict", message);
 /** Feature exists but isn't on this merchant's plan or isn't rolled out yet. */
 export const featureLocked = (feature: string, reason: "plan" | "rollout") =>

@@ -193,7 +193,7 @@ test.describe("Trial shop: no locked lines, and the Today card", () => {
       const weekday = new Intl.DateTimeFormat("en-CA", { weekday: "long", timeZone: "America/Toronto" }).format(new Date(endsAt));
       await expect(ending).toContainText(`Pro ends ${weekday}.`);
       // A brand-new shop has done nothing yet: the quiet line, with the price from PLANS.
-      await expect(ending).toContainText("So far it's been quiet, which is normal in the first two weeks. Pro is $29 a month whenever you want it");
+      await expect(ending).toContainText("It's been quiet so far, which is normal in the first two weeks. Pro is $29 a month whenever you want it");
       await expect(ending.getByRole("link", { name: "Keep Pro" })).toHaveAttribute("href", `${base}/billing?plan=plus`);
       await page.screenshot({ path: shot(`trial-day11-${w}`), fullPage: true });
       await ending.getByRole("button", { name: "Let it end" }).click();

@@ -32,7 +32,7 @@ export function UpsellCard({ upsell, base, activeLine, onDismiss }: { upsell: me
       </p>
       {upsell.foundingLine ? <p className="w-fit rounded-full bg-card px-3 py-1.5 text-meta-strong text-points-text">{upsell.foundingLine}</p> : null}
       <div className="flex flex-wrap gap-2">
-        <Button href={`${base}/billing`}>{upsell.foundingLine ? "See the founding offer" : "See what is included"}</Button>
+        <Button href={`${base}/billing`}>{upsell.foundingLine ? "See the offer" : "See what's included"}</Button>
         <Button variant="secondary" loading={act.busy} onClick={() => void act.run(onDismiss)}>
           Not now
         </Button>

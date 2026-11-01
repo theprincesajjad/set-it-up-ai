@@ -57,7 +57,7 @@ export default function ExperimentPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <ListAsync state={rep} errorTitle="We could not load this test.">
+      <ListAsync state={rep} errorTitle="Couldn't load this test.">
         {(r) => {
           const e = r.experiment;
           const banner = lookBanner(r);

@@ -47,7 +47,7 @@ function PromosPage() {
       <PageHeader
         flush
         title="Promos"
-        description="Start from a template or let Claude write one for you. Each promo reports extra visits against the same weekday and hours in the last four weeks."
+        description="Start from a template, or let Claude write one for you. Each promo shows how many extra visits it brought in."
         actions={<Button size="md" iconStart={Plus} href={`${base}/promos/new`} className="h-[38px] rounded-full px-4 text-[14px] font-medium">Create a promo</Button>}
       />
 
@@ -119,7 +119,7 @@ function PromosPage() {
                     {showResults ? (
                       <>
                         <Td className="font-semibold tabular text-fg">{r ? formatNumber(r.windowVisits) : "–"}</Td>
-                        <Td className="tabular text-fg-muted">{r ? (r.typicalVisits == null ? <span className="text-[12px]">Not enough history</span> : formatNumber(r.typicalVisits)) : "–"}</Td>
+                        <Td className="tabular text-fg-muted">{r ? (r.typicalVisits == null ? <span className="text-[12px]">Not enough visits yet</span> : formatNumber(r.typicalVisits)) : "–"}</Td>
                         <Td className={cn("tabular", r && r.extraVisits != null && r.extraVisits > 0 ? "font-medium text-positive-text" : "text-fg-muted")}>{r ? (r.extraVisits == null ? "–" : signedVisits(r.extraVisits)) : "–"}</Td>
                         <Td className="tabular text-fg">{r ? formatNumber(r.freeItemsGiven) : "–"}</Td>
                       </>

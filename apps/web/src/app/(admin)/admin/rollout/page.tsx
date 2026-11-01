@@ -26,7 +26,7 @@ export default function RolloutPage() {
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Rollout control" description="Decide when paid features switch on. Free-forever features are locked to Live." />
       <NetworkGauges activeMerchants={active} multiShopPct={dash.data?.multiShopPct ?? null} />
-      <ListAsync state={features} errorTitle="We could not load the rollout.">
+      <ListAsync state={features} errorTitle="Couldn't load the rollout.">
         {(d) => (
           <>
             {groupFeatures(d.items).map((g) => (
@@ -118,7 +118,7 @@ export default function RolloutPage() {
         const r = await browserApi.admin.setStage(change!.f.key, { stage, note: note || undefined });
         features.setData((d) => (d ? { items: d.items.map((x) => (x.key === r.key ? r : x)) } : d));
         await plans.reload();
-        toast({ message: `${r.name} is now ${stage === "ga" ? "Live" : stage === "beta" ? "in Beta" : "Hidden"}`, tone: "success" });
+        toast({ message: `${r.name} is now ${stage === "ga" ? "live" : stage === "beta" ? "in early access" : "hidden"}`, tone: "success" });
       }} />
       <OverridesSheet feature={overrides} onClose={() => setOverrides(null)} onChanged={() => void features.reload()} />
     </div>

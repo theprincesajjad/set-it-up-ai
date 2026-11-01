@@ -36,7 +36,7 @@ export default function NeighbourhoodsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Neighbourhoods and bonuses" description="The launch calendar (opening dates, street day, who walks it), BIA details and the bonuses the network pays for." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
-      <ListAsync state={hoods} errorTitle="We could not load the neighbourhoods.">
+      <ListAsync state={hoods} errorTitle="Couldn't load the neighbourhoods.">
         {(d) => (
           <ul className="grid gap-px overflow-hidden rounded-card bg-card shadow-card md:grid-cols-2 xl:grid-cols-3 [&>li]:bg-bg md:[&>li]:shadow-[0_0_0_1px_var(--ll-color-line)]">
             {d.items.map((h) => (

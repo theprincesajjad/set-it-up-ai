@@ -243,7 +243,7 @@ test("rep: pipeline and done-for-you merchant setup", async ({ page }) => {
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ready to create" })).toBeVisible();
-  await page.getByRole("button", { name: "Create merchant" }).click();
+  await page.getByRole("button", { name: "Create shop" }).click();
   await expect(page.getByRole("heading", { name: "QR kit" })).toBeVisible();
   await page.getByRole("button", { name: "Mark as delivered" }).click();
   // Next through the remaining steps (QR kit, train the staff) to the done screen.
@@ -254,7 +254,7 @@ test("rep: pipeline and done-for-you merchant setup", async ({ page }) => {
   }
   await expect(page.getByRole("heading", { name: `${name} is live.` })).toBeVisible();
   await page.screenshot({ path: shot("19-rep-done"), fullPage: true });
-  await page.getByRole("link", { name: "Open merchant" }).click();
+  await page.getByRole("link", { name: "Open shop" }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   await page.getByRole("link", { name: "QR kit" }).click();
   await expect(page.getByRole("img", { name: new RegExp(`QR stand for ${name}`) })).toBeVisible();
@@ -343,7 +343,7 @@ test("owner: billing and plans, integrations, messages, reports", async ({ page 
   await expect(page.getByRole("heading", { name: "When people come in" })).toBeVisible();
   await page.screenshot({ path: shot("29-reports"), fullPage: true });
   // Network overlap is an advanced (paid) report: no tab while locked.
-  await expect(page.getByRole("tab", { name: "Network" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Your street" })).toHaveCount(0);
   await pilot(id, ["marketing.email"], false);
 });
 

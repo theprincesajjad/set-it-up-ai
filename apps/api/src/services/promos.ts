@@ -7,7 +7,7 @@
  * "promo:targeted" boost provider (services/promo-rules.ts). Announcements and reminders: services/promo-notify.ts.
  */
 import { and, desc, eq, gte, inArray, isNull, isNotNull, lte, ne, or, sql } from "drizzle-orm";
-import { catalogItems, ledgerTransactions, merchantCategories, merchantMembers, merchants, promoClaims, promoDeliveries, promos, services, users, type DbOrTx } from "@ll/db";
+import { catalogItems, ledgerTransactions, loyaltyPrograms, merchantCategories, merchantMembers, merchants, promoClaims, promoDeliveries, promos, services, users, type DbOrTx } from "@ll/db";
 import { merchantApi, promosApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
@@ -387,6 +387,9 @@ export async function dealsFor(ctx: AppContext, userId: string, opts: { merchant
     ctx.db.select({ promoId: promoDeliveries.promoId, openedAt: promoDeliveries.openedAt, status: promoDeliveries.status }).from(promoDeliveries).where(and(eq(promoDeliveries.userId, userId), inArray(promoDeliveries.promoId, ids))),
   ]);
   const byShop = new Map(mem.map((x) => [x.merchant.id, x]));
+  const terms = new Map(
+    (await ctx.db.select({ merchantId: loyaltyPrograms.merchantId, terminology: loyaltyPrograms.terminology }).from(loyaltyPrograms).where(inArray(loyaltyPrograms.merchantId, [...byShop.keys()]))).map((r) => [r.merchantId, r.terminology]),
+  );
   const items: promosApi.DealDto[] = [];
   for (const p of rows) {
     const x = byShop.get(p.merchantId)!;
@@ -398,16 +401,16 @@ export async function dealsFor(ctx: AppContext, userId: string, opts: { merchant
     if (upcoming && p.promoType !== "door_crasher") continue;
     const claim = claims.find((c) => c.promoId === p.id);
     const sent = deliveries.filter((d) => d.promoId === p.id && d.status === "sent");
-    items.push(dealDto(p, x.merchant, x.member.id, now, tz, { claim: claim ? { code: claim.code, status: claim.status as "claimed" | "redeemed" } : null, unread: sent.some((d) => !d.openedAt), optedIn: !!x.member.marketingConsentAt && !x.member.muted }));
+    items.push(dealDto(p, x.merchant, x.member.id, now, tz, { claim: claim ? { code: claim.code, status: claim.status as "claimed" | "redeemed" } : null, unread: sent.some((d) => !d.openedAt), optedIn: !!x.member.marketingConsentAt && !x.member.muted, terminology: terms.get(p.merchantId) }));
   }
   items.sort((a, b) => Number(b.activeNow) - Number(a.activeNow) || Number(b.unread) - Number(a.unread) || a.startsAt.localeCompare(b.startsAt));
   return { items };
 }
 
-export function dealDto(p: PromoRow, m: Merchant, memberId: string | null, now: Date, tz: string, extra: { claim: promosApi.DealDto["claim"]; unread: boolean; optedIn: boolean }): promosApi.DealDto {
+export function dealDto(p: PromoRow, m: Merchant, memberId: string | null, now: Date, tz: string, extra: { claim: promosApi.DealDto["claim"]; unread: boolean; optedIn: boolean; terminology?: string }): promosApi.DealDto {
   return {
     id: p.id,
-    merchant: { id: m.id, name: m.name, slug: m.slug, brandColor: m.brandColor ?? null, vertical: m.vertical, logoUrl: m.logoUrl ?? null },
+    merchant: { id: m.id, name: m.name, slug: m.slug, brandColor: m.brandColor ?? null, vertical: m.vertical, logoUrl: m.logoUrl ?? null, ...(extra.terminology ? { terminology: extra.terminology } : {}) },
     memberId,
     title: p.title,
     body: p.body,
@@ -427,7 +430,9 @@ export function dealDto(p: PromoRow, m: Merchant, memberId: string | null, now: 
     upcoming: p.startsAt > now,
     quantityCap: p.quantityCap,
     remaining: p.quantityCap == null ? null : Math.max(0, p.quantityCap - p.claimedCount),
-    ...extra,
+    claim: extra.claim,
+    unread: extra.unread,
+    optedIn: extra.optedIn,
   };
 }
 

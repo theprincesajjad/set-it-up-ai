@@ -29,7 +29,7 @@ export default function AdminFunnelPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Signup funnel" description="From a landing page view to a paying shop" actions={<PeriodPicker value={days} onChange={setDays} />} />
-      <ListAsync state={s} errorTitle="We could not load the funnel. Reload the page to try again." rows={6}>
+      <ListAsync state={s} errorTitle="Couldn't load the funnel. Reload the page to try again." rows={6}>
         {(d) => (
           <>
             <Panel title="All landing pages" description={`Last ${days} days. Each visitor counts once per step.`}>

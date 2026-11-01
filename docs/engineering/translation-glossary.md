@@ -1085,3 +1085,19 @@ Added Oct 27, 2026 (auto care). Written by the build team in all four languages,
 - `auto.my.*` (30) and `auto.tire.*` (17): My vehicles (`/me/vehicles`). Use the loanwords for odometer (ओडोमीटर, اوڈومیٹر, ਓਡੋਮੀਟਰ), tire (टायर, ٹائر, ਟਾਇਰ) and rack (रैक, ریک, ਰੈਕ). `auto.tire.fall` and `auto.tire.spring` say when the shop swaps tires. "Ride-hail" is राइड-हेल, رائیڈ ہیل, ਰਾਈਡ-ਹੇਲ; check whether Uber or Lyft is the word drivers use.
 - `auto.q.*` (7) and `auto.i.*` (16): the vehicle estimate and invoice lines. `auto.q.estTitle` is "This is an estimate" (अनुमान, تخمینہ, ਅੰਦਾਜ਼ਾ), not a quote; the page title still says quote (कोटेशन). `auto.i.warranty` states the 90 days or 5,000 km on new or reconditioned parts and labour and what it does not cover: a lawyer or a native speaker should read it before launch.
 
+
+## Copy pass, wave O (Nov 1, 2026): needs a native speaker
+
+The English changed meaning for these 24 keys, so hi, ur and pa were rewritten by the copy writer to this glossary. Nobody fluent has
+read them yet.
+
+1. **Deals became Offers** (`deal.title`, `deal.empty`, `deal.optIn`, `deal.optOut`, `deal.optedOut`, `deal.passChange`, `deal.passLabel`):
+   ऑफ़र, آفر / آفرز, ਆਫ਼ਰ, the same words `shop.promos` already uses. Urdu used both آفرز and پیشکش for "offers"; this pass picks آفرز.
+   Check the gender agreement: Hindi "नया ऑफ़र" (masc.), Urdu "نئی آفر" (fem.), Punjabi "ਨਵਾਂ ਆਫ਼ਰ" (masc.). `deal.consentText` was not touched.
+2. **No unit where the unit is unknown** (`sh.wallet.cancelled`, `sh.you.signOutBody`, `sh.priv.shopsFoot`, `wp.rc.showStaff`, `sh.pass.how`):
+   "nothing was used", "your cards and rewards", "your card keeps working", "added to your balance" (बैलेंस, بیلنس, ਬੈਲੈਂਸ).
+3. **Plurals** (`ob.step.team`, `ob.nudge.d7.subject`, `ob.nudge.d14.subject`, `shop.membersCount`): ICU `one`/`other` branches;
+   `shop.membersCount` now says "N neighbours collect here" (पड़ोसी यहाँ कमाते हैं, پڑوسی یہاں کماتے ہیں, ਗੁਆਂਢੀ ਇੱਥੇ ਕਮਾਉਂਦੇ ਹਨ).
+4. **Smaller rewrites**: `wp.shop.noOffers` (no "members"), `auth.join.invalidBody` and `wp.t.mapDesc` (no "network"), `ui.rewardUnlocked`
+   ("Reward ready"), `ob.nudge.d1.body` (a text: keep it one segment), and the admin labels `shell.search.admin`, `shell.console.merchants`
+   ("Plans and payments"), `shell.console.users` ("People and roles").

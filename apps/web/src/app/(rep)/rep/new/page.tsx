@@ -111,7 +111,7 @@ export default function NewMerchantPage() {
   const joinUrl = created?.locations[0]?.joinUrl;
   return (
     <div className="flex max-w-[960px] flex-col gap-5">
-      <PageHeader title="Set up a merchant" description="About 20 minutes with the owner. Every step saves on this device." />
+      <PageHeader title="Set up a shop" description="About 20 minutes with the owner. Every step saves on this device." />
       <ProgressBar value={step + 1} max={STEPS.length} label={`Step ${step + 1} of ${STEPS.length}: ${STEPS[step]}`} valueText={STEPS[step]} />
       {error ? <Banner tone="danger">{error}</Banner> : null}
 
@@ -120,7 +120,7 @@ export default function NewMerchantPage() {
           <>
             <h2 className="text-body-strong text-fg">Find the shop</h2>
             <TextField label="Shop name" value={d.name} onChange={(e) => set("name", e.target.value)} autoComplete="organization" />
-            {exact ? <Banner tone="danger">Already on the network: {exact.merchant.name}. Open it from My merchants instead.</Banner> : dupes.length ? <Banner tone="info">Similar names on the network: {dupes.map((s) => s.merchant.name).join(", ")}. Make sure this is a different shop.</Banner> : null}
+            {exact ? <Banner tone="danger">{exact.merchant.name} is already signed up. Open it from My shops instead.</Banner> : dupes.length ? <Banner tone="info">Similar names on the network: {dupes.map((s) => s.merchant.name).join(", ")}. Make sure this is a different shop.</Banner> : null}
             <TextField label="Street address" value={d.address} onChange={(e) => set("address", e.target.value)} autoComplete="street-address" />
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField label="City" value={d.city} onChange={(e) => set("city", e.target.value)} />
@@ -190,7 +190,7 @@ export default function NewMerchantPage() {
               <dt className="text-fg-muted">Owner</dt><dd>{[d.ownerName, d.ownerEmail, d.ownerPhone].filter(Boolean).join(" · ")}</dd>
               <dt className="text-fg-muted">Staff</dt><dd>{d.staffPhone ? d.staffName || d.staffPhone : "None yet"}</dd>
             </dl>
-            {created ? <Banner tone="success">Created.</Banner> : <Button size="lg" loading={busy} onClick={create} className="self-start">Create merchant</Button>}
+            {created ? <Banner tone="success">Created.</Banner> : <Button size="lg" loading={busy} onClick={create} className="self-start">Create shop</Button>}
           </>
         ) : null}
         {step === 6 && created ? (
@@ -228,7 +228,7 @@ export default function NewMerchantPage() {
             ) : null}
             <p className="text-body text-fg">Activation goal: 25 active members in 30 days.</p>
             <div className="flex flex-wrap gap-2">
-              <Button href={`/rep/merchants/${created.merchant.id}`}>Open merchant</Button>
+              <Button href={`/rep/merchants/${created.merchant.id}`}>Open shop</Button>
               <Button variant="secondary" href="/rep/new" onClick={() => { setCreated(null); setD(EMPTY); setStep(0); }}>Set up another</Button>
             </div>
           </div>

@@ -67,7 +67,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
                   {t("mkt.rest.ctaBook")}
                 </Button>
               </div>
-              {locale === "en" ? <p className="mt-5 max-w-[34rem] text-meta text-muted-foreground">0% commission on your own orders · add your menu yourself or we do the typing · founding offer: 50% off the first year</p> : null}
+              {locale === "en" ? <p className="mt-5 max-w-[34rem] text-meta text-muted-foreground">0% commission on your own orders · add your menu yourself, or we type it in · 50% off your first year</p> : null}
             </div>
             <PhoneStage arts={["eat", "bakery"]}>
               <RestaurantPhone />

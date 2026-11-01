@@ -63,7 +63,7 @@ export default function SiteDomainsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Website domains" description="Requests from the website builder. Buy or check the name, point it at the sites target, then mark it live." />
       {act.error ? <p role="alert" className="text-body text-destructive-text">{act.error}</p> : null}
-      <ListAsync state={list} errorTitle="We could not load the domains.">
+      <ListAsync state={list} errorTitle="Couldn't load the domains.">
         {(d) => (
           <Panel padded={false} title="Requests" description="Newest requests first; live domains at the end.">
             <DataTable caption="Website domain requests" columns={cols} rows={d.items} rowKey={(r) => r.id} empty="No domain requests." />

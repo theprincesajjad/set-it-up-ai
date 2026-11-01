@@ -233,7 +233,7 @@ async function resolveCustomer(db: DbOrTx, merchantId: string, ref: CustomerRef)
     joinedVia = "wallet";
   } else {
     phone = normalizePhone(ref.phone ?? "");
-    if (!phone) throw badRequest("Enter a valid phone number", [{ path: "phone", message: "Invalid phone number" }]);
+    if (!phone) throw badRequest("Enter a 10-digit phone number.", [{ path: "phone", message: "Enter a 10-digit phone number." }]);
     userWhere = eq(users.phone, phone);
   }
   const [hit] = await db
@@ -753,7 +753,7 @@ export async function sync(ctx: AppContext, staff: StaffContext, events: staffAp
 export async function kioskCheckIn(ctx: AppContext, staff: StaffContext, body: staffApi.KioskCheckInBody): Promise<staffApi.KioskCheckInResponse> {
   requireUuid(body.locationId, "Location");
   const phone = normalizePhone(body.phone);
-  if (!phone) throw badRequest("Enter a valid phone number", [{ path: "phone", message: "Invalid phone number" }]);
+  if (!phone) throw badRequest("Enter a 10-digit phone number.", [{ path: "phone", message: "Enter a 10-digit phone number." }]);
   const [loc] = await ctx.db
     .select({ id: locations.id })
     .from(locations)

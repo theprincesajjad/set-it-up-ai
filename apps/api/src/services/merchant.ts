@@ -62,7 +62,7 @@ export { normalizePhone };
 
 export function requirePhone(input: string): string {
   const p = normalizePhone(input);
-  if (!p) throw badRequest("Enter a valid phone number, e.g. 416-555-0123");
+  if (!p) throw badRequest("Enter a 10-digit phone number, like 416-555-0123.");
   return p;
 }
 

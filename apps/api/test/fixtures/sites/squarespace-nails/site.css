@@ -1,0 +1,11 @@
+/* Squarespace-like site styles */
+body{font-family:"Proxima Nova",sans-serif;color:#1a1a1a;background:#ffffff}
+.Header{background:#fff;border-bottom:1px solid #eeeeee}
+.Header-nav a{color:#D6457A}
+.sqs-block-button-element{background-color:#D6457A;color:#fff}
+.sqs-block-button-element:hover{background-color:#c23a6c}
+a{color:#D6457A}
+h1{color:#222222}
+.Footer{background:#f7f7f7;color:#555}
+.badge{background:rgba(214,69,122,0.9)}
+.sale{color:#2E8B8B}

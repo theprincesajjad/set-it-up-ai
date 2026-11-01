@@ -275,7 +275,7 @@ export async function recordSale(ctx: AppContext, staff: StaffContext, body: z.o
     userId = u.id;
   } else {
     const phone = normalizePhone(body.phone ?? "");
-    if (!phone) throw badRequest("Enter a valid phone number");
+    if (!phone) throw badRequest("Enter a 10-digit phone number.");
     userId = (await findOrCreateCustomerByPhone(ctx.db, phone, body.customerName ?? null)).user.id;
   }
   if (product.introOnly && !(await introEligible(ctx, userId, merchant.id))) throw new HttpError(409, "intro_used", "The intro offer is for new students.");

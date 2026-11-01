@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /config
+Disallow: /search
+Sitemap: https://priyanails.example/sitemap.xml

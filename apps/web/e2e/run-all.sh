@@ -107,6 +107,16 @@ export APP_ENCRYPTION_KEY="${APP_ENCRYPTION_KEY:-$(od -An -tx1 -N32 /dev/urandom
 # no random arm. e2e/landing-ab.spec.ts moves it per request with the x-ll-experiments-now header (EXPERIMENTS_TEST_CLOCK=1).
 export EXPERIMENTS_NOW="${EXPERIMENTS_NOW:-2026-01-01T00:00:00Z}"
 
+# Website import (wave O): local fixture sites the import reads instead of the internet (apps/api/test/fixtures/sites). The API
+# resolves their .test host names to 127.0.0.1 through SITE_IMPORT_TEST_HOSTS (refused in production); every other host still
+# goes through the SSRF guard.
+SITE_FIXTURE_PORT="${SITE_FIXTURE_PORT:-$((API_PORT + 90))}"
+export SITE_FIXTURE_PORT E2E_SITE_FIXTURE_PORT="$SITE_FIXTURE_PORT"
+export SITE_IMPORT_TEST_HOSTS="${SITE_IMPORT_TEST_HOSTS:-priya-nails.test=127.0.0.1,bloor-barbers.test=127.0.0.1,maple-bean.test=127.0.0.1,sunrise-bakery.test=127.0.0.1,studio-verde.test=127.0.0.1}"
+echo "==> starting the website-import fixture sites on port $SITE_FIXTURE_PORT"
+(cd apps/api && npx tsx scripts/site-fixtures-server.ts > "$LOG_DIR/site-fixtures.log" 2>&1) &
+PIDS+=("$!")
+
 echo "==> seeding a fresh database ($DATABASE_URL)"
 pnpm --filter @ll/api seed > "$LOG_DIR/seed.log" 2>&1
 

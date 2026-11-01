@@ -17,6 +17,7 @@
     "@fastify/cors": "^11.0.0",
     "@fastify/rate-limit": "^10.2.0",
     "@ll/db": "workspace:*",
+    "@ll/design-tokens": "workspace:*",
     "@ll/shared": "workspace:*",
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "^0.44.0",

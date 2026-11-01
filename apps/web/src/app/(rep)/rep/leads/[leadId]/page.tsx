@@ -37,7 +37,7 @@ export default function LeadPage() {
         {(l) => (
           <>
             <PageHeader title={l.businessName} description={<span className="flex flex-wrap items-center gap-2"><Badge>{STAGE_LABEL[l.stage]}</Badge>{l.vertical ? verticalLabel(l.vertical) : null}{l.address ? ` · ${l.address}` : ""}</span>} actions={
-              l.merchantId ? <Button size="sm" href={`/rep/merchants/${l.merchantId}`} iconStart={Store}>Open merchant</Button> : <Button size="sm" href={`/rep/new?leadId=${l.id}`}>Start setup</Button>
+              l.merchantId ? <Button size="sm" href={`/rep/merchants/${l.merchantId}`} iconStart={Store}>Open shop</Button> : <Button size="sm" href={`/rep/new?leadId=${l.id}`}>Start setup</Button>
             } />
             {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">

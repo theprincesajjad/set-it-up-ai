@@ -87,7 +87,7 @@ export async function sendPickupReady(ctx: AppContext, staff: StaffContext, body
   const m = staff.merchant;
   if (!isPharmacy(m)) throw badRequest("Pickup-ready texts are for pharmacies");
   const phone = normalizePhone(body.phone);
-  if (!phone) throw badRequest("Enter a valid phone number", [{ path: "phone", message: "Invalid phone number" }]);
+  if (!phone) throw badRequest("Enter a 10-digit phone number.", [{ path: "phone", message: "Enter a 10-digit phone number." }]);
   const { user } = await findOrCreateCustomerByPhone(ctx.db, phone, null);
   const locale = normalizeLocale(user.locale) ?? "en";
   const text = t(locale, "rx.pickup.ready", { shop: m.name });

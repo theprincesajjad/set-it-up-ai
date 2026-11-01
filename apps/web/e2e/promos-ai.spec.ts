@@ -117,7 +117,7 @@ test.describe("Promos: AI-prefilled door crasher, customer Deals inbox", () => {
     // ---- Urdu once ----
     await cp.goto("/me?lang=ur");
     await expect(cp.locator("html")).toHaveAttribute("dir", "rtl");
-    await expect(cp.getByTestId("deals-inbox").getByRole("heading", { name: "ڈیلز" })).toBeVisible();
+    await expect(cp.getByTestId("deals-inbox").getByRole("heading", { name: "آفرز" })).toBeVisible();
     await cp.screenshot({ path: shot("me-deals-390-ur"), fullPage: true });
     await ctx.close();
 

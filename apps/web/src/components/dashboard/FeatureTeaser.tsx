@@ -152,13 +152,13 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
               try {
                 await api.setBeta(true);
                 await refresh();
-                toast({ message: "You're in the beta. New tools appear in your menu.", tone: "success" });
+                toast({ message: "You have early access. New tools show up in your menu.", tone: "success" });
               } catch (e) {
                 toast({ message: errorMessage(e), tone: "error" });
               }
             }}
           >
-            Try the beta
+            Try it early
           </Button>
         ) : null}
         {role === "owner" ? (

@@ -136,6 +136,16 @@ export interface Config {
    */
   ai: { masterKeyHex?: string; envKey?: string; model: string; models: string[]; validateModel: string; plans: string[]; fake: boolean; effort: "low" | "medium" | "high"; prices: Record<string, { inputPerM: number; outputPerM: number }> };
   // ---- end wave-n: promo ----
+  // ---- wave-o: import ----
+  /**
+   * "Have a website or Instagram?" (services/site-import). SITE_IMPORT_AI_MODEL (default claude-haiku-5-5) is the small model that
+   * tidies the name and description and maps services when the shared Claude key is set (services/ai-key.ts); it runs on the same
+   * quotas and meter as the promo writer. SITE_IMPORT_AI=0 turns the tidy-up off. SITE_IMPORT_TEST_HOSTS (never in production) is a
+   * comma-separated list of `host=ip` pairs the e2e stack uses to reach its local fixture site: those hosts resolve to that address
+   * without the private-address check. Every other host goes through the SSRF guard.
+   */
+  siteImport: { aiModel: string; ai: boolean; testHosts: Record<string, string>; userAgent: string };
+  // ---- end wave-o: import ----
 }
 
 /** APP_ENCRYPTION_KEY → a 32-byte hex key: 64 hex characters as they are, a long passphrase hashed. Short values are ignored (no key). */
@@ -291,5 +301,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       prices: { "claude-opus-5-5": { inputPerM: 4, outputPerM: 20 }, "claude-haiku-5-5": { inputPerM: 0.1, outputPerM: 0.5 } },
     },
     // ---- end wave-n: promo ----
+    // ---- wave-o: import ----
+    siteImport: {
+      aiModel: env.SITE_IMPORT_AI_MODEL || "claude-haiku-5-5",
+      ai: env.SITE_IMPORT_AI !== "0",
+      testHosts: isProd
+        ? {}
+        : Object.fromEntries(
+            (env.SITE_IMPORT_TEST_HOSTS || "")
+              .split(",")
+              .map((p) => p.trim().split("="))
+              .filter((p): p is [string, string] => p.length === 2 && !!p[0] && !!p[1])
+              .map(([h, ip]) => [h.toLowerCase(), ip]),
+          ),
+      userAgent: "LocalLoyaltySiteImport/1.0 (+https://localloyalty.ca/bot; reads your homepage once to fill in your profile)",
+    },
+    // ---- end wave-o: import ----
   };
 }

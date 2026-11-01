@@ -127,7 +127,7 @@ function Orders() {
       </div>
 
       {orders.error && !orders.data ? (
-        <ListError title="We could not load your orders." detail={orders.error} onRetry={orders.reload} />
+        <ListError title="Couldn't load your orders." detail={orders.error} onRetry={orders.reload} />
       ) : orders.loading && !orders.data ? (
         <ListLoading label="Loading orders" rows={4} avatar={false} />
       ) : shown.length ? (

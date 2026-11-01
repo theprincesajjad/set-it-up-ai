@@ -52,7 +52,7 @@ function List() {
               ))}
             </RowList>
           ) : (
-            <EmptyState title="No campaigns on your street right now" description={streetless ? "Your shop is not on a live street yet, so there is no BIA to run one. Name your street on Home and we will tell you when it opens." : "When your BIA plans one, you can join it here."} />
+            <EmptyState title="No campaigns on your street right now" description={streetless ? "Street campaigns aren't on your street yet. Add your street on Home and we'll tell you when they start." : "When your BIA plans one, you can join it here."} />
           )
         }
       </Async>

@@ -104,7 +104,7 @@ async function resolve(ctx: AppContext, merchant: Merchant, body: z.output<typeo
     userId = u?.id ?? null;
   } else if (body.phone) {
     const phone = normalizePhone(body.phone);
-    if (!phone) throw badRequest("Enter a valid phone number");
+    if (!phone) throw badRequest("Enter a 10-digit phone number.");
     const [u] = await ctx.db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
     userId = u?.id ?? null;
   }

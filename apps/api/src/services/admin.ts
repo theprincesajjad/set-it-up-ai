@@ -289,7 +289,7 @@ export async function updateNeighbourhood(ctx: AppContext, actorUserId: string, 
 
 export async function deleteNeighbourhood(ctx: AppContext, actorUserId: string, id: string) {
   const h = await getHood(ctx, id);
-  if (h.merchants > 0) throw conflict("Move this neighbourhood's merchants first");
+  if (h.merchants > 0) throw conflict("Move this neighbourhood's shops first.");
   await ctx.db.delete(neighbourhoods).where(eq(neighbourhoods.id, id));
   await writeAudit(ctx.db, { actorUserId, action: "neighbourhood.deleted", entity: "neighbourhood", entityId: id, data: { slug: h.slug } });
 }

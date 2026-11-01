@@ -357,7 +357,7 @@ export function awardErrorMessage(error: { code?: string; message?: string }, ct
     case "insufficient_points":
       return `Not enough ${termWord(ctx.terminology)} for that reward yet.`;
     case "conflict":
-      return error.message?.toLowerCase().includes("pause") ? "Your program is paused. Ask the owner to resume it." : (error.message ?? "This can't be done right now.");
+      return error.message?.toLowerCase().includes("pause") ? "Your program is paused. Ask the owner to resume it." : (error.message ?? "That didn't go through. Try again, or ask a manager.");
     case "forbidden":
       return "This customer can't earn here. Ask a manager.";
     case "duplicate":

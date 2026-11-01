@@ -85,7 +85,7 @@ function Board() {
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      {state.error && !b ? <ListError title="We could not load the line." detail={state.error} onRetry={state.reload} /> : null}
+      {state.error && !b ? <ListError title="Couldn't load the line." detail={state.error} onRetry={state.reload} /> : null}
       <StatBlock tiles
         label="The line now"
         loading={!b}

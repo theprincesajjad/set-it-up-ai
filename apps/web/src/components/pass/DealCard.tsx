@@ -48,7 +48,7 @@ export function DealCard({ deal, terminology, onClaim, claiming, error, highligh
         <PromoCard
           variant="feed"
           promo={{ ...deal, quantityCap: null }}
-          terminology={terminology}
+          terminology={terminology ?? deal.merchant.terminology}
           shop={{ name: deal.merchant.name, vertical: deal.merchant.vertical, logoUrl: deal.merchant.logoUrl, brandColor: deal.merchant.brandColor }}
           href={`/shops/${deal.merchant.slug}`}
         />

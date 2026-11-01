@@ -494,7 +494,7 @@ export async function claimUnmatched(
   if (row.createdAt < since) throw new HttpError(410, "claim_expired", `Purchases can be claimed within ${CLAIM_WINDOW_DAYS} days`);
 
   let phone = args.phone ? normalizePhone(args.phone) : null;
-  if (args.phone && !phone) throw badRequest("Enter a valid phone number");
+  if (args.phone && !phone) throw badRequest("Enter a 10-digit phone number.");
   if (args.via === "customer") {
     if (!args.userId) throw badRequest("Sign in to claim");
     const dayAgo = new Date(ctx.now().getTime() - 86400_000);

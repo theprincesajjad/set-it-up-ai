@@ -12,7 +12,7 @@ export default function ExperimentsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Landing tests" description="A/B tests on the solo landing pages, set before they start. The p-values appear only at the planned looks." />
-      <ListAsync state={list} errorTitle="We could not load the landing tests.">
+      <ListAsync state={list} errorTitle="Couldn't load the landing tests.">
         {(d) => (
           <Panel title="Tests" description="Start a test by setting its start date in experiments.ts; end one from its page." padded={false}>
             <TableWrap>

@@ -76,12 +76,12 @@ export function RestaurantPricing() {
         </div>
 
         <div className="mt-8 rounded-sheet bg-card p-6 shadow-card md:p-8">
-          <span className="inline-flex rounded-full bg-tile-butter px-3 py-1 text-meta-strong text-tile-butter-foreground">Founding restaurants</span>
+          <span className="inline-flex rounded-full bg-tile-butter px-3 py-1 text-meta-strong text-tile-butter-foreground">First-year offer</span>
           <h3 className="display mt-4 text-mkt-sm text-balance">
             {FOUNDING_OFFER.firstYearPct}% off for a year, then {FOUNDING_OFFER.lifetimePct}% off for life.
           </h3>
           <p className="mt-3 max-w-3xl text-body text-muted-foreground">
-            The first {FOUNDING_OFFER.slotsPerCorridor} restaurants on each corridor. Growth is {formatMoney(Math.round((growth.priceCents * (100 - FOUNDING_OFFER.firstYearPct)) / 100))} a month in year one, then{" "}
+            For the first {FOUNDING_OFFER.slotsPerCorridor} restaurants on each street. Growth is {formatMoney(Math.round((growth.priceCents * (100 - FOUNDING_OFFER.firstYearPct)) / 100))} a month in year one, then{" "}
             {formatMoney(Math.round((growth.priceCents * (100 - FOUNDING_OFFER.lifetimePct)) / 100))}. <FoundingLine />
           </p>
         </div>

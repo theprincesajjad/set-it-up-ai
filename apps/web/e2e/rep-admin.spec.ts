@@ -101,7 +101,7 @@ test.describe("rep on a street day (phone)", () => {
     expect(res?.status()).toBe(404);
     expect((await fetch(`${API}/v1/rep/commission`, { headers: { authorization: `Bearer ${await token(REP)}` } })).status).toBe(404);
     await page.goto("/rep/merchants");
-    await expect(page.getByRole("heading", { level: 1, name: "My merchants" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "My shops" })).toBeVisible();
     await expect(page.getByText(/Activation bonus|Earnings|commission/i)).toHaveCount(0);
   });
 });

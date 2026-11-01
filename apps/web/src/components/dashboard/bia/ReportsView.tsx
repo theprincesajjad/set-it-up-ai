@@ -94,7 +94,7 @@ export function ReportsView({ hood }: { hood: networkApi.NeighbourhoodDto }) {
       </Panel>
 
       <Panel title="Campaign reports" description="Each campaign has its own report, with the shops, lift and 30-day return.">
-        <ListAsync state={campaigns} errorTitle="We could not load the reports.">
+        <ListAsync state={campaigns} errorTitle="Couldn't load the reports.">
           {(d) => {
             const ran = d.items.filter((c) => c.status === "live" || c.status === "ended");
             return ran.length ? (

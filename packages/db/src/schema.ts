@@ -3877,3 +3877,25 @@ export const apiMetrics = pgTable(
   (t) => [index("api_metrics_bucket_idx").on(t.bucketStart)],
 );
 // ---- end wave N: admin cockpit ----
+
+// ---- wave O: import (0047_site_import) ----
+/**
+ * "Have a website or Instagram?" (apps/api/src/services/site-import): one row per imported address, kept 24 hours so a second
+ * try (or the apply call after signup) does not fetch the site again. `result` is the SiteImportResult the owner reviewed;
+ * the logo the import downloaded waits here (base64, at most 1 MB) until the owner confirms it, then goes to object storage.
+ */
+export const siteImportCache = pgTable(
+  "site_import_cache",
+  {
+    id: id(),
+    /** The normalised address (lower-case host, no fragment). */
+    url: text("url").notNull(),
+    result: jsonb("result").$type<Record<string, unknown>>().notNull(),
+    logoB64: text("logo_b64"),
+    logoType: text("logo_type"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    expiresAt: ts("expires_at").notNull(),
+  },
+  (t) => [uniqueIndex("site_import_cache_url_uq").on(t.url), index("site_import_cache_expires_idx").on(t.expiresAt)],
+);
+// ---- end wave O: import ----

@@ -900,7 +900,7 @@ async function resolveUser(ctx: AppContext, merchantId: string, ref: { phone?: s
     userId = u.id;
   } else {
     const phone = normalizePhone(ref.phone ?? "");
-    if (!phone) throw badRequest("Enter a valid phone number");
+    if (!phone) throw badRequest("Enter a 10-digit phone number.");
     const [u] = await ctx.db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
     if (u) userId = u.id;
     else if (create) userId = (await findOrCreateCustomerByPhone(ctx.db, phone, ref.customerName ?? null)).user.id;

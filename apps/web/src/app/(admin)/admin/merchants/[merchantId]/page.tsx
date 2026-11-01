@@ -34,7 +34,7 @@ export default function AdminMerchantPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <BackLink href="/admin/merchants">Merchants</BackLink>
+      <BackLink href="/admin/merchants">Plans and payments</BackLink>
       <Async state={m}>
         {(d) => (
           <>

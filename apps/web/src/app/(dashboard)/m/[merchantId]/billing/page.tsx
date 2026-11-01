@@ -58,7 +58,7 @@ const FAQ = [
   ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That's a promise in our terms."],
   [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name}, ${PLANS.studio.name} or ${PLANS.pro.name}. The Free plan has no subscription and no fee on loyalty. Online orders on Free carry ${FEES.orderBpsFree / 100}%.`],
   [`Can I subscribe to ${PLANS.plus.name} today?`, `Yes. Subscribe below and your shop's tools switch on at once. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns) open once ${NETWORK_GATE_SHOPS} shops have joined.`],
-  ["What happens if I cancel?", "Your loyalty program keeps running on Free. Members, balances and history are all kept."],
+  ["What happens if I cancel?", "Your loyalty program keeps running on Free. Your customers, their balances and history all stay."],
 ];
 
 export default function BillingPage() {
@@ -140,7 +140,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
         {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, {PLANS.studio.name} tools are included.</p> : null}
         {b.usage?.trial ? <p className="mt-1 text-meta text-fg-muted" data-testid="trial-on">{PLANS[b.usage.trial.plan].name} · {fill(PB.trialOn, { date: formatDateYear(b.usage.trial.endsAt) })}</p> : null}
         <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-          {["No subscription and no fee on loyalty", "Unlimited locations, staff and members", "Your loyalty program and reports", "Network listing and perks"].map((t) => (
+          {["No subscription and no fee on loyalty", "Unlimited locations, staff and customers", "Your loyalty program and reports", "A listing on the local map"].map((t) => (
             <li key={t} className="flex items-center gap-2 text-meta text-fg">
               <Check aria-hidden className="size-3.5 text-fg-muted" />
               {t}

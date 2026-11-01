@@ -286,7 +286,7 @@ export default function Counter() {
       if (shouldQueueAward(e)) {
         await enqueue();
         dispatch({ type: "awarded", view: { ...optimistic, offline: true, hero: optimistic.hero.startsWith("~") ? optimistic.hero : `~${optimistic.hero}` }, customer: cust, transactionId: null, queuedKey: key, at: Date.now() });
-        toast("Saved. We'll retry.");
+        toast("Saved on this device. We'll send it when you're back online.");
         scheduleReturn();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
@@ -740,7 +740,7 @@ export default function Counter() {
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Counter">
         <ListRow title="Today" subtitle="Visits, points and redemptions" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/today"); }} />
         <ListRow title="Waiting to send" subtitle={queueState.pendingCount === 0 ? "Everything's sent" : `${queueState.pendingCount} ${queueState.pendingCount === 1 ? "award" : "awards"} saved on this phone`} chevron minHeight={64} onPress={() => { setMenuOpen(false); setQueueOpen(true); }} />
-        {restaurantTools.kds ? <ListRow title="Kitchen" subtitle="Tickets by station, tap to advance, bump" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/kitchen"); }} /> : null}
+        {restaurantTools.kds ? <ListRow title="Kitchen" subtitle="Orders by station. Tap to move one along." chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/kitchen"); }} /> : null}
         {restaurantTools.order ? <ListRow title="Take payment" subtitle="Ring up an order, cash or card" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/order"); }} /> : null}
         <ListRow title="Counter settings" subtitle="Theme, kiosk, scanner" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/settings"); }} />
         <ListRow title="Switch location" subtitle={config.locationName ?? "Pick the shop and location"} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/select"); }} />

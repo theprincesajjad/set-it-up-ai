@@ -117,7 +117,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <div className="flex min-w-0 flex-col gap-6">
-        {locked ? <Banner tone="info">Ended promos can’t be edited. Duplicate it to run it again.</Banner> : live ? <Banner tone="info">This promo is live. Changes apply right away; pause it first if you want to take it down while you edit.</Banner> : null}
+        {locked ? <Banner tone="info">Ended promos can’t be edited. Duplicate it to run it again.</Banner> : live ? <Banner tone="info">This promo is live, so changes apply right away. Pause it first to take it down while you edit.</Banner> : null}
 
         {!promo ? (
           <PromoAiWriter
@@ -244,14 +244,14 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             {d.segment === "everyone" ? (
               <Checkbox checked={d.audience === "network"} onChange={(v) => set("audience", v ? "network" : "members")} label="Also show it on my public shop page and the neighbourhood feed" />
             ) : (
-              <p className="text-meta text-fg-muted">Only these customers see it, in their Deals inbox.</p>
+              <p className="text-meta text-fg-muted">Only these customers see it, under Offers in their app.</p>
             )}
             <div className="flex flex-col gap-2">
               <p className="text-label text-fg">Tell them by</p>
-              <Checkbox checked disabled onChange={() => undefined} label="The Deals inbox in the app" caption="Always on." />
+              <Checkbox checked disabled onChange={() => undefined} label="Offers in the app" caption="Always on." />
               <Checkbox checked={d.channels.includes("push")} onChange={(v) => set("channels", v ? [...new Set([...d.channels, "push" as const])] : d.channels.filter((c) => c !== "push"))} label="App and browser notification" />
               <Checkbox checked={d.channels.includes("email")} onChange={(v) => set("channels", v ? [...new Set([...d.channels, "email" as const])] : d.channels.filter((c) => c !== "email"))} label="Email, when they can't get a notification" />
-              <p className="text-meta text-fg-muted">Only people who said yes to your offers get a message, at most 2 a week from you and never 9 pm to 8 am. Every message names your shop and has a way to stop. Deals are never sent by text.</p>
+              <p className="text-meta text-fg-muted">Only people who said yes to your offers get a message: at most 2 a week, never 9 pm to 8 am. Each one names your shop and has a way to stop. Offers never go by text.</p>
             </div>
           </fieldset>
         </Panel>
@@ -322,7 +322,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
       </div>
       <aside aria-label="Preview" className="flex flex-col gap-3 lg:sticky lg:top-20 lg:self-start">
         <h2 className="text-meta text-fg-muted">Preview</h2>
-        <p className="text-meta text-fg-muted">How customers see it in their Deals inbox.</p>
+        <p className="text-meta text-fg-muted">How customers see it under Offers.</p>
         <div data-testid="promo-preview">
           <DealCard deal={preview} terminology={term} onClaim={() => undefined} />
         </div>

@@ -24,8 +24,8 @@ export async function requireApiKey(ctx: AppContext, req: FastifyRequest): Promi
   const key = Array.isArray(raw) ? raw[0] : raw;
   if (!key) throw new HttpError(401, "unauthorized", "Missing X-LL-Api-Key header");
   const m = await verifyMerchantApiKey(ctx.db, key.trim());
-  if (!m) throw new HttpError(401, "unauthorized", "Invalid API key");
-  if (m.status === "closed") throw forbidden("This business is closed");
+  if (!m) throw new HttpError(401, "unauthorized", "That API key doesn't work. Copy it again from Settings > Integrations.");
+  if (m.status === "closed") throw forbidden("This shop is closed.");
   // The merchant REST API is part of "Webhooks & API" (Plus). A key issued earlier stops working while it's off.
   await requireFeature(ctx.db, m, "integrations.webhooks");
   return m;
@@ -39,7 +39,7 @@ async function resolveUser(ctx: AppContext, input: { phone?: string; memberCode?
     return { user: u, phone: u.phone };
   }
   const phone = input.phone ? normalizePhone(input.phone) : null;
-  if (!phone) throw badRequest("Enter a valid phone number");
+  if (!phone) throw badRequest("Enter a 10-digit phone number.");
   const [u] = await ctx.db.select().from(users).where(eq(users.phone, phone)).limit(1);
   return { user: u && !u.deletedAt ? u : null, phone };
 }

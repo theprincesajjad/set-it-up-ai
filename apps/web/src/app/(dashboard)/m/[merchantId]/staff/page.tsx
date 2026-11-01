@@ -57,7 +57,7 @@ export default function StaffPage() {
       <Async state={state} skeleton={<SkeletonRows rows={3} />}>
         {(d) =>
           d.items.length <= 1 && owner ? (
-            <Empty className="border-y border-line" action={<Button variant="secondary" size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>Invite staff</Button>}>It&apos;s just you so far. Add staff so they can award points with their own login.</Empty>
+            <Empty className="border-y border-line" action={<Button variant="secondary" size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>Invite staff</Button>}>It&apos;s only you so far. Add staff so they can add stamps or points with their own sign-in.</Empty>
           ) : (
             <ul className="divide-y divide-line border-y border-line">
                 {d.items.map((s) => {

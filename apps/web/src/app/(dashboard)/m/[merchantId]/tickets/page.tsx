@@ -72,7 +72,7 @@ function Board() {
       {open ? <TicketFilters value={filter} onChange={setFilter} counts={counts} /> : null}
       <TextField type="search" label="Search tickets" hideLabel placeholder="Ticket #, customer, phone, device" value={q} onChange={(e) => setQ(e.target.value)} />
       {list.error && !list.data ? (
-        <ListError title="We could not load your tickets." detail={list.error} onRetry={list.reload} />
+        <ListError title="Couldn't load your tickets." detail={list.error} onRetry={list.reload} />
       ) : list.loading && !list.data ? (
         <ListLoading label="Loading tickets" rows={6} avatar={false} />
       ) : items.length && view !== "board" ? (

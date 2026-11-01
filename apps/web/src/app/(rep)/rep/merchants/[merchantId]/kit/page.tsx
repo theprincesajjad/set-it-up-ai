@@ -16,7 +16,7 @@ export default function RepKitPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="print:hidden">
-        <BackLink href={`/rep/merchants/${merchantId}`}>Merchant</BackLink>
+        <BackLink href={`/rep/merchants/${merchantId}`}>Shop</BackLink>
         <PageHeader title="QR kit" description="Print on the portable printer or save as PDF." />
       </div>
       <Async state={kit}>{(k) => <QrKitPrint kit={k} street={street} onPrinted={() => void browserApi.merchant(merchantId).completeStep("qr_kit").catch(() => undefined)} />}</Async>
