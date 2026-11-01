@@ -3268,6 +3268,7 @@ export const ur: Messages = {
   "counter.err.cooldown": "{who} کو اس وزٹ کے {word} پہلے ہی مل چکے ہیں۔ چند منٹ رکیں، یا گاہک کے صفحے سے تبدیلی کریں۔",
   "counter.err.dailyLimit": "{who} کو آج اس دکان سے ملنے والے سب سے زیادہ {word} مل چکے ہیں۔ کل دوبارہ کما سکتے ہیں۔",
   "counter.override.title": "آپ کی دکان کے اصولوں میں اس پر کمائی نہیں ہوتی",
+  "counter.override.body": "آپ کی دکان کے اصولوں میں اس پر اسٹامپ نہیں ملتا (مثلاً صرف پک اپ کیے گئے آرڈر یا کچھ ہی سروسز پر)۔ آپ وجہ لکھ کر پھر بھی شامل کر سکتے ہیں۔",
   "counter.override.reason": "پھر بھی شامل کرنے کی وجہ",
   "counter.override.add": "پھر بھی شامل کریں",
   "counter.override.cancel": "شامل نہ کریں",

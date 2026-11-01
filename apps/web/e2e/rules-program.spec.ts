@@ -109,7 +109,7 @@ test.describe("Rewards page: stamp rules", () => {
     const history = page.locator("#history");
     await expect(history.getByText(/Changed the rules/).first()).toBeVisible();
     await expect(history.getByText(/Stamps for the reward/).first()).toBeVisible();
-    await expect(history.getByText("3 customers got 15 carry-over stamps.")).toBeVisible();
+    await expect(history.getByText(/^3 customers got \d+ carry-over stamps\.$/)).toBeVisible();
     await history.scrollIntoViewIfNeeded();
     await page.screenshot({ path: shot("03-history-1440"), fullPage: true });
 

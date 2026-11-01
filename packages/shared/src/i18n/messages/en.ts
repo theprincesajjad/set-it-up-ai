@@ -3272,6 +3272,7 @@ export const en = {
   "counter.err.cooldown": "{who} already got {word} for this visit. Wait a few minutes, or adjust it from the customer's page.",
   "counter.err.dailyLimit": "{who} already got the most {word} this shop gives in a day. They can earn again tomorrow.",
   "counter.override.title": "This doesn't earn under your shop's rules",
+  "counter.override.body": "Your shop's rules don't give a stamp for this (for example, only picked-up orders or only some services earn). You can add it anyway with a reason.",
   "counter.override.reason": "Reason for adding it anyway",
   "counter.override.add": "Add anyway",
   "counter.override.cancel": "Don't add",

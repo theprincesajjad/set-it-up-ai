@@ -3268,6 +3268,7 @@ export const pa: Messages = {
   "counter.err.cooldown": "{who} ਨੂੰ ਇਸ ਵਿਜ਼ਿਟ ਦੇ {word} ਪਹਿਲਾਂ ਹੀ ਮਿਲ ਚੁੱਕੇ ਹਨ। ਕੁਝ ਮਿੰਟ ਰੁਕੋ, ਜਾਂ ਗਾਹਕ ਦੇ ਪੰਨੇ ਤੋਂ ਬਦਲਾਅ ਕਰੋ।",
   "counter.err.dailyLimit": "{who} ਨੂੰ ਅੱਜ ਇਸ ਦੁਕਾਨ ਤੋਂ ਮਿਲਣ ਵਾਲੇ ਸਭ ਤੋਂ ਵੱਧ {word} ਮਿਲ ਚੁੱਕੇ ਹਨ। ਕੱਲ੍ਹ ਫਿਰ ਕਮਾ ਸਕਦੇ ਹਨ।",
   "counter.override.title": "ਤੁਹਾਡੀ ਦੁਕਾਨ ਦੇ ਨਿਯਮਾਂ ਵਿੱਚ ਇਸ 'ਤੇ ਕਮਾਈ ਨਹੀਂ ਹੁੰਦੀ",
+  "counter.override.body": "ਤੁਹਾਡੀ ਦੁਕਾਨ ਦੇ ਨਿਯਮਾਂ ਵਿੱਚ ਇਸ ਲਈ ਸਟੈਂਪ ਨਹੀਂ ਮਿਲਦੀ (ਜਿਵੇਂ ਸਿਰਫ਼ ਪਿਕਅੱਪ ਕੀਤੇ ਆਰਡਰ ਜਾਂ ਕੁਝ ਸੇਵਾਵਾਂ 'ਤੇ)। ਤੁਸੀਂ ਕਾਰਨ ਲਿਖ ਕੇ ਫਿਰ ਵੀ ਜੋੜ ਸਕਦੇ ਹੋ।",
   "counter.override.reason": "ਫਿਰ ਵੀ ਜੋੜਨ ਦਾ ਕਾਰਨ",
   "counter.override.add": "ਫਿਰ ਵੀ ਜੋੜੋ",
   "counter.override.cancel": "ਨਾ ਜੋੜੋ",

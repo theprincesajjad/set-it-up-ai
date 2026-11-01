@@ -382,13 +382,13 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               </SettingRow>
             ) : null}
             <SettingRow title="Block repeat scans" hint={`No second ${one} within ${draft.visitCooldownMinutes} minutes of the last one. Stops a double scan from counting twice.`}>
-              <TextField label="Minutes between awards" hideLabel inputMode="numeric" suffix="min" value={String(draft.visitCooldownMinutes)} onChange={(e) => set("visitCooldownMinutes", intOr(e.target.value))} error={shown.visitCooldownMinutes} className="w-28 text-end" />
+              <TextField label="Minutes between awards" hideLabel inputMode="numeric" suffix="min" value={String(draft.visitCooldownMinutes)} onChange={(e) => set("visitCooldownMinutes", intOr(e.target.value))} error={shown.visitCooldownMinutes} className="w-28" />
             </SettingRow>
             {stampsMode ? (
               <SettingRow title={`Limit ${term} per day`} hint={draft.maxStampsPerDay ? `A customer gets at most ${draft.maxStampsPerDay} ${draft.maxStampsPerDay === 1 ? one : term} a day, promos included.` : `No daily limit. Turn it on to stop one customer collecting a whole card in a day.`}>
                 <div className="flex items-center gap-3">
                   {draft.maxStampsPerDay !== null ? (
-                    <TextField label={`Most ${term} per day`} hideLabel inputMode="numeric" suffix="a day" value={String(draft.maxStampsPerDay || "")} onChange={(e) => set("maxStampsPerDay", intOr(e.target.value))} error={shown.maxStampsPerDay} className="w-32 text-end" />
+                    <TextField label={`Most ${term} per day`} hideLabel inputMode="numeric" suffix="a day" value={String(draft.maxStampsPerDay || "")} onChange={(e) => set("maxStampsPerDay", intOr(e.target.value))} error={shown.maxStampsPerDay} className="w-32" />
                   ) : null}
                   <SwitchControl ariaLabel={`Limit ${term} per day`} checked={draft.maxStampsPerDay !== null} disabled={!canEdit} onChange={(v) => set("maxStampsPerDay", v ? Math.min(MAX_STAMPS_PER_DAY_LIMIT, 2 * Math.max(1, draft.pointsPerVisit)) : null)} />
                 </div>
@@ -403,7 +403,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               </div>
             ) : null}
             <SettingRow title={`Welcome ${one}`} hint="Given when a customer joins from your counter QR code">
-              <TextField label="Welcome bonus" hideLabel inputMode="numeric" suffix={draft.welcomeBonus === 1 ? unit.replace(/s$/, "") : unit} value={String(draft.welcomeBonus)} onChange={(e) => set("welcomeBonus", intOr(e.target.value))} className="w-36 text-end" />
+              <TextField label="Welcome bonus" hideLabel inputMode="numeric" suffix={draft.welcomeBonus === 1 ? unit.replace(/s$/, "") : unit} value={String(draft.welcomeBonus)} onChange={(e) => set("welcomeBonus", intOr(e.target.value))} className="w-36" />
             </SettingRow>
           </section>
 

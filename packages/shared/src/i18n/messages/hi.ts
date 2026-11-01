@@ -3268,6 +3268,7 @@ export const hi: Messages = {
   "counter.err.cooldown": "{who} को इस विज़िट के {word} पहले ही मिल चुके हैं। कुछ मिनट रुकें, या ग्राहक के पेज से बदलाव करें।",
   "counter.err.dailyLimit": "{who} को आज इस दुकान से मिलने वाले सबसे ज़्यादा {word} मिल चुके हैं। कल फिर कमा सकते हैं।",
   "counter.override.title": "आपकी दुकान के नियमों में इस पर कमाई नहीं होती",
+  "counter.override.body": "आपकी दुकान के नियमों में इसके लिए स्टैम्प नहीं मिलता (जैसे सिर्फ़ पिकअप किए गए ऑर्डर या कुछ ही सेवाओं पर)। आप कारण लिखकर फिर भी जोड़ सकते हैं।",
   "counter.override.reason": "फिर भी जोड़ने का कारण",
   "counter.override.add": "फिर भी जोड़ें",
   "counter.override.cancel": "न जोड़ें",

@@ -852,7 +852,7 @@ export function CounterApp({
             }}
           >
             <p id="override-title" className="font-semibold">{t("counter.override.title")}</p>
-            <p className="text-meta">{overrideAsk.message}</p>
+            <p className="text-meta">{t("counter.override.body")}</p>
             <label className="flex flex-col gap-1 text-meta font-medium">
               {t("counter.override.reason")}
               <input value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} maxLength={200} minLength={3} required className={cn(inputBase, "min-h-11")} />
