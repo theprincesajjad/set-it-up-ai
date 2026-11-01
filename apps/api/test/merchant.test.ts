@@ -448,7 +448,7 @@ describe("loyalty program configuration", () => {
 
     const live = await create({ title: "Welcome week", kind: "bonus_points", bonusPoints: 20, startsAt: "2026-11-01T00:00:00Z", publish: true });
     expect(live.json().status).toBe("live");
-    expect((await env.app.inject({ method: "PATCH", url: `${base}/${live.json().id}`, headers: auth(ownerToken), payload: { bonusPoints: 500 } })).statusCode).toBe(409);
+    expect((await env.app.inject({ method: "PATCH", url: `${base}/${live.json().id}`, headers: auth(ownerToken), payload: { bonusPoints: 500 } })).statusCode).toBe(200); // wave-n promo: every field stays editable on a live promo (intended change)
     expect((await env.app.inject({ method: "PATCH", url: `${base}/${live.json().id}`, headers: auth(ownerToken), payload: { title: "Welcome week!" } })).statusCode).toBe(200);
     const ended = await env.app.inject({ method: "POST", url: `${base}/${live.json().id}/status`, headers: auth(ownerToken), payload: { status: "ended" } });
     expect(ended.json().endsAt).toBe(env.clock.now.toISOString());
