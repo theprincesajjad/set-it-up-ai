@@ -77,6 +77,11 @@ describe("<JoinFlow> (counter QR join)", () => {
     expect(deps.updateName).toHaveBeenCalledWith("Alex");
     expect(deps.join).toHaveBeenCalledWith({ locationQrCode: "RONCY01", referralCode: "REF12345" });
     await waitFor(() => expect(screen.getByText("You're in, Alex.")).toBeTruthy());
+    // Join success is the pass in the shop's colour: "You're in" on the card, the welcome stamp filled, the reward slot accented.
+    const pass = screen.getByTestId("joined-pass");
+    expect(pass.className).toContain("bg-trade");
+    expect(pass.contains(screen.getByText("You're in, Alex."))).toBe(true);
+    expect(pass.textContent).toContain("1 / 10");
     // The shop's own card: Apple only (Google isn't configured in this mock), plus the open-on-your-phone QR on a computer.
     await waitFor(() => expect(screen.getByRole("button", { name: "Add to Apple Wallet" })).toBeTruthy());
     expect(deps.shopWallet).toHaveBeenCalledWith(merchant.id);
