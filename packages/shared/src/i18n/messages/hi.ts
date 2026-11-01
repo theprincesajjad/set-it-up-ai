@@ -4524,5 +4524,6 @@ export const hi: Messages = {
   "imp.settings.saved": "आपकी वेबसाइट से अपडेट हुआ।",
   "imp.settings.cancel": "रद्द करें",
   "imp.settings.diffTitle": "क्या अलग है",
+  "imp.settings.label": "कहाँ से पढ़ें (आपकी वेबसाइट या @Instagram)",
   // ---- end wave-o: import ----
 };

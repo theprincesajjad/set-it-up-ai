@@ -4536,6 +4536,7 @@ export const en = {
   "imp.settings.saved": "Updated from your website.",
   "imp.settings.cancel": "Cancel",
   "imp.settings.diffTitle": "What's different",
+  "imp.settings.label": "Read from (your website or @Instagram)",
   // ---- end wave-o: import ----
 } as const;
 

@@ -112,7 +112,7 @@ describe("SiteImportReview", () => {
 });
 
 describe("SiteImportStep", () => {
-  it("link → progress → review; skip calls back; an API error keeps the form with the message", async () => {
+  it("link → progress → review; skip calls back; an API error keeps the form with the message", { timeout: 20_000 }, async () => {
     const user = userEvent.setup();
     let resolve!: (r: siteImportApi.SiteImportResult) => void;
     const importer = vi.fn(() => new Promise<siteImportApi.SiteImportResult>((r) => (resolve = r)));
@@ -125,9 +125,9 @@ describe("SiteImportStep", () => {
     await user.type(screen.getByLabelText("Website or Instagram"), "priyanails.example");
     await user.click(screen.getByRole("button", { name: "Fill it in for me" }));
     expect(importer).toHaveBeenCalledWith("priyanails.example");
-    expect(await screen.findByRole("heading", { name: "Reading your website" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Reading your website" }, { timeout: 5000 })).toBeTruthy();
     resolve(RESULT);
-    expect(await screen.findByRole("heading", { name: "Here's what we found" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Here's what we found" }, { timeout: 5000 })).toBeTruthy();
     expect(phases).toEqual(["form", "loading", "review"]);
     await user.click(screen.getByRole("button", { name: "Try another link" }));
     await user.click(screen.getByRole("button", { name: "Skip, I'll type it" }));

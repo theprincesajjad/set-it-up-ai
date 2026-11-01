@@ -116,7 +116,7 @@ export function SiteRefresh({ onApplied }: { onApplied?: () => void }) {
         {error ? <Banner tone="warning">{error}</Banner> : null}
         <form className="flex flex-col gap-3 sm:flex-row sm:items-end" noValidate onSubmit={check}>
           <div className="min-w-0 flex-1">
-            <TextField label={t("imp.label")} placeholder={t("imp.placeholder")} type="text" inputMode="url" autoCapitalize="none" spellCheck={false} dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={500} />
+            <TextField label={t("imp.settings.label")} placeholder={t("imp.placeholder")} type="text" inputMode="url" autoCapitalize="none" spellCheck={false} dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={500} />
           </div>
           <Button type="submit" variant="secondary" size="sm" loading={busy && !result}>
             {t("imp.settings.go")}

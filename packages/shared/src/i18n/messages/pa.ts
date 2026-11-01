@@ -4524,5 +4524,6 @@ export const pa: Messages = {
   "imp.settings.saved": "ਤੁਹਾਡੀ ਵੈੱਬਸਾਈਟ ਤੋਂ ਅੱਪਡੇਟ ਹੋਇਆ।",
   "imp.settings.cancel": "ਰੱਦ ਕਰੋ",
   "imp.settings.diffTitle": "ਕੀ ਵੱਖਰਾ ਹੈ",
+  "imp.settings.label": "ਕਿੱਥੋਂ ਪੜ੍ਹੀਏ (ਤੁਹਾਡੀ ਵੈੱਬਸਾਈਟ ਜਾਂ @Instagram)",
   // ---- end wave-o: import ----
 };

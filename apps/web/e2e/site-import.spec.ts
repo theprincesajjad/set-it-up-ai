@@ -136,7 +136,7 @@ test.describe("at 1440", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await page.waitForURL(/\/settings/);
     const panel = page.locator("[data-site-refresh]");
-    await panel.getByLabel("Website or Instagram").fill(`http://maple-bean.test:${FIXTURE_PORT}/`);
+    await panel.getByLabel(/^Read from/).fill(`http://maple-bean.test:${FIXTURE_PORT}/`);
     await panel.getByRole("button", { name: "Check my website" }).click();
     await expect(panel.locator("[data-diff-row=name]")).toContainText("Maple & Bean Coffee", { timeout: 30_000 });
     await expect(panel.locator("[data-diff-row=name]")).toContainText("Corner Coffee");
