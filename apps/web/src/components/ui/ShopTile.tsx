@@ -40,9 +40,9 @@ import { onColor, shopInitials } from "@/lib/shopAvatar";
 
 /**
  * Shop avatar: round logo, or initials on the shop's own brandColor (neutral grey without one, or
- * black for `tone="solid"`). Falls back to initials when the logo fails to load. Never a blank square.
+ * black for `tone="solid"`, the trade colour for `tone="trade"` on customer pages). Falls back to initials when the logo fails to load. Never a blank square.
  */
-export function ShopLogo({ shop, size = 48, className, tone = "tint" }: { shop: Pick<ShopTileShop, "name" | "vertical" | "logoUrl" | "brandColor">; size?: 24 | 32 | 40 | 44 | 48 | 52 | 56 | 64 | 72; className?: string; tone?: "tint" | "solid" }) {
+export function ShopLogo({ shop, size = 48, className, tone = "tint" }: { shop: Pick<ShopTileShop, "name" | "vertical" | "logoUrl" | "brandColor">; size?: 24 | 32 | 40 | 44 | 48 | 52 | 56 | 64 | 72; className?: string; tone?: "tint" | "solid" | "trade" }) {
   const [failed, setFailed] = useState(false);
   const px = { 24: "size-6 text-[9px]", 32: "size-8 text-[11px]", 40: "size-10 text-meta-strong", 44: "size-11 text-meta-strong", 48: "size-12 text-body-strong", 52: "size-[52px] text-[18px]", 56: "size-14 text-headline", 64: "size-16 text-title", 72: "size-[72px] text-title" }[size];
   if (shop.logoUrl && !failed)
@@ -54,7 +54,7 @@ export function ShopLogo({ shop, size = 48, className, tone = "tint" }: { shop: 
     <span
       aria-hidden
       // Lowercase initials in the display face, same as the app's avatars (polish-audit W3).
-      className={cn("display inline-flex shrink-0 select-none items-center justify-center rounded-full font-extrabold tracking-normal", !brand && (tone === "solid" ? "bg-fg text-bg" : "bg-bg-muted text-fg"), px, className)}
+      className={cn("display inline-flex shrink-0 select-none items-center justify-center rounded-full font-extrabold tracking-normal", !brand && (tone === "solid" ? "bg-fg text-bg" : tone === "trade" ? "bg-trade text-trade-foreground" : "bg-bg-muted text-fg"), px, className)}
       style={style}
     >
       {shopInitials(shop.name).toLowerCase()}

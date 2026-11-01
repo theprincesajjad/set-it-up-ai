@@ -19,6 +19,7 @@ import { ErrorState } from "@/components/ui/EmptyState";
 import { PointsRing } from "@/components/ui/PointsRing";
 import { PromoCard } from "@/components/ui/PromoCard";
 import { RewardCard } from "@/components/ui/RewardCard";
+import { ShopHero } from "@/components/pass/ShopBrand";
 import { ShopTile } from "@/components/ui/ShopTile";
 import { isApiError } from "@/lib/api/errors";
 import { getServerApi, publicServerApi } from "@/lib/api/server";
@@ -172,11 +173,17 @@ export default async function ShopPage({ params, searchParams }: Props) {
   return (
     // The shop's own look (Clear by default; Main Street Warm when the shop picked it in Settings), light only on customer pages.
     <ThemeStyle style={m.themeStyle}>
-    <LocaleScope locale={locale} trade={shop.merchant.vertical} className="flex flex-col gap-6 pt-2">
+    <LocaleScope locale={locale} trade={shop.merchant.vertical} brandColor={m.brandColor} className="flex flex-col gap-6 pt-2">
       <Awning size="sm" className="-mt-2 rounded-b-md rounded-t-none clear:hidden" />
       <PassTopBar className="self-stretch" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <ShopTile variant="hero" shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, coverUrl: m.coverUrl, brandColor: m.brandColor }} subtitle={heroSubtitle} />
+      <ShopHero
+        shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }}
+        coverUrl={m.coverUrl}
+        subtitle={heroSubtitle}
+        offer={shop.rewards[0] ? `${unitsText(locale, shop.rewards[0].pointsCost, terminology, false)} = ${shop.rewards[0].name}` : null}
+        goal={program?.earnType === "stamps" ? Math.min(12, shop.rewards[0]?.pointsCost ?? program.stampGoal) : 0}
+      />
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
           {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label.charAt(0).toLowerCase() + status.label.slice(1)}</StatusDot> : null}
@@ -203,7 +210,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
       ) : null}
       {shop.features?.appointments ? (
         <div className="flex flex-col gap-2">
-          <Button size="lg" fullWidth href={`${base}/book`}>
+          <Button size="lg" variant="shop" fullWidth href={`${base}/book`}>
             {t(m.vertical === "pharmacy" ? "rx.shop.book" : "bk.shop.book")}
           </Button>
           <p className="text-center text-meta text-fg-muted">{t(m.vertical === "pharmacy" ? "rx.shop.bookSub" : "bk.shop.bookSub")}</p>

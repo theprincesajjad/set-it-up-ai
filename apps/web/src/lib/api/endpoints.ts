@@ -35,6 +35,8 @@ import { restaurantDeskEndpoints } from "./restaurantDesk";
 import { publicSplitEndpoints, restaurantKitchenEndpoints } from "./restaurantKitchen";
 import { restaurantWebEndpoints } from "./restaurantWeb";
 import { adminSalesAgentEndpoints, publicSalesAgentEndpoints } from "./salesAgent";
+import { adminCockpitEndpoints } from "./adminCockpit";
+import { adminAiEndpoints, myDealEndpoints, promoEndpoints } from "./promos"; // wave-n: promo
 import { appointmentEndpoints, myAppointmentEndpoints, publicAppointmentEndpoints } from "./appointments";
 import { barberEndpoints, myBarberEndpoints, publicBarberEndpoints } from "./barber";
 import { insightsEndpoints } from "./insights"; // phase-pro: p6
@@ -159,6 +161,8 @@ export function llApi(c: ApiClient) {
       ...myPetEndpoints(c),
       // My vehicles, odometer readings and tire swaps (auto.ts)
       ...myAutoEndpoints(c),
+      // wave-n promo: the Deals inbox (promos.ts)
+      ...myDealEndpoints(c),
       // Classes: book, waitlist, packs, memberships (classes.ts)
       ...myClassEndpoints(c),
       // phase-solo D: my threads with shops, web push on this browser, how shops reach me (inbox.ts)
@@ -195,6 +199,10 @@ export function llApi(c: ApiClient) {
     },
     admin: {
       salesAgent: adminSalesAgentEndpoints(c),
+      /** Founder's cockpit (wave N): overview, businesses, funnel, health, performance. */
+      cockpit: adminCockpitEndpoints(c),
+      /** wave-n promo: the Claude key, caps and AI usage (/admin/ai). */
+      ai: adminAiEndpoints(c),
       dashboard: () => c.get<adminApi.NetworkDashboard>("/v1/admin/dashboard"),
       onboardingFunnel: (days = 90) => c.get<adminApi.OnboardingFunnel>("/v1/admin/onboarding/funnel", { query: { days } }),
       experiments: () => c.get<{ items: experimentsApi.ExperimentSummary[]; nextCursor: null }>("/v1/admin/experiments"),
@@ -317,6 +325,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     ...serviceOpsEndpoints(c, b),
     // Appointment calendar, price list, staff hours, checkout (appointments.ts)
     ...appointmentEndpoints(c, b),
+    // wave-n promo: pause / resume / duplicate / end early, results, counter redemptions, the AI writer (promos.ts)
+    ...promoEndpoints(c, b),
     // Walk-in line, payouts and pay (barber.ts)
     ...barberEndpoints(c, b),
     ...insightsEndpoints(c, b), // phase-pro: p6
@@ -373,6 +383,10 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     // Program
     program: () => c.get<merchantApi.LoyaltyProgram>(`${b}/program`),
     updateProgram: (body: merchantApi.UpdateProgramBody) => c.patch<merchantApi.LoyaltyProgram>(`${b}/program`, body),
+    // wave-n: rules
+    programImpact: (body: merchantApi.UpdateProgramBody) => c.post<merchantApi.ProgramImpact>(`${b}/program/impact`, body),
+    programHistory: () => c.get<merchantApi.ProgramHistoryResponse>(`${b}/program/history`),
+    earnOptions: () => c.get<merchantApi.EarnOptions>(`${b}/program/earn-options`),
     rewards: () => c.get<Items<merchantApi.Reward>>(`${b}/rewards`),
     createReward: (body: Record<string, unknown>) => c.post<merchantApi.Reward>(`${b}/rewards`, body),
     updateReward: (id: string, body: Record<string, unknown>) => c.patch<merchantApi.Reward>(`${b}/rewards/${enc(id)}`, body),

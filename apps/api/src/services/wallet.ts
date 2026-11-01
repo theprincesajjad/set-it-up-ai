@@ -67,7 +67,10 @@ export async function walletSummary(ctx: AppContext, userId: string): Promise<wa
     // Rewards ready first, then the most recent visit (the shop that just changed is on the front).
     .sort((a, b) => Number(b.rewardsReady > 0) - Number(a.rewardsReady > 0) || b._recent - a._recent || a.name.localeCompare(b.name))
     .map(({ _recent, ...x }) => x);
+  // wave-n promo: the current deal (services/promos.ts) rides on the pass; absent when there is none.
+  const deal = shops.length ? await (await import("./promos.js")).currentDealForUser(ctx, userId).catch(() => null) : null;
   return {
+    ...(deal ? { deal: { shop: deal.shop, title: deal.title } } : {}),
     memberCode: user.memberCode,
     qrValue: walletApi.memberQrValue(user.memberCode),
     name: user.name,

@@ -10,7 +10,7 @@
  */
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { AID_OFF, AID_PATTERN, LANDING_COOKIES, SOLO_ONLY_VERTICALS, VERTICALS, VERTICAL_TEMPLATES, normalizePostal, parseVariantCookie, type MessageKey, type merchantApi } from "@ll/shared";
 import { browserClient, sessionApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
@@ -67,6 +67,22 @@ function landingAb(fromLink: { experimentId: string | null; variant: string } | 
   }
 }
 
+/**
+ * Wave N (admin funnel): tell our own API, once per visit, that a counted landing visitor opened signup ("signup started"). Same
+ * rules as the landing beacon: only with an `ll_aid` that is not `off` and no Global Privacy Control; first-party, no other data.
+ */
+function beaconSignupStart(): void {
+  try {
+    const gpc = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true;
+    const aid = new RegExp(`(?:^|;\\s*)${LANDING_COOKIES.aid}=([^;]+)`).exec(document.cookie)?.[1];
+    if (gpc || !aid || aid === AID_OFF || !AID_PATTERN.test(aid) || sessionStorage.getItem("ll_ss")) return;
+    sessionStorage.setItem("ll_ss", "1");
+    navigator.sendBeacon?.("/api/public/landing-events", JSON.stringify({ aid, p: "/signup", ev: [{ k: "signup_start" }] }));
+  } catch {
+    // Counting is best effort; signup never depends on it.
+  }
+}
+
 export interface SignupWizardProps {
   signedInName?: string | null;
   /** From the sales assistant's link or a landing page (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
@@ -74,6 +90,7 @@ export interface SignupWizardProps {
 }
 
 export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
+  useEffect(beaconSignupStart, []);
   const router = useRouter();
   const { t, locale } = useLocaleOrEnglish();
   const [account, setAccount] = useState({ email: prefill?.email ?? "", password: "" });

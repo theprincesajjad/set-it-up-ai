@@ -722,6 +722,8 @@ export async function awardOrderPoints(ctx: AppContext, order: Order): Promise<n
       externalRef: `order:${order.number}`,
       ignoreCooldown: true,
       joinedVia: "app",
+      // wave-n: rules. An order rung up at the counter is a purchase; any other order earns as "one pickup".
+      event: order.channel === "counter" ? "purchase" : "pickup",
     });
     const points = r.transaction?.points ?? 0;
     await ctx.db.update(orders).set({ pointsEarned: points }).where(eq(orders.id, order.id));

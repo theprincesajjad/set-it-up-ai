@@ -3,6 +3,7 @@ import type { appointmentsApi, campaignsApi, groceryApi, networkApi, tiffinApi }
 import { PantryReminders } from "@/components/pass/PantryReminders";
 import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PeopleLinks } from "@/components/pass/PeopleLinks";
+import { DealsInbox } from "@/components/pass/DealsInbox"; // wave-n: promo
 import { lastFinished } from "@/lib/people";
 import { PetLinks } from "@/components/pass/PetLinks";
 import { VehicleLinks } from "@/components/pass/VehicleLinks";
@@ -76,6 +77,8 @@ export default async function MePage({ searchParams }: Props) {
         nextVisit={nextVisit ? <NextVisitCard appt={nextVisit} /> : null}
         extras={
           <>
+            {/* wave-n promo: the Deals inbox (running deals, door-crasher spots, per-shop consent) */}
+            <DealsInbox />
             {/* phase-solo D: book again, messages from shops, reminders on this phone */}
             <PeopleLinks last={nextVisit ? null : lastFinished(visits)} hasVisits={visits.length > 0} />
             <WaitlistLinks />{/* phase-pro: p2: "Waiting for a spot" */}

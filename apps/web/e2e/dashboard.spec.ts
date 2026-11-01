@@ -162,16 +162,17 @@ test("owner: program editor with live preview saves", async ({ page }) => {
   await expect(preview.getByRole("img", { name: /of 11 stamps/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save changes" })).toBeEnabled();
   await page.screenshot({ path: shot("10-program-editor"), fullPage: true });
+  // wave-n: rules. A goal change now opens a confirm sheet that counts the customers it affects (and saving it would post
+  // carry-over stamps to Pinecone's members, which other specs read), so this checks the sheet, cancels and discards.
+  // Saving a goal change is covered on a fresh shop in e2e/rules-program.spec.ts.
   await page.getByRole("button", { name: "Save changes" }).click();
-  const confirm = page.getByRole("dialog", { name: "Customers will need more to reach a reward" });
+  const confirm = page.getByRole("dialog", { name: "Change the card to 11 stamps?" });
   await expect(confirm).toBeVisible();
-  await confirm.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText("Rewards saved")).toBeVisible();
+  await expect(confirm.getByText(/customers? with stamps|No customer has stamps yet/)).toBeVisible();
+  await confirm.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Discard" }).click();
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
-  // Put it back so other runs see the template.
-  await page.getByRole("button", { name: "Fewer stamps" }).click();
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText("Rewards saved")).toBeVisible();
+  await expect(preview.getByRole("img", { name: /of 10 stamps/ })).toBeVisible();
 });
 
 test("owner: create and publish a promo (pilot override)", async ({ page }) => {

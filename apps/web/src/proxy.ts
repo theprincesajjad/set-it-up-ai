@@ -14,7 +14,7 @@ import { SITE_HOST_HEADER, isCustomSiteHost } from "@/lib/siteHost";
 // ---- landing A/B ----
 import { EXPERIMENTS_CLOCK_HEADER, experimentsNow } from "@ll/shared";
 import { endedExperiments } from "@/lib/marketing/experiments-state";
-import { assignLanding, randomAid } from "@/lib/marketing/landing-assign";
+import { assignLanding, homeAidCookie, randomAid } from "@/lib/marketing/landing-assign";
 import { variantIds } from "@/lib/marketing/landing-variants";
 // ---- end landing A/B ----
 
@@ -44,6 +44,14 @@ export async function proxy(request: NextRequest) {
   const landing = await landingResponse(request);
   if (landing) return landing;
   // ---- end landing A/B ----
+  // ---- wave N: admin funnel ---- a first, signed-out visit to "/" gets the landing id (no A/B test runs on the home page).
+  const homeAid = homeAidCookie({ pathname: request.nextUrl.pathname, cookie: (n) => request.cookies.get(n)?.value, header: (n) => request.headers.get(n), newAid: randomAid });
+  if (homeAid) {
+    const res = NextResponse.next(forwarded(request));
+    res.cookies.set({ name: homeAid.name, value: homeAid.value, maxAge: homeAid.maxAge, path: "/", sameSite: "lax", secure: process.env.NODE_ENV === "production", httpOnly: false });
+    return res;
+  }
+  // ---- end wave N: admin funnel ----
   const rt = request.cookies.get(REFRESH_COOKIE)?.value;
   if (!rt || !accessTokenStale(request.cookies.get(ACCESS_COOKIE)?.value)) return NextResponse.next(forwarded(request));
 

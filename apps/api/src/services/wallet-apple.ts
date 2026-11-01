@@ -185,7 +185,11 @@ export function buildPassJson(config: Config, p: { passTypeId: string; teamId: s
       headerFields: [{ key: "ready", label: tr("sh.pass.ready"), value: ready, textAlignment: "PKTextAlignmentRight", changeMessage: tr("sh.pass.changeReady") }],
       primaryFields: [primary],
       secondaryFields: shopFields,
-      auxiliaryFields: [{ key: "member", label: tr("sh.pass.member"), value: s.name ?? s.memberCode }],
+      auxiliaryFields: [
+        { key: "member", label: tr("sh.pass.member"), value: s.name ?? s.memberCode },
+        // wave-n promo: the running deal; its changeMessage is the lock-screen notice when a new deal lands.
+        ...(s.deal ? [{ key: "deal", label: truncate(s.deal.shop, 24), value: truncate(s.deal.title, 40), changeMessage: tr("deal.passChange", { shop: s.deal.shop }) }] : []),
+      ],
       backFields: [
         { key: "memberships", label: tr("sh.pass.shopsBack"), value: memberships },
         {

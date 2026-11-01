@@ -9,7 +9,7 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
-import { promoStatusLine, promoWhen, signedVisits, templatesFor } from "@/lib/dashboard/promos";
+import { TYPE_INFO, promoStatusLine, promoWhen, signedVisits, templatesFor } from "@/lib/dashboard/promos";
 import { useRouter } from "next/navigation";
 import { useApi } from "@/lib/dashboard/useApi";
 
@@ -47,7 +47,7 @@ function PromosPage() {
       <PageHeader
         flush
         title="Promos"
-        description="Start from a template. Each promo reports extra visits against the same weekday and hours in the last four weeks."
+        description="Start from a template or let Claude write one for you. Each promo reports extra visits against the same weekday and hours in the last four weeks."
         actions={<Button size="md" iconStart={Plus} href={`${base}/promos/new`} className="h-[38px] rounded-full px-4 text-[14px] font-medium">Create a promo</Button>}
       />
 
@@ -110,6 +110,7 @@ function PromosPage() {
                   <Tr key={p.id} onOpen={() => router.push(`${base}/promos/${p.id}`)} aria-label={p.title}>
                     <Td className="min-w-[220px]">
                       <span className="block font-semibold text-fg">{p.title}</span>
+                      {p.promoType && p.promoType !== "custom" ? <span className="block text-[12px] text-fg-muted">{TYPE_INFO[p.promoType].label}{p.quantityCap != null ? ` · ${p.remaining ?? 0} of ${p.quantityCap} spots left` : ""}</span> : null}
                       <span className="mt-0.5 flex items-center gap-1.5 text-[12px] font-normal text-fg-muted">
                         {p.status === "live" ? <StatusDot domain="promo" status="live" label={promoStatusLine(p)} /> : promoStatusLine(p)}
                       </span>

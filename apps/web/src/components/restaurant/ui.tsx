@@ -39,7 +39,7 @@ export function useFmt() {
 export function ShopHead({ shop, kicker, href }: { shop: { name: string; logoUrl?: string | null; brandColor?: string | null }; kicker?: ReactNode; href?: string }) {
   const body = (
     <>
-      <ShopLogo shop={{ name: shop.name, vertical: "restaurant", logoUrl: shop.logoUrl ?? null, brandColor: shop.brandColor ?? null }} size={44} />
+      <ShopLogo shop={{ name: shop.name, vertical: "restaurant", logoUrl: shop.logoUrl ?? null, brandColor: shop.brandColor ?? null }} size={44} tone="trade" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-body-strong text-fg"><bdi>{shop.name}</bdi></p>
         {kicker ? <p className="truncate text-meta text-fg-muted">{kicker}</p> : null}

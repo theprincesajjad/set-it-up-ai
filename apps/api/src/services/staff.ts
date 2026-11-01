@@ -47,6 +47,7 @@ import {
 } from "./ledger.js";
 import { enabledFeaturesByMerchantId, enabledFeaturesFor } from "./features.js";
 import { memberRhythms, shopDate } from "./member-stats.js";
+import { unitAllows, type EarnEvent } from "./earn-engine.js";
 import { affordable, cardsForMember, expiryDisclosure, firstName, iso, maskedPhone, nextReward, terminologyOf, vipDto } from "./serializers.js";
 import { sendSms } from "./opt-out.js";
 import { assertPharmacyRedeem } from "./pharmacy-guard.js";
@@ -280,6 +281,8 @@ export interface AwardInput extends CustomerRef {
   quantity?: number;
   /** Pharmacies: the cashier confirmed the total has no prescriptions or pharmacy services. */
   frontStoreOnly?: boolean;
+  /** wave-n: rules. Staff override with a reason (audited). */
+  override?: { reason: string };
 }
 
 /** The shop's no-earn category for "Not counted" amounts typed at the counter: the first one it has, else one is made. */
@@ -294,7 +297,7 @@ async function doAward(
   ctx: AppContext,
   staff: StaffContext,
   input: AwardInput,
-  opts: { ignoreCooldown?: boolean; externalRef?: string; consentSource?: string; resolved?: ResolvedCustomer } = {},
+  opts: { ignoreCooldown?: boolean; externalRef?: string; consentSource?: string; resolved?: ResolvedCustomer; event?: EarnEvent } = {},
 ): Promise<{ result: AwardResult; response: staffApi.AwardResponse }> {
   if (input.locationId) requireUuid(input.locationId, "Location");
   const who = opts.resolved ?? (await resolveCustomer(ctx.db, staff.merchant.id, input));
@@ -324,6 +327,8 @@ async function doAward(
     consent,
     quantity: input.quantity,
     frontStoreOnly: input.frontStoreOnly,
+    event: opts.event,
+    override: input.override ?? null,
   });
   // ensureMember only stores consent for new or not-yet-consented members; an existing member resolved by id needs it here.
   if (consent && who.member && !result.duplicate) {
@@ -759,7 +764,8 @@ export async function kioskCheckIn(ctx: AppContext, staff: StaffContext, body: s
   if (!program?.active) throw conflict("Set up your loyalty program first, then try again.");
   if (staff.merchant.status === "paused" || staff.merchant.status === "closed") throw conflict("This shop's loyalty program is paused");
   const consent = body.consent ? { text: body.consent.text, source: "kiosk" } : null;
-  const visitProgram = program.earnType !== "per_dollar" && program.minSpendCents === 0;
+  // A self check-in is a visit: it earns only where a visit earns (earn unit "visit", no minimum spend).
+  const visitProgram = program.earnType !== "per_dollar" && program.minSpendCents === 0 && unitAllows(program, "visit");
 
   let memberId: string;
   let memberCreated: boolean;
@@ -770,7 +776,7 @@ export async function kioskCheckIn(ctx: AppContext, staff: StaffContext, body: s
       ctx,
       staff,
       { phone, locationId: body.locationId, consent: body.consent, idempotencyKey: body.idempotencyKey ? `kiosk:${body.idempotencyKey}` : `kiosk:${randomToken(12)}` },
-      { consentSource: "kiosk" },
+      { consentSource: "kiosk", event: "visit" },
     );
     memberId = result.member.id;
     memberCreated = result.memberCreated;

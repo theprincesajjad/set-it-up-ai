@@ -41,6 +41,8 @@ import pets from "./pets/index.js";
 import auto from "./auto/index.js";
 // ---- phase-solo: G ----
 import site from "./site/index.js";
+// ---- wave-n: promo ----
+import promosWaveN from "./promos/index.js";
 
 /** Each area owns its folder and registers its own paths under /v1. */
 export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -85,4 +87,6 @@ export async function registerRoutes(app: FastifyInstance, ctx: AppContext): Pro
   await auto(app, ctx);
   // ---- phase-solo: G ----
   await site(app, ctx);
+  // ---- wave-n: promo ----
+  await promosWaveN(app, ctx);
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { BarChart } from "@/components/dashboard/Charts";
 import { NetworkGauges } from "@/components/dashboard/NetworkGauges";
+import { CockpitOverview } from "@/components/dashboard/admin/CockpitOverview";
 import { ListAsync } from "@/components/dashboard/ListStates";
 import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
@@ -25,6 +26,8 @@ export default function AdminToday() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Today" description={longDate()} actions={<Button size="sm" variant="secondary" href="/admin/neighbourhoods">Plan areas</Button>} />
+      <CockpitOverview />
+      <h2 className="font-display text-headline font-bold text-fg">Launch plan and calls</h2>
       <ListAsync state={o} errorTitle="We could not load the overview. Reload the page to try again.">
         {(d) => {
           const behind = d.pace.delta < 0;

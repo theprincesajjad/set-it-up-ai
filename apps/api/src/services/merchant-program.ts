@@ -3,6 +3,7 @@
  * categories (incl. regulated no-earn ones), discount cards, promos, locations.
  * Every query is scoped by merchant_id.
  */
+import { serializePromo as serializeWaveNPromo } from "./promos.js"; // wave-n: promo
 import { and, asc, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import {
   catalogItems,
@@ -23,6 +24,7 @@ import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import { writeAudit } from "./admin-audit.js";
+import { diffFields, updateProgramRules } from "./program-rules.js";
 import { requireFeature } from "./features.js";
 import { iso, serializeLocation, serializeProgram, uniqueQrCode } from "./merchant.js";
 import { assertBeautyClaims } from "./beauty-guard.js";
@@ -46,30 +48,9 @@ export async function getProgram(db: DbOrTx, merchantId: string) {
   return serializeProgram(p);
 }
 
-export async function updateProgram(ctx: AppContext, merchantId: string, actorUserId: string, body: merchantApi.UpdateProgramBody) {
-  const [current] = await ctx.db.select().from(loyaltyPrograms).where(eq(loyaltyPrograms.merchantId, merchantId)).limit(1);
-  if (!current) throw notFound("Loyalty program");
-  if (body.expiryMonths !== undefined && body.expiryMonths !== null && body.expiryMonths < 12) {
-    throw badRequest("Points expiry must be at least 12 months of inactivity");
-  }
-  const next = { ...current, ...body };
-  // Pharmacies earn on front-store dollars only: a visit or a stamp may include a prescription.
-  const rxShop = isPharmacy(await verticalOf(ctx.db, merchantId));
-  if (rxShop && next.earnType !== "per_dollar") throw pharmacyVisitEarnError();
-  // ...and never pay for joining or for a first visit: the welcome bonus stays 0 at a pharmacy.
-  if (rxShop) body = { ...body, welcomeBonus: 0 };
-  if (next.earnType === "per_dollar" && next.pointsPerDollar < 1) throw badRequest("Points per dollar must be at least 1");
-  if (next.earnType !== "per_dollar" && next.pointsPerVisit < 1) throw badRequest("Points per visit must be at least 1");
-  if (next.earnType === "stamps" && next.stampGoal < 1) throw badRequest("Set how many stamps earn the reward");
-  // Stamp on scan never applies to per-dollar programs (the amount must be typed).
-  if (next.earnType === "per_dollar") body = { ...body, counterAutoStamp: false };
-  const [p] = await ctx.db
-    .update(loyaltyPrograms)
-    .set({ ...body, updatedAt: ctx.now() })
-    .where(eq(loyaltyPrograms.merchantId, merchantId))
-    .returning();
-  await writeAudit(ctx.db, { actorUserId, merchantId, action: "program.updated", entity: "loyalty_program", entityId: p!.id, data: body });
-  return serializeProgram(p!);
+/** wave-n: rules. Validation, the goal rule, carry-over stamps and the before/after audit live in program-rules.ts. */
+export async function updateProgram(ctx: AppContext, merchantId: string, actorUserId: string, body: merchantApi.UpdateProgramBody, meta: { ip?: string | null } = {}) {
+  return updateProgramRules(ctx, merchantId, actorUserId, body, meta);
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +101,7 @@ export async function createReward(ctx: AppContext, merchantId: string, actorUse
   validateReward(body);
   await checkRewardText(ctx, merchantId, body);
   const [r] = await ctx.db.insert(rewards).values({ merchantId, ...body }).returning();
-  await writeAudit(ctx.db, { actorUserId, merchantId, action: "reward.created", entity: "reward", entityId: r!.id });
+  await writeAudit(ctx.db, { actorUserId, merchantId, action: "reward.created", entity: "reward", entityId: r!.id, data: { before: {}, after: { name: r!.name, pointsCost: r!.pointsCost, rewardType: r!.rewardType, value: r!.value } } });
   return serializeReward(r!);
 }
 
@@ -129,17 +110,17 @@ export async function updateReward(ctx: AppContext, merchantId: string, actorUse
   validateReward({ rewardType: body.rewardType ?? cur.rewardType, value: body.value ?? cur.value });
   await checkRewardText(ctx, merchantId, body);
   const [r] = await ctx.db.update(rewards).set(body).where(and(eq(rewards.id, id), eq(rewards.merchantId, merchantId))).returning();
-  await writeAudit(ctx.db, { actorUserId, merchantId, action: "reward.updated", entity: "reward", entityId: id, data: body });
+  await writeAudit(ctx.db, { actorUserId, merchantId, action: "reward.updated", entity: "reward", entityId: id, data: { ...diffFields(cur as unknown as Record<string, unknown>, body as Record<string, unknown>), name: r!.name } });
   return serializeReward(r!);
 }
 
 /** Hard-deletes unused rewards; rewards with redemptions are deactivated to keep history. */
 export async function deleteReward(ctx: AppContext, merchantId: string, actorUserId: string, id: string) {
-  await getReward(ctx.db, merchantId, id);
+  const cur = await getReward(ctx.db, merchantId, id);
   const [used] = await ctx.db.select({ id: redemptions.id }).from(redemptions).where(eq(redemptions.rewardId, id)).limit(1);
   if (used) await ctx.db.update(rewards).set({ active: false }).where(eq(rewards.id, id));
   else await ctx.db.delete(rewards).where(and(eq(rewards.id, id), eq(rewards.merchantId, merchantId)));
-  await writeAudit(ctx.db, { actorUserId, merchantId, action: used ? "reward.archived" : "reward.deleted", entity: "reward", entityId: id });
+  await writeAudit(ctx.db, { actorUserId, merchantId, action: used ? "reward.archived" : "reward.deleted", entity: "reward", entityId: id, data: { before: { name: cur.name, pointsCost: cur.pointsCost }, after: {} } });
   return { deleted: !used, archived: !!used };
 }
 
@@ -367,28 +348,8 @@ export async function deleteDiscountCard(ctx: AppContext, merchantId: string, ac
 // Promos
 // ---------------------------------------------------------------------------
 type PromoRow = typeof promos.$inferSelect;
-export const serializePromo = (p: PromoRow): merchantApi.Promo => ({
-  id: p.id,
-  title: p.title,
-  body: p.body,
-  imageUrl: p.imageUrl,
-  kind: p.kind,
-  multiplierPct: p.multiplierPct,
-  bonusPoints: p.bonusPoints,
-  percentOff: p.percentOff,
-  itemId: p.itemId,
-  categoryId: p.categoryId,
-  daysOfWeek: p.daysOfWeek,
-  startTime: p.startTime,
-  endTime: p.endTime,
-  startsAt: p.startsAt.toISOString(),
-  endsAt: iso(p.endsAt),
-  audience: p.audience as merchantApi.Promo["audience"],
-  status: p.status,
-  viewCount: p.viewCount,
-  claimCount: p.claimCount,
-  createdAt: p.createdAt.toISOString(),
-});
+/** wave-n: one serializer for promos (services/promos.ts, the promo team), with the owner-shaped fields. */
+export const serializePromo = (p: PromoRow): merchantApi.Promo => serializeWaveNPromo(p);
 
 interface PromoShape {
   kind: PromoRow["kind"];

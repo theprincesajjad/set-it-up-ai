@@ -37,6 +37,8 @@ export interface WalletSummary {
   shops: WalletShopBalance[];
   /** The shopper's language (en, hi, ur, pa): the pass text is written in it. Absent = English. */
   locale?: "en" | "hi" | "ur" | "pa";
+  /** wave-n promo: the running deal from a shop they opted in to (shown on the pass, with a change message). Absent = none. */
+  deal?: { shop: string; title: string };
 }
 
 /**

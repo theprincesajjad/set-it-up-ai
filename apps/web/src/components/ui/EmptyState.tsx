@@ -10,7 +10,10 @@ export interface EmptyStateProps {
   /** One primary or tonal Button. Never a dead end. */
   action?: ReactNode;
   secondaryAction?: ReactNode;
-  tone?: "brand" | "danger";
+  /** "trade" draws the glyph in the shop's colour (customer pages under a shop scope). */
+  tone?: "brand" | "danger" | "trade";
+  /** A small illustration in place of the glyph (e.g. the customer wallet's fan of shop cards). */
+  media?: ReactNode;
   /** Level of the title heading, so the page's outline has no gaps (h1, then h2). Default 3 (inside a section that has an h2). */
   headingLevel?: 2 | 3 | 4;
   className?: string;
@@ -20,14 +23,16 @@ export interface EmptyStateProps {
  * v2: one sentence + one action. A small plain glyph at most, never an icon in a coloured circle. v3: the shadcn Empty (header, media,
  * description, content) is the structure; the title stays a real heading (h3) and the look stays plain, no dashed box.
  */
-export function EmptyState({ icon: Icon, title, description, action, secondaryAction, tone = "brand", headingLevel = 3, className }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, description, action, secondaryAction, tone = "brand", media, headingLevel = 3, className }: EmptyStateProps) {
   const Heading = `h${headingLevel}` as const;
   return (
     <Empty className={cn("mx-auto max-w-90 gap-0 rounded-none p-0 px-4 py-12", className)}>
       <EmptyHeader className="max-w-none gap-0">
-        {Icon ? (
+        {media ? (
+          <EmptyMedia className="mb-5">{media}</EmptyMedia>
+        ) : Icon ? (
           <EmptyMedia className="mb-4">
-            <Icon aria-hidden className={cn("size-7", tone === "danger" ? "text-negative" : "text-fg-subtle")} strokeWidth={1.5} />
+            <Icon aria-hidden className={cn("size-7", tone === "danger" ? "text-negative" : tone === "trade" ? "text-trade" : "text-fg-subtle")} strokeWidth={1.5} />
           </EmptyMedia>
         ) : null}
         <Heading className="text-headline text-fg">{title}</Heading>

@@ -51,3 +51,7 @@ export function startJobs(ctx: AppContext): () => void {
   );
   return () => timers.forEach(clearInterval);
 }
+
+// ---- wave N: admin cockpit ----
+import { adminMetricsJobs } from "./admin-metrics.js";
+jobs.push(...adminMetricsJobs);

@@ -41,6 +41,7 @@ import {
 import type { AppContext } from "../context.js";
 import { randomCode, randomToken, sha256 } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
+import { signupAttribution } from "./landing-events.js";
 import { assertBeautyClaims } from "./beauty-guard.js";
 import { placePrivateShop } from "./geocode.js";
 import { ensureLockedCategories } from "./pharmacy-guard.js";
@@ -151,6 +152,12 @@ export function serializeProgram(p: ProgramRow): merchantApi.LoyaltyProgram {
     active: p.active,
     counterAutoStamp: p.counterAutoStamp && p.earnType !== "per_dollar",
     rewardCostCents: p.rewardCostCents,
+    earnUnit: p.earnUnit === "purchase" || p.earnUnit === "pickup" ? p.earnUnit : "visit",
+    earnScope: p.earnScope === "selected" ? "selected" : "all",
+    earnCategoryIds: p.earnCategoryIds ?? [],
+    earnItemIds: p.earnItemIds ?? [],
+    earnServiceIds: p.earnServiceIds ?? [],
+    maxStampsPerDay: p.maxStampsPerDay ?? null,
     expiryDisclosure: expiryDisclosure(p),
     updatedAt: p.updatedAt.toISOString(),
   };
@@ -390,6 +397,9 @@ export async function createMerchantWithTemplate(ctx: AppContext, args: CreateMe
     const template = await applyVerticalTemplate(tx, m!.id, b.vertical);
     const ab = landingAttribution(b);
     await recordMilestone(tx, m!.id, "signed_up", ctx.now(), b.source || work || ab ? { ...(b.source ? { source: b.source.toLowerCase() } : {}), ...(work ? { workSetting: work } : {}), ...ab } : undefined);
+    // Wave N (admin cockpit): the landing attribution, kept on the shop for the founder's funnel (landing-events.ts signupAttribution).
+    const attribution = await signupAttribution(tx, { anonId: ab?.anonId, variant: ab?.variant, experimentId: ab?.experimentId, source: b.source });
+    if (Object.keys(attribution).length) await tx.update(merchants).set(attribution).where(eq(merchants.id, m!.id));
     await writeAudit(tx, {
       actorUserId: args.actorUserId,
       merchantId: m!.id,

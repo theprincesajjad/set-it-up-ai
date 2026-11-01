@@ -49,6 +49,7 @@ import { seedAppointmentSalons } from "./appointments.js";
 import { seedClassStudios } from "./classes.js";
 import { seedPharmacyDemo } from "./pharmacy.js";
 import { seedLiveToday } from "./liveToday.js";
+import { seedAdminCockpit } from "./adminCockpit.js";
 import { RESTAURANT_SHOPS, seedRestaurantCorridor } from "./restaurants.js";
 import { GROCER_SHOPS, seedGrocers } from "./grocers.js";
 import { FIRST_NAMES, LAST_NAMES, LEADS, MERCHANTS, NEIGHBOURHOODS, type DemoMerchant } from "./data.js";
@@ -166,6 +167,8 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
     await seedServiceOps(db, { log });
     await seedBiaDemo(db, { log });
     await seedLiveToday(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { seed: opts.seed, scale: liveTodayScale(opts), log });
+    // Founder's cockpit demo (no-op when present or in production).
+    await seedAdminCockpit(db, { db, config: skipConfig, providers: createProviders({ ...skipConfig, env: "test" }), now: () => skipClock.now }, skipClock, { scale: liveTodayScale(opts), log });
     return { skipped: true, neighbourhoods: 0, merchants: 0, customers: 0, visits: 0, redemptions: 0, leads: 0, credentials: credentialsList(), pilotOverrides: pilotList() };
   }
 
@@ -472,6 +475,8 @@ export async function seedDemo(db: Db, opts: SeedOptions = {}): Promise<SeedResu
   // A live-looking today for every shop (visits up to now, stamps, rewards redeemed, new members, slipping regulars).
   clock.now = new Date();
   await seedLiveToday(db, ctx, clock, { seed: opts.seed, scale: liveTodayScale(opts), log });
+  // Founder's cockpit demo: 30 shops with plans, trials, churn, activity curves, landing sources and API latency (never in production).
+  await seedAdminCockpit(db, ctx, clock, { scale: liveTodayScale(opts), log });
   await backfillMilestones(db);
   clock.now = new Date();
 

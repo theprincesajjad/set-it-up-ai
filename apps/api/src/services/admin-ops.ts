@@ -41,7 +41,7 @@ type AddOnSplitKey = "whatsappCents" | "extraLocationsCents" | "otherAddOnsCents
 const addOnBucket = (id: string): AddOnSplitKey => (id === "whatsapp_1000" ? "whatsappCents" : id === "extra_location" ? "extraLocationsCents" : "otherAddOnsCents");
 
 /** Add-on MRR per paying shop, from active merchant_add_ons rows on a shop whose subscription is paying. */
-async function addOnMrrByMerchant(db: DbOrTx, subs: { s: SubRow }[], merchantId?: string) {
+export async function addOnMrrByMerchant(db: DbOrTx, subs: { s: SubRow }[], merchantId?: string) {
   const interval = new Map<string, "month" | "year">();
   for (const { s } of subs) if (subscriptionMrrCents(s) > 0 && !interval.has(s.merchantId)) interval.set(s.merchantId, s.interval === "year" ? "year" : "month");
   const rows = await db

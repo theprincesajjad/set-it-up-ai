@@ -53,12 +53,12 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
   } catch (e) {
     if (isApiError(e) && (e.status === 402 || e.status === 404))
       return (
-        <PageFrame locale={locale} trade={shop.vertical}>
+        <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
           <EmptyState title={t("bk.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
         </PageFrame>
       );
     return (
-      <PageFrame locale={locale} trade={shop.vertical}>
+      <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
       </PageFrame>
     );
@@ -78,7 +78,7 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
   const first = (me?.user.name ?? welcome?.firstName ?? "").trim().split(/\s+/)[0] || null;
   // ---- end phase-pro: p3 ----
   return (
-    <PageFrame locale={locale} trade={shop.vertical}>
+    <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
       {rebook && (welcome || me) ? (
         <Banner tone="info" title={first ? t("rb.book.welcome", { name: first }) : t("rb.book.welcomeNoName")}>
           {t("rb.book.welcomeSub")}

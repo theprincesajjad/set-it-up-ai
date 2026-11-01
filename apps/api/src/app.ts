@@ -5,6 +5,7 @@ import type { AppContext } from "./context.js";
 import { verifyAccessToken } from "./lib/auth.js";
 import { HttpError, tooMany } from "./lib/errors.js";
 import { countHits, postgresBlanketStore, recordHit } from "./lib/rate-limit.js";
+import { installMetrics } from "./lib/metrics.js";
 import { registerRoutes } from "./routes/index.js";
 
 declare module "fastify" {
@@ -110,6 +111,8 @@ export async function buildApp(ctx: AppContext, opts: { logger?: boolean } = {})
     return reply.status(500).send({ error: { code: "internal", message: "Something went wrong on our end. Try again in a moment." } });
   });
 
+  // Admin performance page: route-template latency, no PII (lib/metrics.ts). The timer runs outside tests; tests flush by hand.
+  installMetrics(app, { db: ctx.db, now: ctx.now, timer: ctx.config.env !== "test" });
   app.get("/health", async () => ({ ok: true, time: ctx.now().toISOString() }));
   await app.register(async (v1) => registerRoutes(v1, ctx), { prefix: "/v1" });
   return app;

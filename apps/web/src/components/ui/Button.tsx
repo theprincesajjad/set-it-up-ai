@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { cn as merge } from "@/lib/utils";
 import { Spinner } from "./Spinner";
 
-export type ButtonVariant = "primary" | "secondary" | "tonal" | "ghost" | "danger" | "accent" | "inverse";
+export type ButtonVariant = "primary" | "secondary" | "tonal" | "ghost" | "danger" | "accent" | "inverse" | "shop";
 /** `counter` is the 72 px sale button on the counter tablet, `kiosk` the 88 px button on the customer-facing door tablet (strategy 8.2 E). */
 export type ButtonSize = "sm" | "md" | "lg" | "counter" | "kiosk" | "quick";
 
@@ -44,6 +44,8 @@ const variants: Record<ButtonVariant, string> = {
   accent: "bg-points-soft text-points-text hover:bg-points-soft hover:brightness-[0.97]",
   /** On a black band (marketing CTA): white fill, black text. */
   inverse: "bg-card text-foreground hover:bg-muted",
+  /** A shop's own colour (customer pages under `shopColorProps`): the trade fill with its computed text colour (AA-checked in design-tokens). */
+  shop: "bg-trade text-trade-foreground shadow-none hover:brightness-95 active:brightness-90",
 };
 
 /** 10 px radius for small buttons, a capsule for the big one, 16 for the counter key. */

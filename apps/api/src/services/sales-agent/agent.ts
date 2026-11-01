@@ -53,12 +53,23 @@ export interface AgentResult {
   stopConfirmation?: boolean;
 }
 
-const llmCache = new WeakMap<object, LlmClient | null>();
-/** The model client for this app: ctx.providers.salesAgentLlm when set (tests inject a scripted one), else Anthropic when ANTHROPIC_API_KEY is set, else none. */
-export function llmFor(ctx: AppContext): LlmClient | null {
+const llmCache = new Map<string, LlmClient>();
+/**
+ * The model client for this app: ctx.providers.salesAgentLlm when set (tests inject a scripted one), else Anthropic with the
+ * platform key (wave N: services/ai-key.ts, the /admin/ai key first, then ANTHROPIC_API_KEY), else none.
+ */
+export async function llmFor(ctx: AppContext): Promise<LlmClient | null> {
   if (ctx.providers.salesAgentLlm !== undefined) return ctx.providers.salesAgentLlm;
-  if (!llmCache.has(ctx.providers)) llmCache.set(ctx.providers, createLlmClient(ctx.config));
-  return llmCache.get(ctx.providers) ?? null;
+  const { resolveAnthropicKey } = await import("../ai-key.js");
+  const k = await resolveAnthropicKey(ctx);
+  if (!k) return null;
+  let c = llmCache.get(k.key);
+  if (!c) {
+    if (llmCache.size > 4) llmCache.clear();
+    c = createLlmClient({ ...ctx.config, salesAgent: { ...ctx.config.salesAgent, apiKey: k.key } })!;
+    llmCache.set(k.key, c);
+  }
+  return c;
 }
 
 export const agentEnabled = (ctx: AppContext): boolean => ctx.config.salesAgent.enabled;
@@ -191,7 +202,7 @@ export async function handleInbound(ctx: AppContext, inb: Inbound): Promise<Agen
   }
 
   // ---- No model (no key, or it is down): the chat still works as an inbox.
-  const llm = llmFor(ctx);
+  const llm = await llmFor(ctx);
   if (!llm) {
     conv = await escalate(ctx, conv, "assistant_unavailable: no model configured");
     replies.push(await sayAndStore(ctx, conv, T.offline));

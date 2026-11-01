@@ -7,7 +7,7 @@
  * 30% toward the second colour, so it keeps contrast in every trade (light and dark).
  */
 import { placeKindLabel, type customerApi } from "@ll/shared";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { StampCard } from "@/components/ui/StampCard";
 import { shopInitials } from "@/lib/shopAvatar";
@@ -20,6 +20,8 @@ import { AwningStripe } from "./PassChrome";
 import { stampIcon } from "./stampIcons";
 import { usePassStyle } from "./useThemeStyle";
 import styles from "./ClearPass.module.css";
+import { shopColorProps } from "@/lib/shopColor";
+import { Gift } from "lucide-react";
 
 /** The shop to feature: a reward ready first, else the highest progress to the next reward, else the first shop. */
 export function heroMembership(items: customerApi.MembershipDto[]): customerApi.MembershipDto | null {
@@ -85,10 +87,17 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
   const cols = stampGoal <= 5 ? stampGoal : stampGoal === 8 ? 4 : stampGoal <= 10 ? 5 : 6;
   const size = cols <= 5 ? 54 : 42;
   const rewardName = next ? rewardNameIn(locale, t, next.name) : null;
-  const badge = ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : goal > 0 ? t("ui.stampToGo", { n: formatNumber(toGo) }) : null;
+  // A stamp that landed in the last 15 minutes pops and says so (client clock only, after mount, so the server render matches).
+  const [justStamped, setJustStamped] = useState(false);
+  useEffect(() => {
+    const at = m.lastVisitAt ? Date.parse(m.lastVisitAt) : NaN;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setJustStamped(!ready && shown > 0 && Number.isFinite(at) && Date.now() - at < 15 * 60_000);
+  }, [m.lastVisitAt, ready, shown]);
+  const badge = ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : justStamped ? t("ui.stampAdded") : goal > 0 ? t("ui.stampToGo", { n: formatNumber(toGo) }) : null;
   return (
     <>
-    <section aria-label={m.merchant.name} data-trade={m.merchant.vertical} className="relative flex flex-col gap-4">
+    <section aria-label={m.merchant.name} {...shopColorProps(m.merchant)} className="relative flex flex-col gap-4">
       <div aria-hidden className={styles.field} />
       <div className="text-trade-pass-text">
         <p className="text-[11px] font-semibold uppercase leading-4 tracking-[0.04em] opacity-85">{t("cl.ui.yourPass")}</p>
@@ -102,7 +111,7 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
             <p className="text-[16px] font-semibold leading-5 tracking-[-0.014em]">{stamps ? t("pass.clear.stampCard") : t("pass.clear.pointsCard")}</p>
             <p className="truncate text-body text-muted-foreground">{line ?? rewardName ?? unitCaption(locale, m.balance, m.terminology)}</p>
           </div>
-          {badge ? <span className="inline-flex h-5 shrink-0 items-center rounded-r2 bg-muted px-2 text-[12px] font-medium leading-4 tabular-nums text-foreground">{badge}</span> : null}
+          {badge ? <span data-testid="pass-badge" className={cn("inline-flex h-5 shrink-0 items-center rounded-r2 px-2 text-[12px] font-medium leading-4 tabular-nums", ready || justStamped ? "bg-trade text-trade-foreground" : "bg-muted text-foreground")}>{badge}</span> : null}
         </div>
         {stampGoal > 0 ? (
           <div
@@ -112,8 +121,8 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
             style={{ "--cols": cols, "--size": `${size}px` } as React.CSSProperties}
           >
             {Array.from({ length: stampGoal }, (_, i) => (
-              <span key={i} aria-hidden className={cn(styles.stamp, i < shown ? styles.stampOn : i === shown && !ready ? styles.stampNext : null)}>
-                {i < shown ? <Glyph className="size-5" strokeWidth={1.8} /> : null}
+              <span key={i} aria-hidden className={cn(styles.stamp, justStamped && i === shown - 1 && "motion-safe:animate-stamp-pop", i < shown ? styles.stampOn : i === shown && !ready ? styles.stampNext : i === stampGoal - 1 ? styles.stampReward : null)}>
+                {i < shown ? <Glyph className="size-5" strokeWidth={1.8} /> : i === stampGoal - 1 && i !== shown ? <Gift className="size-5" strokeWidth={1.75} /> : null}
               </span>
             ))}
           </div>
@@ -121,6 +130,17 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
           <div className="pb-4">
             <div role="progressbar" aria-label={t("pass.hero.next")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-trade" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        ) : null}
+        {ready ? (
+          <div role="status" data-testid="reward-unlocked" className="mb-4 flex items-center gap-3 rounded-r5 bg-trade-soft p-3">
+            <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-full bg-trade text-trade-foreground">
+              <Gift className="size-5" strokeWidth={1.9} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold leading-5 text-trade-deep">{t("ui.rewardUnlocked")}{rewardName ? ` · ${rewardName}` : ""}</p>
+              <p className="text-meta text-muted-foreground">{t("ui.showToRedeem")}</p>
             </div>
           </div>
         ) : null}
@@ -165,7 +185,7 @@ function WarmPassHero({ m, line, footer }: { m: customerApi.MembershipDto; line:
   return (
     <section
       aria-label={m.merchant.name}
-      data-trade={m.merchant.vertical}
+      {...shopColorProps(m.merchant)}
       className="overflow-hidden rounded-sheet bg-[linear-gradient(100deg,var(--trade-pass-from)_60%,var(--trade-pass-to)_100%)] text-trade-pass-text shadow-card">
       <AwningStripe />
       <div className="flex flex-col gap-5 p-5 pt-4">

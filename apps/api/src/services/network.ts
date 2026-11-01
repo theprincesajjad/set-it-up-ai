@@ -133,6 +133,7 @@ async function windowPromos(db: DbOrTx, merchantIds: string[], at: Date): Promis
       and(
         inArray(promos.merchantId, merchantIds),
         inArray(promos.status, ["live", "scheduled"]),
+        isNull(promos.pausedAt), // wave-n promo: paused deals are hidden
         lte(promos.startsAt, at),
         or(isNull(promos.endsAt), sql`${promos.endsAt} > ${at.toISOString()}::timestamptz`),
       ),

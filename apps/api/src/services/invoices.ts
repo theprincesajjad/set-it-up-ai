@@ -344,7 +344,7 @@ export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts
       // Service lines only: tax and tips are never in the lines, and a credit (diagnostic fee) reduces the lines it offsets.
       lines: (() => {
         const amounts = earnableAmounts(paid.lineItems.map((l) => ({ amountCents: l.quantity * l.unitPriceCents })));
-        return paid.lineItems.map((l, idx) => ({ amountCents: amounts[idx]!, categoryId: l.categoryId ?? null, quantity: l.quantity })).filter((l) => l.amountCents > 0);
+        return paid.lineItems.map((l, idx) => ({ amountCents: amounts[idx]!, categoryId: l.categoryId ?? null, serviceId: l.serviceId ?? null, quantity: l.quantity })).filter((l) => l.amountCents > 0);
       })(),
       source: opts.inApp ? "customer_app" : "dashboard",
       idempotencyKey: `invoice:${paid.id}`,

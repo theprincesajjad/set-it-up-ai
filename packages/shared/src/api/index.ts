@@ -37,3 +37,7 @@ export * as experimentsApi from "./experiments.js";
 // ---- phase-pro: p4 ----
 export * as reviewsApi from "./reviews.js";
 // ---- end phase-pro: p4 ----
+// ---- wave N: admin cockpit ----
+export * as adminCockpitApi from "./admin-cockpit.js";
+// ---- wave N: promo ----
+export * as promosApi from "./promos.js";

@@ -16,6 +16,7 @@ import { translationsSchema } from "./restaurant.js";
 // ---------------------------------------------------------------------------
 // Shared bits
 // ---------------------------------------------------------------------------
+import { PROMO_CHANNELS, PROMO_COLORS, PROMO_SEGMENTS, PROMO_TYPES, type PromoChannel, type PromoColor, type PromoSegment, type PromoType } from "./promos.js"; // wave-n: promo
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM (24h)");
 export const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 export type DayKey = (typeof DAY_KEYS)[number];
@@ -468,6 +469,19 @@ export interface StaffMember {
 // Loyalty program
 // ---------------------------------------------------------------------------
 export const earnTypeSchema = z.enum(["per_dollar", "per_visit", "stamps"]);
+// ---- wave-n: rules ----
+/** What one stamp is worth on a visit/stamp program (per_dollar ignores it). */
+export const EARN_UNITS = ["visit", "purchase", "pickup"] as const;
+export type EarnUnit = (typeof EARN_UNITS)[number];
+export const earnUnitSchema = z.enum(EARN_UNITS);
+export const EARN_SCOPES = ["all", "selected"] as const;
+export type EarnScope = (typeof EARN_SCOPES)[number];
+/** Stamp card goal bounds: any number in between, typed or +/-. */
+export const STAMP_GOAL_MIN = 2;
+export const STAMP_GOAL_MAX = 50;
+/** The most a daily cap can be set to (null = no cap). */
+export const MAX_STAMPS_PER_DAY_LIMIT = 50;
+const idList = z.array(uuidSchema).max(500).transform((ids) => [...new Set(ids)]);
 export const updateProgramBody = z
   .object({
     name: z.string().trim().min(1).max(120),
@@ -475,7 +489,7 @@ export const updateProgramBody = z
     pointsPerDollar: z.number().int().min(0).max(1000),
     pointsPerVisit: z.number().int().min(0).max(10000),
     minSpendCents: centsSchema,
-    stampGoal: z.number().int().min(0).max(100),
+    stampGoal: z.number().int().min(0).max(STAMP_GOAL_MAX, `Pick ${STAMP_GOAL_MAX} stamps or fewer`),
     terminology: z.enum(["points", "stamps", "stars"]),
     welcomeBonus: z.number().int().min(0).max(100000),
     birthdayBonus: z.number().int().min(0).max(100000),
@@ -489,9 +503,54 @@ export const updateProgramBody = z
     counterAutoStamp: z.boolean(),
     /** What one reward costs the shop, in cents. Optional; only used by Reports to estimate rewards owed. */
     rewardCostCents: centsSchema.nullable(),
+    earnUnit: earnUnitSchema,
+    earnScope: z.enum(EARN_SCOPES),
+    earnCategoryIds: idList,
+    earnItemIds: idList,
+    earnServiceIds: idList,
+    /** Most stamps one customer can earn in a day (visit/stamp programs). null = no limit. */
+    maxStampsPerDay: z.number().int().min(1).max(MAX_STAMPS_PER_DAY_LIMIT).nullable(),
   })
   .partial();
 export type UpdateProgramBody = z.infer<typeof updateProgramBody>;
+
+/** POST /merchants/:id/program/impact: what a change would do to existing customers (for the confirm sheet). */
+export interface ProgramImpact {
+  /** Stamp goal change, when there is one. */
+  goal: { from: number; to: number } | null;
+  /** Members with any stamps right now. */
+  membersWithProgress: number;
+  /** Lowered goal: members who can redeem now and couldn't before. */
+  rewardsUnlocked: number;
+  /** Raised goal: members who get carry-over stamps so they lose nothing. */
+  membersCarriedOver: number;
+  /** Raised goal: total carry-over stamps that would be added. */
+  stampsCarriedOver: number;
+  /** Plain-language lines for the sheet. */
+  lines: string[];
+}
+
+/** One change in GET /merchants/:id/program/history. */
+export interface ProgramChange {
+  id: string;
+  at: string;
+  action: string;
+  actor: { userId: string | null; name: string | null };
+  /** "Stamp goal", "Reward name"... with the values before and after (null = not set). */
+  changes: { field: string; before: unknown; after: unknown }[];
+  /** e.g. "12 customers got carry-over stamps". */
+  note: string | null;
+}
+export interface ProgramHistoryResponse {
+  items: ProgramChange[];
+}
+
+/** GET /merchants/:id/program/earn-options: what the shop sells, to choose what earns. */
+export interface EarnOptions {
+  categories: { id: string; name: string; protected: boolean }[];
+  items: { id: string; name: string; categoryId: string | null }[];
+  services: { id: string; name: string; categoryId: string | null }[];
+}
 
 export interface LoyaltyProgram {
   id: string;
@@ -513,6 +572,13 @@ export interface LoyaltyProgram {
   /** Effective value: the stored setting, forced false for per_dollar programs. */
   counterAutoStamp: boolean;
   rewardCostCents: number | null;
+  /** wave-n: rules. What one stamp is worth (visit/stamp programs). */
+  earnUnit: EarnUnit;
+  earnScope: EarnScope;
+  earnCategoryIds: string[];
+  earnItemIds: string[];
+  earnServiceIds: string[];
+  maxStampsPerDay: number | null;
   /** Plain-language expiry disclosure to show next to every balance. */
   expiryDisclosure: string;
   updatedAt: string;
@@ -671,6 +737,18 @@ const promoFields = {
   startsAt: z.iso.datetime({ offset: true }),
   endsAt: z.iso.datetime({ offset: true }).nullable().optional(),
   audience: z.enum(["network", "members", "vip"]),
+  // ---- wave-n: promo (promosApi has the vocabularies) ----
+  promoType: z.enum(PROMO_TYPES).optional(),
+  segment: z.enum(PROMO_SEGMENTS).optional(),
+  /** Door crasher: spots available, first come. */
+  quantityCap: z.number().int().min(1).max(100000).nullable().optional(),
+  color: z.enum(PROMO_COLORS).nullable().optional(),
+  holiday: z.string().trim().max(40).nullable().optional(),
+  itemIds: z.array(uuidSchema).max(50).optional(),
+  channels: z.array(z.enum(PROMO_CHANNELS)).max(3).optional(),
+  notifyText: nullableText(160).optional(),
+  aiGenerationId: uuidSchema.nullable().optional(),
+  // ---- end wave-n: promo ----
 };
 export const createPromoBody = z.object({
   ...promoFields,
@@ -702,6 +780,23 @@ export interface Promo {
   viewCount: number;
   claimCount: number;
   createdAt: string;
+  // ---- wave-n: promo ----
+  promoType: PromoType;
+  segment: PromoSegment;
+  quantityCap: number | null;
+  claimedCount: number;
+  /** Spots left (door crasher), null when there is no cap. */
+  remaining: number | null;
+  color: PromoColor | null;
+  holiday: string | null;
+  itemIds: string[];
+  channels: PromoChannel[];
+  notifyText: string | null;
+  pausedAt: string | null;
+  endedEarlyAt: string | null;
+  duplicatedFrom: string | null;
+  announcedAt: string | null;
+  // ---- end wave-n: promo ----
 }
 export const listPromosQuery = z.object({ status: promoStatusSchema.optional() });
 

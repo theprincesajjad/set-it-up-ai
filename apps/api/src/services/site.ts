@@ -250,7 +250,7 @@ export async function builder(ctx: AppContext, m: Merchant): Promise<siteApi.Sit
     },
     entitlement: { entitled: ent.entitled, reason: ent.reason, lapsed: lapse.lapse },
     usage: usageOf(row, win),
-    aiAvailable: !!siteAiFor(ctx),
+    aiAvailable: !!(await siteAiFor(ctx)),
     domainsAuto: domainsAuto(ctx),
   };
 }
@@ -330,7 +330,7 @@ export async function draftWithAi(ctx: AppContext, m: Merchant, body: siteApi.Dr
     await writeDraft(ctx, row, defaultContent(preset, facts));
     return { ...(await builder(ctx, m)), outcome: "fallback", message };
   };
-  const client = siteAiFor(ctx);
+  const client = await siteAiFor(ctx);
   if (!client) return fallback(NO_AI_MESSAGE);
   const ent = await entitlementOf(ctx, m);
   const win = allowanceWindow(ctx.now(), ent.sub?.currentPeriodEnd ?? null);
@@ -359,7 +359,7 @@ export async function rewriteLine(ctx: AppContext, m: Merchant, body: siteApi.Re
   const current = getCopyField(cur.copy, body.field);
   const ent = await entitlementOf(ctx, m);
   const win = allowanceWindow(ctx.now(), ent.sub?.currentPeriodEnd ?? null);
-  const client = siteAiFor(ctx);
+  const client = await siteAiFor(ctx);
   const usage = async () => usageOf((await ctx.db.select().from(sites).where(eq(sites.id, row.id)))[0]!, win);
   if (!client) return { field: body.field, text: current, outcome: "fallback", message: NO_AI_MESSAGE, usage: await usage() };
   if (!(await reserve(ctx, row, "rewrite", win))) {

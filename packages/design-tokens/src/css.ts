@@ -5,6 +5,7 @@
 import { chartColors } from "./charts.js";
 import { chartSeriesV3, colors, rolesV3, v2Alias, type ColorRoles, type RolesV3 } from "./colors.js";
 import { palette } from "./palette.js";
+import { SHOP_TRADE_VARS } from "./shopColor.js";
 import {
   blur,
   borderWidths,
@@ -344,6 +345,33 @@ function clearCss(): string[] {
   return out;
 }
 
+/**
+ * A shop's own colour (src/shopColor.ts): an element with `data-shop-color` carries both modes' values inline (`--shop-l-trade` ...,
+ * `--shop-d-trade` ...) and these rules pick the mode. The tripled attribute lifts them over every `[data-trade]` rule above, in both looks.
+ */
+function shopColorCss(): string[] {
+  const S = "[data-shop-color][data-shop-color][data-shop-color]";
+  const vars = (m: "l" | "d", indent: string) => SHOP_TRADE_VARS.map((v) => `${indent}${v}: var(--shop-${m}-${v.slice(2)});`);
+  return [
+    `/* A shop's own colour (brand colour, else its trade): set by shopColorProps() in apps/web, values computed for contrast. */`,
+    `:root ${S} {`,
+    ...vars("l", "  "),
+    `}`,
+    `@media (prefers-color-scheme: dark) {`,
+    `  :root:not([data-theme="light"]) ${S} {`,
+    ...vars("d", "    "),
+    `  }`,
+    `}`,
+    `:root[data-theme="dark"] ${S} {`,
+    ...vars("d", "  "),
+    `}`,
+    `:root [data-theme="light"] ${S} {`,
+    ...vars("l", "  "),
+    `}`,
+    ``,
+  ];
+}
+
 export function buildTokensCss(): string {
   return [
     HEADER,
@@ -380,6 +408,7 @@ export function buildTokensCss(): string {
     ``,
     ...tradeCss(),
     ...clearCss(),
+    ...shopColorCss(),
   ].join("\n");
 }
 

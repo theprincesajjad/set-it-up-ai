@@ -7,6 +7,7 @@ import { requireSupportSession } from "../../lib/support-session.js";
 import { parse } from "../../lib/validate.js";
 import * as svc from "../../services/admin.js";
 import * as ops from "../../services/admin-ops.js";
+import { writeAudit } from "../../services/admin-audit.js";
 import { rejectMalformedIds } from "../merchant/params.js";
 
 type Req<P = object> = FastifyRequest<{ Params: P }>;
@@ -30,6 +31,7 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
 
 import { onboardingFunnel } from "../../services/onboarding.js";
 import * as experiments from "../../services/admin-experiments.js";
+import cockpitRoutes from "./cockpit.js";
 
 async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const actor = (req: FastifyRequest) => requirePlatformRole(req, "admin").id;
@@ -88,7 +90,12 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
 
   // ---- Merchants ----
   app.get("/admin/merchants", async (req) => svc.listMerchants(ctx, parse(adminApi.listMerchantsQuery, req.query)));
-  app.get("/admin/merchants/:merchantId", async (req: Req<{ merchantId: string }>) => svc.getMerchant(ctx, req.params.merchantId));
+  // Every admin view of one business's data is audited (wave N).
+  app.get("/admin/merchants/:merchantId", async (req: Req<{ merchantId: string }>) => {
+    const m = await svc.getMerchant(ctx, req.params.merchantId);
+    await writeAudit(ctx.db, { actorUserId: actor(req), merchantId: m.id, action: "admin.merchant_viewed", entity: "merchant", entityId: m.id, ip: req.ip });
+    return m;
+  });
   app.post("/admin/merchants/:merchantId/status", async (req: Req<{ merchantId: string }>) => {
     const { status, reason } = parse(adminApi.setMerchantStatusBody, req.body);
     return svc.setMerchantStatus(ctx, actor(req), req.params.merchantId, status, reason);
@@ -121,6 +128,9 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   });
   app.post("/admin/experiments/:id/guardrails", async (req: Req<{ id: string }>) => experiments.addGuardrailInput(ctx, actor(req), req.params.id, parse(experimentsApi.guardrailInputBody, req.body), req.ip));
   app.post("/admin/experiments/:id/end", async (req: Req<{ id: string }>) => experiments.endExperiment(ctx, actor(req), req.params.id, parse(experimentsApi.endExperimentBody, req.body).reason, req.ip));
+
+  // ---- Founder's cockpit (wave N): overview, businesses, funnel, health, performance (routes/admin/cockpit.ts) ----
+  await app.register(async (sub) => cockpitRoutes(sub, ctx));
 
   // ---- Audit log ----
   app.get("/admin/audit", async (req) => svc.listAudit(ctx, parse(adminApi.listAuditQuery, req.query)));

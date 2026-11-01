@@ -65,7 +65,7 @@ export function StampCard({ stamps, goal, rewardName, vertical, newlyEarned = []
               <div
                 className={cn(
                   "flex aspect-square w-full max-w-12 items-center justify-center rounded-full",
-                  filled ? (onTrade ? "bg-trade-pass-text text-trade-pass-from" : "bg-trade text-trade-foreground") : onTrade ? "border-[1.5px] border-dashed border-current/70 text-trade-pass-text" : last ? "border-[1.5px] border-dashed border-trade/60 text-trade-deep" : "border-[1.5px] border-dashed border-line-strong text-muted-foreground",
+                  filled ? (onTrade ? "bg-trade-pass-text text-trade-pass-from" : "bg-trade text-trade-foreground") : onTrade ? (last ? "border-[1.5px] border-trade-pass-text bg-trade-pass-text/20 text-trade-pass-text" : "border-[1.5px] border-dashed border-trade-pass-text/70 text-trade-pass-text") : last ? "border-[1.5px] border-dashed border-trade bg-trade-soft text-trade-deep" : "border-[1.5px] border-dashed border-line-strong text-muted-foreground",
                   filled && newlyEarned.includes(i) && "motion-safe:animate-stamp-pop",
                 )}
               >

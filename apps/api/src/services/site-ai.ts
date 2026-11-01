@@ -11,8 +11,8 @@
  * cache_control breakpoint; the shop's facts go in the user turn after it.
  * Every call's usage is logged (site_ai_calls + the app log). Caps are enforced by services/site.ts before a call is made.
  *
- * Tests inject a scripted client on ctx.providers.siteAi; with no ANTHROPIC_API_KEY there is no client at all and the builder
- * runs on presets and template copy (zero AI).
+ * Tests inject a scripted client on ctx.providers.siteAi; with no key (the /admin/ai key or ANTHROPIC_API_KEY) there is no client
+ * at all and the builder runs on presets and template copy (zero AI).
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { siteAiCalls } from "@ll/db";
@@ -148,13 +148,29 @@ export function fakeSiteAiClient(): SiteAiClient {
   };
 }
 
-const clients = new WeakMap<Config, SiteAiClient | null>();
+const clients = new Map<string, SiteAiClient>();
+let fakeClient: SiteAiClient | null = null;
 
-/** The model client: ctx.providers.siteAi when set (tests), else Anthropic when ANTHROPIC_API_KEY is set, else null (no AI). */
-export function siteAiFor(ctx: AppContext): SiteAiClient | null {
+/**
+ * The model client: ctx.providers.siteAi when set (tests), else Anthropic with the platform key (wave N: services/ai-key.ts
+ * resolves the key the founder saved at /admin/ai, falling back to ANTHROPIC_API_KEY), else the SITE_AI_FAKE stand-in, else null.
+ */
+export async function siteAiFor(ctx: AppContext): Promise<SiteAiClient | null> {
   if (ctx.providers.siteAi !== undefined) return ctx.providers.siteAi;
-  if (!clients.has(ctx.config)) clients.set(ctx.config, createSiteAiClient(ctx.config) ?? (ctx.config.site.fake ? fakeSiteAiClient() : null));
-  return clients.get(ctx.config) ?? null;
+  const { resolveAnthropicKey } = await import("./ai-key.js");
+  const k = await resolveAnthropicKey(ctx);
+  if (k) {
+    const id = `${k.key}|${ctx.config.site.model}|${ctx.config.site.editModel}`;
+    let c = clients.get(id);
+    if (!c) {
+      if (clients.size > 4) clients.clear();
+      c = createSiteAiClient({ ...ctx.config, site: { ...ctx.config.site, apiKey: k.key } })!;
+      clients.set(id, c);
+    }
+    return c;
+  }
+  if (ctx.config.site.fake) return (fakeClient ??= fakeSiteAiClient());
+  return null;
 }
 
 /** Run a call and log its usage (table + app log). The log line carries counts only, never copy. */
@@ -175,6 +191,9 @@ export async function runLogged(ctx: AppContext, merchantId: string, client: Sit
     cacheReadTokens: res.usage.cacheRead,
     cacheWriteTokens: res.usage.cacheWrite,
   });
+  // wave-n: the same call in the platform AI meter (/admin/ai: per-shop usage and the global monthly spend).
+  const { recordAiUsage } = await import("./ai-key.js");
+  await recordAiUsage(ctx, { merchantId, feature: "site", model: res.model, outcome: res.outcome, input: res.usage.input + res.usage.cacheRead + res.usage.cacheWrite, output: res.usage.output });
   if (ctx.config.env !== "test") {
     console.info(JSON.stringify({ msg: "site_ai_call", merchantId, kind: req.kind, model: res.model, outcome: res.outcome, ...res.usage }));
   }

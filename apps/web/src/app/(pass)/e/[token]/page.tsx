@@ -39,7 +39,7 @@ export default async function CateringQuotePage({ params, searchParams }: Props)
     );
   const shop = await loadShopBrief(data.merchant.slug).catch(() => null);
   return (
-    <PageFrame locale={locale} trade={shop?.vertical}>
+    <PageFrame locale={locale} trade={shop?.vertical} brandColor={shop?.brandColor}>
       <CateringApproval token={token} initial={data} />
     </PageFrame>
   );

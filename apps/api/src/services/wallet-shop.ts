@@ -155,7 +155,14 @@ export function buildShopModel(config: Pick<Config, "publicWebUrl">, i: ModelInp
     goal = (next ?? rw[rw.length - 1])?.cost ?? 0;
     filled = Math.min(i.balance, goal);
   }
-  const nextReward = rewardName ? { name: rewardName, cost: kind === "stamps" ? goal : (next ?? first)!.cost, left: Math.max(0, (kind === "stamps" ? goal : (next ?? first)!.cost) - (kind === "stamps" ? filled : i.balance)) } : null;
+  let nextReward: ShopPassModel["nextReward"] = rewardName ? { name: rewardName, cost: kind === "stamps" ? goal : (next ?? first)!.cost, left: Math.max(0, (kind === "stamps" ? goal : (next ?? first)!.cost) - (kind === "stamps" ? filled : i.balance)) } : null;
+  // wave-n: rules. A stamp card with reward tiers ("5 stamps: free cookie") names the next tier not reached yet, then the card's reward.
+  const tier = kind === "stamps" ? rw.find((r) => r.cost > filled && r.cost < goal) : undefined;
+  if (tier && rw.some((r) => r.cost < goal) && rw.some((r) => r.cost >= goal)) nextReward = { name: tier.name, cost: tier.cost, left: Math.max(0, tier.cost - filled) };
+  else if (kind === "stamps" && rw.some((r) => r.cost < goal) && !s.rewardText?.trim()) {
+    const card = rw.find((r) => r.cost === goal) ?? rw.find((r) => r.cost > goal) ?? rw[rw.length - 1];
+    if (card) nextReward = { name: card.name, cost: goal, left: Math.max(0, goal - filled) };
+  }
   const web = config.publicWebUrl.replace(/\/$/, "");
   return {
     merchantId: m.id,

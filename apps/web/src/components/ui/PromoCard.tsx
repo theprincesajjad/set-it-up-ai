@@ -26,6 +26,9 @@ export interface PromoCardPromo {
   daysOfWeek?: number[] | null;
   startTime?: string | null;
   endTime?: string | null;
+  /** wave-n promo: a door crasher's spots (the live counter). */
+  quantityCap?: number | null;
+  remaining?: number | null;
 }
 
 export interface PromoCardProps {
@@ -97,6 +100,11 @@ export function PromoCard({ promo, shop, sponsored, variant = "feed", href, term
           {m ? <span className="text-meta text-fg-muted">{m}</span> : null}
         </div>
         {when ? <p className="text-meta text-fg">{when}</p> : null}
+        {promo.quantityCap != null ? (
+          <p className="text-meta-strong text-fg" data-testid="promo-remaining">
+            {(promo.remaining ?? 0) <= 0 ? t("deal.soldOut") : promo.remaining === 1 ? t("deal.oneSpotLeft") : t("deal.spotsLeft", { n: promo.remaining ?? 0 })}
+          </p>
+        ) : null}
       </div>
     </>
   );

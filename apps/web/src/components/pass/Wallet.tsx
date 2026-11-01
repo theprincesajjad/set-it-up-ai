@@ -11,6 +11,7 @@ import { LanguageChip, PassPanel } from "./PassChrome";
 import { NearbyOnStreet } from "./NearbyOnStreet";
 import { PassActions } from "./PassActions";
 import { heroMembership, ShopPassHero } from "./ShopPassHero";
+import { CardFan } from "./ShopBrand";
 import { Activity, ChevronRight, Download, Gift, LogOut, Search, Settings, Store, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,7 @@ import { Button } from "@/components/ui/Button";
 import { IconTile } from "@/components/ui/IconTile";
 import { DiscountCard } from "@/components/ui/DiscountCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { shopColorProps } from "@/lib/shopColor";
 import { Modal } from "@/components/ui/Modal";
 import { PointsRing } from "@/components/ui/PointsRing";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -141,7 +143,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
   return (
-    <div data-trade={hero?.merchant.vertical} className="isolate flex flex-col gap-4 pb-32">
+    <div {...shopColorProps(hero?.merchant)} className="isolate flex flex-col gap-4 pb-32">
       <header className={cn("flex min-h-11 items-center gap-2", onField && "text-trade-pass-text")}>
         <h1
           id="total"
@@ -218,7 +220,7 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
       {hero ? <PassActions card={card} profile={profile} /> : null}
       <NearbyOnStreet shops={nearby} />
       {!hero ? (
-        <EmptyState icon={Store} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button variant="secondary" href="/map">{t("sh.wallet.empty")}</Button>} />
+        <EmptyState icon={Store} media={<CardFan />} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button variant="secondary" href="/map">{t("sh.wallet.empty")}</Button>} />
       ) : !d ? (
         loading || wallet.items.length ? <SkeletonCard /> : null
       ) : (
@@ -278,7 +280,7 @@ function progressLine(m: customerApi.MembershipDto, t: Tr, locale: string) {
 function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChanged, profile, campaigns, endsLabels }: { wallet: customerApi.WalletResponse; details: Details; openShop: string | null; setOpenShop: (id: string | null) => void; loadDetails: (ids?: string[]) => Promise<void>; onChanged: () => Promise<void>; profile: customerApi.ProfileDto; campaigns: campaignsApi.MyCampaign[]; endsLabels: Record<string, string> }) {
   const { t, locale } = useLocaleOrEnglish();
   if (!wallet.items.length)
-    return <EmptyState icon={Store} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
+    return <EmptyState icon={Store} media={<CardFan />} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
   // Rewards ready float to the top under their own header (foundations.md "Wallet").
   const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0);
   const rest = wallet.items.filter((m) => m.rewardsAvailableCount === 0);
@@ -291,7 +293,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
     const pct = m.nextReward && m.nextReward.pointsCost > 0 ? Math.max(0, Math.min(100, ((m.nextReward.pointsCost - m.nextReward.pointsNeeded) / m.nextReward.pointsCost) * 100)) : null;
     const unit = unitCaption(locale, m.balance, m.terminology);
     return (
-      <li key={m.id} data-trade={m.merchant.vertical} className="-mx-4">
+      <li key={m.id} {...shopColorProps(m.merchant)} className="-mx-4">
         <button
           type="button"
           aria-haspopup="dialog"
@@ -301,13 +303,13 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
           }}
           className="flex w-full items-center gap-3.5 px-4 py-3.5 text-start transition-colors hover:bg-hover focus-visible:focus-ring"
         >
-          <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={44} />
+          <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={44} tone="trade" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-body-strong text-foreground"><bdi>{m.merchant.name}</bdi></span>
             <span className={cn("mt-0.5 block truncate text-meta", ready ? "text-points-text" : "text-muted-foreground")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
             {!ready && pct != null ? (
               <span aria-hidden className="mt-2 block h-0.75 w-36 overflow-hidden rounded-full bg-muted">
-                <span className="block h-0.75 rounded-full bg-trade clear:bg-foreground" style={{ width: `${pct}%` }} />
+                <span className="block h-0.75 rounded-full bg-trade" style={{ width: `${pct}%` }} />
               </span>
             ) : null}
           </span>
@@ -378,7 +380,7 @@ function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.Membership
   // Referrals are a paid shop feature: the API reports the bonus as 0 when the shop doesn't have them.
   const canInvite = (m.program?.referralBonus ?? 0) > 0 && (m as { features?: { referrals?: boolean } }).features?.referrals !== false;
   return (
-    <div data-trade={m.merchant.vertical} className="flex flex-col gap-5">
+    <div {...shopColorProps(m.merchant)} className="flex flex-col gap-5">
       {m.program?.earnType === "stamps" ? (
         <StampCard stamps={m.balance} goal={m.program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={m.merchant.vertical} terminology={m.terminology} />
       ) : (
@@ -525,7 +527,7 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
   if (!ready.length) {
     const close = [...wallet.items].filter((m) => m.nextReward).sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct).slice(0, 5);
     if (!close.length)
-      return <EmptyState icon={Gift} title={t("sh.rewards.emptyTitle")} description={t("sh.rewards.emptyBody")} action={<Button variant="secondary" onClick={onShowShops}>{t("sh.rewards.seeShops")}</Button>} />;
+      return <EmptyState icon={Gift} tone="trade" title={t("sh.rewards.emptyTitle")} description={t("sh.rewards.emptyBody")} action={<Button variant="secondary" onClick={onShowShops}>{t("sh.rewards.seeShops")}</Button>} />;
     return (
       <div className="flex flex-col gap-3">
         <p className="text-body text-fg-muted">{t("sh.rewards.emptyBody")}</p>
@@ -550,7 +552,7 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
   return (
     <div className="flex flex-col gap-6">
       {ready.map((m) => (
-        <section key={m.id} data-trade={m.merchant.vertical} aria-label={m.merchant.name} className="flex flex-col gap-3">
+        <section key={m.id} {...shopColorProps(m.merchant)} aria-label={m.merchant.name} className="flex flex-col gap-3">
           {/* Clear: no tinted band (the trade colour stays on the logo); the shop is a plain header over its rewards card. */}
           <div className="flex items-center gap-2.5 rounded-card bg-trade-soft p-3 clear:bg-transparent clear:px-4 clear:py-0">
             <ShopLogo shop={m.merchant} size={32} />
@@ -583,7 +585,7 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
   let history: React.ReactNode;
   if (loading && !rows.length) history = <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
   else if (!rows.length) {
-    history = <EmptyState icon={Activity} title={t("sh.activity.emptyTitle")} description={t("sh.activity.emptyBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
+    history = <EmptyState icon={Activity} tone="trade" title={t("sh.activity.emptyTitle")} description={t("sh.activity.emptyBody")} action={<Button href="/map">{t("sh.wallet.empty")}</Button>} />;
   } else
     history = (
       <PassPanel title={t("sh.activity.history")}>

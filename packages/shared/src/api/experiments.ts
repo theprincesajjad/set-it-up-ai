@@ -24,7 +24,7 @@ export const landingEventsBody = z.object({
   /** The page look (`data-solo-trade`): nails, brows, lashes, makeup, barber, groom. */
   tr: z.string().max(20).nullish(),
   src: z.string().max(80).nullish(),
-  /** location.search, when the page sends it instead of `src`; only its `src` is read. */
+  /** location.search, when the page sends it instead of `src`; only its `src` and `utm_source|medium|campaign` are read. */
   q: z.string().max(400).nullish(),
   ev: z
     .array(z.object({ k: z.string().max(20), t: z.number().optional(), d: z.string().max(20).nullish() }))
@@ -32,7 +32,12 @@ export const landingEventsBody = z.object({
     .max(BEACON_MAX_EVENTS),
 });
 export type LandingEventsBody = z.infer<typeof landingEventsBody>;
-export const KNOWN_KINDS: readonly string[] = LANDING_EVENT_KINDS;
+/**
+ * Beacon kinds the API stores: the landing page's own five, plus `signup_start` (wave N, admin funnel), sent once by the signup
+ * wizard with `p: "/signup"` when the visitor has an `ll_aid` and no GPC; the API files it under the visitor's landing page.
+ */
+export const SIGNUP_START_KIND = "signup_start";
+export const KNOWN_KINDS: readonly string[] = [...LANDING_EVENT_KINDS, SIGNUP_START_KIND];
 
 /** GET /v1/public/experiments: what the web proxy needs to assign (cached there for a minute). */
 export interface PublicExperimentsState {

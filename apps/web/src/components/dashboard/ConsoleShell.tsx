@@ -1,6 +1,6 @@
 "use client";
 import {
-  BarChart3, ClipboardList, MessageCircle, Coins, FileText, Flag, Footprints, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Rocket, Store, Users, CreditCard, type LucideIcon,
+  Activity, BarChart3, Building2, ClipboardList, Filter, HeartPulse, Sparkles, MessageCircle, Coins, FileText, Flag, Footprints, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Rocket, Store, Users, CreditCard, type LucideIcon,
 } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import type { authApi, MessageKey } from "@ll/shared";
@@ -15,6 +15,7 @@ const ICONS: Record<string, LucideIcon> = {
   today: LayoutDashboard, day: Footprints, costs: Coins, leads: KanbanSquare, merchants: Store, new: PlusCircle, kits: Package,
   network: BarChart3, rollout: Gauge, plans: CreditCard, neighbourhoods: MapPinned, users: Users, ads: Flag, campaigns: ClipboardList, audit: History,
   overview: LayoutDashboard, shops: Store, reports: FileText, onboarding: Rocket, salesAgent: MessageCircle,
+  businesses: Building2, health: HeartPulse, funnel: Filter, performance: Activity, ai: Sparkles,
 };
 
 export type ConsoleKind = "rep" | "admin" | "bia";
@@ -48,6 +49,8 @@ const NAV: Record<ConsoleKind, ConsoleSection[]> = {
       label: "shell.console.section.network",
       items: [
         { key: "neighbourhoods", href: "/admin/neighbourhoods", label: "shell.console.areas" },
+        { key: "businesses", href: "/admin/businesses", label: "shell.console.businesses" },
+        { key: "health", href: "/admin/health", label: "shell.console.health" },
         { key: "merchants", href: "/admin/merchants", label: "shell.console.merchants" },
         { key: "onboarding", href: "/admin/onboarding", label: "shell.console.activation" },
         { key: "costs", href: "/admin/costs", label: "shell.console.costs" },
@@ -62,6 +65,7 @@ const NAV: Record<ConsoleKind, ConsoleSection[]> = {
         { key: "ads", href: "/admin/ads", label: "shell.console.adsReview" },
         { key: "salesAgent", href: "/admin/sales-agent", label: "shell.console.salesAgent" },
         { key: "siteDomains", href: "/admin/site-domains", label: "shell.console.siteDomains" },
+        { key: "funnel", href: "/admin/funnel", label: "shell.console.funnel" },
         { key: "experiments", href: "/admin/experiments", label: "shell.console.experiments" },
       ],
     },
@@ -71,6 +75,9 @@ const NAV: Record<ConsoleKind, ConsoleSection[]> = {
       items: [
         { key: "users", href: "/admin/users", label: "shell.console.users" },
         { key: "audit", href: "/admin/audit", label: "shell.console.audit" },
+        { key: "performance", href: "/admin/performance", label: "shell.console.performance" },
+        // The AI key settings page belongs to team promo (wave N); this is only its entry in the menu.
+        { key: "ai", href: "/admin/ai", label: "shell.console.ai" },
       ],
     },
   ],

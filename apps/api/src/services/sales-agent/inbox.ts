@@ -207,7 +207,7 @@ export async function quality(ctx: AppContext, days = 30): Promise<salesAgentApi
     },
     cases: EVAL_CASES.map((c) => ({ id: c.id, lang: c.lang, question: c.question, expect: c.expectText })),
     evalCommand: "pnpm --filter @ll/api eval:sales-agent",
-    modelConfigured: !!llmFor(ctx),
+    modelConfigured: !!(await llmFor(ctx)),
     model,
   };
 }

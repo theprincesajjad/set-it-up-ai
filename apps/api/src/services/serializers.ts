@@ -247,6 +247,11 @@ export function promoDto(p: Promo, timeZone: string, at: Date): networkApi.Promo
     endsAt: iso(p.endsAt),
     audience: (p.audience as networkApi.PromoDto["audience"]) ?? "network",
     activeNow: promoAppliesAt(p, at, timeZone),
+    // wave-n promo: the type, colour and the door crasher's live counter
+    promoType: p.promoType,
+    quantityCap: p.quantityCap,
+    remaining: p.quantityCap == null ? null : Math.max(0, p.quantityCap - p.claimedCount),
+    color: p.color,
   };
 }
 

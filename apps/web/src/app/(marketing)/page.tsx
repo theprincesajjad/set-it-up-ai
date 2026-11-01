@@ -6,6 +6,7 @@ import { BRAND, FEES } from "@ll/shared";
 import { CompetitorTable } from "@/components/marketing/CompetitorTable";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { LiveProof } from "@/components/marketing/LiveProof";
+import { LandingMeasure } from "@/components/marketing/landing-ab/LandingMeasure";
 import { IPhone } from "@/components/marketing/device/IPhone";
 import { CounterPhone, CounterTablet, MapPhone, PassPhone, PromoMock, TodayDesktop, TodayPhone } from "@/components/marketing/home/mocks";
 import "@/components/marketing/home/home.css";
@@ -94,7 +95,8 @@ export default function Home() {
   const plans = marketingPlans("shop");
   const pro = proHighlights("shop");
   return (
-    <div className="hm">
+    // data-solo-trade="home": the landing beacon's page marker (LandingMeasure below); "/" is counted for the admin funnel (wave N).
+    <div className="hm" data-solo-trade="home">
       {/* 1. Hero */}
       <section className="hm-hero" aria-labelledby="hm-title">
         <div className="hm-wrap hm-hero-copy">
@@ -417,6 +419,7 @@ export default function Home() {
       <div className="hm-sticky">
         <Primary cta="sticky">{L.sticky}</Primary>
       </div>
+      <LandingMeasure path="/" />
     </div>
   );
 }

@@ -58,19 +58,19 @@ export default async function ShopBanquetPage({ params, searchParams }: Props) {
   } catch (e) {
     if (isApiError(e) && (e.status === 402 || e.status === 404))
       return (
-        <PageFrame locale={locale} trade={shop.vertical}>
+        <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
           <EmptyState title={t("rc.bq.noHalls")} description={t("rc.bq.noHallsBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
         </PageFrame>
       );
     return (
-      <PageFrame locale={locale} trade={shop.vertical}>
+      <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={retry} />
       </PageFrame>
     );
   }
   const me = await getMe();
   return (
-    <PageFrame locale={locale} trade={shop.vertical}>
+    <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
       <BanquetView shop={shop} halls={halls} initialBusy={busy} initialMonth={month} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
     </PageFrame>
   );

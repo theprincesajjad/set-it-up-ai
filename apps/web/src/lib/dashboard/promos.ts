@@ -1,4 +1,4 @@
-import type { merchantApi } from "@ll/shared";
+import { promosApi, type merchantApi } from "@ll/shared";
 import { addDays, fromLocalInput, startOfTorontoDay, toLocalInput } from "./time";
 
 export type PromoKind = merchantApi.Promo["kind"];
@@ -27,10 +27,92 @@ export interface PromoDraft {
   percentOff: string;
   categoryId: string;
   audience: merchantApi.Promo["audience"];
+  // ---- wave-n: promo ----
+  promoType: promosApi.PromoType;
+  segment: promosApi.PromoSegment;
+  quantityCap: string;
+  color: promosApi.PromoColor | "";
+  holiday: string;
+  itemIds: string[];
+  channels: promosApi.PromoChannel[];
+  notifyText: string;
+  aiGenerationId: string;
+}
+
+/** The promo types an owner picks from (wave N). `kind` is the stamp effect the type starts with; both stay editable. */
+export const TYPE_INFO: Record<promosApi.PromoType, { label: string; hint: string }> = {
+  double_stamps: { label: "Double stamps", hint: "Every visit counts twice while it runs." },
+  bonus_stamps: { label: "Bonus stamps", hint: "A set number of extra stamps on each visit." },
+  door_crasher: { label: "Door crasher", hint: "A limited number of spots, first come. People save a spot in the app and see the live count." },
+  happy_hour: { label: "Happy hour", hint: "Extra stamps on chosen days and hours." },
+  seasonal: { label: "Seasonal or holiday", hint: "Valentine's, Diwali, Eid, Black Friday and more." },
+  comeback: { label: "Come back", hint: "For people who haven't visited in a while." },
+  birthday: { label: "Birthday", hint: "For people with a birthday this month." },
+  custom: { label: "Something else", hint: "Any offer in your own words." },
+};
+export const SEGMENT_LABEL: Record<promosApi.PromoSegment, string> = {
+  everyone: "Everyone",
+  regulars: "Regulars (3+ visits, seen in the last 60 days)",
+  lapsed: "Lapsed (no visit in 60+ days)",
+  new: "New (joined in the last 30 days)",
+  birthday: "Birthday this month",
+};
+export const HOLIDAY_LABEL: Record<promosApi.PromoHoliday, string> = {
+  valentines: "Valentine's Day", diwali: "Diwali", eid: "Eid", black_friday: "Black Friday", christmas: "Christmas", lunar_new_year: "Lunar New Year",
+  mothers_day: "Mother's Day", fathers_day: "Father's Day", halloween: "Halloween", canada_day: "Canada Day", back_to_school: "Back to school", other: "Another occasion",
+};
+export const GOAL_LABEL: Record<promosApi.PromoAiGoal, string> = {
+  fill_quiet_day: "Fill a quiet day",
+  win_back: "Bring back lapsed customers",
+  new_service: "Launch a new service",
+  holiday: "A holiday",
+  door_crasher: "A door crasher",
+};
+
+/** Picking a type sets its starting rule (still editable). */
+export function applyType(d: PromoDraft, type: promosApi.PromoType): PromoDraft {
+  const def = promosApi.PROMO_TYPE_DEFAULTS[type];
+  return {
+    ...d,
+    promoType: type,
+    kind: def.kind,
+    multiplier: def.multiplierPct ? String(def.multiplierPct / 100) : d.multiplier,
+    bonusPoints: def.bonusPoints ? String(def.bonusPoints) : d.bonusPoints,
+    segment: def.segment,
+    quantityCap: type === "door_crasher" ? d.quantityCap || String(def.quantityCap ?? 20) : "",
+  };
+}
+
+/** The AI draft into the editor: every field pre-filled, nothing published. */
+export function draftFromAi(base: PromoDraft, a: promosApi.PromoAiDraft, generationId: string, now = new Date()): PromoDraft {
+  const start = new Date(now.getTime() + a.startInDays * 86_400_000);
+  if (a.startInDays > 0) start.setHours(a.startTime ? Number(a.startTime.slice(0, 2)) : 9, a.startTime ? Number(a.startTime.slice(3, 5)) : 0, 0, 0);
+  const end = new Date(start.getTime() + a.durationDays * 86_400_000);
+  return {
+    ...base,
+    promoType: a.promoType,
+    kind: a.kind,
+    title: a.title,
+    body: a.body,
+    notifyText: a.notifyText,
+    multiplier: a.multiplierPct ? String(a.multiplierPct / 100) : base.multiplier,
+    bonusPoints: a.bonusPoints ? String(a.bonusPoints) : "",
+    percentOff: a.percentOff ? String(a.percentOff) : "",
+    quantityCap: a.quantityCap ? String(a.quantityCap) : "",
+    segment: a.segment,
+    audience: a.segment === "everyone" ? base.audience : "members",
+    daysOfWeek: a.daysOfWeek ?? [],
+    startTime: a.startTime ?? "",
+    endTime: a.endTime ?? "",
+    startsLocal: toLocalInput(start),
+    endsLocal: toLocalInput(end),
+    holiday: a.holiday ?? "",
+    aiGenerationId: generationId,
+  };
 }
 
 export function emptyPromo(now = new Date()): PromoDraft {
-  return { kind: "offer", title: "", body: "", imageUrl: "", startsLocal: toLocalInput(now), endsLocal: toLocalInput(addDays(now.toISOString(), 7)), daysOfWeek: [], startTime: "", endTime: "", multiplier: "2", bonusPoints: "", percentOff: "", categoryId: "", audience: "network" };
+  return { kind: "offer", title: "", body: "", imageUrl: "", startsLocal: toLocalInput(now), endsLocal: toLocalInput(addDays(now.toISOString(), 7)), daysOfWeek: [], startTime: "", endTime: "", multiplier: "2", bonusPoints: "", percentOff: "", categoryId: "", audience: "network", promoType: "custom", segment: "everyone", quantityCap: "", color: "", holiday: "", itemIds: [], channels: ["inbox", "push"], notifyText: "", aiGenerationId: "" };
 }
 
 export function draftFromPromo(p: merchantApi.Promo): PromoDraft {
@@ -38,6 +120,8 @@ export function draftFromPromo(p: merchantApi.Promo): PromoDraft {
     kind: p.kind, title: p.title, body: p.body ?? "", imageUrl: p.imageUrl ?? "", startsLocal: toLocalInput(p.startsAt), endsLocal: toLocalInput(p.endsAt), daysOfWeek: p.daysOfWeek ?? [],
     startTime: p.startTime ?? "", endTime: p.endTime ?? "", multiplier: p.multiplierPct ? String(p.multiplierPct / 100) : "2", bonusPoints: p.bonusPoints ? String(p.bonusPoints) : "",
     percentOff: p.percentOff ? String(p.percentOff) : "", categoryId: p.categoryId ?? "", audience: p.audience,
+    promoType: p.promoType ?? "custom", segment: p.segment ?? "everyone", quantityCap: p.quantityCap ? String(p.quantityCap) : "", color: p.color ?? "", holiday: p.holiday ?? "",
+    itemIds: p.itemIds ?? [], channels: p.channels ?? ["inbox", "push"], notifyText: p.notifyText ?? "", aiGenerationId: "",
   };
 }
 
@@ -66,6 +150,10 @@ export function validatePromo(d: PromoDraft): PromoErrors {
   if (d.kind === "bonus_points" && !(Number.parseInt(d.bonusPoints, 10) > 0)) e.bonusPoints = "Add how many bonus points.";
   if (d.kind === "discount" && !(Number.parseInt(d.percentOff, 10) >= 1 && Number.parseInt(d.percentOff, 10) <= 100)) e.percentOff = "Use 1 to 100%.";
   if ((d.startTime && !d.endTime) || (!d.startTime && d.endTime)) e.startTime = "Set both a start and an end time, or neither.";
+  if (d.promoType === "door_crasher" && !(Number.parseInt(d.quantityCap, 10) > 0)) e.quantityCap = "How many spots? For example 20.";
+  if (d.quantityCap && !(Number.parseInt(d.quantityCap, 10) > 0)) e.quantityCap = "Use a whole number of spots.";
+  if (d.promoType === "happy_hour" && !d.daysOfWeek.length && !d.startTime) e.daysOfWeek = "Pick the days or the hours.";
+  if (d.notifyText.length > 160) e.notifyText = "Keep the notification to 160 characters.";
   return e;
 }
 
@@ -84,7 +172,16 @@ export function promoBody(d: PromoDraft): Record<string, unknown> {
     bonusPoints: d.kind === "bonus_points" ? Number.parseInt(d.bonusPoints, 10) : null,
     percentOff: d.kind === "discount" ? Number.parseInt(d.percentOff, 10) : null,
     categoryId: d.categoryId || null,
-    audience: d.audience,
+    audience: d.segment !== "everyone" ? "members" : d.audience,
+    promoType: d.promoType,
+    segment: d.segment,
+    quantityCap: d.quantityCap ? Number.parseInt(d.quantityCap, 10) : null,
+    color: d.color || null,
+    holiday: d.holiday || null,
+    itemIds: d.itemIds,
+    channels: d.channels,
+    notifyText: d.notifyText.trim() || null,
+    ...(d.aiGenerationId ? { aiGenerationId: d.aiGenerationId } : {}),
   };
 }
 
@@ -108,9 +205,9 @@ export interface PromoTemplate {
 
 /** Four templates; each pre-fills the editor (rule, hours, weekdays). Bring a friend needs `loyalty.referrals`. */
 export const PROMO_TEMPLATES: PromoTemplate[] = [
-  { key: "slow_afternoons", title: "Slow afternoons", blurb: "Double stamps weekdays 2 to 4 pm", job: "Fills quiet hours", draft: { kind: "multiplier", title: "Double stamps on slow afternoons", body: "Double stamps weekdays 2 to 4 pm.", multiplier: "2", daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00", endsLocal: "" } },
+  { key: "slow_afternoons", title: "Slow afternoons", blurb: "Double stamps weekdays 2 to 4 pm", job: "Fills quiet hours", draft: { kind: "multiplier", promoType: "happy_hour", title: "Double stamps on slow afternoons", body: "Double stamps weekdays 2 to 4 pm.", multiplier: "2", daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00", endsLocal: "" } },
   { key: "bring_friend", title: "Bring a friend", blurb: "Both of you get a stamp on their first visit", job: "Brings new customers", needs: "loyalty.referrals", draft: { kind: "offer", title: "Bring a friend", body: "Bring a friend. Both of you get a stamp on their first visit.", endsLocal: "" } },
-  { key: "add_pastry", title: "Add a pastry", blurb: "Bonus stamp with any pastry and drink", job: "Raises the average sale", draft: { kind: "bonus_points", title: "Add a pastry", body: "Bonus stamp with any pastry and drink.", bonusPoints: "1", endsLocal: "" } },
+  { key: "add_pastry", title: "Add a pastry", blurb: "Bonus stamp with any pastry and drink", job: "Raises the average sale", draft: { kind: "bonus_points", promoType: "bonus_stamps", title: "Add a pastry", body: "Bonus stamp with any pastry and drink.", bonusPoints: "1", endsLocal: "" } },
   { key: "quiet_mondays", title: "Quiet Mondays", blurb: "Free upsize every Monday", job: "Fixes your slowest day", draft: { kind: "offer", title: "Quiet Mondays", body: "Free upsize every Monday.", daysOfWeek: [1], endsLocal: "" } },
 ];
 
@@ -175,6 +272,7 @@ export function promoWhen(p: Pick<merchantApi.Promo, "daysOfWeek" | "startTime" 
 /** The status line under a promo's name: "Live · until Oct 29", "Live · no end date", "Ended Oct 12". */
 export function promoStatusLine(p: Pick<merchantApi.Promo, "status" | "endsAt" | "startsAt">): string {
   const d = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric" }).format(new Date(iso));
+  if ((p as { pausedAt?: string | null }).pausedAt && (p.status === "live" || p.status === "scheduled")) return "Paused";
   if (p.status === "live") return p.endsAt ? `Live · until ${d(p.endsAt)}` : "Live · no end date";
   if (p.status === "ended") return `Ended ${d(p.endsAt ?? p.startsAt)}`;
   if (p.status === "scheduled") return `Starts ${d(p.startsAt)}`;

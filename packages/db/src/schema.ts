@@ -366,10 +366,24 @@ export const merchants = pgTable(
     workSetting: text("work_setting"),
     /** Mobile pros: how far they travel, in km (5, 10 or 20). */
     serviceRadiusKm: integer("service_radius_km"),
+    // ---- wave N: admin cockpit (0046_admin_cockpit) ----
+    /** Landing attribution, copied at signup from the visitor's first landing view (ll_aid; GPC and ll_aid=off send none). Admin only. */
+    signupAnonId: text("signup_anon_id"),
+    /** "/", "/for-nail-techs", "/for-barbers", "/for-groomers", or null for a signup with no landing visit. */
+    signupPage: text("signup_page"),
+    signupVariant: text("signup_variant"),
+    signupExperimentId: text("signup_experiment_id"),
+    signupSrc: text("signup_src"),
+    signupUtmSource: text("signup_utm_source"),
+    signupUtmMedium: text("signup_utm_medium"),
+    signupUtmCampaign: text("signup_utm_campaign"),
+    /** phone | desktop, from the landing view. */
+    signupDevice: text("signup_device"),
+    // ---- end wave N: admin cockpit ----
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("merchants_slug_uq").on(t.slug), index("merchants_neighbourhood_idx").on(t.neighbourhoodId)],
+  (t) => [uniqueIndex("merchants_slug_uq").on(t.slug), index("merchants_neighbourhood_idx").on(t.neighbourhoodId), index("merchants_signup_anon_idx").on(t.signupAnonId)],
 );
 
 /** Unlimited locations, free. */
@@ -477,6 +491,16 @@ export const loyaltyPrograms = pgTable(
     counterAutoStamp: boolean("counter_auto_stamp").notNull().default(false),
     /** What one reward costs the shop (cents); optional, Reports uses it to estimate rewards owed. */
     rewardCostCents: integer("reward_cost_cents"),
+    // ---- wave-n: rules ---- (services/earn-engine.ts)
+    /** What one stamp is worth for visit/stamp programs: visit | purchase | pickup (an online order picked up). per_dollar ignores it. */
+    earnUnit: text("earn_unit").notNull().default("visit"),
+    /** all = everything earns (except no-earn categories); selected = only the categories, items and services below. */
+    earnScope: text("earn_scope").notNull().default("all"),
+    earnCategoryIds: jsonb("earn_category_ids").$type<string[]>().notNull().default([]),
+    earnItemIds: jsonb("earn_item_ids").$type<string[]>().notNull().default([]),
+    earnServiceIds: jsonb("earn_service_ids").$type<string[]>().notNull().default([]),
+    /** Abuse limit for visit/stamp programs: most stamps one customer can earn in a local day. Null = no limit. */
+    maxStampsPerDay: integer("max_stamps_per_day"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -732,10 +756,130 @@ export const promos = pgTable(
     status: promoStatus("status").notNull().default("draft"),
     viewCount: integer("view_count").notNull().default(0),
     claimCount: integer("claim_count").notNull().default(0),
+    // ---- wave-n: promo ---- (services/promos.ts; notes in docs via the promo team)
+    /** double_stamps | bonus_stamps | door_crasher | happy_hour | seasonal | comeback | birthday | custom. `kind` stays the stamp effect. */
+    promoType: text("promo_type").notNull().default("custom"),
+    /** Who it is for: everyone | regulars | lapsed | new | birthday (birthday this month). */
+    segment: text("segment").notNull().default("everyone"),
+    /** Door crasher: spots available (first come). Null = no limit. */
+    quantityCap: integer("quantity_cap"),
+    /** Spots taken (claims + counter redemptions). Only ever changed by one guarded UPDATE (never past quantity_cap). */
+    claimedCount: integer("claimed_count").notNull().default(0),
+    /** Card colour token key (design tokens), e.g. "peach"; the image wins when both are set. */
+    color: text("color"),
+    /** Seasonal deals: valentines | diwali | eid | black_friday | ... (free text key). */
+    holiday: text("holiday"),
+    /** Eligible services or items (ids from the shop's catalogue); empty = everything that earns. */
+    itemIds: jsonb("item_ids").$type<string[]>().notNull().default([]),
+    /** Where it goes: inbox (always), push (app + web push), email. Never SMS. */
+    channels: jsonb("channels").$type<string[]>().notNull().default(["inbox", "push"]),
+    /** The notification line (push / email first line). Null = the title. */
+    notifyText: text("notify_text"),
+    pausedAt: ts("paused_at"),
+    endedEarlyAt: ts("ended_early_at"),
+    duplicatedFrom: uuid("duplicated_from"),
+    aiGenerationId: uuid("ai_generation_id"),
+    /** When the announcement fan-out ran (null = not yet). */
+    announcedAt: ts("announced_at"),
+    /** When the "starts in 1 hour" reminder fan-out ran. */
+    remindedAt: ts("reminded_at"),
+    // ---- end wave-n: promo ----
     createdAt: createdAt(),
   },
   (t) => [index("promos_merchant_idx").on(t.merchantId), index("promos_window_idx").on(t.startsAt, t.endsAt)],
 );
+
+// ---- wave-n: promo ----
+/** One spot of a limited deal (door crasher) or one redemption at the counter. One per member per promo. */
+export const promoClaims = pgTable(
+  "promo_claims",
+  {
+    id: id(),
+    promoId: uuid("promo_id").notNull().references(() => promos.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id").notNull().references(() => merchantMembers.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** claimed (spot held, show at the counter) | redeemed */
+    status: text("status").notNull().default("claimed"),
+    code: text("code").notNull(),
+    /** Sale amount staff entered at redemption (revenue attributed). */
+    amountCents: integer("amount_cents"),
+    redeemedAt: ts("redeemed_at"),
+    redeemedBy: uuid("redeemed_by").references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("promo_claims_member_uq").on(t.promoId, t.memberId), index("promo_claims_merchant_idx").on(t.merchantId, t.createdAt)],
+);
+
+/** One marketing message about a promo to one person (announcement or reminder): the results and the frequency cap read this. */
+export const promoDeliveries = pgTable(
+  "promo_deliveries",
+  {
+    id: id(),
+    promoId: uuid("promo_id").notNull().references(() => promos.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id").notNull().references(() => merchantMembers.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** announce | reminder */
+    kind: text("kind").notNull().default("announce"),
+    /** push | web_push | email | inbox (inbox only: no channel reached them, the Deals inbox still shows it) */
+    channel: text("channel").notNull(),
+    /** sent | failed | skipped */
+    status: text("status").notNull().default("sent"),
+    /** Why it was skipped: cap | quiet_hours | no_consent | muted */
+    skipReason: text("skip_reason"),
+    openedAt: ts("opened_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("promo_deliveries_once_uq").on(t.promoId, t.memberId, t.kind),
+    index("promo_deliveries_cap_idx").on(t.merchantId, t.userId, t.createdAt),
+  ],
+);
+
+/** The platform AI settings (one row, id = "global"): the founder's Claude key (AES-256-GCM, APP_ENCRYPTION_KEY), caps, plan gating. */
+export const aiSettings = pgTable("ai_settings", {
+  id: text("id").primaryKey().default("global"),
+  /** iv.tag.ciphertext (base64url), or null when no key is stored. */
+  encryptedKey: text("encrypted_key"),
+  /** Last 4 characters, for the masked display. Never the key. */
+  keyLast4: text("key_last4"),
+  keySetAt: ts("key_set_at"),
+  keySetBy: uuid("key_set_by").references(() => users.id),
+  keyValidatedAt: ts("key_validated_at"),
+  /** Model for promo writing; must be one of the configured models (config.ai.models). */
+  model: text("model"),
+  /** Global monthly spend cap across every shop, in cents. */
+  monthlySpendCapCents: integer("monthly_spend_cap_cents").notNull().default(5000),
+  /** Per-shop monthly quotas on paid plans and the trial. */
+  shopGenerationsPerMonth: integer("shop_generations_per_month").notNull().default(60),
+  shopTokensPerMonth: integer("shop_tokens_per_month").notNull().default(300000),
+  /** The small taste on Free. 0 = none. */
+  freeGenerationsPerMonth: integer("free_generations_per_month").notNull().default(3),
+  updatedAt: ts("updated_at"),
+});
+
+/** Every AI call, per shop (null merchant = platform: the sales agent, key validation). Spend in micro-dollars. */
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: id(),
+    merchantId: uuid("merchant_id").references(() => merchants.id, { onDelete: "cascade" }),
+    /** promo | site | sales_agent | validate */
+    feature: text("feature").notNull(),
+    model: text("model").notNull(),
+    /** ok | refusal | invalid | error | max_tokens | fake */
+    outcome: text("outcome").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costMicros: bigint("cost_micros", { mode: "number" }).notNull().default(0),
+    /** promo goal (fill_quiet_day | win_back | new_service | holiday) */
+    goal: text("goal"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("ai_usage_merchant_idx").on(t.merchantId, t.createdAt), index("ai_usage_created_idx").on(t.createdAt)],
+);
+// ---- end wave-n: promo ----
 
 /** Neighbourhood-wide perks, e.g. bonus when a customer visits their 3rd shop on the strip. */
 export const networkPerks = pgTable("network_perks", {
@@ -2091,7 +2235,7 @@ export const auditLogs = pgTable(
     ip: text("ip"),
     createdAt: createdAt(),
   },
-  (t) => [index("audit_logs_merchant_idx").on(t.merchantId, t.createdAt)],
+  (t) => [index("audit_logs_merchant_idx").on(t.merchantId, t.createdAt), index("audit_logs_merchant_action_idx").on(t.merchantId, t.action, t.createdAt)],
 );
 
 
@@ -3544,9 +3688,14 @@ export const landingEvents = pgTable(
     data: text("data"),
     /** phone | desktop (from the user agent, which is not stored). */
     device: text("device").notNull(),
+    /** The page's utm_* parameters (same character rules as src). 0046_admin_cockpit. */
+    utmSource: text("utm_source"),
+    utmMedium: text("utm_medium"),
+    utmCampaign: text("utm_campaign"),
     createdAt: createdAt(),
   },
   (t) => [
+    index("landing_events_anon_idx").on(t.anonId, t.createdAt),
     index("landing_events_exp_idx").on(t.experimentId, t.variant, t.kind, t.createdAt),
     // A refresh is not a second exposure or a second submit.
     uniqueIndex("landing_events_once_uq").on(t.anonId, t.experimentId, t.kind).where(sql`${t.kind} in ('view', 'start_submit')`),
@@ -3704,3 +3853,27 @@ export const appointmentWaitlist = pgTable(
   ],
 );
 // ---- end phase-pro: p2 ----
+
+// ---- wave N: admin cockpit ----
+/**
+ * API latency, rolled up in process (apps/api/src/lib/metrics.ts) and written every few minutes: one row per route template per flush.
+ * No PII: the route template ("GET /v1/merchants/:merchantId/visits"), never the URL, ids, query or body. Deleted after 30 days.
+ */
+export const apiMetrics = pgTable(
+  "api_metrics",
+  {
+    id: id(),
+    bucketStart: ts("bucket_start").notNull(),
+    routeGroup: text("route_group").notNull(),
+    route: text("route").notNull(),
+    count: integer("count").notNull(),
+    /** 5xx responses. */
+    errors: integer("errors").notNull(),
+    sumMs: doublePrecision("sum_ms").notNull(),
+    maxMs: doublePrecision("max_ms").notNull(),
+    /** Counts per latency bucket (LATENCY_BUCKETS_MS in lib/metrics.ts, the last one open-ended). */
+    hist: jsonb("hist").$type<number[]>().notNull(),
+  },
+  (t) => [index("api_metrics_bucket_idx").on(t.bucketStart)],
+);
+// ---- end wave N: admin cockpit ----

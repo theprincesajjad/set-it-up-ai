@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 /** Runtime configuration. Every value has a safe local-dev default. */
 export interface Config {
   env: "development" | "test" | "production";
@@ -124,6 +125,26 @@ export interface Config {
    * EXPERIMENTS_LIGHTHOUSE_JSON is the path of the JSON the e2e run writes ({ "<experimentId>:<variant>" | "<variant>": score }).
    */
   experiments: { testClock: boolean; now?: string; lighthouseJson?: string };
+  // ---- wave-n: promo ----
+  /**
+   * The AI campaign helper and the shared Claude key (services/ai-key.ts, promo-ai.ts). The founder pastes a key at /admin/ai; it is
+   * stored AES-256-GCM encrypted with APP_ENCRYPTION_KEY (64 hex characters, or a passphrase of 32+ characters that is hashed);
+   * without that master key the admin page refuses to save. ANTHROPIC_API_KEY stays the fallback for every AI feature.
+   * PROMO_AI_MODEL (default claude-opus-5-5) and PROMO_AI_MODELS (the list the admin can pick from) keep model ids in config.
+   * PROMO_AI_PLANS (default "plus,studio,pro,trial") are the plans the helper is open to; Free gets the admin's small taste.
+   * PROMO_AI_FAKE=1 (never in production): a deterministic stand-in, for tests and e2e without a key.
+   */
+  ai: { masterKeyHex?: string; envKey?: string; model: string; models: string[]; validateModel: string; plans: string[]; fake: boolean; effort: "low" | "medium" | "high"; prices: Record<string, { inputPerM: number; outputPerM: number }> };
+  // ---- end wave-n: promo ----
+}
+
+/** APP_ENCRYPTION_KEY → a 32-byte hex key: 64 hex characters as they are, a long passphrase hashed. Short values are ignored (no key). */
+export function masterKeyFrom(raw: string | undefined): string | undefined {
+  const v = raw?.trim();
+  if (!v) return undefined;
+  if (/^[0-9a-fA-F]{64}$/.test(v)) return v.toLowerCase();
+  if (v.length >= 32) return createHash("sha256").update(v).digest("hex");
+  return undefined;
 }
 
 function parseTrustProxy(v: string | undefined, isProd: boolean): boolean | number {
@@ -256,5 +277,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     walletDevFake: !isProd && env.WALLET_DEV_FAKE === "1",
     experiments: { testClock: !isProd, now: env.EXPERIMENTS_NOW || undefined, lighthouseJson: env.EXPERIMENTS_LIGHTHOUSE_JSON || undefined },
+    // ---- wave-n: promo ----
+    ai: {
+      masterKeyHex: masterKeyFrom(env.APP_ENCRYPTION_KEY),
+      envKey: env.ANTHROPIC_API_KEY || undefined,
+      model: env.PROMO_AI_MODEL || "claude-opus-5-5",
+      models: (env.PROMO_AI_MODELS || "claude-opus-5-5,claude-haiku-5-5").split(",").map((x) => x.trim()).filter(Boolean),
+      validateModel: env.PROMO_AI_VALIDATE_MODEL || "claude-haiku-5-5",
+      plans: (env.PROMO_AI_PLANS || "plus,studio,pro,trial").split(",").map((x) => x.trim()).filter(Boolean),
+      fake: env.PROMO_AI_FAKE === "1" && !isProd,
+      effort: env.PROMO_AI_EFFORT === "medium" || env.PROMO_AI_EFFORT === "high" ? env.PROMO_AI_EFFORT : "low",
+      // US dollars per million tokens (the claude-api skill's price table); unknown models are metered at the Opus price.
+      prices: { "claude-opus-5-5": { inputPerM: 4, outputPerM: 20 }, "claude-haiku-5-5": { inputPerM: 0.1, outputPerM: 0.5 } },
+    },
+    // ---- end wave-n: promo ----
   };
 }

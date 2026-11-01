@@ -21,6 +21,8 @@ export interface PurchaseLine {
   categoryId?: string | null;
   /** Optional catalog item id for item bonuses. */
   itemId?: string | null;
+  /** Optional service id (appointments, invoices) for "only these services earn". */
+  serviceId?: string | null;
   quantity?: number;
 }
 
@@ -43,6 +45,11 @@ export interface EarnInput {
   boosts?: ActiveBoost[];
   /** VIP level earn multiplier (1 = none). */
   vipMultiplier?: number;
+  /**
+   * The shop earns on selected categories, items or services only: a line this returns false for is excluded, and a
+   * visit/stamp purchase needs at least one eligible line to qualify. Omitted = every line not in a no-earn category earns.
+   */
+  isLineEligible?: (line: PurchaseLine) => boolean;
 }
 
 export interface EarnResult {
@@ -59,14 +66,19 @@ export function calculateEarn(input: EarnInput): EarnResult {
   const noEarn = input.noEarnCategoryIds instanceof Set ? input.noEarnCategoryIds : new Set(input.noEarnCategoryIds);
   let eligibleCents = 0;
   let excludedCents = 0;
+  let eligibleLines = 0;
+  const excluded = (l: PurchaseLine) => (!!l.categoryId && noEarn.has(l.categoryId)) || (input.isLineEligible ? !input.isLineEligible(l) : false);
   for (const line of input.lines) {
     const amt = Math.max(0, Math.round(line.amountCents));
-    if (line.categoryId && noEarn.has(line.categoryId)) excludedCents += amt;
-    else eligibleCents += amt;
+    if (excluded(line)) excludedCents += amt;
+    else {
+      eligibleCents += amt;
+      eligibleLines++;
+    }
   }
   const breakdown: string[] = [];
   const { rules } = input;
-  const qualifiesAsVisit = eligibleCents >= rules.minSpendCents && (eligibleCents > 0 || rules.minSpendCents === 0);
+  const qualifiesAsVisit = eligibleCents >= rules.minSpendCents && (eligibleCents > 0 || rules.minSpendCents === 0) && (!input.isLineEligible || eligibleLines > 0);
 
   let basePoints = 0;
   if (rules.earnType === "per_dollar") {
@@ -87,7 +99,7 @@ export function calculateEarn(input: EarnInput): EarnResult {
       (l) =>
         (!b.itemId || l.itemId === b.itemId) &&
         (!b.categoryId || l.categoryId === b.categoryId) &&
-        !(l.categoryId && noEarn.has(l.categoryId)),
+        !excluded(l),
     );
   for (const b of input.boosts ?? []) {
     if (!lineMatches(b)) continue;
@@ -101,6 +113,7 @@ export function calculateEarn(input: EarnInput): EarnResult {
   if (multiplier > vip) breakdown.push(`Promo x${multiplier / vip}`);
   if (bonusPoints) breakdown.push(`+${bonusPoints} bonus`);
   if (excludedCents) breakdown.push(`$${(excludedCents / 100).toFixed(2)} excluded (no-earn)`);
+  else if (input.isLineEligible && !eligibleLines) breakdown.push("Not on the list of things that earn");
 
   const boostedBase = Math.floor(basePoints * multiplier);
   // Flat bonuses only apply to a qualifying purchase.

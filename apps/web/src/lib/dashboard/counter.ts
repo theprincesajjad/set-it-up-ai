@@ -114,6 +114,8 @@ export function counterErrorMessage(e: { code?: string; status?: number; message
   switch (e.code) {
     case "cooldown":
       return ct.t("counter.err.cooldown", { who, word });
+    case "daily_limit":
+      return ct.t("counter.err.dailyLimit", { who, word });
     case "insufficient_points":
       return ct.t("counter.err.insufficient", { word });
     case "expired":

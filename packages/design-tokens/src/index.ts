@@ -18,6 +18,7 @@ export * from "./warm.js";
 export * from "./clear.js";
 export * from "./charts.js";
 export * from "./contrast.js";
+export * from "./shopColor.js";
 export * from "./map.js";
 
 import { colors } from "./colors.js";

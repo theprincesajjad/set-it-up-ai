@@ -133,3 +133,16 @@ export function assignLanding(i: AssignInput): Assignment {
   variant ??= CONTROL_VARIANT;
   return { kind: "rewrite", pathname: variantPath(page, look, variant), variant, experimentId: exp && isArm(exp, variant) ? exp.id : null, look, cookies };
 }
+
+/**
+ * Wave N (admin funnel): the home page "/" is counted too, with no A/B test. A first visit gets an `ll_aid` (the same 30-day,
+ * first-party, random id the solo pages use) unless the browser sends GPC, counting was turned off, or the visitor is signed in
+ * (owners, staff and the team are not prospects). Null when nothing should be written.
+ */
+export function homeAidCookie(i: Pick<AssignInput, "pathname" | "cookie" | "header" | "newAid">): CookieWrite | null {
+  if (i.pathname !== "/") return null;
+  const aid = i.cookie(LANDING_COOKIES.aid);
+  if (aid === AID_OFF || (aid && AID_PATTERN.test(aid))) return null;
+  if (i.header("sec-gpc") === "1" || i.cookie("ll_at") || i.cookie("ll_rt")) return null;
+  return { name: LANDING_COOKIES.aid, value: i.newAid(), maxAge: LANDING_COOKIE_DAYS * 86_400 };
+}

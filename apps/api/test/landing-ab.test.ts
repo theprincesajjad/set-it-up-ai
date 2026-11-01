@@ -115,7 +115,8 @@ describe("POST /v1/public/landing-events", () => {
     for (const x of r) expect(x).toMatchObject({ anonId: AID, experimentId: "t1-nails-lead", variant: "yours", page: "nail", trade: "lashes", src: "ad-3", device: "phone" });
     expect(r.find((x) => x.kind === "cta_click")!.data).toBe("hero");
     // Nothing that identifies the device or the network is stored.
-    expect(Object.keys(r[0]!).sort()).toEqual(["anonId", "createdAt", "data", "device", "experimentId", "id", "kind", "page", "src", "trade", "variant"]);
+    // Wave N (admin funnel) added the page's utm_* parameters, which carry no personal information either.
+    expect(Object.keys(r[0]!).sort()).toEqual(["anonId", "createdAt", "data", "device", "experimentId", "id", "kind", "page", "src", "trade", "utmCampaign", "utmMedium", "utmSource", "variant"]);
 
     await beacon(visit({ ev: [{ k: "view" }, { k: "start_submit" }] }));
     expect(await rows()).toHaveLength(4);

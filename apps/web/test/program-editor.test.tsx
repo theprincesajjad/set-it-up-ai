@@ -4,23 +4,27 @@ import { describe, expect, it } from "vitest";
 import { ProgramPreview } from "@/components/dashboard/ProgramPreview";
 import { categoriesVisible, changeEarnType, diffProgram, earnModeOf, expiryDisclosure, previewModel, programSentence, raisesTheBar, rewardPresets, setEarnMode, validateProgram, weeklyRegularSentence, type ProgramDraft } from "@/lib/dashboard/program";
 
-const stamps: ProgramDraft = { name: "Café rewards", earnType: "stamps", pointsPerDollar: 0, pointsPerVisit: 1, minSpendCents: 0, stampGoal: 10, terminology: "stamps", welcomeBonus: 1, birthdayBonus: 0, referralBonus: 0, expiryMonths: null, visitCooldownMinutes: 30, counterAutoStamp: true, rewardCostCents: null };
+const stamps: ProgramDraft = { name: "Café rewards", earnType: "stamps", pointsPerDollar: 0, pointsPerVisit: 1, minSpendCents: 0, stampGoal: 10, terminology: "stamps", welcomeBonus: 1, birthdayBonus: 0, referralBonus: 0, expiryMonths: null, visitCooldownMinutes: 30, counterAutoStamp: true, rewardCostCents: null, earnUnit: "visit", earnScope: "all", earnCategoryIds: [], earnItemIds: [], earnServiceIds: [], maxStampsPerDay: null };
 const points: ProgramDraft = { ...stamps, earnType: "per_dollar", pointsPerDollar: 1, terminology: "points", welcomeBonus: 0 };
 const drink = { name: "Free drink", pointsCost: 10, rewardType: "free_item" as const, value: 0 };
 
 describe("program editor logic", () => {
   it("writes the plain-language sentence", () => {
-    expect(programSentence(stamps, drink)).toBe("Customers get 1 stamp per visit. 10 stamps = Free drink.");
+    // wave-n: rules. The stamp sentence now reads "After N stamps they get ..." (intended copy change).
+    expect(programSentence(stamps, drink)).toBe("Customers get 1 stamp per visit. After 10 stamps they get a free drink.");
     expect(programSentence(points)).toBe("Customers earn 1 point for every $1.");
     expect(programSentence({ ...points, earnType: "per_visit", pointsPerVisit: 10, minSpendCents: 500 })).toBe("Customers earn 10 points every visit over $5.00.");
   });
 
-  it("validates like the API: expiry >= 12 months, earn rate > 0, stamp goal 6-12", () => {
+  it("validates like the API: expiry >= 12 months, earn rate > 0, stamp goal 2-50", () => {
     expect(validateProgram(stamps)).toEqual({});
     expect(validateProgram({ ...stamps, expiryMonths: 6 }).expiryMonths).toMatch(/at least 12 months/);
     expect(validateProgram({ ...stamps, expiryMonths: 12 })).toEqual({});
     expect(validateProgram({ ...points, pointsPerDollar: 0 }).pointsPerDollar).toBeTruthy();
-    expect(validateProgram({ ...stamps, stampGoal: 20 }).stampGoal).toBeTruthy();
+    // wave-n: rules. Any goal from 2 to 50 (was 6 to 12).
+    expect(validateProgram({ ...stamps, stampGoal: 20 }).stampGoal).toBeUndefined();
+    expect(validateProgram({ ...stamps, stampGoal: 51 }).stampGoal).toBeTruthy();
+    expect(validateProgram({ ...stamps, stampGoal: 1 }).stampGoal).toBeTruthy();
   });
 
   it("discloses expiry with the API's wording", () => {
@@ -28,11 +32,12 @@ describe("program editor logic", () => {
     expect(expiryDisclosure({ ...points, expiryMonths: 18 })).toBe("Your points expire after 18 months with no activity.");
   });
 
-  it("switching to stamps picks stamp wording and a 6-12 goal (10 by default)", () => {
+  it("switching to stamps picks stamp wording and a 2-50 goal (10 by default)", () => {
     const d = changeEarnType({ ...points, stampGoal: 0 }, "stamps");
     expect(d.terminology).toBe("stamps");
     expect(d.stampGoal).toBe(10);
-    expect(changeEarnType({ ...points, stampGoal: 20 }, "stamps").stampGoal).toBe(12);
+    expect(changeEarnType({ ...points, stampGoal: 20 }, "stamps").stampGoal).toBe(20);
+    expect(changeEarnType({ ...points, stampGoal: 80 }, "stamps").stampGoal).toBe(50);
     expect(changeEarnType(d, "per_dollar").terminology).toBe("points");
   });
 
@@ -93,10 +98,14 @@ describe("<ProgramPreview>", () => {
 describe("Rewards in three steps", () => {
   it("maps the three earn choices onto the program", () => {
     expect(earnModeOf(stamps)).toBe("visit");
-    expect(earnModeOf({ ...stamps, minSpendCents: 500 })).toBe("purchase");
+    // wave-n: rules. The unit is stored (earnUnit); a legacy program without it falls back to "minimum = purchase".
+    expect(earnModeOf({ ...stamps, earnUnit: "purchase", minSpendCents: 500 })).toBe("purchase");
+    expect(earnModeOf({ earnType: "stamps", minSpendCents: 500 })).toBe("purchase");
     expect(earnModeOf(points)).toBe("dollar");
+    // wave-n: rules. "One purchase" has an optional minimum (was $5 by default) and is stored as earnUnit.
     const purchase = setEarnMode(stamps, "purchase");
-    expect(purchase).toMatchObject({ earnType: "stamps", minSpendCents: 500 });
+    expect(purchase).toMatchObject({ earnType: "stamps", earnUnit: "purchase", minSpendCents: 0 });
+    expect(earnModeOf(purchase)).toBe("purchase");
     expect(setEarnMode(purchase, "visit").minSpendCents).toBe(0);
     // Points per dollar turns Stamp on scan off (the amount has to be typed).
     expect(setEarnMode(stamps, "dollar")).toMatchObject({ earnType: "per_dollar", counterAutoStamp: false, terminology: "points" });

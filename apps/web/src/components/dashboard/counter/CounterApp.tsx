@@ -195,6 +195,9 @@ export function CounterApp({
   const [showRewards, setShowRewards] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** wave-n: rules. A stamp the shop's rules refused: staff may add it anyway with a reason. */
+  const [overrideAsk, setOverrideAsk] = useState<null | { ref: { memberId?: string; phone?: string }; extra: { customerName?: string; consent?: { text: string } }; from?: number; message: string }>(null);
+  const [overrideReason, setOverrideReason] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [consent, setConsent] = useState(false);
@@ -387,7 +390,7 @@ export function CounterApp({
   const award = useCallback(
     async (
       ref: { memberId?: string; phone?: string },
-      extra: { customerName?: string; consent?: { text: string } } = {},
+      extra: { customerName?: string; consent?: { text: string }; override?: { reason: string } } = {},
       from?: number,
     ) => {
       if (perDollar && centsFromKeypad(cents) <= 0) {
@@ -471,6 +474,11 @@ export function CounterApp({
           awardKey.current = null;
           setPhase({ kind: "queued", label, who });
           setAnnounce(t("counter.announce.queued", { label }));
+        } else if (isApiError(e) && e.code === "earn_rule" && !extra.override) {
+          // wave-n: rules. The shop's rules say this doesn't earn: staff may add it anyway with a reason (audited).
+          awardKey.current = null;
+          setOverrideAsk({ ref, extra, from, message: e.message });
+          setOverrideReason("");
         } else {
           awardKey.current = null;
           setPhase({ kind: "idle" });
@@ -829,6 +837,32 @@ export function CounterApp({
             ) : null}
             {error ? <CounterNotice tone="danger" onDismiss={() => setError(null)}>{error}</CounterNotice> : null}
           </div>
+        ) : null}
+        {overrideAsk ? (
+          <form
+            role="alertdialog"
+            aria-labelledby="override-title"
+            className="flex flex-col gap-3 border-b border-border bg-tile-butter px-4 py-4 text-tile-butter-foreground lg:px-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const ask = overrideAsk;
+              if (overrideReason.trim().length < 3) return;
+              setOverrideAsk(null);
+              void award(ask.ref, { ...ask.extra, override: { reason: overrideReason.trim() } }, ask.from);
+            }}
+          >
+            <p id="override-title" className="font-semibold">{t("counter.override.title")}</p>
+            <p className="text-meta">{overrideAsk.message}</p>
+            <label className="flex flex-col gap-1 text-meta font-medium">
+              {t("counter.override.reason")}
+              <input value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} maxLength={200} minLength={3} required className={cn(inputBase, "min-h-11")} />
+            </label>
+            <p className="text-meta">{t("counter.override.note")}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={busy || overrideReason.trim().length < 3}>{t("counter.override.add")}</Button>
+              <Button type="button" variant="secondary" onClick={() => { setOverrideAsk(null); setPhase({ kind: "idle" }); setEntry(""); }}>{t("counter.override.cancel")}</Button>
+            </div>
+          </form>
         ) : null}
 
         <div className={cn(s.panes, "grid lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]", exitHref && "flex-1")}>

@@ -109,6 +109,8 @@ export function loyaltyObject(config: Config, issuerId: string, userId: string, 
         ? [{ id: "more", header: tr("sh.pass.moreShops", { n: s.shops.length - 3 }), body: s.shops.slice(3).map((x) => `${x.name}: ${balanceText(x.balance, x.terminology, loc)}`).join("\n") }]
         : []),
       ...(s.shops.length ? [] : [{ id: "join", header: tr("sh.pass.startEarning"), body: tr("sh.pass.joinBody") }]),
+      // wave-n promo: the running deal (Google also gets a message with a notification when it is announced)
+      ...(s.deal ? [{ id: "deal", header: s.deal.shop, body: s.deal.title }] : []),
       {
         id: "expiry",
         header: tr("sh.pass.expiryLabel"),

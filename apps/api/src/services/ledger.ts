@@ -36,6 +36,8 @@ import { enabledFeaturesFor } from "./features.js";
 import { assertPharmacyConfirmed, assertPharmacyText, isPharmacy, nothingFrontStore, pharmacyAwardPlan } from "./pharmacy-guard.js";
 import { recordVisitMilestones } from "./onboarding.js";
 import { enqueueOutbox, kickOutbox, registerOutboxHandler } from "./outbox.js";
+import { writeAudit } from "./admin-audit.js";
+import { boostMatched, dailyLimitError, earnedToday, eligibilityRefusal, lineEligibility, providerBoosts, unitAllows, unitRefusal, type EarnBoost, type EarnEvent } from "./earn-engine.js";
 
 type TxType = (typeof ledgerTransactions.$inferInsert)["type"];
 type TxSource = (typeof ledgerTransactions.$inferInsert)["source"];
@@ -405,7 +407,9 @@ export async function activeBoosts(
   const on = (await enabledFeaturesFor(tx, [merchant], ["promos.double_points"])).get(merchant.id);
   if (!on?.has("promos.double_points")) return [];
   return rows
-    .filter((p) => promoAppliesAt(p, at, merchant.timezone))
+    // wave-n promo: paused promos never boost; targeted ones (a segment or a quantity cap) go through the promo team's
+    // boost provider "promo:targeted" (services/promo-rules.ts), which knows the member.
+    .filter((p) => promoAppliesAt(p, at, merchant.timezone) && !p.pausedAt && (p.segment ?? "everyone") === "everyone" && p.quantityCap == null)
     .map((p) => ({
       promoId: p.id,
       multiplier: p.multiplierPct ? p.multiplierPct / 100 : undefined,
@@ -543,6 +547,13 @@ export interface AwardArgs {
   quantity?: number;
   /** Pharmacies: the cashier confirmed the whole sale is front store (no prescriptions or pharmacy services). */
   frontStoreOnly?: boolean;
+  /**
+   * wave-n: rules. What this award is: a visit (self check-in), a purchase (default: counter sale, POS, invoice, class, wash) or an online
+   * order picked up. The shop's earn unit decides whether it earns (earn-engine.ts unitAllows).
+   */
+  event?: EarnEvent;
+  /** Staff override with a reason (staff_app only): earns although the earn unit or the item list says no. Audited. */
+  override?: { reason: string } | null;
 }
 
 export interface AwardResult {
@@ -639,6 +650,20 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
       }
     }
 
+    // wave-n: rules. The earn unit and the "what earns" list. A counter refusal throws (staff may override with a reason); automatic sources earn nothing.
+    const event: EarnEvent = args.event ?? "purchase";
+    const counter = args.source === "staff_app";
+    const overrideReason = counter && args.staffUserId && args.override?.reason?.trim() ? args.override.reason.trim().slice(0, 200) : null;
+    let overrideRule: string | null = null;
+    let unitOk = unitAllows(program, event);
+    if (!unitOk && overrideReason) {
+      unitOk = true;
+      overrideRule = "earn_unit";
+    }
+    if (!unitOk && counter) throw unitRefusal(program);
+    // One purchase (optional minimum): a counter stamp with no amount is the cashier confirming a qualifying sale.
+    const staffConfirmedSale = counter && visitBased && !args.lines?.length && args.amountCents == null;
+
     const rawLines: PurchaseLine[] = args.lines?.length ? args.lines : [{ amountCents: Math.max(0, args.amountCents ?? 0) }];
     // Pharmacies: per-dollar only, a front-store confirmation for amount-only sales, uncategorised lines earn nothing (services/pharmacy.ts).
     const rx = isPharmacy(merchant) ? pharmacyAwardPlan(program, args, rawLines) : null;
@@ -647,7 +672,9 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
     // Only lines tagged with a category can fall in a no-earn one; an amount-only stamp needs no category read.
     const cats = lines.some((l) => l.categoryId) ? await tx.select({ id: merchantCategories.id, earn: merchantCategories.earnEligible, dispensary: merchantCategories.dispensary }).from(merchantCategories).where(eq(merchantCategories.merchantId, merchant.id)) : [];
     const noEarn = [...cats.filter((c) => !c.earn || c.dispensary).map((c) => c.id), ...(rx?.extraNoEarn ?? [])];
-    const boosts = await activeBoosts(tx, merchant, now);
+    const boosts: (EarnBoost & { promoId?: string | null })[] = unitOk
+      ? [...(await activeBoosts(tx, merchant, now)), ...(await providerBoosts(tx, { merchant, program, member, at: now, lines, source: args.source, event }))]
+      : [];
     let vipMultiplier = 1;
     // VIP multipliers are a paid feature (loyalty.vip_levels); levels are kept but don't boost earn while it's off.
     if (member.vipLevelId && (await enabledFeaturesFor(tx, [merchant], ["loyalty.vip_levels"])).get(merchant.id)?.has("loyalty.vip_levels")) {
@@ -655,13 +682,32 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
       if (lvl) vipMultiplier = lvl.multiplierPct / 100;
     }
     const quantity = visitBased ? Math.min(10, Math.max(1, Math.floor(args.quantity ?? 1))) : 1;
-    const earn = calculateEarn({
-      rules: { earnType: program.earnType, pointsPerDollar: program.pointsPerDollar, pointsPerVisit: program.pointsPerVisit * quantity, minSpendCents: program.minSpendCents },
-      lines,
-      noEarnCategoryIds: noEarn,
-      boosts,
-      vipMultiplier,
-    });
+    const rules = {
+      earnType: program.earnType,
+      pointsPerDollar: unitOk ? program.pointsPerDollar : 0,
+      pointsPerVisit: unitOk ? program.pointsPerVisit * quantity : 0,
+      minSpendCents: staffConfirmedSale ? 0 : program.minSpendCents,
+    };
+    const eligibleFn = lineEligibility(program);
+    let earn = calculateEarn({ rules, lines, noEarnCategoryIds: noEarn, boosts, vipMultiplier, isLineEligible: eligibleFn });
+    if (eligibleFn && unitOk && earn.totalPoints <= 0) {
+      // Would it have earned without the list? Then the list said no: the counter asks for a reason, other sources earn nothing.
+      // (Every line counts here except the no-earn ones: an override never unlocks a regulated category.)
+      const unfiltered = calculateEarn({ rules, lines, noEarnCategoryIds: noEarn, boosts, vipMultiplier, isLineEligible: () => true });
+      if (unfiltered.totalPoints > 0) {
+        if (overrideReason) {
+          earn = unfiltered;
+          overrideRule = "earn_scope";
+        } else if (counter) throw eligibilityRefusal(program);
+      }
+    }
+    // Abuse limit: the most stamps one customer earns in a shop-local day (visit/stamp programs). Applies after promo boosts.
+    if (visitBased && program.maxStampsPerDay && earn.totalPoints > 0) {
+      const left = Math.max(0, program.maxStampsPerDay - (await earnedToday(tx, member, now, merchant.timezone)));
+      if (left <= 0 && counter) throw dailyLimitError(program);
+      if (earn.totalPoints > left) earn = { ...earn, totalPoints: left, bonusPoints: Math.max(0, left - earn.basePoints), basePoints: Math.min(earn.basePoints, left), breakdown: [...earn.breakdown, `Daily limit ${program.maxStampsPerDay}`] };
+    }
+    if (overrideRule) earn = { ...earn, breakdown: [...earn.breakdown, `Staff override: ${overrideReason}`] };
     // A pharmacy sale with nothing from the front store is not a visit: no member, no welcome bonus, no bonus points, no network perk.
     // Throwing rolls back everything this transaction did (including a member it just created).
     if (rx && earn.eligibleCents <= 0) throw nothingFrontStore();
@@ -684,13 +730,28 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
         externalRef: args.externalRef,
         staffUserId: args.staffUserId,
         locationId: args.locationId,
-        promoId: boosts[0]?.promoId ?? null,
+        promoId: boosts.find((b) => b.promoId)?.promoId ?? null,
         at: now,
         lockedMember,
         idempotencyChecked: true,
       });
       transaction = r.transaction;
       member = r.member;
+      // Promo providers that count uses (door crasher quantity) hear about the boosts that applied, in this transaction.
+      if (earn.qualifiesAsVisit) {
+        const excluded = (l: PurchaseLine) => (!!l.categoryId && noEarn.includes(l.categoryId)) || (!!eligibleFn && overrideRule !== "earn_scope" && !eligibleFn(l));
+        for (const b of boosts) if (b.onApplied && boostMatched(b, lines, excluded)) await b.onApplied(tx, { transactionId: r.transaction.id, memberId: member.id, points: r.transaction.points });
+      }
+    }
+    if (overrideRule) {
+      await writeAudit(tx, {
+        actorUserId: args.staffUserId ?? null,
+        merchantId: merchant.id,
+        action: "earn.override",
+        entity: "merchant_member",
+        entityId: member.id,
+        data: { reason: overrideReason, rule: overrideRule, transactionId: transaction?.id ?? null, points: transaction?.points ?? 0, event },
+      });
     }
 
     const messages: string[] = [];

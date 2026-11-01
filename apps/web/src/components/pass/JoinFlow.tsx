@@ -5,7 +5,8 @@
  * Target: under 30 seconds on a 3-year-old phone. One page, state kept in memory.
  */
 import { ShopWalletCard } from "./ShopWalletCard";
-import { BRAND, t as translate } from "@ll/shared";
+import { BrandMark, BrandPassCard, MiniStamps } from "./ShopBrand";
+import { BRAND, placeKindLabel, t as translate } from "@ll/shared";
 import Link from "next/link";
 import { LogoMark } from "@/components/site/Brand";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
@@ -20,7 +21,7 @@ import { rememberLocale, saveProfileLocale, useLocaleOrEnglish } from "@/lib/i18
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
-import { firstName, formatPoints } from "@/lib/format";
+import { firstName, formatNumber, formatPoints, withArticle } from "@/lib/format";
 import { unitCaption } from "@/lib/units";
 import { formatE164, toE164, validateNanp } from "@/lib/phone";
 import { howYouEarn } from "@/lib/program";
@@ -30,8 +31,7 @@ import { ConsentCheckbox } from "@/components/ui/Checkbox";
 import { MemberQr } from "@/components/ui/MemberQr";
 import { OtpField } from "@/components/ui/OtpField";
 import { PhoneField } from "@/components/ui/PhoneField";
-import { PointsRing } from "@/components/ui/PointsRing";
-import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
+import { ShopTile } from "@/components/ui/ShopTile";
 import { StampCard } from "@/components/ui/StampCard";
 import { TextField } from "@/components/ui/TextField";
 
@@ -249,20 +249,17 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           <span className="display text-[15px] leading-[18px] text-fg">{BRAND.name.toLowerCase()}</span>
         </div>
         {topSlot ? <div className="mt-4">{topSlot}</div> : null}
-        <div className={topSlot ? "mt-8 flex items-center gap-3" : "mt-11 flex items-center gap-3"}>
-          <ShopLogo shop={info.merchant} size={52} />
-          <div className="min-w-0">
-            <p className="truncate text-[15px] font-semibold leading-5 text-fg"><bdi>{shop}</bdi></p>
-            <p className="truncate text-[13px] italic leading-[17px] text-fg-muted">{[locale === "en" ? placeKind(info.merchant.vertical) : null, street?.name.toLowerCase() ?? info.location.address].filter(Boolean).join(" · ")}</p>
-          </div>
-        </div>
+        {/* The shop's card, in its colour, before anything is asked: what the customer is about to carry. */}
+        <BrandPassCard as="div" shop={info.merchant} className={topSlot ? "mt-6" : "mt-9"} kicker={[locale === "en" ? placeKind(info.merchant.vertical) : placeKindLabel(locale, info.merchant.vertical), street?.name.toLowerCase() ?? info.location.address].filter(Boolean).join(" · ")}>
+          {program?.earnType === "stamps" ? <MiniStamps goal={program.stampGoal} /> : null}
+        </BrandPassCard>
         <h1 className="display mt-5 text-[32px] leading-[35px] tracking-[-0.01em] text-fg">{joinHeadlineT(t, locale, program, info.merchant.vertical)}</h1>
         <p className="mt-2.5 text-[15px] leading-[21px] text-fg-muted">{joinIntroT(t, locale, program, info.rewards[0] ?? null, street ?? null)}</p>
         {banner ? <Banner tone="warning" className="mt-4">{banner}</Banner> : null}
         <form onSubmit={sendCode} noValidate className="mt-7 flex flex-col">
           <PhoneField size="lg" autoFocus={autoFocus} value={digits} onChangeDigits={(d) => { setDigits(d); if (error) setError(null); }} error={phoneTried ? error : null} forceValidate={false} />
           <div className="mt-[18px]">{consentBox}</div>
-          <Button type="submit" size="lg" fullWidth loading={busy} className="mt-6 h-[54px] text-[16px]">
+          <Button type="submit" variant="shop" size="lg" fullWidth loading={busy} className="mt-6 h-[54px] text-[16px]">
             {t("auth.join.textMe")}
           </Button>
         </form>
@@ -288,7 +285,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
     <div className="flex flex-col gap-6">
       {showHeader ? (
         <header className="flex items-center gap-3.5 pt-2">
-          <ShopLogo shop={info.merchant} size={56} />
+          <BrandMark shop={info.merchant} size={56} />
           <div className="min-w-0">
             <p className="truncate text-headline text-fg"><bdi>{shop}</bdi></p>
             <p className="truncate text-meta italic text-fg-muted">{[locale === "en" ? placeKind(info.merchant.vertical) : null, info.location.name !== shop ? info.location.name : info.location.address].filter(Boolean).join(" · ")}</p>
@@ -306,7 +303,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           </div>
           <PhoneField autoFocus={autoFocus} value={digits} onChangeDigits={(d) => { setDigits(d); if (error) setError(null); }} error={phoneTried ? error : null} forceValidate={false} />
           {consentBox}
-          <Button type="submit" size="lg" fullWidth loading={busy}>
+          <Button type="submit" variant="shop" size="lg" fullWidth loading={busy}>
             {t("auth.join.textMe")}
           </Button>
           <p className="text-center text-meta text-fg-muted">{t("auth.join.noApp")}</p>
@@ -334,7 +331,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           <OtpField value={code} onChange={(v) => { setCode(v); if (error) setError(null); }} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
           {/* l10n-ok: development builds only (the API sends a devCode only outside production) */}
           {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
-          <Button type="submit" size="lg" fullWidth loading={busy}>
+          <Button type="submit" variant="shop" size="lg" fullWidth loading={busy}>
             {t("auth.join.continue")}
           </Button>
           <div className="flex flex-col items-start gap-1">
@@ -356,7 +353,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           ) : null}
           {/* Consent was offered on the first step; visitors who were already signed in skipped it. */}
           {signedIn ? consentBox : null}
-          <Button type="submit" size="lg" fullWidth loading={busy || step === "joining"}>
+          <Button type="submit" variant="shop" size="lg" fullWidth loading={busy || step === "joining"}>
             {t("auth.join.joinShop", { shop })}
           </Button>
           {program ? <p className="text-meta text-fg-muted" {...(locale === "en" ? {} : { lang: "en", dir: "ltr" as const })}>{howYouEarn(program)} {program.expiryDisclosure}</p> : null}
@@ -404,37 +401,57 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
   const bonus = result.bonusPoints > 0 ? (locale === "en" ? formatPoints(result.bonusPoints, m.terminology, false) : unitText(t, program, result.bonusPoints)) : null;
   const goal = m.nextReward?.pointsCost ?? program?.stampGoal ?? 0;
   // The shop's own card for this phone's wallet (both + a QR on a computer); hidden or "coming soon" without credentials.
-  const wallet = <ShopWalletCard merchantId={info.merchant.id} shopName={info.merchant.name} slug={info.merchant.slug} terminology={m.terminology} load={deps.shopWallet} os={os} />;
+  // A soft panel in the shop's colour around it: Apple's and Google's buttons keep their own black artwork.
+  const wallet = <ShopWalletCard merchantId={info.merchant.id} shopName={info.merchant.name} slug={info.merchant.slug} terminology={m.terminology} load={deps.shopWallet} os={os} className="rounded-card bg-trade-soft px-4 py-5" />;
+
+  const stamps = program?.earnType === "stamps";
+  const g = stamps ? Math.max(1, Math.min(12, program!.stampGoal || 10)) : 0;
+  const onCard = stamps ? (m.balance >= g ? g : m.balance % g) : 0;
+  const rewardLabel = m.nextReward?.name ?? t("ui.reward").toLowerCase();
+  const stampLine = stamps ? (m.balance >= g ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: g - onCard, reward: locale === "en" ? withArticle(rewardLabel.charAt(0).toLowerCase() + rewardLabel.slice(1)) : rewardLabel })) : null;
+  const pct = goal > 0 ? Math.min(100, Math.round((m.balance / goal) * 100)) : 0;
 
   return (
-    <div className="flex flex-col gap-7 pt-2">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <ShopLogo shop={info.merchant} size={40} />
-          <p className="min-w-0 truncate text-meta text-fg-muted"><bdi>{info.merchant.name}</bdi></p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none" role="status">
-            {bonus && !fname ? t("auth.joined.bonusTitle", { bonus, shop: info.merchant.name.replace(/\.$/, "") }) : fname ? t("auth.joined.title", { name: fname }) : t("auth.joined.plain")}
-          </h1>
-          {bonus && fname ? (
-            <p className="text-body text-fg-muted">
-              {t("auth.joined.bonusLine", { bonus, shop: info.merchant.name.replace(/\.$/, "") })}
-            </p>
-          ) : null}
-        </div>
-        {program?.earnType === "stamps" ? (
-          <StampCard stamps={m.balance} goal={program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={info.merchant.vertical} newlyEarned={Array.from({ length: result.bonusPoints }, (_, i) => i)} className="w-full" terminology={m.terminology} />
-        ) : (
-          <div className="flex items-center gap-4 rounded-card border border-line p-4">
-            <PointsRing balance={m.balance} goal={goal} terminology={m.terminology} size={64} showCaption={false} />
-            <div className="min-w-0">
-              <p className="display text-title tabular-nums text-points-text">{locale === "en" ? formatPoints(m.balance, m.terminology, false) : unitText(t, program, m.balance)}</p>
-              {m.nextReward ? <p className="text-meta text-fg-muted">{stampsToGoT(t, locale, m.nextReward.pointsNeeded, m.nextReward.name)}</p> : null}
-            </div>
+    <div className="flex flex-col gap-6 pt-2">
+      <div className="flex flex-col gap-3">
+        {/* The pass, in the shop's colour (brand colour, else its trade): the moment they join is the card they now carry. */}
+        <BrandPassCard
+          shop={info.merchant}
+          data-testid="joined-pass"
+          aria-label={info.merchant.name}
+          kicker={placeKindLabel(locale, info.merchant.vertical)}
+          aside={
+            stamps ? (
+              <span dir="ltr" className="text-[17px] font-semibold tabular-nums [unicode-bidi:isolate]">
+                {formatNumber(onCard)} / {formatNumber(g)}
+              </span>
+            ) : null
+          }
+        >
+          <div className="flex flex-col gap-1">
+            <h1 ref={headingRef} tabIndex={-1} className="text-[30px] font-bold leading-9 tracking-[-0.022em] outline-none" role="status">
+              {bonus && !fname ? t("auth.joined.bonusTitle", { bonus, shop: info.merchant.name.replace(/\.$/, "") }) : fname ? t("auth.joined.title", { name: fname }) : t("auth.joined.plain")}
+            </h1>
+            {bonus && fname ? <p className="text-body">{t("auth.joined.bonusLine", { bonus, shop: info.merchant.name.replace(/\.$/, "") })}</p> : null}
           </div>
-        )}
-        <p className="text-meta text-fg-muted" {...(locale === "en" ? {} : { lang: "en", dir: "ltr" as const })}>{m.expiryDisclosure}</p>
+          {stamps ? (
+            <>
+              <StampCard bare frame="plain" tone="onTrade" stamps={m.balance} goal={program!.stampGoal} rewardName={rewardLabel} vertical={info.merchant.vertical} newlyEarned={Array.from({ length: result.bonusPoints }, (_, i) => i)} terminology={m.terminology} />
+              <p className="text-body-strong">{stampLine}</p>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-[24px] font-semibold leading-8 tabular-nums">{locale === "en" ? formatPoints(m.balance, m.terminology, false) : unitText(t, program, m.balance)}</p>
+              {goal > 0 ? (
+                <div role="progressbar" aria-label={t("pass.hero.next")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2.5 w-full overflow-hidden rounded-full bg-trade-pass-text/25">
+                  <div className="h-full rounded-full bg-trade-pass-text" style={{ width: `${pct}%` }} />
+                </div>
+              ) : null}
+              {m.nextReward ? <p className="text-body-strong">{stampsToGoT(t, locale, m.nextReward.pointsNeeded, m.nextReward.name)}</p> : null}
+            </div>
+          )}
+        </BrandPassCard>
+        <p className="px-1 text-meta text-fg-muted" {...(locale === "en" ? {} : { lang: "en", dir: "ltr" as const })}>{m.expiryDisclosure}</p>
       </div>
 
       {/* On a phone the wallet button comes right under the card, above the fold: it is the one thing to do here. A computer keeps it

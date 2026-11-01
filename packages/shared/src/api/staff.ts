@@ -35,6 +35,8 @@ export const purchaseLineSchema = z.object({
   amountCents: centsSchema,
   categoryId: uuidSchema.nullish(),
   itemId: uuidSchema.nullish(),
+  /** wave-n: rules. A service (appointments), for shops where only some services earn. */
+  serviceId: uuidSchema.nullish(),
   quantity: z.number().int().min(1).max(1000).optional(),
 });
 
@@ -70,6 +72,11 @@ const awardFields = z.object({
    * prescriptions or pharmacy services. Saved with the sale. Ignored by every other kind of shop.
    */
   frontStoreOnly: z.boolean().optional(),
+  /**
+   * wave-n: rules. Staff override: give the stamp although the shop's rules say this doesn't earn (wrong earn unit, an item that isn't
+   * on the list). Needs a reason; audited. Never bypasses the cooldown, the daily cap or regulated categories.
+   */
+  override: z.object({ reason: z.string().trim().min(3, "Say why").max(200) }).optional(),
 });
 
 /** GET .../counter/regulars: regulars not yet stamped today, for one-tap stamping. */

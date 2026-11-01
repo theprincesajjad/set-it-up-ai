@@ -13,4 +13,6 @@ export const messagingJobs: Job[] = [
   { name: "messaging.sms-credit-reset", everyMs: 60 * 60_000, run: async (ctx) => void (await resetSmsCreditsIfNewMonth(ctx)) },
   /** Promo lifecycle: scheduled → live at startsAt, → ended after endsAt. */
   { name: "promos.lifecycle", everyMs: 60_000, run: async (ctx) => void (await advancePromoStatuses(ctx.db, ctx.now())) },
+  // ---- wave-n: promo ---- Deal announcements held for quiet hours or due now, and door-crasher "starts in 1 hour" reminders.
+  { name: "promos.notify", everyMs: 5 * 60_000, run: async (ctx) => void (await (await import("../services/promo-notify.js")).runPromoNotifications(ctx)) },
 ];

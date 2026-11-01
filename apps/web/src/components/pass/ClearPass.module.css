@@ -41,15 +41,22 @@
   border-color: var(--qr-bg);
   box-shadow: 0 2px 6px color-mix(in srgb, var(--trade) 40%, transparent);
 }
+/* The next stamp to earn: a ring and dot in the shop's colour. */
 .stampNext {
-  border-color: var(--foreground);
+  border: 2px solid var(--trade);
 }
 .stampNext::after {
   content: "";
   width: 8px;
   height: 8px;
   border-radius: 9999px;
-  background: var(--foreground);
+  background: var(--trade);
+}
+/* The reward slot (the last stamp): the gift in the shop's colour on its soft tint. */
+.stampReward {
+  border: 1.5px dashed var(--trade);
+  background: var(--trade-soft);
+  color: var(--trade);
 }
 :global([data-theme="dark"]) .stampOn {
   color: var(--trade-foreground);

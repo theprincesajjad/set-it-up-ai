@@ -189,6 +189,14 @@ export interface PromoDto {
   audience: "network" | "members" | "vip";
   /** True when the promo applies at this moment (day-of-week/time window included). */
   activeNow: boolean;
+  // ---- wave-n: promo ----
+  promoType?: string;
+  /** Door crasher: spots left (null = no limit). */
+  remaining?: number | null;
+  quantityCap?: number | null;
+  /** Card colour key (promosApi.PROMO_COLORS). */
+  color?: string | null;
+  // ---- end wave-n: promo ----
 }
 
 export interface FeedItemDto {

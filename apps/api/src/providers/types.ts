@@ -71,6 +71,12 @@ export interface Providers {
   /** Domain registrar + custom hostnames. Optional: use domainsFor(ctx) from services/site-domains.ts. */
   siteDomains?: import("../services/site-domains.js").DomainProvider;
   // ---- end phase-solo: G ----
+  // ---- wave-n: promo ----
+  /** The promo writer's model client. Optional: undefined = built per call from the resolved key (services/ai-key.ts); tests inject one. Use promoAiFor(ctx). */
+  promoAi?: import("../services/promo-ai.js").PromoAiClient | null;
+  /** Validates a Claude key with a cheap call (the Models API). Optional: tests inject one. */
+  aiKeyValidator?: (apiKey: string) => Promise<"ok" | "invalid" | "unreachable">;
+  // ---- end wave-n: promo ----
   /** Object storage for uploads (ticket photos). Optional: use getStorage(ctx) from ./storage.js, which falls back to memory (tests) or disk. */
   storage?: import("./storage.js").StorageProvider;
   /** Address to map pin at signup. Optional: use geocoderFor(ctx) from services/geocode.ts, which builds it from config.geocoder. */
