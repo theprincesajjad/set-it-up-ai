@@ -43,11 +43,7 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "*.ts",
-    "*.mts",
-    ".next-color-before/types/**/*.ts",
-    ".next-color-before/dev/types/**/*.ts",
-    ".next-admin/types/**/*.ts",
-    ".next-admin/dev/types/**/*.ts"
+    "*.mts"
   ],
   "exclude": [
     "node_modules",
