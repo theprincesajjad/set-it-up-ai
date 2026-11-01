@@ -183,6 +183,17 @@ describe("stamp effects through the earn engine", () => {
     expect((await award(b.merchant.id, notBday.user.id)).earn.totalPoints).toBe(1);
   });
 
+  it("an item-targeted promo boosts only a purchase with one of its services or items", async () => {
+    const s = await shop({ earnType: "per_dollar" });
+    const [gel] = await env.db.insert(services).values({ merchantId: s.merchant.id, name: "Gel manicure", priceCents: 4500 }).returning();
+    await s.call("POST", "/promos", { title: "Double on gel", kind: "multiplier", multiplierPct: 200, promoType: "double_stamps", itemIds: [gel!.id], startsAt: iso(-DAY), publish: true });
+    const m = await member(s.merchant.id);
+    const withGel = await awardPurchase(env.ctx, { merchantId: s.merchant.id, userId: m.user.id, source: "staff_app", lines: [{ amountCents: 4500, serviceId: gel!.id }] });
+    expect(withGel.earn.totalPoints).toBe(90);
+    const without = await awardPurchase(env.ctx, { merchantId: s.merchant.id, userId: m.user.id, source: "staff_app", lines: [{ amountCents: 4500 }] });
+    expect(without.earn.totalPoints).toBe(45);
+  });
+
   it("a door crasher with a boost applies only to people holding a spot; a paused promo never boosts", async () => {
     const s = await shop();
     const p = (await s.call("POST", "/promos", { title: "First 2 get double", kind: "multiplier", multiplierPct: 200, promoType: "door_crasher", quantityCap: 2, startsAt: iso(-60_000), publish: true })).json();

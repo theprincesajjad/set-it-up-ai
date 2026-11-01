@@ -98,7 +98,7 @@ export default function AdminBusinessPage() {
                   <BarChart title="Staff logins per week" subtitle="Last 12 weeks" valueLabel="Logins" data={d.usage.map((u) => ({ label: u.weekStart, value: u.logins }))} />
                 </Panel>
                 <Panel>
-                  <LineChart title="Money processed per week" subtitle="Last 12 weeks" valueLabel="Processed" format={formatMoney} data={d.usage.map((u) => ({ label: u.weekStart, value: u.gmvCents }))} />
+                  <LineChart title="Money processed per week" subtitle="Last 12 weeks" valueLabel="Processed" format={(c) => (c >= 100_000 ? `$${Math.round(c / 10_000) / 10}k` : `$${Math.round(c / 100)}`)} data={d.usage.map((u) => ({ label: u.weekStart, value: u.gmvCents }))} />
                 </Panel>
               </div>
               <div className="grid gap-6 lg:grid-cols-2">
@@ -132,12 +132,12 @@ export default function AdminBusinessPage() {
                     <Table label="Subscriptions">
                       <thead>
                         <tr>
-                          <Th>Plan</Th>
-                          <Th>Status</Th>
-                          <Th>Billed</Th>
-                          <Th>Started</Th>
-                          <Th>Period ends</Th>
-                          <Th align="end">MRR</Th>
+                          <Th className="md:static">Plan</Th>
+                          <Th className="md:static">Status</Th>
+                          <Th className="md:static">Billed</Th>
+                          <Th className="md:static">Started</Th>
+                          <Th className="md:static">Period ends</Th>
+                          <Th align="end" className="md:static">MRR</Th>
                         </tr>
                       </thead>
                       <tbody>

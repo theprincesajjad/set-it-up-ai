@@ -80,6 +80,7 @@ describe("merchant navigation", () => {
     expect(pilot.map((n) => n.key)).not.toContain("billing");
     expect(buildMerchantNav("/m/x", "staff", new Set(["service.tickets"])).map((n) => n.label)).toEqual(["Today", "Counter"]);
     expect(canOpen("staff", "customers")).toBe(false);
+    expect(canOpen("staff", "program")).toBe(true); // wave-n: rules. Read-only rewards rules.
     expect(canOpen("manager", "billing")).toBe(false);
   });
 

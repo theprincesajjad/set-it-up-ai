@@ -114,7 +114,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       <div className="flex min-w-0 flex-col gap-6">
-        {locked ? <Banner tone="info">Ended promos can't be edited. Duplicate it to run it again.</Banner> : live ? <Banner tone="info">This promo is live. Changes apply right away; pause it first if you want to take it down while you edit.</Banner> : null}
+        {locked ? <Banner tone="info">Ended promos can’t be edited. Duplicate it to run it again.</Banner> : live ? <Banner tone="info">This promo is live. Changes apply right away; pause it first if you want to take it down while you edit.</Banner> : null}
 
         {!promo ? (
           <PromoAiWriter
@@ -233,7 +233,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
 
         <Panel>
           <fieldset disabled={locked} className="flex flex-col gap-4">
-            <legend className="text-body-strong text-fg">Who it's for and how they hear</legend>
+            <legend className="text-body-strong text-fg">Who it’s for and how they hear</legend>
             <Select label="Who it's for" value={d.segment} onChange={(e) => set("segment", e.target.value as PromoDraft["segment"])} options={promosApi.PROMO_SEGMENTS.map((s) => ({ value: s, label: SEGMENT_LABEL[s] }))} data-testid="promo-segment" />
             <p className="-mt-2 text-meta text-fg-muted" aria-live="polite">
               {audience ? `${audience.members} customers. ${audience.reachable} said yes to offers and can get a notification.` : " "}

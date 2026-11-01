@@ -49,13 +49,13 @@ export default function AdminFunnelPage() {
                   <Table label={`Funnel by ${BY_OPTIONS.find((o) => o.value === by)!.label.toLowerCase()}`} className="min-w-[760px]">
                     <thead>
                       <tr>
-                        <Th>{BY_OPTIONS.find((o) => o.value === by)!.label}</Th>
+                        <Th className="md:static">{BY_OPTIONS.find((o) => o.value === by)!.label}</Th>
                         {FUNNEL_STEPS.map((st) => (
-                          <Th key={st.key} align="end">
+                          <Th key={st.key} align="end" className="md:static">
                             {st.label}
                           </Th>
                         ))}
-                        <Th align="end">Visit to signup</Th>
+                        <Th align="end" className="md:static">Visit to signup</Th>
                       </tr>
                     </thead>
                     <tbody>

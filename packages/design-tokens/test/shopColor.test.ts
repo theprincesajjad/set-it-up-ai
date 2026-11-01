@@ -122,7 +122,9 @@ describe("CSS wiring", () => {
     expect(css).toContain(":root [data-shop-color][data-shop-color][data-shop-color] {\n  --trade: var(--shop-l-trade);");
     expect(css).toContain(':root:not([data-theme="light"]) [data-shop-color][data-shop-color][data-shop-color]');
     expect(css).toContain(':root[data-theme="dark"] [data-shop-color][data-shop-color][data-shop-color] {\n  --trade: var(--shop-d-trade);');
-    // after the trade blocks, so equal-specificity ties also go to the shop colour
-    expect(css.lastIndexOf("data-shop-color")).toBeGreaterThan(css.lastIndexOf('[data-trade="nails"]'));
+    // The OS dark block sits before the Clear section (Clear is never turned dark by the OS).
+    expect(css.indexOf("data-shop-color")).toBeLessThan(css.indexOf("/* ===== Clear"));
+    // Specificity: (0,4,0) light and (0,5,0) dark beat Clear's trade rules, (0,3,0) and (0,4,0), whatever the order.
+    expect(css).toContain(':root[data-theme-style="clear"][data-theme="dark"] [data-trade="nails"]');
   });
 });

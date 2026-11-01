@@ -181,7 +181,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
         shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }}
         coverUrl={m.coverUrl}
         subtitle={heroSubtitle}
-        offer={shop.rewards[0] ? `${unitsText(locale, shop.rewards[0].pointsCost, terminology, false)} = ${shop.rewards[0].name}` : null}
+        offer={shop.rewards[0] ? <>{unitsText(locale, shop.rewards[0].pointsCost, terminology, false)} = <bdi>{shop.rewards[0].name}</bdi></> : null}
         goal={program?.earnType === "stamps" ? Math.min(12, shop.rewards[0]?.pointsCost ?? program.stampGoal) : 0}
       />
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (

@@ -2,7 +2,7 @@
  * The founder's cockpit (team admin, wave N): overview, businesses, landing funnel, health and performance.
  * Admin only (platform role admin, re-checked against the database on every call). Aggregates never carry customer
  * PII: shop-level numbers only (counts and cents), no customer names, phones or emails anywhere in these shapes.
- * Contract: docs/engineering/api/admin.md §cockpit. Service: apps/api/src/services/admin-cockpit.ts.
+ * Service: apps/api/src/services/admin-cockpit.ts; routes: apps/api/src/routes/admin/cockpit.ts.
  */
 import { z } from "zod";
 

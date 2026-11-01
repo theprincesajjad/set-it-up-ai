@@ -111,7 +111,7 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
             <p className="text-[16px] font-semibold leading-5 tracking-[-0.014em]">{stamps ? t("pass.clear.stampCard") : t("pass.clear.pointsCard")}</p>
             <p className="truncate text-body text-muted-foreground">{line ?? rewardName ?? unitCaption(locale, m.balance, m.terminology)}</p>
           </div>
-          {badge ? <span data-testid="pass-badge" className={cn("inline-flex h-5 shrink-0 items-center rounded-r2 px-2 text-[12px] font-medium leading-4 tabular-nums", ready || justStamped ? "bg-trade text-trade-foreground" : "bg-muted text-foreground")}>{badge}</span> : null}
+          {badge ? <span data-testid="pass-badge" className={cn("inline-flex min-h-5 shrink-0 items-center rounded-r2 px-2 text-[12px] font-medium leading-4 tabular-nums [:lang(ur)_&]:py-0.5 [:lang(ur)_&]:leading-5", ready || justStamped ? "bg-trade text-trade-foreground" : "bg-muted text-foreground")}>{badge}</span> : null}
         </div>
         {stampGoal > 0 ? (
           <div

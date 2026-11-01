@@ -96,7 +96,9 @@ export async function seedAdminCockpit(db: Db, ctx: AppContext, clock: { now: Da
   const PAGE_ID: Record<string, string> = { "/": "home", "/for-nail-techs": "nail", "/for-barbers": "barber", "/for-groomers": "groom" };
   const TRADE: Record<string, string> = { "/": "home", "/for-nail-techs": "nails", "/for-barbers": "barber", "/for-groomers": "groom" };
 
-  for (const [i, s] of SHOPS.entries()) {
+  // A scaled-down seed (the API tests' 30 customers) takes the first 12 shops only, to keep the test seed fast.
+  const shops = k < 1 ? SHOPS.slice(0, 12) : SHOPS;
+  for (const [i, s] of shops.entries()) {
     // ---- the landing visit that led to the signup ----
     const anonId = s.landing ? aidFor(i, "s") : null;
     if (s.landing && anonId) {
@@ -236,6 +238,6 @@ export async function seedAdminCockpit(db: Db, ctx: AppContext, clock: { now: Da
   }
   for (let r = 0; r < metricRows.length; r += 200) await db.insert(apiMetrics).values(metricRows.slice(r, r + 200));
   clock.now = new Date();
-  log(`Admin cockpit demo: ${SHOPS.length} shops, ${landingRows.length} landing events, ${metricRows.length} latency rows.`);
-  return { skipped: false, merchants: SHOPS.length };
+  log(`Admin cockpit demo: ${shops.length} shops, ${landingRows.length} landing events, ${metricRows.length} latency rows.`);
+  return { skipped: false, merchants: shops.length };
 }

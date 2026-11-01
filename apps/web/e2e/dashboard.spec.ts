@@ -168,7 +168,7 @@ test("owner: program editor with live preview saves", async ({ page }) => {
   await page.getByRole("button", { name: "Save changes" }).click();
   const confirm = page.getByRole("dialog", { name: "Change the card to 11 stamps?" });
   await expect(confirm).toBeVisible();
-  await expect(confirm.getByText(/customers? with stamps|No customer has stamps yet/)).toBeVisible();
+  await expect(confirm.getByText(/This affects \d+ customers? with stamps|No customer has stamps yet/)).toBeVisible();
   await confirm.getByRole("button", { name: "Cancel" }).click();
   await page.getByRole("button", { name: "Discard" }).click();
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();

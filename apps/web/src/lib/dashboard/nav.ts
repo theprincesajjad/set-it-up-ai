@@ -446,7 +446,7 @@ function buildGroceryNav(base: string, role: StaffRole, enabled: Set<FeatureKey>
 export function canOpen(role: StaffRole, key: string, /** phase-solo D: staff at an appointment-led shop may open Customers (their own clients). */ people?: { appointmentLed: boolean }): boolean {
   if (role === "instructor") return key === "home" || key === "classes" || key === "class-door";
   if (role === "staff" && key === "customers") return !!people?.appointmentLed;
-  if (role === "staff") return key === "home" || key === "counter" || key === "calendar" || key === "queue" || key === "payouts" || key === "pets" || key === "groom-rebooking" || key === "daycare" || key === "food-cards" || key === "wash" || key === "vehicles" || key === "service-reminders" || key === "tire-season" || key === "classes" || key === "class-door" || key === "class-offers" || key === "grocery";
+  if (role === "staff") return key === "home" || key === "counter" || key === "calendar" || key === "queue" || key === "payouts" || key === "pets" || key === "groom-rebooking" || key === "daycare" || key === "food-cards" || key === "wash" || key === "vehicles" || key === "service-reminders" || key === "tire-season" || key === "classes" || key === "class-door" || key === "class-offers" || key === "grocery" || key === "program" /* wave-n: rules. Staff read the stamp rules (read-only page; the API refuses their writes). */;
   if (key === "billing") return role === "owner";
   return true;
 }

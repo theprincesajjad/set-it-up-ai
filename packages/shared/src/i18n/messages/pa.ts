@@ -2989,7 +2989,7 @@ export const pa: Messages = {
   "shell.console.funnel": "ਸਾਈਨਅੱਪ ਫਨਲ",
   "shell.console.health": "ਸਿਹਤ",
   "shell.console.performance": "ਪਰਫਾਰਮੈਂਸ",
-  "shell.console.ai": "AI",
+  "shell.console.ai": "ਏਆਈ",
   "shell.console.overview": "ਸੰਖੇਪ",
   "shell.console.campaigns": "ਮੁਹਿੰਮਾਂ",
   "shell.console.reports": "ਰਿਪੋਰਟਾਂ",

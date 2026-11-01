@@ -407,9 +407,9 @@ export async function activeBoosts(
   const on = (await enabledFeaturesFor(tx, [merchant], ["promos.double_points"])).get(merchant.id);
   if (!on?.has("promos.double_points")) return [];
   return rows
-    // wave-n promo: paused promos never boost; targeted ones (a segment or a quantity cap) go through the promo team's
+    // wave-n promo: paused promos never boost; targeted ones (a segment, a quantity cap or a list of items) go through the promo team's
     // boost provider "promo:targeted" (services/promo-rules.ts), which knows the member.
-    .filter((p) => promoAppliesAt(p, at, merchant.timezone) && !p.pausedAt && (p.segment ?? "everyone") === "everyone" && p.quantityCap == null)
+    .filter((p) => promoAppliesAt(p, at, merchant.timezone) && !p.pausedAt && (p.segment ?? "everyone") === "everyone" && p.quantityCap == null && !(p.itemIds ?? []).length)
     .map((p) => ({
       promoId: p.id,
       multiplier: p.multiplierPct ? p.multiplierPct / 100 : undefined,

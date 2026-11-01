@@ -13,7 +13,10 @@ import { useApi } from "@/lib/dashboard/useApi";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { PeriodPicker, deltaLine, pct, type Period } from "./cockpit";
 
-const money0 = (c: number) => (c >= 100_000 ? `$${formatNumber(Math.round(c / 100))}` : formatMoney(c));
+const money0 = (c: number) => (c >= 1_000_000 ? `$${formatNumber(Math.round(c / 100))}` : formatMoney(c));
+/** Axis ticks have about four characters: 1.6k, $18k. */
+const compact = (n: number) => (n >= 1000 ? `${Math.round(n / 100) / 10}k` : formatNumber(Math.round(n)));
+const compactMoney = (c: number) => `$${compact(c / 100)}`;
 
 export function CockpitOverview() {
   const [days, setDays] = useState<Period>(30);
@@ -86,16 +89,16 @@ export function CockpitOverview() {
               </Panel>
               <div className="grid gap-6 lg:grid-cols-2">
                 <Panel>
-                  <BarChart title="Signups per week" subtitle="Last 12 weeks" valueLabel="Signups" data={d.weekly.map((w) => ({ label: w.weekStart, value: w.signups }))} />
+                  <BarChart title="Signups per week" subtitle="Last 12 weeks" valueLabel="Signups" format={compact} data={d.weekly.map((w) => ({ label: w.weekStart, value: w.signups }))} />
                 </Panel>
                 <Panel>
-                  <LineChart title="Money processed per week" subtitle="Last 12 weeks" valueLabel="Processed" format={money0} data={d.weekly.map((w) => ({ label: w.weekStart, value: w.gmvCents }))} />
+                  <LineChart title="Money processed per week" subtitle="Last 12 weeks" valueLabel="Processed" format={compactMoney} data={d.weekly.map((w) => ({ label: w.weekStart, value: w.gmvCents }))} />
                 </Panel>
                 <Panel>
-                  <BarChart title="Stamps per week" subtitle="Last 12 weeks" valueLabel="Stamps" data={d.weekly.map((w) => ({ label: w.weekStart, value: w.stamps }))} />
+                  <BarChart title="Stamps per week" subtitle="Last 12 weeks" valueLabel="Stamps" format={compact} data={d.weekly.map((w) => ({ label: w.weekStart, value: w.stamps }))} />
                 </Panel>
                 <Panel>
-                  <LineChart title="Active customers per week" subtitle="Last 12 weeks · a visit or a completed appointment" valueLabel="Customers" data={d.weekly.map((w) => ({ label: w.weekStart, value: w.activeCustomers }))} />
+                  <LineChart title="Active customers per week" subtitle="Last 12 weeks · a visit or a completed appointment" valueLabel="Customers" format={compact} data={d.weekly.map((w) => ({ label: w.weekStart, value: w.activeCustomers }))} />
                 </Panel>
               </div>
             </>

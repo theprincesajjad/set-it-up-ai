@@ -347,7 +347,7 @@ function clearCss(): string[] {
 
 /**
  * A shop's own colour (src/shopColor.ts): an element with `data-shop-color` carries both modes' values inline (`--shop-l-trade` ...,
- * `--shop-d-trade` ...) and these rules pick the mode. The tripled attribute lifts them over every `[data-trade]` rule above, in both looks.
+ * `--shop-d-trade` ...) and these rules pick the mode. The tripled attribute lifts them over every `[data-trade]` rule (Warm's and Clear's), whatever the order.
  */
 function shopColorCss(): string[] {
   const S = "[data-shop-color][data-shop-color][data-shop-color]";
@@ -407,8 +407,9 @@ export function buildTokensCss(): string {
     `}`,
     ``,
     ...tradeCss(),
-    ...clearCss(),
+    // Before Clear: the Clear section never holds a prefers-color-scheme block (the tripled attribute out-ranks Clear's trade rules anyway).
     ...shopColorCss(),
+    ...clearCss(),
   ].join("\n");
 }
 

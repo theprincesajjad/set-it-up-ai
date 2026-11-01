@@ -26,12 +26,12 @@ function StatTable({ rows, label, keyHeader }: { rows: adminCockpitApi.RouteStat
       <Table label={label} className="min-w-[620px]">
         <thead>
           <tr>
-            <Th>{keyHeader}</Th>
-            <Th align="end">Requests</Th>
-            <Th align="end">p50</Th>
-            <Th align="end">p95</Th>
-            <Th align="end">Slowest</Th>
-            <Th align="end">Errors</Th>
+            <Th className="md:static">{keyHeader}</Th>
+            <Th align="end" className="md:static">Requests</Th>
+            <Th align="end" className="md:static">p50</Th>
+            <Th align="end" className="md:static">p95</Th>
+            <Th align="end" className="md:static">Slowest</Th>
+            <Th align="end" className="md:static">Errors</Th>
           </tr>
         </thead>
         <tbody>
@@ -70,10 +70,10 @@ export default function AdminPerformancePage() {
             />
             <div className="grid gap-6 lg:grid-cols-2">
               <Panel>
-                <LineChart title="p95 latency per hour" subtitle="Milliseconds, the bound of the histogram bucket" valueLabel="p95 (ms)" data={d.trend.map((t) => ({ label: t.hourStart.slice(11, 16), value: t.p95Ms }))} />
+                <LineChart title="p95 latency per hour" subtitle="Milliseconds, the bound of the histogram bucket" valueLabel="p95 (ms)" format={(n) => (n >= 1000 ? `${n / 1000}s` : `${n}`)} data={d.trend.map((t) => ({ label: t.hourStart.slice(5, 16).replace("T", " "), value: t.p95Ms }))} />
               </Panel>
               <Panel>
-                <LineChart title="Requests per hour" subtitle={`Last ${d.hours} hours`} valueLabel="Requests" data={d.trend.map((t) => ({ label: t.hourStart.slice(11, 16), value: t.count }))} />
+                <LineChart title="Requests per hour" subtitle={`Last ${d.hours} hours`} valueLabel="Requests" format={(n) => (n >= 1000 ? `${Math.round(n / 100) / 10}k` : `${Math.round(n)}`)} data={d.trend.map((t) => ({ label: t.hourStart.slice(5, 16).replace("T", " "), value: t.count }))} />
               </Panel>
             </div>
             <Panel title="Slowest routes" description="Highest p95 with at least 5 requests" padded={false}>

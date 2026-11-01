@@ -2989,7 +2989,7 @@ export const hi: Messages = {
   "shell.console.funnel": "साइनअप फ़नल",
   "shell.console.health": "सेहत",
   "shell.console.performance": "परफ़ॉर्मेंस",
-  "shell.console.ai": "AI",
+  "shell.console.ai": "एआई",
   "shell.console.overview": "सारांश",
   "shell.console.campaigns": "अभियान",
   "shell.console.reports": "रिपोर्ट",

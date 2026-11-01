@@ -56,7 +56,7 @@ export function PromoAiWriter({ onDraft }: { onDraft: (apply: (cur: PromoDraft) 
         <p className="flex items-center gap-2 text-body-strong text-fg">
           <Sparkles aria-hidden className="size-4" /> Write it for me
         </p>
-        <p className="mt-1 text-meta text-fg-muted">Claude can draft a promo in your shop's voice. It's part of Pro and Studio.</p>
+        <p className="mt-1 text-meta text-fg-muted">Claude can draft a promo in your shop’s voice. It’s part of Pro and Studio.</p>
         <Button variant="secondary" size="sm" className="mt-3" href={`${base}/billing`}>
           See plans
         </Button>
@@ -71,7 +71,7 @@ export function PromoAiWriter({ onDraft }: { onDraft: (apply: (cur: PromoDraft) 
           <p className="flex items-center gap-2 text-body-strong text-fg">
             <Sparkles aria-hidden className="size-4" /> Write it for me
           </p>
-          <p className="mt-1 text-meta text-fg-muted">Pick a goal. Claude drafts the whole promo from your shop's details: offer, dates, who it's for and the notification.</p>
+          <p className="mt-1 text-meta text-fg-muted">Pick a goal. Claude drafts the whole promo from your shop’s details: offer, dates, who it’s for and the notification.</p>
         </div>
         <ChipGroup label="Goal">
           {promosApi.PROMO_AI_GOALS.map((g) => (

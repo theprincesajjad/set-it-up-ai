@@ -113,7 +113,7 @@ registerEarnBoostProvider("promo:targeted", async (tx, c): Promise<EarnBoost[]> 
           inArray(promos.kind, ["multiplier", "bonus_points"]),
           inArray(promos.status, ["live", "scheduled"]),
           isNull(promos.pausedAt),
-          or(ne(promos.segment, "everyone"), sql`${promos.quantityCap} is not null`),
+          or(ne(promos.segment, "everyone"), sql`${promos.quantityCap} is not null`, sql`jsonb_array_length(${promos.itemIds}) > 0`),
           lte(promos.startsAt, at),
           or(isNull(promos.endsAt), gte(promos.endsAt, at)),
         ),
@@ -122,7 +122,9 @@ registerEarnBoostProvider("promo:targeted", async (tx, c): Promise<EarnBoost[]> 
     const on = (await enabledFeaturesFor(tx, [c.merchant], ["promos.double_points"])).get(c.merchant.id);
     if (!on?.has("promos.double_points")) return [];
     const tz = c.merchant.timezone || "America/Toronto";
-    const live = rows.filter((p) => promoAppliesAt(p, at, tz));
+    // Item-targeted promos boost only a purchase with one of those services or items on it.
+    const onLines = (p: (typeof rows)[number]) => !(p.itemIds ?? []).length || c.lines.some((l) => (l.itemId && p.itemIds.includes(l.itemId)) || (l.serviceId && p.itemIds.includes(l.serviceId)));
+    const live = rows.filter((p) => promoAppliesAt(p, at, tz) && onLines(p));
     const ok = await filterBoostsForMember(tx, live, { id: c.member.id, userId: c.member.userId, visitCount: c.member.visitCount, lastVisitAt: c.member.lastVisitAt, createdAt: c.member.createdAt }, at, tz);
     return ok.map((p) => ({ promoId: p.id, multiplier: p.multiplierPct ? p.multiplierPct / 100 : undefined, bonusPoints: p.bonusPoints ?? undefined, itemId: p.itemId, categoryId: p.categoryId, label: p.title }));
   } catch {

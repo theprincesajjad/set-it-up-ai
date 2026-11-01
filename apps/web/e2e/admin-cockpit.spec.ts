@@ -49,10 +49,13 @@ for (const vp of [
       // Businesses: the at-risk chip narrows the list; the CSV downloads.
       await page.goto("/admin/businesses");
       await expect(page.getByRole("heading", { level: 1, name: "Businesses" })).toBeVisible();
-      await expect(page.getByText("Kings Cuts").first()).toBeVisible();
-      await page.getByRole("button", { name: /^At risk/ }).click();
-      await expect(page.getByText("Lumen Nail Studio")).toHaveCount(0);
-      await expect(page.getByText("Kings Cuts").first()).toBeVisible();
+      await expect(page.locator("text=Kings Cuts >> visible=true").first()).toBeVisible();
+      const atRisk = page.getByRole("button", { name: /^At risk/ });
+      await atRisk.click();
+      const n = (await atRisk.textContent())!.replace(/\D/g, "");
+      await expect(page.getByText(`${n} match these filters`)).toBeVisible();
+      await expect(page.locator("text=Lumen Nail Studio >> visible=true")).toHaveCount(0);
+      await expect(page.locator("text=Kings Cuts >> visible=true").first()).toBeVisible();
       if (vp.name === "desktop") {
         const download = page.waitForEvent("download");
         await page.getByRole("button", { name: "Export CSV" }).click();
@@ -61,7 +64,7 @@ for (const vp of [
       await shot(page, `businesses-${vp.width}`);
       await page.getByRole("button", { name: /^All/ }).click();
       await page.getByRole("searchbox", { name: "Search businesses" }).fill("Lumen");
-      await page.getByText("Lumen Nail Studio").first().click();
+      await page.locator("text=Lumen Nail Studio >> visible=true").first().click();
       await expect(page.getByRole("heading", { level: 1, name: "Lumen Nail Studio" })).toBeVisible();
       await expect(page.getByRole("list", { name: "Funnel progress" })).toContainText("Booking link live");
       await expect(page.getByText("/for-nail-techs").first()).toBeVisible();
@@ -77,8 +80,8 @@ for (const vp of [
 
       await page.goto("/admin/health");
       await expect(page.getByRole("heading", { level: 1, name: "Health" })).toBeVisible();
-      await expect(page.getByText("Kings Cuts").first()).toBeVisible();
-      await expect(page.getByText("Payment failed.").first()).toBeVisible();
+      await expect(page.locator("text=Kings Cuts >> visible=true").first()).toBeVisible();
+      await expect(page.locator("text=Payment failed. >> visible=true").first()).toBeVisible();
       await shot(page, `health-${vp.width}`);
 
       await page.goto("/admin/performance");

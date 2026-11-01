@@ -2989,7 +2989,7 @@ export const ur: Messages = {
   "shell.console.funnel": "سائن اپ فنل",
   "shell.console.health": "صحت",
   "shell.console.performance": "کارکردگی",
-  "shell.console.ai": "AI",
+  "shell.console.ai": "اے آئی",
   "shell.console.overview": "جائزہ",
   "shell.console.campaigns": "مہمات",
   "shell.console.reports": "رپورٹس",

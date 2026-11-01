@@ -108,7 +108,7 @@ function PromoPage() {
                   </div>
                 }
               />
-              {p.pausedAt ? <Banner tone="warning">Paused: customers don't see it, no extra stamps or points are given, and no notifications go out. Resume any time.</Banner> : null}
+              {p.pausedAt ? <Banner tone="warning">Paused: customers don’t see it, no extra stamps or points are given, and no notifications go out. Resume any time.</Banner> : null}
               {p.status !== "draft" ? (
                 <StatGrid>
                   <StatTile label="Sent" value={r ? formatNumber(r.sent) : null} caption={r && r.skippedByCap ? `${r.skippedByCap} held back by the weekly limit` : "Notifications delivered"} loading={results.loading} />

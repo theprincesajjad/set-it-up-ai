@@ -2008,6 +2008,58 @@
   --trade-nav: #33281F;
 }
 
+/* A shop's own colour (brand colour, else its trade): set by shopColorProps() in apps/web, values computed for contrast. */
+:root [data-shop-color][data-shop-color][data-shop-color] {
+  --trade: var(--shop-l-trade);
+  --trade-foreground: var(--shop-l-trade-foreground);
+  --trade-alt: var(--shop-l-trade-alt);
+  --trade-soft: var(--shop-l-trade-soft);
+  --trade-tint: var(--shop-l-trade-tint);
+  --trade-deep: var(--shop-l-trade-deep);
+  --trade-pass-from: var(--shop-l-trade-pass-from);
+  --trade-pass-to: var(--shop-l-trade-pass-to);
+  --trade-pass-text: var(--shop-l-trade-pass-text);
+  --chart-hi: var(--shop-l-chart-hi);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) [data-shop-color][data-shop-color][data-shop-color] {
+    --trade: var(--shop-d-trade);
+    --trade-foreground: var(--shop-d-trade-foreground);
+    --trade-alt: var(--shop-d-trade-alt);
+    --trade-soft: var(--shop-d-trade-soft);
+    --trade-tint: var(--shop-d-trade-tint);
+    --trade-deep: var(--shop-d-trade-deep);
+    --trade-pass-from: var(--shop-d-trade-pass-from);
+    --trade-pass-to: var(--shop-d-trade-pass-to);
+    --trade-pass-text: var(--shop-d-trade-pass-text);
+    --chart-hi: var(--shop-d-chart-hi);
+  }
+}
+:root[data-theme="dark"] [data-shop-color][data-shop-color][data-shop-color] {
+  --trade: var(--shop-d-trade);
+  --trade-foreground: var(--shop-d-trade-foreground);
+  --trade-alt: var(--shop-d-trade-alt);
+  --trade-soft: var(--shop-d-trade-soft);
+  --trade-tint: var(--shop-d-trade-tint);
+  --trade-deep: var(--shop-d-trade-deep);
+  --trade-pass-from: var(--shop-d-trade-pass-from);
+  --trade-pass-to: var(--shop-d-trade-pass-to);
+  --trade-pass-text: var(--shop-d-trade-pass-text);
+  --chart-hi: var(--shop-d-chart-hi);
+}
+:root [data-theme="light"] [data-shop-color][data-shop-color][data-shop-color] {
+  --trade: var(--shop-l-trade);
+  --trade-foreground: var(--shop-l-trade-foreground);
+  --trade-alt: var(--shop-l-trade-alt);
+  --trade-soft: var(--shop-l-trade-soft);
+  --trade-tint: var(--shop-l-trade-tint);
+  --trade-deep: var(--shop-l-trade-deep);
+  --trade-pass-from: var(--shop-l-trade-pass-from);
+  --trade-pass-to: var(--shop-l-trade-pass-to);
+  --trade-pass-text: var(--shop-l-trade-pass-text);
+  --chart-hi: var(--shop-l-chart-hi);
+}
+
 /* ===== Clear (v3.2, Liquid Glass chrome over a flat content layer). Light only by default; dark only with data-theme="dark". ===== */
 :root[data-theme-style="clear"],
 [data-theme-style="clear"] [data-theme="light"],
@@ -2826,56 +2878,4 @@
   --trade-pass-from: #E28E7D;
   --trade-pass-to: #E28E7D;
   --trade-pass-text: #1A1208;
-}
-
-/* A shop's own colour (brand colour, else its trade): set by shopColorProps() in apps/web, values computed for contrast. */
-:root [data-shop-color][data-shop-color][data-shop-color] {
-  --trade: var(--shop-l-trade);
-  --trade-foreground: var(--shop-l-trade-foreground);
-  --trade-alt: var(--shop-l-trade-alt);
-  --trade-soft: var(--shop-l-trade-soft);
-  --trade-tint: var(--shop-l-trade-tint);
-  --trade-deep: var(--shop-l-trade-deep);
-  --trade-pass-from: var(--shop-l-trade-pass-from);
-  --trade-pass-to: var(--shop-l-trade-pass-to);
-  --trade-pass-text: var(--shop-l-trade-pass-text);
-  --chart-hi: var(--shop-l-chart-hi);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) [data-shop-color][data-shop-color][data-shop-color] {
-    --trade: var(--shop-d-trade);
-    --trade-foreground: var(--shop-d-trade-foreground);
-    --trade-alt: var(--shop-d-trade-alt);
-    --trade-soft: var(--shop-d-trade-soft);
-    --trade-tint: var(--shop-d-trade-tint);
-    --trade-deep: var(--shop-d-trade-deep);
-    --trade-pass-from: var(--shop-d-trade-pass-from);
-    --trade-pass-to: var(--shop-d-trade-pass-to);
-    --trade-pass-text: var(--shop-d-trade-pass-text);
-    --chart-hi: var(--shop-d-chart-hi);
-  }
-}
-:root[data-theme="dark"] [data-shop-color][data-shop-color][data-shop-color] {
-  --trade: var(--shop-d-trade);
-  --trade-foreground: var(--shop-d-trade-foreground);
-  --trade-alt: var(--shop-d-trade-alt);
-  --trade-soft: var(--shop-d-trade-soft);
-  --trade-tint: var(--shop-d-trade-tint);
-  --trade-deep: var(--shop-d-trade-deep);
-  --trade-pass-from: var(--shop-d-trade-pass-from);
-  --trade-pass-to: var(--shop-d-trade-pass-to);
-  --trade-pass-text: var(--shop-d-trade-pass-text);
-  --chart-hi: var(--shop-d-chart-hi);
-}
-:root [data-theme="light"] [data-shop-color][data-shop-color][data-shop-color] {
-  --trade: var(--shop-l-trade);
-  --trade-foreground: var(--shop-l-trade-foreground);
-  --trade-alt: var(--shop-l-trade-alt);
-  --trade-soft: var(--shop-l-trade-soft);
-  --trade-tint: var(--shop-l-trade-tint);
-  --trade-deep: var(--shop-l-trade-deep);
-  --trade-pass-from: var(--shop-l-trade-pass-from);
-  --trade-pass-to: var(--shop-l-trade-pass-to);
-  --trade-pass-text: var(--shop-l-trade-pass-text);
-  --chart-hi: var(--shop-l-chart-hi);
 }

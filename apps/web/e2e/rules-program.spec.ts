@@ -64,8 +64,18 @@ test.describe("Rewards page: stamp rules", () => {
     await expect(plain.getByText("Customers get 1 stamp per purchase over $5.00.")).toBeVisible();
 
     // 2. What earns: a new shop has nothing in its catalogue yet, so it says so and everything earns.
-    await expect(page.getByText("Nothing to choose from yet")).toBeVisible();
-    await expect(page.getByRole("radiogroup", { name: "What earns" }).getByRole("radio", { name: /Only some/ })).toBeDisabled();
+    const scope = page.getByRole("radiogroup", { name: "What earns" });
+    if (await page.getByText("Nothing to choose from yet").isVisible()) {
+      await expect(scope.getByRole("radio", { name: /Only some/ })).toBeDisabled();
+    } else {
+      // The bakery template came with a menu: pick one thing, read it back in plain words, then go back to everything.
+      await scope.getByRole("radio", { name: /Only some/ }).click();
+      const first = page.locator("#what-earns").getByRole("checkbox").first();
+      await first.check();
+      await expect(plain.getByText(/^Only .+ earns? stamps\.$/)).toBeVisible();
+      await page.screenshot({ path: shot("01b-only-some-1440"), fullPage: true });
+      await scope.getByRole("radio", { name: /Everything/ }).click();
+    }
 
     // 3. The prize: type any number; +/- still work.
     const goal = page.getByRole("textbox", { name: "Stamps for the reward" });
