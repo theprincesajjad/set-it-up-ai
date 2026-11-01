@@ -7,7 +7,7 @@ import { PopularRow } from "@/components/restaurant/PopularRow";
 import { RestaurantLinks } from "@/components/restaurant/RestaurantLinks";
 import { WeekendPots } from "@/components/restaurant/WeekendPots";
 import { notFound } from "next/navigation";
-import type { customerApi, networkApi } from "@ll/shared";
+import type { customerApi, networkApi, promosApi } from "@ll/shared";
 import { JoinFlow } from "@/components/pass/JoinFlow";
 import { ShopTabs } from "@/components/pass/ShopTabs";
 import { StickyJoin } from "@/components/pass/StickyJoin";
@@ -90,10 +90,17 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const petInfo = shop.merchant.vertical === "pet" ? await publicServerApi().public.petInfo(slug).catch(() => null) : null;
   const me = await getMe();
   let membership: customerApi.MembershipDto | null = null;
+  // wave-n: deals for members only (a segment, or not shown on the public page) appear here for a signed-in member, after the public ones.
+  let memberDeals: promosApi.DealDto[] = [];
   if (me) {
     try {
-      const w = await (await getServerApi()).me.memberships();
+      const api = await getServerApi();
+      const w = await api.me.memberships();
       membership = w.items.find((m) => m.merchant.id === shop.merchant.id) ?? null;
+      if (membership) {
+        const shown = new Set(shop.promos.map((p) => p.id));
+        memberDeals = (await api.me.deals(shop.merchant.id).catch(() => ({ items: [] }))).items.filter((d) => !shown.has(d.id));
+      }
     } catch {
       membership = null;
     }
@@ -181,8 +188,8 @@ export default async function ShopPage({ params, searchParams }: Props) {
         shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }}
         coverUrl={m.coverUrl}
         subtitle={heroSubtitle}
-        offer={shop.rewards[0] ? <>{unitsText(locale, shop.rewards[0].pointsCost, terminology, false)} = <bdi>{shop.rewards[0].name}</bdi></> : null}
-        goal={program?.earnType === "stamps" ? Math.min(12, shop.rewards[0]?.pointsCost ?? program.stampGoal) : 0}
+        offer={shop.rewards[0] ? <>{unitsText(locale, shop.rewards[0].pointsCost, terminology, false)} = <bdi>{locale === "en" ? shop.rewards[0].name : rewardInSentenceL(L, shop.rewards[0].name)}</bdi></> : null}
+        goal={program?.earnType === "stamps" ? (shop.rewards[0]?.pointsCost ?? program.stampGoal) : 0}
       />
       {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
@@ -306,9 +313,17 @@ export default async function ShopPage({ params, searchParams }: Props) {
           {
             id: "promos",
             label: t("shop.promos"),
-            count: shop.promos.length,
-            content: shop.promos.length ? (
-              shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} terminology={terminology} showShop={false} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }} />)
+            count: shop.promos.length + memberDeals.length,
+            content: shop.promos.length + memberDeals.length ? (
+              <>
+                {shop.promos.map((p) => <PromoCard key={p.id} variant="compact" promo={p} terminology={terminology} showShop={false} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }} />)}
+                {memberDeals.map((d) => (
+                  <div key={d.id} className="flex flex-col gap-1.5" data-testid="member-deal">
+                    <p className="text-meta-strong text-trade-deep">{t("deal.forMembers")}</p>
+                    <PromoCard variant="compact" promo={d} terminology={terminology} showShop={false} href={`/me?deal=${d.id}`} shop={{ name: m.name, vertical: m.vertical, logoUrl: m.logoUrl, brandColor: m.brandColor }} />
+                  </div>
+                ))}
+              </>
             ) : (
               <p className="py-6 text-center text-body text-fg-muted">{t("wp.shop.noOffers")}</p>
             ),

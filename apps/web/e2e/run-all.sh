@@ -17,6 +17,7 @@
 #                                    Pinecone's double-stamp promos run Tuesdays and weekdays 2-4 pm; the default keeps
 #                                    stamp/point deltas the same on every day the suite runs.
 #   SKIP_BUILD=1                     reuse the existing production build in NEXT_DIST_DIR (built against the same API port)
+#   PROMO_AI_FAKE / SITE_AI_FAKE / WALLET_DEV_FAKE (default 1) and APP_ENCRYPTION_KEY (default: a random throwaway): see below
 #
 # Specs write screenshots under e2e/screenshots (tracked). Restore them afterwards with
 # `git checkout -- apps/web/e2e/screenshots && git clean -fd apps/web/e2e/screenshots` unless you meant to update them.
@@ -97,6 +98,11 @@ else
   export DATABASE_URL="pglite://$DB_DIR/pg"
 fi
 export PUBLIC_API_URL="$API_URL" PUBLIC_WEB_URL="$WEB_URL"
+# Deterministic stand-ins every spec relies on (all refused in production): the AI promo writer (promos-ai.spec), the site builder
+# (site-builder.spec), the throwaway wallet signer (wallet.spec, join success). The master key for the admin's Claude key is a
+# throwaway made for this run, so /admin/ai can store (encrypted) a test key. Set any of them yourself to override.
+export PROMO_AI_FAKE="${PROMO_AI_FAKE:-1}" SITE_AI_FAKE="${SITE_AI_FAKE:-1}" WALLET_DEV_FAKE="${WALLET_DEV_FAKE:-1}"
+export APP_ENCRYPTION_KEY="${APP_ENCRYPTION_KEY:-$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')}"
 # Landing A/B clock (packages/shared/src/experiments.ts): pinned before any test starts, so every landing spec sees control and
 # no random arm. e2e/landing-ab.spec.ts moves it per request with the x-ll-experiments-now header (EXPERIMENTS_TEST_CLOCK=1).
 export EXPERIMENTS_NOW="${EXPERIMENTS_NOW:-2026-01-01T00:00:00Z}"

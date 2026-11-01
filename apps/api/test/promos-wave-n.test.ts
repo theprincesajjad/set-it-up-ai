@@ -390,6 +390,15 @@ describe("the Claude key and /admin/ai", () => {
     expect((await env.app.inject({ method: "GET", url: "/v1/admin/ai" })).statusCode).toBe(401);
   });
 
+  it("an admin who was demoted is refused at once, though their access token is still valid", async () => {
+    const a = await createUser(env.db, { platformRole: "admin" });
+    const t = await tokenFor(env, a);
+    const get = () => env.app.inject({ method: "GET", url: "/v1/admin/ai", headers: { authorization: `Bearer ${t}` } });
+    expect((await get()).statusCode).toBe(200);
+    await env.db.update(users).set({ platformRole: "none" }).where(eq(users.id, a.id));
+    expect((await get()).statusCode).toBe(403);
+  });
+
   it("masterKeyFrom accepts 64 hex or a long passphrase and ignores short values", () => {
     expect(masterKeyFrom("A".repeat(64))).toBe("a".repeat(64));
     expect(masterKeyFrom("correct horse battery staple and more words")).toMatch(/^[0-9a-f]{64}$/);
@@ -511,5 +520,21 @@ describe("customer Deals inbox", () => {
     expect((await walletSummary(env.ctx, m.user.id)).deal).toEqual({ shop: "Corner Bakery", title: "Free cookie Fridays" });
     const [u] = await env.db.select().from(users).where(eq(users.id, m.user.id));
     expect(u).toBeTruthy();
+  });
+
+  it("the shop's own wallet card (per membership) carries the running deal: Apple field with a change message, Google text module", async () => {
+    const s = await shop({ name: "Corner Bakery" });
+    const m = await member(s.merchant.id);
+    const { shopPassModel, buildShopPassJson, shopLoyaltyObject } = await import("../src/services/wallet-shop.js");
+    expect((await shopPassModel(env.ctx, m.user.id, s.merchant.id)).model.deal ?? null).toBeNull();
+    await s.call("POST", "/promos", { title: "Free cookie Fridays", kind: "offer", startsAt: iso(-60_000), publish: true });
+    const { model, locations } = await shopPassModel(env.ctx, m.user.id, s.merchant.id);
+    expect(model.deal).toMatchObject({ title: "Free cookie Fridays" });
+    const pass = buildShopPassJson(env.ctx.config, { passTypeId: "pass.test", teamId: "TEAM" }, { serialNumber: "S1", authToken: "a".repeat(24) }, model, locations);
+    expect(pass.storeCard.auxiliaryFields).toContainEqual(expect.objectContaining({ key: "deal", value: "Free cookie Fridays", changeMessage: "New deal at Corner Bakery: %@" }));
+    expect(shopLoyaltyObject(env.ctx.config, "issuer", m.user.id, model).textModulesData).toContainEqual({ id: "deal", header: "Deal", body: "Free cookie Fridays" });
+    // No consent for offers: no deal on the card.
+    await env.db.update(merchantMembers).set({ marketingConsentAt: null }).where(eq(merchantMembers.id, m.member.id));
+    expect((await shopPassModel(env.ctx, m.user.id, s.merchant.id)).model.deal ?? null).toBeNull();
   });
 });

@@ -179,7 +179,8 @@ test("the owner sees their car and what is due, saves an odometer reading and bo
   const firstDay = tire.getByRole("button", { name: /^Book swap: .*left$/ }).first();
   const dayName = ((await firstDay.textContent()) ?? "").split(" · ")[0]!.trim();
   await firstDay.click();
-  const booked = tire.getByRole("listitem").filter({ hasText: `Booked for ${dayName}` });
+  // Whole day name: "Booked for Nov 1" must not also match a seeded "Booked for Nov 14".
+  const booked = tire.getByRole("listitem").filter({ hasText: new RegExp(`Booked for ${dayName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\d)`) });
   await expect(booked).toBeVisible();
   await page.screenshot({ path: shot("m1-tire-swap-390"), fullPage: true });
   await booked.getByRole("button", { name: "Cancel" }).click();

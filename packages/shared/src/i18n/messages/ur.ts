@@ -2152,6 +2152,9 @@ export const ur: Messages = {
   "ms.shop.earnPerDollar": "ہر {amount} پر {pts}",
   "ms.shop.earnStamp": "ہر وزٹ پر 1 {unit} · انعام کے لیے {goal}",
   "ms.shop.earnVisit": "ہر وزٹ پر {amount}",
+  "ms.shop.earnPurchase": "ہر خریداری پر {amount}",
+  "ms.shop.earnPickup": "ہر پک اپ کیے گئے آرڈر پر {amount}",
+  "ms.shop.earnSome": "صرف کچھ سروسز یا چیزوں پر ملتا ہے۔",
   "ms.shop.earn": "کمائیں: {line}",
   "ms.shop.showToEarn": "کمانے کے لیے کاؤنٹر پر اپنا کارڈ دکھائیں۔",
   "ms.shop.joinFree": "مفت شامل ہوں",
@@ -3273,6 +3276,8 @@ export const ur: Messages = {
   "counter.override.add": "پھر بھی شامل کریں",
   "counter.override.cancel": "شامل نہ کریں",
   "counter.override.note": "آپ کا نام اور وجہ دکان کے لاگ میں محفوظ ہوتے ہیں۔",
+  "counter.pick.title": "انہوں نے کیا خریدا؟",
+  "counter.pick.body": "اپنی فہرست میں سے ایک چنیں، اسٹامپ معمول کے مطابق لگ جائے گا، کوئی وجہ نہیں چاہیے۔",
   "counter.err.insufficient": "اس انعام کے لیے ابھی {word} کم ہیں۔",
   "counter.err.expired": "اس کوڈ کی میعاد ختم ہو گئی۔ ان کے پوائنٹس واپس ہو گئے۔ ان سے دوبارہ ریڈیم پر ٹیپ کرنے کو کہیں۔",
   "counter.err.used": "یہ کوڈ پہلے ہی استعمال ہو چکا ہے۔ گاہک سے اپنی ایپ دیکھنے کو کہیں۔",
@@ -4435,5 +4440,7 @@ export const ur: Messages = {
   "deal.consentText": "جی ہاں، {shop} مجھے پیشکشیں اور ڈیلز بھیج سکتا ہے۔ ہفتے میں زیادہ سے زیادہ 2، رات 9 بجے سے صبح 8 بجے تک کبھی نہیں۔ میں انہیں کسی بھی وقت بند کر سکتا/سکتی ہوں۔",
   "deal.limits": "ہر دکان سے ہفتے میں زیادہ سے زیادہ 2، رات 9 بجے سے صبح 8 بجے تک کبھی نہیں۔",
   "deal.passChange": "{shop} پر نئی ڈیل: %@",
+  "deal.passLabel": "ڈیل",
+  "deal.forMembers": "ممبرز کے لیے",
   // ---- end wave-n: promo ----
 };

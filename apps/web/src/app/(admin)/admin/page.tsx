@@ -47,7 +47,7 @@ export default function AdminToday() {
                 items={[
                   { label: "MRR", value: formatMoney(d.money.mrrCents), caption: d.money.payingShops ? `${d.money.payingShops} paying · Pro ${d.money.byPlan.plus}, Studio ${d.money.byPlan.studio}, Service ${d.money.byPlan.pro}${d.money.byPlan.restaurant ? `, Restaurant ${d.money.byPlan.restaurant}` : ""}` : "Paid plans start in month 4", href: "/admin/costs" },
                   { label: "Fee revenue, 30 days", value: formatMoney(d.money.feeRevenue30dCents), caption: `On ${formatMoney(d.money.volume30dCents)} paid through the app` },
-                  { label: "Activated", value: pct(d.activation.rate), caption: `${formatNumber(d.activation.activated)} of ${formatNumber(d.activation.signed)} shops · goal ${pct(d.activation.goal)}`, dot: d.activation.rate < d.activation.goal && d.activation.signed >= 10 ? "accent" : undefined },
+                  { label: "At member goal", value: pct(d.activation.rate), caption: `${formatNumber(d.activation.activated)} of ${formatNumber(d.activation.signed)} shops reached their member target · goal ${pct(d.activation.goal)}`, dot: d.activation.rate < d.activation.goal && d.activation.signed >= 10 ? "accent" : undefined },
                   { label: "Cost per shop", value: formatMoney(d.costs.perShopCents), caption: `${formatMoney(d.costs.monthCents)} this month for ${formatNumber(d.costs.shops)} shops`, href: "/admin/costs" },
                 ]}
               />
@@ -70,7 +70,7 @@ export default function AdminToday() {
                 </Panel>
               ) : null}
               <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-                <Panel title="Signups by area" description="Leads, shops signed and activated against the area's target" padded={false}>
+                <Panel title="Signups by area" description="Leads, shops signed and shops at their member goal, against the area's target" padded={false}>
                   {d.funnel.length ? (
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[640px] text-meta">
@@ -80,7 +80,7 @@ export default function AdminToday() {
                             <th scope="col" className="px-4 py-2.5 text-start">Area</th>
                             <th scope="col" className="px-3 py-2.5 text-end">Leads</th>
                             <th scope="col" className="px-3 py-2.5 text-end">Signed</th>
-                            <th scope="col" className="px-3 py-2.5 text-end">Activated</th>
+                            <th scope="col" className="px-3 py-2.5 text-end">At member goal</th>
                             <th scope="col" className="px-3 py-2.5 text-end">Of target</th>
                             <th scope="col" className="px-4 py-2.5 text-end">Calls due</th>
                           </tr>

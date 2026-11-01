@@ -170,7 +170,7 @@ describe("seedDemo", () => {
     expect(again.skipped).toBe(true);
     const after = await env.db.select({ n: sql<number>`count(*)::int` }).from(merchants);
     expect(after[0]!.n).toBe(before[0]!.n);
-  });
+  }, 120_000); // the skip path still re-runs every module's own idempotent seed (dozens of shops); ~20-40 s under a parallel suite
 });
 
 const slugToId = async (slug: string) => (await env.db.select({ id: merchants.id }).from(merchants).where(eq(merchants.slug, slug)))[0]!.id;
@@ -637,7 +637,7 @@ describe("seedDemo: appointment salons", () => {
     await seedDemo(env.db, { customers: 30, days: 45, config: env.ctx.config });
     const after = await env.db.select({ n: sql<number>`count(*)::int` }).from(appointments);
     expect(after[0]!.n).toBe(before[0]!.n);
-  });
+  }, 120_000); // a second full seedDemo pass, like the test above
 });
 
 describe("seedDemo: Ridgeway grocer and halal butcher", () => {

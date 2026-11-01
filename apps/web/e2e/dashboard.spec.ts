@@ -184,7 +184,9 @@ test("owner: create and publish a promo (pilot override)", async ({ page }) => {
   await pilot(id, ["promos.basic", "promos.double_points"], true);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Create a promo" })).toBeVisible();
-  await page.getByRole("button", { name: "Double points" }).click();
+  // wave-n: promo. The editor starts with the promo type; "Double stamps" (Pinecone says stamps) sets the x2 effect.
+  await page.getByRole("button", { name: "Double stamps", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Multiply stamps" })).toHaveAttribute("aria-pressed", "true");
   await page.getByLabel("Title", { exact: true }).fill("Double stamps on slow afternoons");
   await page.getByLabel("Description (optional)").fill("Every weekday from 2 to 4 pm.");
   for (const d of ["Mon", "Tue", "Wed", "Thu", "Fri"]) await page.getByRole("button", { name: d, exact: true }).click();

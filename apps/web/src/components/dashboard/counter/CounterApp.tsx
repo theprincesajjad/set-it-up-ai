@@ -134,6 +134,11 @@ export interface CounterAppProps {
   /** Grocers: the "Not counted" amount and the bulk-item chips on the amount screen (docs/research/grocers.md). Omit for every other shop. */
   grocery?: GroceryCounter | null;
   /**
+   * wave-n: shops where only some services or items earn. When a plain stamp is refused for that reason, the counter offers these
+   * as "What did they buy?" chips: one tap sends the stamp with that line (no override needed). Omit or empty to show the reason form only.
+   */
+  earnPicks?: { kind: "itemId" | "serviceId" | "categoryId"; id: string; name: string }[];
+  /**
    * The shop's vertical (`cafe`, `salon` ...): the stamps wear the trade colour and the trade's own stamp icon, and the avatar and the
    * recent rows follow. Omit it and the page's `data-trade` (the dashboard shell sets it) still colours them; stamps then carry a check.
    */
@@ -161,6 +166,7 @@ export function CounterApp({
   undoNote,
   exitHref,
   vertical,
+  earnPicks,
 }: CounterAppProps) {
   const ct = useCounterText();
   const { t } = ct;
@@ -196,7 +202,7 @@ export function CounterApp({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** wave-n: rules. A stamp the shop's rules refused: staff may add it anyway with a reason. */
-  const [overrideAsk, setOverrideAsk] = useState<null | { ref: { memberId?: string; phone?: string }; extra: { customerName?: string; consent?: { text: string } }; from?: number; message: string }>(null);
+  const [overrideAsk, setOverrideAsk] = useState<null | { ref: { memberId?: string; phone?: string }; extra: { customerName?: string; consent?: { text: string } }; from?: number; message: string; scope: boolean }>(null);
   const [overrideReason, setOverrideReason] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
@@ -390,7 +396,7 @@ export function CounterApp({
   const award = useCallback(
     async (
       ref: { memberId?: string; phone?: string },
-      extra: { customerName?: string; consent?: { text: string }; override?: { reason: string } } = {},
+      extra: { customerName?: string; consent?: { text: string }; override?: { reason: string }; lines?: { amountCents: number; itemId?: string; serviceId?: string; categoryId?: string }[] } = {},
       from?: number,
     ) => {
       if (perDollar && centsFromKeypad(cents) <= 0) {
@@ -474,10 +480,10 @@ export function CounterApp({
           awardKey.current = null;
           setPhase({ kind: "queued", label, who });
           setAnnounce(t("counter.announce.queued", { label }));
-        } else if (isApiError(e) && e.code === "earn_rule" && !extra.override) {
-          // wave-n: rules. The shop's rules say this doesn't earn: staff may add it anyway with a reason (audited).
+        } else if (isApiError(e) && e.code === "earn_rule" && !extra.override && !extra.lines) {
+          // wave-n: rules. The shop's rules say this doesn't earn: staff may pick what was bought, or add it anyway with a reason (audited).
           awardKey.current = null;
-          setOverrideAsk({ ref, extra, from, message: e.message });
+          setOverrideAsk({ ref, extra, from, message: e.message, scope: (e.details as { rule?: string } | undefined)?.rule === "earn_scope" });
           setOverrideReason("");
         } else {
           awardKey.current = null;
@@ -852,6 +858,31 @@ export function CounterApp({
             }}
           >
             <p id="override-title" className="font-semibold">{t("counter.override.title")}</p>
+            {overrideAsk.scope && earnPicks?.length ? (
+              <div className="flex flex-col gap-2" data-testid="counter-earn-picks">
+                <p className="text-meta font-medium">{t("counter.pick.title")}</p>
+                <p className="text-meta">{t("counter.pick.body")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {earnPicks.slice(0, 24).map((p) => (
+                    <Button
+                      key={`${p.kind}:${p.id}`}
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="min-h-11"
+                      disabled={busy}
+                      onClick={() => {
+                        const ask = overrideAsk;
+                        setOverrideAsk(null);
+                        void award(ask.ref, { ...ask.extra, lines: [{ amountCents: 0, [p.kind]: p.id }] }, ask.from);
+                      }}
+                    >
+                      {p.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <p className="text-meta">{t("counter.override.body")}</p>
             <label className="flex flex-col gap-1 text-meta font-medium">
               {t("counter.override.reason")}

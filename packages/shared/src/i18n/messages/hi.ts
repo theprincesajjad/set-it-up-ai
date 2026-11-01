@@ -2152,6 +2152,9 @@ export const hi: Messages = {
   "ms.shop.earnPerDollar": "हर {amount} पर {pts}",
   "ms.shop.earnStamp": "हर विज़िट पर 1 {unit} · रिवॉर्ड के लिए {goal}",
   "ms.shop.earnVisit": "हर विज़िट पर {amount}",
+  "ms.shop.earnPurchase": "हर ख़रीद पर {amount}",
+  "ms.shop.earnPickup": "हर पिकअप किए गए ऑर्डर पर {amount}",
+  "ms.shop.earnSome": "सिर्फ़ कुछ सेवाओं या चीज़ों पर मिलता है।",
   "ms.shop.earn": "कमाएँ: {line}",
   "ms.shop.showToEarn": "कमाने के लिए काउंटर पर अपना कार्ड दिखाएँ।",
   "ms.shop.joinFree": "मुफ़्त जुड़ें",
@@ -3273,6 +3276,8 @@ export const hi: Messages = {
   "counter.override.add": "फिर भी जोड़ें",
   "counter.override.cancel": "न जोड़ें",
   "counter.override.note": "आपका नाम और कारण दुकान के लॉग में सेव होते हैं।",
+  "counter.pick.title": "उन्होंने क्या खरीदा?",
+  "counter.pick.body": "अपनी सूची में से एक चुनें, स्टैम्प हमेशा की तरह लग जाएगा, कोई वजह नहीं चाहिए।",
   "counter.err.insufficient": "उस रिवॉर्ड के लिए अभी {word} कम हैं।",
   "counter.err.expired": "इस कोड की मियाद ख़त्म हो गई। उनके पॉइंट वापस हो गए। उनसे फिर रिडीम पर टैप करने को कहें।",
   "counter.err.used": "यह कोड पहले ही इस्तेमाल हो चुका है। ग्राहक से अपना ऐप देखने को कहें।",
@@ -4435,5 +4440,7 @@ export const hi: Messages = {
   "deal.consentText": "हाँ, {shop} मुझे ऑफ़र और डील्स भेज सकता है। हफ़्ते में ज़्यादा से ज़्यादा 2, रात 9 बजे से सुबह 8 बजे तक कभी नहीं। मैं इन्हें कभी भी बंद कर सकता/सकती हूँ।",
   "deal.limits": "हर दुकान से हफ़्ते में ज़्यादा से ज़्यादा 2, रात 9 बजे से सुबह 8 बजे तक कभी नहीं।",
   "deal.passChange": "{shop} पर नई डील: %@",
+  "deal.passLabel": "डील",
+  "deal.forMembers": "सदस्यों के लिए",
   // ---- end wave-n: promo ----
 };

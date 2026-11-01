@@ -22,6 +22,9 @@ import { HOLIDAY_LABEL, KIND_INFO, SEGMENT_LABEL, TYPE_INFO, WEEKDAYS, applyType
 import { fromLocalInput } from "@/lib/dashboard/time";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
 
+/** "Double stamps" or "Double points": the type names follow the shop's own word. */
+const typeLabel = (k: promosApi.PromoType, term: string) => (k === "double_stamps" ? `Double ${term}` : k === "bonus_stamps" ? `Bonus ${term}` : TYPE_INFO[k].label);
+
 const KIND_ICON: Record<PromoKind, typeof Gift> = { offer: Gift, multiplier: Zap, bonus_points: Sparkles, discount: Percent, event: CalendarDays };
 
 /**
@@ -143,12 +146,12 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                     className={cn("flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-input border p-3 text-start text-label focus-visible:focus-ring disabled:opacity-50", d.promoType === k ? "border-brand bg-bg-subtle text-fg" : "border-line-strong text-fg hover:bg-bg-subtle")}
                     data-testid={`promo-type-${k}`}
                   >
-                    {TYPE_INFO[k].label}
+                    {typeLabel(k, term)}
                   </button>
                 );
               })}
             </div>
-            <p className="mt-2 text-meta text-fg-muted">{TYPE_INFO[d.promoType].hint}</p>
+            <p className="mt-2 text-meta text-fg-muted">{TYPE_INFO[d.promoType].hint.replaceAll("stamps", term)}</p>
           </fieldset>
         </Panel>
 
@@ -169,7 +172,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                     className={cn("flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-input border p-2 text-center text-label focus-visible:focus-ring disabled:opacity-50", d.kind === k ? "border-brand bg-bg-subtle text-fg" : "border-line-strong text-fg hover:bg-bg-subtle")}
                   >
                     <Icon aria-hidden className="size-5" />
-                    {k === "multiplier" ? `Double ${term}` : k === "bonus_points" ? `Bonus ${term}` : KIND_INFO[k].label}
+                    {k === "multiplier" ? `Multiply ${term}` : k === "bonus_points" ? `Extra ${term}` : KIND_INFO[k].label}
                   </button>
                 );
               })}
@@ -224,7 +227,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
               <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Card colour">
                 <button type="button" role="radio" aria-checked={!d.color} aria-label="No colour" onClick={() => set("color", "")} className={cn("size-11 rounded-full border border-line-strong bg-card focus-visible:focus-ring", !d.color ? "ring-2 ring-fg" : "")} />
                 {promosApi.PROMO_COLORS.map((c) => (
-                  <button key={c} type="button" role="radio" aria-checked={d.color === c} aria-label={c} onClick={() => set("color", c)} className={cn("size-11 rounded-full border border-line focus-visible:focus-ring", DEAL_TILE[c], d.color === c ? "ring-2 ring-fg" : "")} />
+                  <button key={c} type="button" role="radio" aria-checked={d.color === c} aria-label={c.charAt(0).toUpperCase() + c.slice(1)} onClick={() => set("color", c)} className={cn("size-11 rounded-full border border-line focus-visible:focus-ring", DEAL_TILE[c], d.color === c ? "ring-2 ring-fg" : "")} />
                 ))}
               </div>
             </div>
@@ -236,7 +239,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             <legend className="text-body-strong text-fg">Who it’s for and how they hear</legend>
             <Select label="Who it's for" value={d.segment} onChange={(e) => set("segment", e.target.value as PromoDraft["segment"])} options={promosApi.PROMO_SEGMENTS.map((s) => ({ value: s, label: SEGMENT_LABEL[s] }))} data-testid="promo-segment" />
             <p className="-mt-2 text-meta text-fg-muted" aria-live="polite">
-              {audience ? `${audience.members} customers. ${audience.reachable} said yes to offers and can get a notification.` : " "}
+              {audience ? `${audience.members} ${audience.members === 1 ? "customer" : "customers"}. ${audience.reachable} said yes to offers and can get a notification.` : " "}
             </p>
             {d.segment === "everyone" ? (
               <Checkbox checked={d.audience === "network"} onChange={(v) => set("audience", v ? "network" : "members")} label="Also show it on my public shop page and the neighbourhood feed" />

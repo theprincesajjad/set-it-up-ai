@@ -270,7 +270,7 @@ export const counterKey = (key: string) => `counter:${key}`;
 
 export interface AwardInput extends CustomerRef {
   amountCents?: number;
-  lines?: { amountCents: number; categoryId?: string | null; itemId?: string | null; quantity?: number }[];
+  lines?: { amountCents: number; categoryId?: string | null; itemId?: string | null; serviceId?: string | null; quantity?: number }[];
   /** Part of amountCents that never earns (tobacco, lottery, alcohol, gift cards, bills): becomes a line in a no-earn category. */
   notCountedCents?: number;
   locationId?: string;

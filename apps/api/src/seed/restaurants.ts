@@ -968,9 +968,11 @@ export async function seedRestaurantCorridor(db: Db, opts: RestaurantSeedOptions
   }
   // Deterministic, unanswered review links for demos and the e2e specs (apps/web/e2e/restaurant-messaging.spec.ts):
   // /r/demo-review-sarson-5 (answer with 5 stars) and /r/demo-review-sarson-low (answer with 1-3). Sarson Dhaba has a Google link.
+  // /r/demo-review-sarson-layout is only looked at (e2e/reviews-appointments.spec.ts checks the page at 390): restaurant-messaging
+  // answers -low earlier in the same run, and an answered link no longer shows the form.
   const demoDone = completedByShop.get(dhaba.id) ?? [];
   if (demoDone.length >= 2) {
-    for (const [i, token] of ["demo-review-sarson-5", "demo-review-sarson-low"].entries()) {
+    for (const [i, token] of ["demo-review-sarson-5", "demo-review-sarson-low", "demo-review-sarson-layout"].slice(0, demoDone.length).entries()) {
       const o = demoDone[demoDone.length - 1 - i]!;
       reviewRows.push({ merchantId: dhaba.id, userId: o.userId, orderId: o.id, channel: "sms", token, rating: null, feedback: null, sentAt: minutesAgo(90), clickedAt: null, createdAt: minutesAgo(90) });
     }

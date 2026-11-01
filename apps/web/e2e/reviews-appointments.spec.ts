@@ -144,7 +144,8 @@ test("3: on Pro the switch turns on and the checkout says when the request goes 
 
 test("4: the public page keeps both options at 390 (the same two for every rating)", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/r/demo-review-sarson-low?lang=${LANG}`);
+  // Its own unanswered link: restaurant-messaging.spec answers demo-review-sarson-low earlier in a full run.
+  await page.goto(`/r/demo-review-sarson-layout?lang=${LANG}`);
   const send = page.locator("form").getByRole("button").last();
   await expect(send).toBeVisible();
   const google = page.getByRole("link", { name: /Google/ });

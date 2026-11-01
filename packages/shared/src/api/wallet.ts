@@ -119,6 +119,8 @@ export interface ShopPassModel {
   place: string | null;
   timezone: string;
   locale: "en" | "hi" | "ur" | "pa";
+  /** wave-n: the shop's running deal for this member (live, not paused, for everyone, and the member said yes to offers). */
+  deal?: { id: string; title: string } | null;
 }
 
 export interface WalletPlatformStatus {

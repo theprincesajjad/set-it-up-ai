@@ -6,6 +6,7 @@ import { withArticle } from "@/lib/format";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { unitCaption } from "@/lib/units";
 import { stampIcon } from "@/components/pass/stampIcons";
+import { stampCardNumbers } from "@/lib/stamps";
 
 export interface StampCardProps {
   stamps: number;
@@ -35,11 +36,9 @@ export function StampCard({ stamps, goal, rewardName, vertical, newlyEarned = []
   const onTrade = tone === "onTrade";
   const { t, locale } = useLocaleOrEnglish();
   const rewardLabel = rewardName ?? t("ui.reward").toLowerCase();
-  const g = Math.max(1, Math.min(12, goal || 10));
-  const onCard = stamps >= g ? g : stamps % g;
-  const ready = stamps >= g;
+  // The real goal (2 to 50): the numbers never clamp; a card longer than MAX_DRAWN_STAMPS shows a bar instead of circles.
+  const { goal: g, onCard, ready, cols, drawn } = stampCardNumbers(stamps, goal);
   const carry = stamps > g ? stamps - g : 0;
-  const cols = g <= 6 ? g : g === 8 ? 4 : g === 9 ? 5 : g === 10 ? 5 : 6;
   const toGo = Math.max(0, g - onCard);
   const reward = `${rewardLabel.charAt(0).toLowerCase()}${rewardLabel.slice(1)}`;
 
@@ -56,8 +55,13 @@ export function StampCard({ stamps, goal, rewardName, vertical, newlyEarned = []
           <span className="font-semibold text-fg">{onCard}</span> / {g}
         </span>
       </div>}
-      <div role="img" aria-label={`${t("sh.rc.progress", { have: onCard, need: g, unit: unitCaption(locale, 2, terminology) })}. ${ready ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: toGo, reward: locale === "en" ? withArticle(rewardLabel) : rewardLabel })}.`} className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-        {Array.from({ length: g }, (_, i) => {
+      <div role="img" aria-label={`${t("sh.rc.progress", { have: onCard, need: g, unit: unitCaption(locale, 2, terminology) })}. ${ready ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: toGo, reward: locale === "en" ? withArticle(rewardLabel) : rewardLabel })}.`} className={drawn ? "grid gap-2.5" : "flex items-center"} style={drawn ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}>
+        {drawn ? null : (
+          <div aria-hidden className={cn("h-2.5 w-full overflow-hidden rounded-full", onTrade ? "bg-trade-pass-text/25" : "bg-muted")}>
+            <div className={cn("h-full rounded-full", onTrade ? "bg-trade-pass-text" : "bg-trade")} style={{ width: `${Math.round((onCard / g) * 100)}%` }} />
+          </div>
+        )}
+        {Array.from({ length: drawn ? g : 0 }, (_, i) => {
           const filled = i < onCard;
           const last = i === g - 1;
           return (

@@ -181,6 +181,20 @@ describe("what earns stamps", () => {
     expect(rx.status).toBe(200);
     expect(rx.body.pointsEarned).toBe(0);
   });
+
+  it("the counter's 'what did they buy?' pick earns on a purchase card with a minimum, like a plain confirmed sale (no $0 refusal)", async () => {
+    const s = await selectedShop();
+    await env.db.update(loyaltyPrograms).set({ earnUnit: "purchase", minSpendCents: 2500 }).where(eq(loyaltyPrograms.merchantId, s.merchant.id));
+    await call(env, s.ownerToken, "PATCH", `${s.base}/program`, { earnScope: "selected", earnServiceIds: [s.gel.id] });
+    const picked = await call(env, s.staff.token, "POST", `${s.base}/counter/award`, { phone: nextPhone(), idempotencyKey: key(), lines: [{ amountCents: 0, serviceId: s.gel.id }] });
+    expect(picked.status).toBe(200);
+    expect(picked.body.pointsEarned).toBe(1);
+    // A real amount still has to reach the minimum, and a pick off the list is still refused.
+    const small = await call(env, s.staff.token, "POST", `${s.base}/counter/award`, { phone: nextPhone(), idempotencyKey: key(), lines: [{ amountCents: 1000, serviceId: s.gel.id }] });
+    expect(small.body.pointsEarned).toBe(0);
+    const off = await call(env, s.staff.token, "POST", `${s.base}/counter/award`, { phone: nextPhone(), idempotencyKey: key(), lines: [{ amountCents: 0, serviceId: s.brows.id }] });
+    expect(off.body.error).toMatchObject({ code: "earn_rule" });
+  });
 });
 
 describe("the prize: goal bounds and tiers", () => {

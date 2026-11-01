@@ -32,6 +32,10 @@ export interface ProgramSummaryDto {
   /** Human sentence to show next to every balance, e.g. "Points never expire." */
   expiryDisclosure: string;
   termsText: string | null;
+  /** wave-n: what one stamp is worth (visit, purchase or pickup; per-dollar programs ignore it). */
+  earnUnit?: "visit" | "purchase" | "pickup";
+  /** wave-n: "selected" when only some services or items earn. */
+  earnScope?: "all" | "selected";
 }
 
 export interface RewardDto {
@@ -208,6 +212,8 @@ export interface MembershipDto {
   nextReward: NextRewardDto | null;
   /** How many rewards the member can redeem right now. */
   rewardsAvailableCount: number;
+  /** wave-n: the best reward they can redeem right now (the highest cost within the balance), for "Reward unlocked: ...". */
+  readyReward?: { rewardId: string; name: string; pointsCost: number } | null;
   vip: VipLevelDto | null;
   muted: boolean;
   marketingConsent: ConsentDto;

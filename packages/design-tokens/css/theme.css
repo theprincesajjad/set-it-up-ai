@@ -101,6 +101,18 @@
   --color-tile-sky-foreground: var(--tile-sky-foreground);
   --color-tile-rose: var(--tile-rose);
   --color-tile-rose-foreground: var(--tile-rose-foreground);
+  --color-deal-peach: var(--deal-peach);
+  --color-deal-peach-foreground: var(--deal-peach-foreground);
+  --color-deal-mint: var(--deal-mint);
+  --color-deal-mint-foreground: var(--deal-mint-foreground);
+  --color-deal-butter: var(--deal-butter);
+  --color-deal-butter-foreground: var(--deal-butter-foreground);
+  --color-deal-lilac: var(--deal-lilac);
+  --color-deal-lilac-foreground: var(--deal-lilac-foreground);
+  --color-deal-sky: var(--deal-sky);
+  --color-deal-sky-foreground: var(--deal-sky-foreground);
+  --color-deal-rose: var(--deal-rose);
+  --color-deal-rose-foreground: var(--deal-rose-foreground);
   --color-trade: var(--trade);
   --color-trade-foreground: var(--trade-foreground);
   --color-trade-alt: var(--trade-alt);

@@ -5,10 +5,12 @@
  */
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { promosApi } from "@ll/shared";
+import { eq } from "drizzle-orm";
+import { users } from "@ll/db";
 import { z } from "zod";
 import type { AppContext } from "../../context.js";
 import { requirePlatformRole, requireStaff, requireUser } from "../../lib/auth.js";
-import { tooMany } from "../../lib/errors.js";
+import { forbidden, tooMany } from "../../lib/errors.js";
 import { allow } from "../../lib/rate-limit.js";
 import { parse } from "../../lib/validate.js";
 import { adminAiSettings, deleteAiKey, setAiKey, updateAiSettings } from "../../services/ai-key.js";
@@ -23,6 +25,17 @@ const PROMO_FEATURES = ["promos.basic", "promos.double_points"] as const;
 /** Writes: 60 a minute per shop and person (AI has its own tighter limit). */
 async function limitWrites(ctx: AppContext, key: string) {
   if (!(await allow(ctx, `promo-w:${key}`, 60, 60_000))) throw tooMany("Too many changes in a minute. Give it a moment.");
+}
+
+/**
+ * The Claude key is the most sensitive setting: like the admin cockpit, the admin role is re-read from the database, so an admin who
+ * was demoted (or deleted) is refused at once, not when their access token runs out.
+ */
+async function requireLiveAdmin(ctx: AppContext, req: FastifyRequest) {
+  const a = requirePlatformRole(req, "admin");
+  const [row] = await ctx.db.select({ role: users.platformRole, deletedAt: users.deletedAt }).from(users).where(eq(users.id, a.id)).limit(1);
+  if (!row || row.deletedAt || row.role !== "admin") throw forbidden();
+  return a;
 }
 
 export default async function registerPromos(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -86,20 +99,20 @@ export default async function registerPromos(app: FastifyInstance, ctx: AppConte
 
   // ---- Admin: /admin/ai (the Claude key, caps, usage). Admin only; the key is only ever returned masked. ----
   app.get("/admin/ai", async (req) => {
-    requirePlatformRole(req, "admin");
+    await requireLiveAdmin(ctx, req);
     return adminAiSettings(ctx);
   });
   app.put("/admin/ai/key", async (req) => {
-    const a = requirePlatformRole(req, "admin");
+    const a = await requireLiveAdmin(ctx, req);
     if (!(await allow(ctx, `ai-key:${a.id}`, 10, 60_000))) throw tooMany("Too many tries. Give it a moment.");
     return setAiKey(ctx, a.id, parse(promosApi.setAiKeyBody, req.body).apiKey, req.ip);
   });
   app.delete("/admin/ai/key", async (req) => {
-    const a = requirePlatformRole(req, "admin");
+    const a = await requireLiveAdmin(ctx, req);
     return deleteAiKey(ctx, a.id, req.ip);
   });
   app.patch("/admin/ai/settings", async (req) => {
-    const a = requirePlatformRole(req, "admin");
+    const a = await requireLiveAdmin(ctx, req);
     return updateAiSettings(ctx, a.id, parse(promosApi.aiSettingsBody, req.body), req.ip);
   });
 }

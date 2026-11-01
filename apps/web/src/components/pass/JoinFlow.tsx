@@ -33,6 +33,7 @@ import { OtpField } from "@/components/ui/OtpField";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ShopTile } from "@/components/ui/ShopTile";
 import { StampCard } from "@/components/ui/StampCard";
+import { stampCardNumbers } from "@/lib/stamps";
 import { TextField } from "@/components/ui/TextField";
 
 /** Everything the flow needs from the network, injectable for tests. */
@@ -405,10 +406,12 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
   const wallet = <ShopWalletCard merchantId={info.merchant.id} shopName={info.merchant.name} slug={info.merchant.slug} terminology={m.terminology} load={deps.shopWallet} os={os} className="rounded-card bg-trade-soft px-4 py-5" />;
 
   const stamps = program?.earnType === "stamps";
-  const g = stamps ? Math.max(1, Math.min(12, program!.stampGoal || 10)) : 0;
-  const onCard = stamps ? (m.balance >= g ? g : m.balance % g) : 0;
+  // The real goal (2 to 50, never clamped); "n more" counts to the next reward, so a tier below the goal comes first.
+  const nums = stamps ? stampCardNumbers(m.balance, program!.stampGoal, m.nextReward?.pointsCost) : null;
+  const g = nums?.goal ?? 0;
+  const onCard = nums?.onCard ?? 0;
   const rewardLabel = m.nextReward?.name ?? t("ui.reward").toLowerCase();
-  const stampLine = stamps ? (m.balance >= g ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: g - onCard, reward: locale === "en" ? withArticle(rewardLabel.charAt(0).toLowerCase() + rewardLabel.slice(1)) : rewardLabel })) : null;
+  const stampLine = nums ? (nums.toGo <= 0 ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: nums.toGo, reward: locale === "en" ? withArticle(rewardLabel.charAt(0).toLowerCase() + rewardLabel.slice(1)) : rewardLabel })) : null;
   const pct = goal > 0 ? Math.min(100, Math.round((m.balance / goal) * 100)) : 0;
 
   return (

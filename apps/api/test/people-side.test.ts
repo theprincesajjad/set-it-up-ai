@@ -4,7 +4,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
-import { appointments, conversationMessages, conversations, instagramConnections, locations, merchantMembers, merchants, staffPay, users, webPushSubscriptions } from "@ll/db";
+import { appointments, conversationMessages, conversations, instagramConnections, locations, merchantMembers, merchants, messageDeliveries, staffPay, users, webPushSubscriptions } from "@ll/db";
 import { smsSegments } from "@ll/shared";
 import { createMerchant, createTestEnv, createUser, tokenFor, type TestEnv } from "./helpers.js";
 import { call, customer } from "./commerce-fixtures.js";
@@ -163,8 +163,18 @@ describe("promos", () => {
     expect(r.body.allowance).toMatchObject({ limit: 4, used: 1, remaining: 3 });
     expect(env.ctx.providers.outbox.sms.length).toBe(sms0);
     expect(env.ctx.providers.outbox.email.at(-1)!.text).toContain("Unsubscribe");
+    // wave-n (final audit): the weekly cap of 2 marketing messages per person per shop applies here too, so a third send in the same
+    // week reaches nobody and is refused without using the allowance.
+    expect((await call(env, s.ownerToken, "POST", `${s.base}/promo-sends`, promo)).status).toBe(201);
+    const capped = await call(env, s.ownerToken, "POST", `${s.base}/promo-sends`, promo);
+    expect(capped.status).toBe(409);
+    expect(capped.body.error.code).toBe("weekly_cap");
     // The counter is the shop's, and the fifth promo of the month is refused.
-    for (let i = 0; i < 3; i++) expect((await call(env, s.ownerToken, "POST", `${s.base}/promo-sends`, promo)).status).toBe(201);
+    // A week later (the deliveries moved back 8 days) the same two people can hear from the shop again.
+    const aWeekAgo = async () => env.db.update(messageDeliveries).set({ createdAt: new Date(env.clock.now.getTime() - 8 * 86_400_000) }).where(eq(messageDeliveries.merchantId, s.merchant.id));
+    await aWeekAgo();
+    for (let i = 0; i < 2; i++) expect((await call(env, s.ownerToken, "POST", `${s.base}/promo-sends`, promo)).status).toBe(201);
+    await aWeekAgo();
     const fifth = await call(env, s.ownerToken, "POST", `${s.base}/promo-sends`, promo);
     expect(fifth.status).toBe(402);
     const last = await call(env, s.ownerToken, "GET", `${s.base}/promo-sends/last`);

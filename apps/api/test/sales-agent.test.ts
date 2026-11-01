@@ -5,7 +5,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { leads, merchants, salesAgentConversations, salesAgentMessages, users } from "@ll/db";
+import { aiUsage, leads, merchants, salesAgentConversations, salesAgentMessages, users } from "@ll/db";
 import { ADD_ONS, AGENT_TEXTS, FEES, FOUNDING_OFFER, PLANS, RESTAURANT_PLANS, RETENTION, SALES_AGENT_LIMITS, WIDGET_TEXTS, daysAgo, detectAgentLanguage, isStopKeyword, legalTokens, looksEnglish, wantsHuman } from "@ll/shared";
 import { getWhatsApp } from "../src/providers/whatsapp.js";
 import { isOptedOut } from "../src/services/opt-out.js";
@@ -81,6 +81,14 @@ describe("first contact: disclosure and language", () => {
     expect(r.body.lines[0].text).toContain("HUMAN");
     expect(r.body.lines).toHaveLength(2);
     expect(r.body.sessionToken).toMatch(/^wc_/);
+  });
+
+  it("meters each answer's model tokens in ai_usage (no shop), so /admin/ai counts the assistant's spend", async () => {
+    withModel(script(say("Growth is $199/month before HST.")));
+    await web("hi");
+    const rows = await env.db.select().from(aiUsage);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ merchantId: null, feature: "sales_agent", model: "scripted", outcome: "ok", inputTokens: 100, outputTokens: 20 });
   });
 
   it.each([
@@ -244,7 +252,7 @@ describe("tool use and grounding", () => {
       expect(c!.status, d).toBe("handoff");
       expect(c!.handoffReason, d).toContain("promise_");
     }
-  });
+  }, 90_000); // four fresh databases (resetEnv per draft): ~13 s alone, 40 s+ in a loaded parallel run
 
   it("allows figures from the product, from a tool result this turn, or from the person's own message", () => {
     expect(checkReply("Growth is $199/month, $1,990/year. Founding: $99.50 then $149.25.", { userText: "", toolText: "" })).toEqual([]);
@@ -786,7 +794,7 @@ describe("Quebec French (fr-CA)", () => {
     expect(hinted.body.lines[0].text).toBe(AGENT_TEXTS.fr.disclosure({ whatsapp: false }));
     // an unknown language is refused by validation, not stored
     expect((await web("hi", undefined, { language: "de" })).status).toBe(400);
-  });
+  }, 60_000); // an extra fresh database
 
   it("keeps a French chat French on a short Latin message, and switches to English only when the person writes English", async () => {
     withModel(script(say("a"), say("b"), say("c")));
@@ -815,7 +823,7 @@ describe("Quebec French (fr-CA)", () => {
     const off = await web("Bonjour, combien coûte le forfait?");
     expect(off.body.lines.at(-1).text).toBe(AGENT_TEXTS.fr.offline);
     expect(off.body.status).toBe("handoff");
-  });
+  }, 60_000); // two extra fresh databases
 
   it("STOP, START and a voice note on WhatsApp answer in French once the chat is French", async () => {
     const model = script(say("Bonjour!"), say("Voici le prix."));
@@ -853,7 +861,7 @@ describe("Quebec French (fr-CA)", () => {
     withModel(script(use("request_phone_verification", { phone: other.owner.phone! }, "t1"), say("Sent.")));
     await web("I own a shop, check my account");
     expect(smsTo(other.owner.phone!)[0]!.body).toContain("is your Local Loyalty code");
-  });
+  }, 60_000); // an extra fresh database
 
   it("the price and fee guard reads French number formats", () => {
     const ok = (reply: string, extra: { userText?: string; toolText?: string } = {}) => checkReply(reply, { userText: "", toolText: "", ...extra });

@@ -64,14 +64,16 @@ export function distanceL(L: L, metres: number | null | undefined): string {
 /** The short kind of place under a shop name ("café", "bakery") in the shopper's language. */
 export const kindL = (L: L, vertical: string | null | undefined) => placeKindLabel(L.locale, vertical);
 
-type ProgramLike = Pick<customerApi.ProgramSummaryDto, "earnType" | "pointsPerDollar" | "pointsPerVisit" | "stampGoal" | "terminology"> & { minSpendCents?: number };
+type ProgramLike = Pick<customerApi.ProgramSummaryDto, "earnType" | "pointsPerDollar" | "pointsPerVisit" | "stampGoal" | "terminology"> & { minSpendCents?: number; earnUnit?: customerApi.ProgramSummaryDto["earnUnit"]; earnScope?: customerApi.ProgramSummaryDto["earnScope"] };
 
 /** "1 stamp per visit." / "5 pts for every $1." in English; the translated unit and pattern otherwise. */
 export function howYouEarnL(L: L, p: ProgramLike, amount: string): string {
   if (L.locale === "en") return howYouEarn(p);
   const term = p.terminology || "points";
-  if (p.earnType === "per_dollar") return L.t("ms.shop.earnPerDollar", { pts: unitsText(L.locale, p.pointsPerDollar, term), amount });
-  return L.t("ms.shop.earnVisit", { amount: unitsText(L.locale, p.pointsPerVisit || 1, term) });
+  const some = p.earnScope === "selected" ? ` ${L.t("ms.shop.earnSome")}` : "";
+  if (p.earnType === "per_dollar") return L.t("ms.shop.earnPerDollar", { pts: unitsText(L.locale, p.pointsPerDollar, term), amount }) + some;
+  const key = p.earnUnit === "purchase" ? "ms.shop.earnPurchase" : p.earnUnit === "pickup" ? "ms.shop.earnPickup" : "ms.shop.earnVisit";
+  return L.t(key, { amount: unitsText(L.locale, p.pointsPerVisit || 1, term) }) + some;
 }
 
 /** "Free drink" -> "free drink" inside a sentence (English only; the other scripts have no case). */

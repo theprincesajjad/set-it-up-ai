@@ -6,6 +6,9 @@
 import { pathToFileURL } from "node:url";
 import { connect } from "@ll/db";
 import { loadConfig } from "./config.js";
+import type { AppContext } from "./context.js";
+import { createProviders } from "./providers/index.js";
+import { drainOutbox, outboxBacklog } from "./services/outbox.js";
 import { DEMO_CREDENTIALS, seedDemo } from "./seed/demo.js";
 import { STAFF_LOGINS } from "./seed/restaurants.js";
 import { GROCER_STAFF_LOGINS } from "./seed/grocers.js";
@@ -18,6 +21,19 @@ import { AUTO_LOGINS } from "./seed/auto.js";
 export { seedDemo, DEMO_CREDENTIALS };
 export type { SeedOptions, SeedResult } from "./seed/demo.js";
 
+/** Drain the outbox until nothing is pending (the seed's background fast paths may still be finishing). Returns what is left. */
+async function settleOutbox(ctx: AppContext): Promise<number> {
+  await import("./app.js"); // every route and service module, so every outbox handler and listener the API has is registered
+  let left = 0;
+  for (let i = 0; i < 20; i++) {
+    await drainOutbox(ctx);
+    left = await outboxBacklog(ctx);
+    if (!left) return 0;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return left;
+}
+
 async function main() {
   const config = loadConfig();
   const db = await connect(config.databaseUrl);
@@ -27,6 +43,11 @@ async function main() {
     if (!r.skipped) {
       console.log(`\nSeeded ${r.merchants} merchants, ${r.customers} customers, ${r.visits} visits, ${r.redemptions} redemptions, ${r.leads} leads in ${((Date.now() - started) / 1000).toFixed(1)}s.`);
     }
+    // Deliver what the seed's own awards queued (wallet cards, milestones, notices) before the database closes. Left pending, the
+    // first award on the API (NODE_ENV=test delivers the outbox inline) drained the whole seed backlog inside that request: 30-50 s on
+    // a fresh e2e stack (wave-n final audit: dashboard.spec "web counter award ... Robin").
+    const backlog = await settleOutbox({ db, config, providers: createProviders(config), now: () => new Date() });
+    if (backlog) console.log(`Outbox: ${backlog} event(s) still pending after the seed (the outbox.drain job delivers them).`);
     console.log("\nPricing v2: only loyalty + reporting are free; paid features are hidden at launch.");
     console.log("Pilot shops with admin overrides (promos, discount cards, VIP, birthday/referrals, email, CSV, advanced reports):");
     for (const p of r.pilotOverrides) console.log(`  ${p.merchant} (${p.slug})`);

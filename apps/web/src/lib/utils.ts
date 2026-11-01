@@ -29,7 +29,7 @@ const colors = [
     "chart-status-building", "chart-status-healthy",
     "primary-text", "forest", "forest-foreground", "tile-peach", "tile-peach-foreground", "tile-mint",
     "tile-mint-foreground", "tile-butter", "tile-butter-foreground", "tile-lilac", "tile-lilac-foreground",
-    "tile-sky", "tile-sky-foreground", "tile-rose", "tile-rose-foreground", "trade", "trade-foreground",
+    "tile-sky", "tile-sky-foreground", "tile-rose", "tile-rose-foreground", "deal-peach", "deal-peach-foreground", "deal-mint", "deal-mint-foreground", "deal-butter", "deal-butter-foreground", "deal-lilac", "deal-lilac-foreground", "deal-sky", "deal-sky-foreground", "deal-rose", "deal-rose-foreground", "trade", "trade-foreground",
     "trade-alt", "trade-soft", "trade-deep", "trade-pass-from", "trade-pass-to", "trade-pass-text",
     // Clear (docs/design/v3.2-clear-build.md)
     "link", "primary-hover", "success-soft", "warning-soft", "destructive-text", "destructive-soft", "row-sel", "tile",

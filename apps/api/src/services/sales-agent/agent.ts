@@ -295,6 +295,7 @@ async function runModel(ctx: AppContext, llm: LlmClient, conv0: Conv, lang: Agen
     }
   } catch (err) {
     if (err instanceof LlmUnavailable) {
+      await meter(ctx, model, "error", usage);
       conv = await escalate(ctx, conv, `assistant_unavailable: ${err.message}`);
       const m = await addMessage(ctx, conv.id, { role: "assistant", body: T.offline, toolCalls: toolLogs });
       return { conv, replies: [{ id: m.id, role: "assistant", text: T.offline, at: m.createdAt }] };
@@ -302,6 +303,7 @@ async function runModel(ctx: AppContext, llm: LlmClient, conv0: Conv, lang: Agen
     throw err;
   }
 
+  await meter(ctx, model, guard === "refusal" ? "refusal" : "ok", usage);
   if (!finalText) {
     // Empty answer or the tool loop ran out of rounds: a person finishes this one.
     if (conv.status === "open") conv = await escalate(ctx, conv, "The assistant could not finish an answer.");
@@ -310,4 +312,18 @@ async function runModel(ctx: AppContext, llm: LlmClient, conv0: Conv, lang: Agen
   if (blocked) await addMessage(ctx, conv.id, { role: "system", body: `Blocked draft: ${blocked}`.slice(0, 4000) });
   const m = await addMessage(ctx, conv.id, { role: "assistant", body: finalText, toolCalls: toolLogs, guard, model, usage });
   return { conv, replies: [{ id: m.id, role: "assistant", text: finalText, at: m.createdAt }] };
+}
+
+/**
+ * wave-n (final audit): the assistant's model calls are metered in ai_usage like the promo writer and the site builder (feature
+ * "sales_agent", no shop), so /admin/ai's month spend and the spend cap see them. Never fails the chat.
+ */
+async function meter(ctx: AppContext, model: string | null, outcome: string, usage: { input: number; output: number; cacheRead: number; cacheWrite: number }) {
+  if (!model) return;
+  try {
+    const { recordAiUsage } = await import("../ai-key.js");
+    await recordAiUsage(ctx, { merchantId: null, feature: "sales_agent", model, outcome, input: usage.input + usage.cacheRead + usage.cacheWrite, output: usage.output });
+  } catch (err) {
+    if (ctx.config.env !== "test") console.error("[sales-agent] usage metering failed", err instanceof Error ? err.message : err);
+  }
 }

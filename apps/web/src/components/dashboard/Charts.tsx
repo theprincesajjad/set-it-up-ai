@@ -102,6 +102,8 @@ function Plot({ data, format, height, kind, title, valueLabel, compareLabel }: P
   const max = niceMax(raw);
   const total = data.reduce((s, d) => s + d.value, 0);
   const hasCompare = data.some((d) => d.compare != null);
+  // Wide enough for the longest tick ("1,200" was clipped to "200" at a fixed 32px, so the axis read 200 / 600 / 0).
+  const axisWidth = Math.max(32, Math.max(...[0, max / 2, max].map((v) => format(v).length)) * 7 + 8);
   const peakAt = data.findIndex((d) => d.value === Math.max(...data.map((x) => x.value)));
   const config = {
     value: { label: valueLabel, color: "var(--trade)" },
@@ -112,7 +114,7 @@ function Plot({ data, format, height, kind, title, valueLabel, compareLabel }: P
     <>
       <CartesianGrid vertical={false} strokeDasharray="2 3" />
       <XAxis dataKey="label" tickFormatter={shortDate} tickLine={false} axisLine={false} tickMargin={6} interval="preserveStartEnd" minTickGap={40} />
-      <YAxis width={32} domain={[0, max]} ticks={[0, max / 2, max]} tickFormatter={(v: number) => format(v)} tickLine={false} axisLine={false} />
+      <YAxis width={axisWidth} domain={[0, max]} ticks={[0, max / 2, max]} tickFormatter={(v: number) => format(v)} tickLine={false} axisLine={false} />
       <ChartTooltip cursor={kind === "bar" ? { fill: "var(--accent)" } : { stroke: "var(--border)" }} content={<ChartTooltipContent labelFormatter={(l) => shortDate(String(l))} formatter={(v, name) => <span className="flex w-full justify-between gap-3 tabular-nums"><span className="text-muted-foreground">{config[name as "value" | "compare"]?.label ?? name}</span><span className="font-semibold text-foreground">{format(Number(v))}</span></span>} hideIndicator />} />
     </>
   );

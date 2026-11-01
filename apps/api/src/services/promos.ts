@@ -445,7 +445,7 @@ export async function openDeal(ctx: AppContext, userId: string, promoId: string)
 }
 
 /** The deal a wallet pass shows: the newest running deal from a shop this person opted in to. */
-export async function currentDealForUser(ctx: AppContext, userId: string): Promise<{ shop: string; title: string; id: string } | null> {
+export async function currentDealForUser(ctx: AppContext, userId: string, merchantId?: string): Promise<{ shop: string; title: string; id: string } | null> {
   const now = ctx.now();
   const [r] = await ctx.db
     .select({ id: promos.id, title: promos.title, shop: merchants.name })
@@ -457,6 +457,7 @@ export async function currentDealForUser(ctx: AppContext, userId: string): Promi
         eq(promos.status, "live"),
         isNull(promos.pausedAt),
         eq(promos.segment, "everyone"),
+        ...(merchantId ? [eq(promos.merchantId, merchantId)] : []),
         isNotNull(merchantMembers.marketingConsentAt),
         eq(merchantMembers.muted, false),
         lte(promos.startsAt, now),

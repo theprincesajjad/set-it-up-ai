@@ -661,8 +661,9 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
       overrideRule = "earn_unit";
     }
     if (!unitOk && counter) throw unitRefusal(program);
-    // One purchase (optional minimum): a counter stamp with no amount is the cashier confirming a qualifying sale.
-    const staffConfirmedSale = counter && visitBased && !args.lines?.length && args.amountCents == null;
+    // One purchase (optional minimum): a counter stamp with no amount is the cashier confirming a qualifying sale. Lines with no
+    // amount (the counter's "what did they buy?" pick for shops where only some things earn) only say WHAT was bought: same rule.
+    const staffConfirmedSale = counter && visitBased && args.amountCents == null && (args.lines ?? []).every((l) => !l.amountCents);
 
     const rawLines: PurchaseLine[] = args.lines?.length ? args.lines : [{ amountCents: Math.max(0, args.amountCents ?? 0) }];
     // Pharmacies: per-dollar only, a front-store confirmation for amount-only sales, uncategorised lines earn nothing (services/pharmacy.ts).

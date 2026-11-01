@@ -1,6 +1,6 @@
 import type { RolesV3 } from "./colors.js";
 import { hexToRgb, hsl, mix, rgbToHex } from "./contrast.js";
-import { TILE_NAMES, TRADE_FAMILIES, tradeFamilies, type TradeFamily } from "./warm.js";
+import { TILE_NAMES, TRADE_FAMILIES, dealRoles, tradeFamilies, type TradeFamily } from "./warm.js";
 
 /**
  * "Clear" (docs/design/v3.2-clear.md rev 5 + the rev 6 layout audit, founder-approved 2026-10-28): Liquid Glass chrome over a flat,
@@ -166,6 +166,7 @@ const clearLight: RolesV3 = {
   forest: clear.ink,
   forestForeground: "#FFFFFF",
   ...tiles(clear.tile, clear.mutedText),
+  ...dealRoles("light"),
   trade: tradeL.accent,
   tradeForeground: tradeL.foreground,
   tradeAlt: tradeL.alt,
@@ -222,6 +223,7 @@ const clearDark: RolesV3 = {
   forest: clear.white,
   forestForeground: clear.black,
   ...tiles(clear.tileDark, "#A8A8AE"),
+  ...dealRoles("dark", clear.cardDark),
   trade: tradeD.accent,
   tradeForeground: tradeD.foreground,
   tradeAlt: tradeD.alt,

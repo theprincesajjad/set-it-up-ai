@@ -2152,6 +2152,9 @@ export const pa: Messages = {
   "ms.shop.earnPerDollar": "ਹਰ {amount} ’ਤੇ {pts}",
   "ms.shop.earnStamp": "ਹਰ ਵਿਜ਼ਿਟ ’ਤੇ 1 {unit} · ਇਨਾਮ ਲਈ {goal}",
   "ms.shop.earnVisit": "ਹਰ ਵਿਜ਼ਿਟ ’ਤੇ {amount}",
+  "ms.shop.earnPurchase": "ਹਰ ਖਰੀਦ ’ਤੇ {amount}",
+  "ms.shop.earnPickup": "ਹਰ ਪਿਕਅੱਪ ਕੀਤੇ ਆਰਡਰ ’ਤੇ {amount}",
+  "ms.shop.earnSome": "ਸਿਰਫ਼ ਕੁਝ ਸੇਵਾਵਾਂ ਜਾਂ ਚੀਜ਼ਾਂ ’ਤੇ ਮਿਲਦਾ ਹੈ।",
   "ms.shop.earn": "ਕਮਾਓ: {line}",
   "ms.shop.showToEarn": "ਕਮਾਉਣ ਲਈ ਕਾਊਂਟਰ ’ਤੇ ਆਪਣਾ ਕਾਰਡ ਵਿਖਾਓ।",
   "ms.shop.joinFree": "ਮੁਫ਼ਤ ਜੁੜੋ",
@@ -3273,6 +3276,8 @@ export const pa: Messages = {
   "counter.override.add": "ਫਿਰ ਵੀ ਜੋੜੋ",
   "counter.override.cancel": "ਨਾ ਜੋੜੋ",
   "counter.override.note": "ਤੁਹਾਡਾ ਨਾਮ ਅਤੇ ਕਾਰਨ ਦੁਕਾਨ ਦੇ ਲੌਗ ਵਿੱਚ ਸੰਭਾਲੇ ਜਾਂਦੇ ਹਨ।",
+  "counter.pick.title": "ਉਨ੍ਹਾਂ ਨੇ ਕੀ ਖਰੀਦਿਆ?",
+  "counter.pick.body": "ਆਪਣੀ ਸੂਚੀ ਵਿੱਚੋਂ ਇੱਕ ਚੁਣੋ, ਸਟੈਂਪ ਆਮ ਵਾਂਗ ਲੱਗ ਜਾਵੇਗਾ, ਕੋਈ ਕਾਰਨ ਨਹੀਂ ਚਾਹੀਦਾ।",
   "counter.err.insufficient": "ਉਸ ਇਨਾਮ ਲਈ ਹਾਲੇ {word} ਘੱਟ ਹਨ।",
   "counter.err.expired": "ਇਸ ਕੋਡ ਦੀ ਮਿਆਦ ਖ਼ਤਮ ਹੋ ਗਈ। ਉਨ੍ਹਾਂ ਦੇ ਪੁਆਇੰਟ ਵਾਪਸ ਹੋ ਗਏ। ਉਨ੍ਹਾਂ ਨੂੰ ਦੁਬਾਰਾ ਰੀਡੀਮ 'ਤੇ ਟੈਪ ਕਰਨ ਲਈ ਕਹੋ।",
   "counter.err.used": "ਇਹ ਕੋਡ ਪਹਿਲਾਂ ਹੀ ਵਰਤਿਆ ਜਾ ਚੁੱਕਾ ਹੈ। ਗਾਹਕ ਨੂੰ ਆਪਣੀ ਐਪ ਵੇਖਣ ਲਈ ਕਹੋ।",
@@ -4435,5 +4440,7 @@ export const pa: Messages = {
   "deal.consentText": "ਹਾਂ, {shop} ਮੈਨੂੰ ਪੇਸ਼ਕਸ਼ਾਂ ਅਤੇ ਡੀਲਾਂ ਭੇਜ ਸਕਦੀ ਹੈ। ਹਫ਼ਤੇ ਵਿੱਚ ਵੱਧ ਤੋਂ ਵੱਧ 2, ਰਾਤ 9 ਵਜੇ ਤੋਂ ਸਵੇਰੇ 8 ਵਜੇ ਤੱਕ ਕਦੇ ਨਹੀਂ। ਮੈਂ ਇਹਨਾਂ ਨੂੰ ਕਦੇ ਵੀ ਬੰਦ ਕਰ ਸਕਦਾ/ਸਕਦੀ ਹਾਂ।",
   "deal.limits": "ਹਰ ਦੁਕਾਨ ਤੋਂ ਹਫ਼ਤੇ ਵਿੱਚ ਵੱਧ ਤੋਂ ਵੱਧ 2, ਰਾਤ 9 ਵਜੇ ਤੋਂ ਸਵੇਰੇ 8 ਵਜੇ ਤੱਕ ਕਦੇ ਨਹੀਂ।",
   "deal.passChange": "{shop} ਤੇ ਨਵੀਂ ਡੀਲ: %@",
+  "deal.passLabel": "ਡੀਲ",
+  "deal.forMembers": "ਮੈਂਬਰਾਂ ਲਈ",
   // ---- end wave-n: promo ----
 };

@@ -37,18 +37,28 @@ export function NetworkGauges({ activeMerchants, multiShopPct }: { activeMerchan
   const plus = FEATURES["orders.order_ahead"].unlockAtMerchants;
   const ads = FEATURES["ads.sponsored_listing"].unlockAtMerchants;
   const camp = FEATURES["campaigns.neighbourhood"].unlockAtMerchants;
-  const items = [
+  // A gate with no shop target (unlockAtMerchants 0) is open to every shop from day one: "62 / 0 shops, Target met" says nothing, so it is
+  // left out and named in one line instead.
+  const gates = [
     { label: "Service tools", value: activeMerchants, target: pro, unit: "shops" },
     { label: "Pro tools", value: activeMerchants, target: plus, unit: "shops" },
     { label: "Street campaigns", value: activeMerchants, target: camp, unit: "shops" },
     { label: "Ads & sponsored", value: activeMerchants, target: ads, unit: "shops" },
   ];
+  const items = gates.filter((g) => g.target > 0);
+  const open = gates.filter((g) => g.target <= 0).map((g) => g.label);
+  const cells = items.length + (multiShopPct != null ? 1 : 0);
   return (
-    <section aria-label="Shops joined, by feature" className="grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2 lg:grid-cols-5">
-      {items.map((g) => (
-        <DensityBar key={g.label} {...g} className="bg-bg px-5 py-4" />
-      ))}
-      {multiShopPct != null ? <DensityBar label="2+ shop customers" value={Math.round(multiShopPct * 100)} target={30} unit="%" format={(n) => `${n}`} className="bg-bg px-5 py-4" /> : <div className="hidden bg-bg lg:block" />}
+    <section aria-label="Shops joined, by feature" className="flex flex-col gap-2">
+      {cells ? (
+        <div className={cn("grid gap-px overflow-hidden rounded-card border border-line bg-line sm:grid-cols-2", cells >= 4 ? "lg:grid-cols-4" : cells === 3 ? "lg:grid-cols-3" : "")}>
+          {items.map((g) => (
+            <DensityBar key={g.label} {...g} className="bg-bg px-5 py-4" />
+          ))}
+          {multiShopPct != null ? <DensityBar label="2+ shop customers" value={Math.round(multiShopPct * 100)} target={30} unit="%" format={(n) => `${n}`} className="bg-bg px-5 py-4" /> : null}
+        </div>
+      ) : null}
+      {open.length ? <p className="text-meta text-fg-muted">{open.join(", ")}: open to every shop, no network target.</p> : null}
     </section>
   );
 }

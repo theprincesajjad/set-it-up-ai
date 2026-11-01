@@ -10,14 +10,17 @@ import { PromoCard } from "@/components/ui/PromoCard";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 
-/** Owner-picked card colours are design-token tile fills (no raw colours). */
+/**
+ * Owner-picked card colours: the design-token deal fills (no raw colours). Not the tile fills: Clear greys its tiles, and the owner's
+ * colour has to show in Clear too (packages/design-tokens warm.ts dealRoles).
+ */
 export const DEAL_TILE: Record<promosApi.PromoColor, string> = {
-  peach: "bg-tile-peach",
-  mint: "bg-tile-mint",
-  butter: "bg-tile-butter",
-  lilac: "bg-tile-lilac",
-  sky: "bg-tile-sky",
-  rose: "bg-tile-rose",
+  peach: "bg-deal-peach",
+  mint: "bg-deal-mint",
+  butter: "bg-deal-butter",
+  lilac: "bg-deal-lilac",
+  sky: "bg-deal-sky",
+  rose: "bg-deal-rose",
 };
 
 export interface DealCardProps {

@@ -46,7 +46,9 @@ async function makeFullDay(f: { token: string; id: string }): Promise<void> {
   }
   if (!open) return;
   for (const s of pub.staff) {
-    await call("POST", `/v1/merchants/${f.id}/staff/${s.id}/time-off`, { startsAt: `${open}T00:00:00Z`, endsAt: `${open}T23:59:59Z`, reason: "e2e full day" }, f.token).catch(() => undefined);
+    // The whole Toronto day in either offset: 23:59:59Z is only 6:59 pm local once daylight time ends (EST), which left the evening
+    // open (the spec failed from Nov 1, 2026). Through 06:00Z the next day covers local midnight in EDT and EST.
+    await call("POST", `/v1/merchants/${f.id}/staff/${s.id}/time-off`, { startsAt: `${open}T00:00:00Z`, endsAt: `${new Date(Date.parse(`${open}T12:00:00Z`) + 86_400_000).toISOString().slice(0, 10)}T06:00:00Z`, reason: "e2e full day" }, f.token).catch(() => undefined);
     await call("POST", `/v1/merchants/${f.id}/staff/${s.id}/time-off`, { startsAt: `${open}T05:00:00Z`, endsAt: `${open}T23:00:00Z`, reason: "e2e full day" }, f.token).catch(() => undefined);
   }
   for (let i = 0; i < 2; i++) await call("GET", `/v1/public/shops/${FREE.slug}/availability?${q(open)}`);

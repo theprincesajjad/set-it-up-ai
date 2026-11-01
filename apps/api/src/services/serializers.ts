@@ -73,6 +73,8 @@ export function programSummary(
     expiryMonths: program.expiryMonths ?? null,
     expiryDisclosure: expiryDisclosure(program),
     termsText: program.termsText ?? null,
+    earnUnit: program.earnUnit as customerApi.ProgramSummaryDto["earnUnit"],
+    earnScope: program.earnScope as customerApi.ProgramSummaryDto["earnScope"],
   };
 }
 

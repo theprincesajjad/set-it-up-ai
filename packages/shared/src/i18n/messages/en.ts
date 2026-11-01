@@ -2156,6 +2156,9 @@ export const en = {
   "ms.shop.earnPerDollar": "{pts} per {amount}",
   "ms.shop.earnStamp": "1 {unit} per visit · {goal} for a reward",
   "ms.shop.earnVisit": "{amount} per visit",
+  "ms.shop.earnPurchase": "{amount} per purchase",
+  "ms.shop.earnPickup": "{amount} per order picked up",
+  "ms.shop.earnSome": "Only some services or items earn.",
   "ms.shop.earn": "Earn {line}",
   "ms.shop.showToEarn": "Show your card at the counter to earn.",
   "ms.shop.joinFree": "Join free",
@@ -3277,6 +3280,8 @@ export const en = {
   "counter.override.add": "Add anyway",
   "counter.override.cancel": "Don't add",
   "counter.override.note": "Your name and the reason are saved in the shop's log.",
+  "counter.pick.title": "What did they buy?",
+  "counter.pick.body": "Pick one on your list and the stamp goes on as usual, no reason needed.",
   "counter.err.insufficient": "Not enough {word} for that reward yet.",
   "counter.err.expired": "This code expired. Their points went back. Ask them to tap Redeem again.",
   "counter.err.used": "This code was already used. Ask the customer to check their app.",
@@ -4447,6 +4452,8 @@ export const en = {
   "deal.consentText": "Yes, {shop} may send me offers and deals. At most 2 a week, never 9 pm to 8 am. I can stop them any time.",
   "deal.limits": "At most 2 a week from each shop, never 9 pm to 8 am.",
   "deal.passChange": "New deal at {shop}: %@",
+  "deal.passLabel": "Deal",
+  "deal.forMembers": "For members",
   // ---- end wave-n: promo ----
 } as const;
 

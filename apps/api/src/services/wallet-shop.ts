@@ -227,6 +227,9 @@ export async function shopPassModel(ctx: AppContext, userId: string, merchantId:
   if (!who || who.deletedAt) throw notFound("Membership");
   const locale = normalizeLocale(who.memberLocale) ?? normalizeLocale(who.locale) ?? "en";
   const model = buildShopModel(ctx.config, { shop, balance: who.balance, memberName: who.name, memberCode: who.memberCode, locale, nextAppointment });
+  // wave-n: the shop's running deal rides on its own card too (the same rule as the network pass: consent, not muted, not paused).
+  const deal = row ? await (await import("./promos.js")).currentDealForUser(ctx, userId, merchantId).catch(() => null) : null;
+  if (deal) model.deal = { id: deal.id, title: deal.title };
   return { model, locations: shopPassLocations(shop.merchant, shop.locs, locale) };
 }
 
@@ -340,9 +343,11 @@ export function buildShopPassJson(config: Pick<Config, "publicApiUrl">, p: { pas
         { key: "reward", label: tr("sh.wcard.nextReward"), value: rewardLine(m), changeMessage: tr("sh.wcard.changeReward") },
         { key: "member", label: tr("sh.wcard.member"), value: truncate(m.memberName ?? m.memberCode, 20), textAlignment: "PKTextAlignmentRight" },
       ],
-      auxiliaryFields: appt
-        ? [{ key: "visit", label: tr("sh.wcard.nextVisit"), value: appt.startsAt, dateStyle: "PKDateStyleMedium", timeStyle: "PKDateStyleShort", changeMessage: tr("sh.wcard.changeVisit") }]
-        : [],
+      auxiliaryFields: [
+        ...(appt ? [{ key: "visit", label: tr("sh.wcard.nextVisit"), value: appt.startsAt, dateStyle: "PKDateStyleMedium", timeStyle: "PKDateStyleShort", changeMessage: tr("sh.wcard.changeVisit") }] : []),
+        // wave-n: the running deal; its changeMessage is the lock-screen notice when a new one lands.
+        ...(m.deal ? [{ key: "deal", label: tr("deal.passLabel"), value: truncate(m.deal.title, 40), changeMessage: tr("deal.passChange", { shop: m.name }) }] : []),
+      ],
       backFields: back,
     },
   };
@@ -459,6 +464,7 @@ export function shopLoyaltyObject(config: Pick<Config, "publicApiUrl">, issuerId
   const when = appt ? new Intl.DateTimeFormat(LOCALES[m.locale].bcp47, { dateStyle: "medium", timeStyle: "short", timeZone: m.timezone }).format(new Date(appt.startsAt)) : null;
   const modules = [
     { id: "reward", header: tr("sh.wcard.nextReward"), body: rewardLine(m) },
+    ...(m.deal ? [{ id: "deal", header: tr("deal.passLabel"), body: m.deal.title }] : []),
     ...(appt ? [{ id: "visit", header: tr("sh.wcard.nextVisit"), body: appt.label ? `${when}\n${appt.label}` : when! }] : []),
     ...(m.hours ? [{ id: "hours", header: tr("sh.wcard.hours"), body: m.hours }] : []),
     ...(m.place ? [{ id: "where", header: tr("sh.wcard.where"), body: m.place }] : []),

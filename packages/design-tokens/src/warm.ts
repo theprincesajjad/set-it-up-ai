@@ -98,6 +98,23 @@ export const tileRoles = (theme: "light" | "dark") =>
     }),
   ) as Record<`tile${Capitalize<TileName>}` | `tile${Capitalize<TileName>}Foreground`, string>;
 
+/**
+ * Deal card colours (the colour an owner picks for a promo, wave N). The same pastel pairs as the Warm tiles, in BOTH theme styles:
+ * Clear greys its tiles on purpose, but an owner's colour choice is content, so `--deal-*` keeps the hue. `darkCard` is the dark
+ * surface the hue is mixed over (Warm roast or Clear graphite).
+ */
+export const dealRoles = (theme: "light" | "dark", darkCard: string = warm.roast) =>
+  Object.fromEntries(
+    TILE_NAMES.flatMap((n) => {
+      const t = tilePairs[n];
+      const cap = n.charAt(0).toUpperCase() + n.slice(1);
+      return [
+        [`deal${cap}`, theme === "light" ? t.fill : mix(darkCard, t.hue, 0.18)],
+        [`deal${cap}Foreground`, theme === "light" ? t.deep : t.deepDark],
+      ];
+    }),
+  ) as Record<`deal${Capitalize<TileName>}` | `deal${Capitalize<TileName>}Foreground`, string>;
+
 // ---------------------------------------------------------------------------
 // Per-trade accent families
 // ---------------------------------------------------------------------------

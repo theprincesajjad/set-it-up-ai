@@ -2,13 +2,18 @@
 import type { customerApi } from "@ll/shared";
 import { formatMoney } from "./format";
 
-type ProgramLike = Pick<customerApi.ProgramSummaryDto, "earnType" | "pointsPerDollar" | "pointsPerVisit" | "stampGoal" | "terminology"> & { minSpendCents?: number };
+type ProgramLike = Pick<customerApi.ProgramSummaryDto, "earnType" | "pointsPerDollar" | "pointsPerVisit" | "stampGoal" | "terminology"> & { minSpendCents?: number; earnUnit?: customerApi.ProgramSummaryDto["earnUnit"]; earnScope?: customerApi.ProgramSummaryDto["earnScope"] };
+
+/** wave-n: the earn unit in words ("visit", "purchase", "order picked up"); a pickup card earns only on online orders. */
+const UNIT_WORD = { visit: "visit", purchase: "purchase", pickup: "order picked up" } as const;
 
 export function howYouEarn(p: ProgramLike): string {
   const t = p.terminology || "points";
-  if (p.earnType === "stamps") return `${p.pointsPerVisit || 1} ${singular(t, p.pointsPerVisit || 1)} per visit${p.minSpendCents ? ` over ${formatMoney(p.minSpendCents)}` : ""}.`;
-  if (p.earnType === "per_visit") return `${p.pointsPerVisit} ${singular(t, p.pointsPerVisit)} every visit${p.minSpendCents ? ` over ${formatMoney(p.minSpendCents)}` : ""}.`;
-  return `${p.pointsPerDollar} ${singular(t, p.pointsPerDollar)} for every $1.`;
+  const per = UNIT_WORD[p.earnUnit ?? "visit"];
+  const some = p.earnScope === "selected" ? " Only some services or items earn." : "";
+  if (p.earnType === "stamps") return `${p.pointsPerVisit || 1} ${singular(t, p.pointsPerVisit || 1)} per ${per}${p.minSpendCents ? ` over ${formatMoney(p.minSpendCents)}` : ""}.${some}`;
+  if (p.earnType === "per_visit") return `${p.pointsPerVisit} ${singular(t, p.pointsPerVisit)} every ${per}${p.minSpendCents ? ` over ${formatMoney(p.minSpendCents)}` : ""}.${some}`;
+  return `${p.pointsPerDollar} ${singular(t, p.pointsPerDollar)} for every $1.${some}`;
 }
 
 export function rewardLine(p: ProgramLike, reward: { name: string; pointsCost: number } | undefined): string | null {

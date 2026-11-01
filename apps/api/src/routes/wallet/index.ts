@@ -182,7 +182,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   });
 
   // Anything else every card shows (name, logo, colour, program, rewards, hours) refreshes the shop's cards after it saves.
-  const SHOP_CARD_ROUTES = /^\/v1\/merchants\/:merchantId(\/program|\/rewards(\/:rewardId)?|\/locations(\/:locationId)?)?$/;
+  // wave-n: promo writes too, so a published, paused, ended or edited deal shows on (or leaves) the shop's cards.
+  const SHOP_CARD_ROUTES = /^\/v1\/merchants\/:merchantId(\/program|\/rewards(\/:rewardId)?|\/locations(\/:locationId)?|\/promos(\/:promoId(\/status|\/action)?)?)?$/;
   app.addHook("onResponse", async (req, reply) => {
     if (req.method === "GET" || req.method === "HEAD" || reply.statusCode >= 300) return;
     const url = req.routeOptions?.url;

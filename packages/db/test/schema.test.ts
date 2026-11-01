@@ -9,5 +9,5 @@ describe("schema", () => {
     expect(m!.plan).toBe("free");
     expect(m!.status).toBe("onboarding");
     await db.$close();
-  });
+  }, 60_000); // migrates a fresh PGlite database from 0000 (about 6 s alone, more under load), like migrations.test.ts
 });

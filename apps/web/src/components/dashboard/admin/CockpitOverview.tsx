@@ -54,7 +54,7 @@ export function CockpitOverview() {
                 items={[
                   { label: "Shops", value: formatNumber(d.shops.total), caption: `${formatNumber(d.shops.churned)} churned` },
                   { label: "Live", value: formatNumber(d.shops.live), caption: d.shops.total ? `${Math.round((d.shops.live / d.shops.total) * 100)}% of shops` : undefined },
-                  { label: "Activated", value: formatNumber(d.shops.activated), caption: "First stamp or booking" },
+                  { label: "Activated", value: formatNumber(d.shops.activated), caption: `First stamp or booking${d.shops.total ? ` · ${Math.round((d.shops.activated / d.shops.total) * 100)}% of shops` : ""}` },
                   { label: "Signups", value: formatNumber(d.period.signups.current), delta: deltaLine(d.period.signups, ctx) },
                 ]}
               />

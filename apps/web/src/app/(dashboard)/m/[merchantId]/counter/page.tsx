@@ -20,6 +20,16 @@ export default function CounterPage() {
   // A pharmacy cannot give points until its pharmacist-owner has confirmed the rules (the server refuses too).
   const rules = useApi(pharmacy ? () => api.pharmacy.rules() : null, [api, pharmacy]);
   const unconfirmed = pharmacy && !!rules.data && !rules.data.confirmation;
+  // wave-n: "only some services or items earn": the counter offers the listed ones when a plain stamp is refused for that reason.
+  const scoped = !!program && program.earnType !== "per_dollar" && program.earnScope === "selected";
+  const options = useApi(scoped ? () => api.earnOptions() : null, [api, scoped]);
+  const earnPicks = scoped && options.data && program
+    ? [
+        ...options.data.services.filter((x) => program.earnServiceIds.includes(x.id)).map((x) => ({ kind: "serviceId" as const, id: x.id, name: x.name })),
+        ...options.data.items.filter((x) => program.earnItemIds.includes(x.id)).map((x) => ({ kind: "itemId" as const, id: x.id, name: x.name })),
+        ...options.data.categories.filter((x) => program.earnCategoryIds.includes(x.id)).map((x) => ({ kind: "categoryId" as const, id: x.id, name: x.name })),
+      ]
+    : undefined;
   const grocery = groceryShop ? { pantryItems: (pantry.data?.items ?? []).map((i) => ({ id: i.id, name: i.name })), askText: pantry.data?.askText ?? "" } : null;
   if (!program)
     return (
@@ -39,7 +49,7 @@ export default function CounterPage() {
           </CounterNotice>
         </div>
       ) : null}
-      <CounterApp vertical={detail.merchant.vertical} undoNote={role === "staff" ? t("counter.undoNote", { n: staffApi.UNDO_WINDOW_MINUTES }) : undefined} exitHref={base} frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
+      <CounterApp earnPicks={earnPicks} vertical={detail.merchant.vertical} undoNote={role === "staff" ? t("counter.undoNote", { n: staffApi.UNDO_WINDOW_MINUTES }) : undefined} exitHref={base} frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
       {pharmacy ? (
         <div className="mx-auto max-w-3xl px-4 pb-10 pt-10">
           <PickupReady />

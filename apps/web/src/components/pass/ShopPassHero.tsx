@@ -10,6 +10,7 @@ import { placeKindLabel, type customerApi } from "@ll/shared";
 import { useEffect, useState } from "react";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { StampCard } from "@/components/ui/StampCard";
+import { stampCardNumbers } from "@/lib/stamps";
 import { shopInitials } from "@/lib/shopAvatar";
 import { formatNumber, withArticle } from "@/lib/format";
 import { unitCaption } from "@/lib/units";
@@ -76,15 +77,17 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
   const next = m.nextReward;
   const ready = m.rewardsAvailableCount > 0;
   const stamps = m.program?.earnType === "stamps";
-  const stampGoal = stamps ? Math.max(1, Math.min(12, m.program!.stampGoal || 10)) : 0;
-  const goal = stamps ? stampGoal : (next?.pointsCost ?? (ready ? Math.max(1, m.balance) : 0));
-  const shown = goal > 0 ? Math.min(stamps ? (m.balance >= goal ? goal : m.balance % goal) : m.balance, goal) : m.balance;
-  const toGo = Math.max(0, goal - shown);
+  // The real goal (2 to 50, never clamped). "n to go" counts to the next reward, so a tier below the goal comes first.
+  const card = stamps ? stampCardNumbers(m.balance, m.program!.stampGoal, next?.pointsCost) : null;
+  const stampGoal = card?.drawn ? card.goal : 0;
+  const goal = card ? card.goal : (next?.pointsCost ?? (ready ? Math.max(1, m.balance) : 0));
+  const shown = card ? card.onCard : goal > 0 ? Math.min(m.balance, goal) : m.balance;
+  const toGo = card ? card.toGo : Math.max(0, goal - shown);
   const unit = unitCaption(locale, 2, m.terminology);
   const pct = goal > 0 ? Math.round((shown / goal) * 100) : 0;
   const Glyph = stampIcon(m.merchant.vertical);
-  // Five 54px columns fill the 318px content box exactly; a 6-wide card (11 or 12 stamps) steps the circles down to 42.
-  const cols = stampGoal <= 5 ? stampGoal : stampGoal === 8 ? 4 : stampGoal <= 10 ? 5 : 6;
+  // Five 54px columns fill the 318px content box exactly; a 6-wide card steps the circles down to 42.
+  const cols = card?.cols ?? 0;
   const size = cols <= 5 ? 54 : 42;
   const rewardName = next ? rewardNameIn(locale, t, next.name) : null;
   // A stamp that landed in the last 15 minutes pops and says so (client clock only, after mount, so the server render matches).
@@ -139,7 +142,8 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
               <Gift className="size-5" strokeWidth={1.9} />
             </span>
             <div className="min-w-0">
-              <p className="text-[15px] font-semibold leading-5 text-trade-deep">{t("ui.rewardUnlocked")}{rewardName ? ` · ${rewardName}` : ""}</p>
+              {/* The reward they can take now (a tier below the goal, or the card's own), not the next one they are saving for. */}
+              <p className="text-[15px] font-semibold leading-5 text-trade-deep">{t("ui.rewardUnlocked")}{m.readyReward ? ` · ${rewardNameIn(locale, t, m.readyReward.name)}` : rewardName ? ` · ${rewardName}` : ""}</p>
               <p className="text-meta text-muted-foreground">{t("ui.showToRedeem")}</p>
             </div>
           </div>
@@ -174,9 +178,11 @@ function WarmPassHero({ m, line, footer }: { m: customerApi.MembershipDto; line:
   const { t, locale } = useLocaleOrEnglish();
   const next = m.nextReward;
   const ready = m.rewardsAvailableCount > 0;
-  const stampGoal = m.program?.earnType === "stamps" ? Math.min(12, m.program.stampGoal) : 0;
-  const goal = next?.pointsCost ?? (ready ? Math.max(1, m.balance) : 0);
-  const shown = goal > 0 ? Math.min(m.balance, goal) : m.balance;
+  const card = m.program?.earnType === "stamps" ? stampCardNumbers(m.balance, m.program.stampGoal, next?.pointsCost) : null;
+  const stampGoal = card ? card.goal : 0;
+  // A stamp card reads "4 / 15" (the card); a points balance counts to the next reward.
+  const goal = card ? card.goal : (next?.pointsCost ?? (ready ? Math.max(1, m.balance) : 0));
+  const shown = card ? card.onCard : goal > 0 ? Math.min(m.balance, goal) : m.balance;
   const unit = unitCaption(locale, m.balance, m.terminology);
   // A long total ("1,190 / 1,190") steps down so it never runs under the illustration.
   const digits = `${formatNumber(shown)}${goal > 0 ? ` / ${formatNumber(goal)}` : ""}`.length;

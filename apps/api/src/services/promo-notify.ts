@@ -22,6 +22,7 @@ import { unsubscribeHeaders, unsubscribeUrl, withFooter } from "./messaging.js";
 import { inQuietHours } from "./notifications.js";
 import { segmentWhere } from "./promo-rules.js";
 import { addPassMessage, hasWalletPass, notifyPassUpdate } from "./wallet.js";
+import { notifyShopPassUpdate, walletShopChanged } from "./wallet-shop.js";
 import { sendWebPush } from "./web-push.js";
 
 type PromoRow = typeof promos.$inferSelect;
@@ -139,6 +140,8 @@ export async function announcePromo(ctx: AppContext, promoId: string, kind: "ann
       await addPassMessage(ctx, r.userId, { id: `deal_${p.id}`, header: m.name, body: p.title });
       await notifyPassUpdate(ctx, r.userId);
     }
+    // The shop's own card (wallet passes per membership, 0043) shows the deal as well; a no-op without such a card.
+    if (kind === "announce") await notifyShopPassUpdate(ctx, r.userId, m.id);
   }
   await ctx.db.update(promos).set(kind === "announce" ? { announcedAt: now } : { remindedAt: now }).where(eq(promos.id, p.id));
   return out;
@@ -152,6 +155,7 @@ export async function refreshDealPasses(ctx: AppContext, merchantId: string) {
     .where(and(eq(merchantMembers.merchantId, merchantId), sql`${merchantMembers.marketingConsentAt} is not null`))
     .limit(500);
   for (const r of rows) if (await hasWalletPass(ctx, r.userId)) await notifyPassUpdate(ctx, r.userId);
+  walletShopChanged(ctx, merchantId); // the shop's own cards (no notification)
 }
 
 /**

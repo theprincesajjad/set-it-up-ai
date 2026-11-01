@@ -24,7 +24,7 @@ import {
   visits,
   type DbOrTx,
 } from "@ll/db";
-import { PLANS, isStopKeyword, messagingApi, normalizeReplyWord } from "@ll/shared";
+import { PLANS, isStopKeyword, messagingApi, normalizeReplyWord, promosApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { hmacSha256, safeEqual } from "../lib/crypto.js";
@@ -1203,8 +1203,15 @@ export async function sendPromo(ctx: AppContext, merchant: Merchant, actorUserId
   const { sendWebPush } = await import("./web-push.js");
   assertPharmacyContent(merchant, body.title, body.body);
   assertBeautyClaims(merchant, `${body.title} ${body.body}`, "This promo");
+  const { marketingCount } = await import("./promo-notify.js");
   const audience = await promoAudience(ctx, merchant, body.segment);
   if (!audience.recipients.length) throw new HttpError(409, "no_recipients", "None of your regulars can get a promo yet. Customers opt in when they join.");
+  // The same weekly cap as deals (promo-notify.ts): at most PROMO_CAPS.perShopPerWeek marketing messages per person from this shop in
+  // a rolling 7 days, deals and promo sends together. People at the cap are left out; nobody left means nothing is sent or counted.
+  const capped = new Set<string>();
+  for (const r of audience.recipients) if ((await marketingCount(ctx, merchant.id, r.userId)) >= promosApi.PROMO_CAPS.perShopPerWeek) capped.add(r.userId);
+  audience.recipients = audience.recipients.filter((r) => !capped.has(r.userId));
+  if (!audience.recipients.length) throw new HttpError(409, "weekly_cap", `Everyone this would reach already had ${promosApi.PROMO_CAPS.perShopPerWeek} offers from you this week. Try again in a few days.`);
   const allowance = await consumePromo(ctx, merchant);
   const now = ctx.now();
   const [msg] = await ctx.db

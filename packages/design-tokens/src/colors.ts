@@ -1,5 +1,5 @@
 import { palette as p } from "./palette.js";
-import { TILE_NAMES, tileRoles, tradeColors, warm, type TradeColors } from "./warm.js";
+import { TILE_NAMES, dealRoles, tileRoles, tradeColors, warm, type TradeColors } from "./warm.js";
 
 /**
  * Semantic colour roles (v2, docs/design/foundations.md § Colour).
@@ -178,6 +178,13 @@ export interface RolesV3 {
   tileLilac: string; tileLilacForeground: string;
   tileSky: string; tileSkyForeground: string;
   tileRose: string; tileRoseForeground: string;
+  /** Deal card colours an owner picks for a promo: the tile pastels, kept in Clear too (warm.ts dealRoles). */
+  dealPeach: string; dealPeachForeground: string;
+  dealMint: string; dealMintForeground: string;
+  dealButter: string; dealButterForeground: string;
+  dealLilac: string; dealLilacForeground: string;
+  dealSky: string; dealSkyForeground: string;
+  dealRose: string; dealRoseForeground: string;
   /** The trade accent family. These are the defaults (terracotta); `[data-trade="..."]` overrides them (see css.ts). */
   trade: string;
   tradeForeground: string;
@@ -235,6 +242,7 @@ const v3Light: RolesV3 = {
   forest: warm.forest,
   forestForeground: p.stone[0],
   ...tileRoles("light"),
+  ...dealRoles("light"),
   trade: tradeColors("terracotta", "light").accent,
   tradeForeground: tradeColors("terracotta", "light").foreground,
   tradeAlt: tradeColors("terracotta", "light").alt,
@@ -291,6 +299,7 @@ const v3Dark: RolesV3 = {
   forest: warm.forestDark,
   forestForeground: warm.espresso,
   ...tileRoles("dark"),
+  ...dealRoles("dark"),
   trade: tradeColors("terracotta", "dark").accent,
   tradeForeground: tradeColors("terracotta", "dark").foreground,
   tradeAlt: tradeColors("terracotta", "dark").alt,
@@ -561,6 +570,14 @@ export const contrastPairsV3: ContrastPairV3[] = [
     return [
       { fg: `${bg}Foreground` as RoleV3, bg, min: TEXT, note: `Deep text on the ${n} tile` },
       { fg: "foreground", bg, min: TEXT, note: `Ink on the ${n} tile` },
+    ];
+  }),
+  ...TILE_NAMES.flatMap((n): ContrastPairV3[] => {
+    const cap = n.charAt(0).toUpperCase() + n.slice(1);
+    const bg = `deal${cap}` as RoleV3;
+    return [
+      { fg: `${bg}Foreground` as RoleV3, bg, min: TEXT, note: `Deep text on the ${n} deal card` },
+      { fg: "foreground", bg, min: TEXT, note: `Ink on the ${n} deal card` },
     ];
   }),
 ];

@@ -242,6 +242,10 @@ function membershipDto(row: WalletRow, rs: Reward[], f: CustomerFeatures): custo
     expiryDisclosure: expiryDisclosure(program),
     nextReward: nextReward(rs, member.balance),
     rewardsAvailableCount: affordable(rs, member.balance).length,
+    readyReward: (() => {
+      const best = affordable(rs, member.balance).at(-1);
+      return best ? { rewardId: best.id, name: best.name, pointsCost: best.pointsCost } : null;
+    })(),
     vip: vipDto(vip),
     muted: member.muted,
     marketingConsent: consentDto(member),

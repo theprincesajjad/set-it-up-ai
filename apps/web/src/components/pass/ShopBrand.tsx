@@ -9,6 +9,7 @@ import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { shopInitials } from "@/lib/shopAvatar";
 import { shopColorProps } from "@/lib/shopColor";
+import { MAX_DRAWN_STAMPS } from "@/lib/stamps";
 
 export interface BrandShop {
   name: string;
@@ -72,7 +73,14 @@ export function BrandPassCard({ shop, kicker, aside, children, className, scope,
 
 /** A row of small stamps on the colour (a preview of the card before joining): earned are solid, the last is the reward, accented. */
 export function MiniStamps({ goal, filled = 0, className }: { goal: number; filled?: number; className?: string }) {
-  const g = Math.max(1, Math.min(12, goal || 10));
+  const g = Math.max(1, Math.round(goal || 10));
+  // A long card (more than MAX_DRAWN_STAMPS, up to 50) is a bar: a row of 40 dots says nothing.
+  if (g > MAX_DRAWN_STAMPS)
+    return (
+      <div aria-hidden className={cn("h-2.5 w-full overflow-hidden rounded-full bg-trade-pass-text/25", className)}>
+        <div className="h-full rounded-full bg-trade-pass-text" style={{ width: `${Math.round((Math.min(filled, g) / g) * 100)}%` }} />
+      </div>
+    );
   return (
     <div aria-hidden className={cn("flex flex-wrap gap-1.5", className)}>
       {Array.from({ length: g }, (_, i) => (
