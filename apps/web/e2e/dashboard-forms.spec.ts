@@ -59,11 +59,12 @@ test.describe("settings", () => {
     await expect(about).toHaveValue(`${original} Edited ${run}.`);
     await expect(saveBar(page)).toBeVisible();
     await page.getByLabel(/^Email/).fill("not-an-email");
-    await page.getByRole("textbox", { name: "Brand colour", exact: true }).fill("orange");
+    // Wave Q: the brand colour is the kit ColorField; a bad code is refused in place (it never reaches the form).
+    await page.getByRole("textbox", { name: "Colour code", exact: true }).fill("orange");
     await page.getByLabel(/^Website/).fill("hearth.example");
+    await expect(page.getByText("Use a code like #1F6F5C.")).toBeVisible();
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("That email doesn't look right.")).toBeVisible();
-    await expect(page.getByText("Use a hex colour like #0B0B0C.")).toBeVisible();
     await expect(page.getByText("Start with https://")).toBeVisible();
     await expect(saveBar(page).getByText("Fix the highlighted fields first.")).toBeVisible();
 
@@ -73,7 +74,7 @@ test.describe("settings", () => {
     await expect(saveBar(page)).toHaveCount(0);
     await expect(about).toHaveValue(original);
     await expect(page.getByLabel(/^Email/)).toHaveValue(email);
-    await expect(page.getByRole("textbox", { name: "Brand colour", exact: true })).toHaveValue(/^#[0-9A-Fa-f]{6}$/);
+    await expect(page.getByRole("textbox", { name: "Colour code", exact: true })).toHaveValue(/^#[0-9A-Fa-f]{6}$/);
     await expect(page.getByText("That email doesn't look right.")).toHaveCount(0);
 
     // A valid edit saves, the bar goes away and the value survives a reload.

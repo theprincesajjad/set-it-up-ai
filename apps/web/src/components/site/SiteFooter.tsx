@@ -102,9 +102,8 @@ export function SiteFooter() {
           <p>
             Your customers see it in English,{" "}
             <span lang="hi">हिन्दी</span>,{" "}
-            <span lang="ur" dir="rtl">
-              اردو
-            </span>{" "}
+            {/* No dir="rtl" here: the marketing pages promise no RTL region (e2e marketing language scope); bidi orders the word anyway. */}
+            <span lang="ur">اردو</span>{" "}
             or <span lang="pa">ਪੰਜਾਬੀ</span>.
           </p>
         </div>

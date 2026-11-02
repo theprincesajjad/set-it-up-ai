@@ -323,7 +323,8 @@ test("owner: billing and plans, integrations, messages, reports", async ({ page 
   await expect(page.getByRole("heading", { name: /You're on/ })).toBeVisible();
   // One honest status: both paid plans can be bought today, with a working button.
   await expect(page.getByText("Coming soon")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Subscribe to Pro" })).toBeVisible();
+  // Wave Q: the questions are accordion buttons now ("Can I subscribe to Pro today?"), so the plan button is matched exactly.
+  await expect(page.getByRole("button", { name: "Subscribe to Pro", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Subscribe to Service" })).toBeVisible();
   await page.screenshot({ path: shot("26-billing"), fullPage: true });
   await page.goto(`/m/${id}/integrations`);

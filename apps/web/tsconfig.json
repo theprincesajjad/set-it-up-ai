@@ -43,7 +43,9 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "*.ts",
-    "*.mts"
+    "*.mts",
+    ".next-q-customer/types/**/*.ts",
+    ".next-q-customer/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -490,7 +490,8 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
 
       {/* On a phone the wallet button comes right under the card, above the fold: it is the one thing to do here. A computer keeps it
           under the member QR, since it brings its own "open on your phone" QR. */}
-      {os !== "other" ? <Reveal delay={0.15}>{wallet}</Reveal> : null}
+      {/* Above the fold on a phone and the one thing to do here: no entrance motion on it (kit: never animate above the fold). */}
+      {os !== "other" ? wallet : null}
 
       {/* wave-q: the rest rises in under the card, one after the other (kit BlurFade; shown as is under reduced motion). */}
       <Reveal delay={0.25}>

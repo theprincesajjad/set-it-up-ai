@@ -146,7 +146,7 @@ export function CardPreview({ name, vertical, brandColor, logo, card, className,
   );
   if (!stack) return figure;
   return (
-    <div className="relative isolate">
+    <div className="relative isolate mb-6">
       {/* The next card in the wallet, peeking out behind: the same colour, deeper and smaller. */}
       <span {...colors} aria-hidden className="absolute inset-x-6 -bottom-3 -z-10 h-12 rounded-[20px] bg-trade opacity-40 shadow-float" />
       <span {...colors} aria-hidden className="absolute inset-x-12 -bottom-6 -z-20 h-12 rounded-[20px] bg-trade opacity-20" />

@@ -40,6 +40,7 @@ test.describe("at 390", () => {
     await expect(goal).toHaveValue("9");
     await expect(page.locator("[data-card-preview]:visible li")).toHaveCount(9);
     // Card colour: the first trade swatch, shown on the preview at once.
+    await page.locator("[data-card-colour-open]").click();
     const swatch = page.locator("[data-card-colour] [role=radio]").first();
     const hex = (await swatch.getAttribute("aria-label"))!;
     await swatch.click();

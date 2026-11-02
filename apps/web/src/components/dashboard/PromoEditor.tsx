@@ -37,12 +37,12 @@ function DateTimeField({ id, label, value, onChange, error, hint, disabled, defa
     <fieldset disabled={disabled} className="flex min-w-0 flex-col gap-1.5" aria-describedby={`${id}-note`}>
       <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] items-end gap-2">
         <DatePicker id={id} label={label} value={day} onChange={(x) => (x ? onChange(`${ymd(x)}T${time || defaultTime}`) : clearable ? onChange("") : undefined)} disabled={min ? { before: min } : undefined} />
-        <TextField type="time" label={`${label.replace(" (optional)", "")}, time`} hideLabel value={time} disabled={disabled || !value} onChange={(e) => value && onChange(`${value.slice(0, 10)}T${e.target.value || defaultTime}`)} />
+        <TextField type="time" label={`${label.replace(" (optional)", "")}, time`} hideLabel className="clear:md:min-h-11" value={time} disabled={disabled || !value} onChange={(e) => value && onChange(`${value.slice(0, 10)}T${e.target.value || defaultTime}`)} />
       </div>
       <p id={`${id}-note`} className={cn("flex items-center gap-2 text-meta", error ? "font-medium text-negative" : "text-fg-muted")}>
         <span className="min-w-0 flex-1">{error ?? hint}</span>
         {clearable && value && !disabled ? (
-          <button type="button" onClick={() => onChange("")} className="inline-flex min-h-11 items-center text-meta font-medium text-fg underline underline-offset-4 focus-visible:focus-ring">
+          <button type="button" onClick={() => onChange("")} className="relative inline-flex items-center text-meta font-medium text-fg underline underline-offset-4 after:absolute after:-inset-3 focus-visible:focus-ring">
             Clear
           </button>
         ) : null}
@@ -301,7 +301,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
           </div>
           <fieldset className="mt-4 min-w-0" disabled={locked}>
             <legend className="text-label text-fg">Only on these days (optional)</legend>
-            <ChipGroup label="Days of the week" className="mt-2">
+            <ChipGroup label="Days of the week" className="mt-2 flex-wrap overflow-visible">
               {WEEKDAYS.map((w, i) => (
                 <Chip key={w} selected={d.daysOfWeek.includes(i)} onClick={() => set("daysOfWeek", d.daysOfWeek.includes(i) ? d.daysOfWeek.filter((x) => x !== i) : [...d.daysOfWeek, i])}>
                   {w}

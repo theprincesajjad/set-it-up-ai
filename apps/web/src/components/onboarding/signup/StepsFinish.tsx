@@ -39,6 +39,7 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, o
   const card = cardFor(draft.vertical, draft.card);
   const unit = unitWord(locale as Locale, card.terminology);
   const pwOk = password.length >= 8;
+  const logo = draft.link === "read" ? (draft.accepted?.logoPreview ?? null) : null;
   return (
     <StepFrame
       id="account"
@@ -55,9 +56,14 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, o
     >
       {/* Phones: what they are making, in one line (desktop has the live card beside the form). */}
       <div {...shopColorProps({ vertical: draft.vertical || null, brandColor: brandColor ?? null })} className="flex items-center gap-3 rounded-r4 border border-border bg-card p-3 shadow-sm lg:hidden" data-account-summary>
-        <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-trade text-[17px] font-[650] text-trade-foreground">
-          {(draft.name.trim().charAt(0) || "?").toUpperCase()}
-        </span>
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logo} alt="" width={44} height={44} className="size-11 shrink-0 rounded-full border border-border bg-card object-cover" />
+        ) : (
+          <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-trade text-[17px] font-[650] text-trade-foreground">
+            {(draft.name.trim().charAt(0) || "?").toUpperCase()}
+          </span>
+        )}
         <span className="min-w-0 flex-1">
           <span className="block text-caption text-fg-muted">{t("sf.acct.making")}</span>
           <span className="block truncate text-body font-[600] text-fg">

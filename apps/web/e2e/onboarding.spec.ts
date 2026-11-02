@@ -88,7 +88,8 @@ test("signup is a stepped flow that ends on You're live and lands on the first s
   await atStep(page, "live");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("is live");
   await expect(page.getByRole("img", { name: /QR code to join/ })).toBeVisible();
-  await expect(page.locator("[data-live-next] li")).toHaveCount(3);
+  // Wave Q: the next steps are a carousel of three cards (links), no longer a list.
+  await expect(page.locator("[data-live-next] a")).toHaveCount(3);
   await page.locator("[data-live-primary]").click();
 
   await page.waitForURL(/\/m\/[^/]+\/setup\?step=first_stamp/);

@@ -4,11 +4,12 @@
  * address only for a storefront and a postal code for a home studio), and the loyalty card (the trade's defaults, editable, with a
  * live preview in the shop's colour).
  */
-import { Check } from "lucide-react";
+import { Check, Palette } from "lucide-react";
 import { useMemo, useState } from "react";
 import { VERTICALS, VERTICAL_TEMPLATES, merchantApi, normalizePostal, unitWord, type Locale, type MessageKey } from "@ll/shared";
 import type { Icon3dName } from "@ll/design-tokens";
 import { cn } from "@/lib/cn";
+import { shopColorProps } from "@/lib/shopColor";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { ColorField } from "@/components/ui/ColorField";
 import { NumberStepper } from "@/components/ui/NumberStepper";
@@ -186,6 +187,7 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
   // The colour: what "Is this you?" kept from the website, else the owner's pick here (wave Q, ColorField), else the trade's.
   const imported = draft.link === "read" && !!draft.accepted;
   const brandColor = imported ? (draft.accepted?.brandColor ?? null) : draft.color;
+  const [colourOpen, setColourOpen] = useState(!!draft.color);
   return (
     <StepFrame id="card" title={t("sf.card.title")} body={t("sf.card.body")} onSubmit={go} primary={t("sf.continue")}>
       <div className="lg:hidden">
@@ -223,13 +225,29 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
       </div>
       {!imported ? (
         <div className="flex flex-col gap-2" data-card-colour>
-          <ColorField label={t("sf.shop.colour")} value={draft.color} onChange={(c) => update({ color: c })} vertical={draft.vertical || null} />
-          <p className="text-meta text-fg-muted">{t("sf.card.colourHint")}</p>
-          {draft.color ? (
-            <button type="button" onClick={() => update({ color: null })} className="inline-flex h-11 items-center self-start rounded-full px-1 text-body font-[550] text-link hover:underline focus-visible:focus-ring" data-card-colour-reset>
-              {t("sf.card.colourReset")}
+          {colourOpen ? (
+            <div className="rounded-r4 border border-border bg-card p-4 shadow-sm animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none">
+              <ColorField label={t("sf.shop.colour")} value={draft.color} onChange={(c) => update({ color: c })} vertical={draft.vertical || null} />
+              {draft.color ? (
+                <button type="button" onClick={() => update({ color: null })} className="mt-2 inline-flex h-11 items-center rounded-full px-1 text-body font-[550] text-link hover:underline focus-visible:focus-ring" data-card-colour-reset>
+                  {t("sf.card.colourReset")}
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <button type="button" onClick={() => setColourOpen(true)} className="flex min-h-14 items-center gap-3 rounded-r4 border border-border bg-card px-3 py-2 text-start shadow-sm hover:bg-bg-subtle focus-visible:focus-ring" data-card-colour-open>
+              <span {...shopColorProps({ vertical: draft.vertical || null, brandColor: draft.color })} aria-hidden className="size-9 shrink-0 rounded-full bg-trade ring-1 ring-inset ring-trade-foreground/20" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-body font-[550] text-fg">{t("sf.shop.colour")}</span>
+                <span className="block text-meta text-fg-muted">{draft.color ? <span dir="ltr">{draft.color}</span> : t("sf.shop.colourTrade")}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-meta font-[600] text-link">
+                <Palette aria-hidden className="size-4" strokeWidth={1.8} />
+                {t("sf.shop.otherColour")}
+              </span>
             </button>
-          ) : null}
+          )}
+          <p className="text-meta text-fg-muted">{t("sf.card.colourHint")}</p>
         </div>
       ) : null}
       {draft.vertical === "pharmacy" ? <p className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg">{t("sf.card.pharmacy")}</p> : null}

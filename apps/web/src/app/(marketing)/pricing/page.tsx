@@ -91,12 +91,12 @@ export default async function PricingPage({ searchParams }: Props) {
   const bia = campaignsApi.CAMPAIGN_PACKAGES;
   return (
     <>
-      {/* Wave Q: a centred head (Stripe/Linear pricing pages): the promise, one line, and the audience chips. The decorative tile art is gone. */}
+      {/* Wave Q: a centred head (Stripe/Linear pricing pages): the promise, one line, and the audience chips. The decorative tile art is gone, and the headline paints with the first frame (no fade: it is the LCP). */}
       <section className="mx-auto max-w-300 px-4 pt-10 pb-8 text-center md:px-8 md:pt-16 md:pb-12">
         <div className="flex flex-col items-center">
           <p className="text-meta-strong text-primary-text">{P.eyebrow}</p>
-          <h1 className="display mkt-rise mt-4 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
-          <p className="[--i:1] mkt-rise mt-5 max-w-2xl text-[18px] leading-[1.55] text-pretty text-muted-foreground">{P.sub}</p>
+          <h1 className="display mt-4 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
+          <p className="mt-5 max-w-2xl text-[18px] leading-[1.55] text-pretty text-muted-foreground">{P.sub}</p>
           <nav aria-label="Pricing for" className="mt-7 flex flex-wrap justify-center gap-2">
             {P.chips.map((c) => (
               <ChipLink key={c.id} href={c.href} current={audience === c.id}>

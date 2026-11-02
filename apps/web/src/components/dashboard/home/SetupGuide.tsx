@@ -71,7 +71,7 @@ export function SetupGuide({ c, base, booking }: { c: merchantApi.OnboardingChec
           const hint = HINTS[s.key];
           const copy = STEP_COPY[s.key];
           return (
-            <AccordionItem key={s.key} value={s.key} disabled={s.done} className={cn("rounded-input border-0 transition-colors", isOpen && "bg-bg-subtle")}>
+            <AccordionItem key={s.key} value={s.key} disabled={s.done} className={cn("rounded-input border-0 not-last:border-b-0 transition-colors", isOpen && "bg-bg-subtle")}>
               <AccordionTrigger className="min-h-11 items-center gap-3 rounded-input px-2 py-2 text-body font-normal hover:no-underline disabled:cursor-default aria-disabled:opacity-100 data-disabled:opacity-100">
                 <span
                   aria-hidden
