@@ -3,12 +3,24 @@ import { BRAND } from "@ll/shared";
 import { Wordmark } from "./Brand";
 
 const COLS = [
-  { title: "Shops", links: [{ href: "/", label: "For shops" }, { href: "/for-restaurants", label: "For restaurants" }, { href: "/pricing", label: "Pricing" }, { href: "/#book", label: "Book a visit" }] },
+  {
+    title: "Shops",
+    links: [
+      { href: "/", label: "For shops" },
+      { href: "/for-nail-techs", label: "For nail techs" },
+      { href: "/for-barbers", label: "For barbers" },
+      { href: "/for-groomers", label: "For groomers" },
+      { href: "/for-restaurants", label: "For restaurants" },
+      { href: "/pricing", label: "Pricing" },
+      { href: "/#book", label: "Book a visit" },
+    ],
+  },
   { title: "Neighbourhoods", links: [{ href: "/for-bias", label: "For BIAs" }, { href: "/neighbourhoods", label: "Where we are" }, { href: "/for-shoppers", label: "For shoppers" }] },
   {
     title: "Company",
     links: [
       { href: `mailto:${BRAND.supportEmail}`, label: "Contact" },
+      { href: "/login", label: "Sign in" },
       { href: "/legal/privacy", label: "Privacy" },
       { href: "/legal/terms", label: "Terms" },
       { href: "/legal/rewards", label: "Rewards terms" },
@@ -18,7 +30,7 @@ const COLS = [
   },
 ];
 
-/** Marketing footer: shop, neighbourhood and company links on the quiet grey band. "For shoppers" lives here, not in the top nav. */
+/** Marketing footer: shop, neighbourhood and company links on the quiet grey band. "For shoppers" lives here, not in the top nav. Links are 44px tall on phones (wave P), and every trade page and sign-in are one tap away. */
 export function SiteFooter() {
   return (
     <footer className="border-t border-line bg-bg-subtle">
@@ -30,10 +42,10 @@ export function SiteFooter() {
         {COLS.map((c) => (
           <div key={c.title}>
             <h2 className="text-meta-strong text-fg">{c.title}</h2>
-            <ul className="mt-3 flex flex-col gap-2.5">
+            <ul className="mt-2 flex flex-col md:mt-3 md:gap-2.5">
               {c.links.map((l) => (
                 <li key={l.href + l.label}>
-                  <Link href={l.href} className="text-meta text-fg-muted transition-colors hover:text-fg focus-visible:focus-ring">
+                  <Link href={l.href} className="inline-flex min-h-11 items-center text-meta text-fg-muted transition-colors hover:text-fg focus-visible:focus-ring md:min-h-0">
                     {l.label}
                   </Link>
                 </li>

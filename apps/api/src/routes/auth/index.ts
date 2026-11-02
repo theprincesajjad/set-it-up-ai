@@ -9,6 +9,7 @@ import {
   login,
   refreshSession,
   register as registerUser,
+  resetPasswordWithEmailOtp,
   revokeSession,
   setStaffPin,
   startEmailOtp,
@@ -50,6 +51,11 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.post("/auth/email-otp/verify", async (req) => {
     const body = parse(authApi.emailOtpVerifyBody, req.body);
     return verifyEmailOtp(ctx, body, ua(req.headers["user-agent"]));
+  });
+
+  app.post("/auth/password-reset", async (req) => {
+    const body = parse(authApi.passwordResetBody, req.body);
+    return resetPasswordWithEmailOtp(ctx, body, { userAgent: ua(req.headers["user-agent"]), ip: req.ip });
   });
 
   app.post("/auth/refresh", async (req) => {

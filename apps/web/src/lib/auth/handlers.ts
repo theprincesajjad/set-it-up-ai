@@ -13,11 +13,12 @@ export const SIGN_IN_ACTIONS: Record<string, string> = {
   "email-otp/verify": "/v1/auth/email-otp/verify",
   login: "/v1/auth/login",
   register: "/v1/auth/register",
+  "password-reset": "/v1/auth/password-reset",
 };
 
 /** API paths the BFF refuses: they return tokens in the body and must go through /api/auth. */
 export function isBlockedBffPath(apiPath: string): boolean {
-  return /^\/v1\/auth\/(otp\/verify|email-otp\/verify|login|register|refresh|logout)\/?$/.test(apiPath);
+  return /^\/v1\/auth\/(otp\/verify|email-otp\/verify|login|register|password-reset|refresh|logout)\/?$/.test(apiPath);
 }
 
 export interface CookieReader {

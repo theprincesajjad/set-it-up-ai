@@ -1,6 +1,6 @@
-import { Plus } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import type { Metadata } from "next";
-import { FEES, PLANS, PLAN_IDS, TRIAL_DAYS, campaignsApi, firstYearPriceConfig, firstYearPriceShown, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
+import { FEES, PLANS, RESTAURANT_PLANS, PLAN_IDS, TRIAL_DAYS, campaignsApi, firstYearPriceConfig, firstYearPriceShown, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
 import { ArtTiles } from "@/components/marketing/HeroArt";
 import { ChipLink } from "@/components/marketing/ChipLink";
 import { CompetitorTableSolo } from "@/components/marketing/CompetitorTableSolo";
@@ -12,7 +12,7 @@ import { copy } from "@/copy/en-CA";
 import { publicServerApi } from "@/lib/api/server";
 import { fill, moneyShort } from "@/lib/marketing/text";
 import { planNote } from "@/lib/marketing/plan-copy";
-import { CompareStrip, CompareTable, FreeCard, PLUS_TARGET, PaidCard, ServiceLine, SoloTable, pv } from "./PlanCards";
+import { CompareTable, FreeCard, PLUS_TARGET, PaidCard, ServiceLine, SoloTable, pv } from "./PlanCards";
 import { TradeRows } from "./TradeRows";
 import { RestaurantPricing } from "./RestaurantPricing";
 
@@ -51,6 +51,35 @@ async function firstYearPrice(): Promise<billingApi.FirstYearPriceDto | null> {
 
 const pct = (bps: number) => `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
 
+const AUDIENCE_FROM = { shop: moneyShort(PLANS.plus.priceCents), restaurant: moneyShort(RESTAURANT_PLANS.starter.priceCents), bia: moneyShort(Math.min(...Object.values(campaignsApi.CAMPAIGN_PACKAGES).map((b) => b.priceCents))) };
+
+/**
+ * Wave P: /pricing shows one audience at a time (the chips at the top pick it: ?for=shop, the default, restaurant or bia), so a shop owner
+ * is not scrolling past restaurant calculators and BIA packages. The other two audiences are a card each, one tap away.
+ */
+function OtherAudiences({ audience }: { audience: "shop" | "restaurant" | "bia" }) {
+  const others = P.others.filter((o) => o.id !== audience);
+  return (
+    <section aria-label={P.othersLabel} className="mx-auto max-w-300 px-4 pb-12 md:px-8 md:pb-16">
+      <ul className="grid gap-4 md:grid-cols-2">
+        {others.map((o) => (
+          <li key={o.id}>
+            <a href={o.href} className="flex h-full min-h-28 flex-col gap-1 rounded-card bg-card p-6 shadow-card transition-colors hover:bg-muted focus-visible:focus-ring" data-audience={o.id}>
+              <span className="text-meta-strong text-muted-foreground">{o.eyebrow}</span>
+              <span className="text-headline text-foreground">{fill(o.title, { from: AUDIENCE_FROM[o.id] })}</span>
+              <span className="text-body text-muted-foreground">{o.body}</span>
+              <span className="mt-2 inline-flex items-center gap-1 text-body-strong text-foreground">
+                {o.cta}
+                <ArrowRight aria-hidden className="size-4 rtl:-scale-x-100" />
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function PricingPage({ searchParams }: Props) {
@@ -79,6 +108,8 @@ export default async function PricingPage({ searchParams }: Props) {
         <ArtTiles className="max-md:hidden" />
       </section>
 
+      {audience === "shop" ? (
+      <>
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
         <p className="mx-auto mb-4 max-w-300 px-4 text-meta-strong text-muted-foreground md:px-8">{copy.proPricing.pricesNote}</p>
         <div className="mx-auto grid max-w-300 items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3">
@@ -90,14 +121,23 @@ export default async function PricingPage({ searchParams }: Props) {
         <div className="mx-auto mt-4 max-w-300 px-4 md:px-8">
           <ServiceLine />
         </div>
-        <div className="mx-auto mt-10 max-w-300 px-4 md:px-8">
-          <h2 className="display text-mkt-md">{copy.proPricing.table.title}</h2>
-          <div className="mt-4 rounded-card bg-card px-5 pb-2 shadow-card md:px-7">
-            <SoloTable />
-          </div>
-        </div>
-        <div className="mx-auto mt-12 max-w-300 px-4 md:px-8">
-          <CompareStrip />
+        {/* Wave P: the plan table folds away under the cards (the cards already list what matters), and the four-card booking-app
+            strip that sat here is gone: the dated table below (#booking-apps) says the same with sources. */}
+        <div className="mx-auto mt-8 max-w-300 px-4 md:px-8">
+          <details id="compare" open={compareOpen} className="group scroll-mt-20 rounded-card bg-card shadow-card" data-testid="compare">
+            <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 px-5 text-headline text-foreground focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
+              {P.planTableSummary}
+              <Plus aria-hidden className="size-5 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-45" strokeWidth={1.75} />
+            </summary>
+            <div className="border-t border-border px-5 pb-2 md:px-7">
+              <SoloTable />
+            </div>
+            {/* One place for both tables (wave P): the headline rows above, every feature below. */}
+            <div className="border-t border-border px-5 pb-4 md:px-7">
+              <h3 className="pt-5 text-headline text-foreground">{P.compareSummary}</h3>
+              <CompareTable available={available} />
+            </div>
+          </details>
         </div>
         <p className="mx-auto mt-6 max-w-300 px-4 text-meta text-muted-foreground md:px-8">
           {fill(P.openNote, { target: String(PLUS_TARGET) })}{activeShops !== null ? ` ${activeShops} shops have joined so far.` : ""} Your loyalty program never moves to a paid plan.
@@ -108,9 +148,12 @@ export default async function PricingPage({ searchParams }: Props) {
       <CompetitorTableSolo c={{ ...copy.solo.compare, brand: "Local Loyalty" }} chairs id="booking-apps" />
 
       <TradeRows />
+      </>
+      ) : null}
 
-      <RestaurantPricing />
+      {audience === "restaurant" ? <RestaurantPricing /> : null}
 
+      {audience === "bia" ? (
       <MSection id="bias" tone="sky" className="scroll-mt-20 md:py-20!">
         <div className="grid gap-10 md:grid-cols-[1fr_1.6fr]">
           <div>
@@ -135,18 +178,10 @@ export default async function PricingPage({ searchParams }: Props) {
           </ul>
         </div>
       </MSection>
+      ) : null}
 
-      <section id="compare" className="mx-auto max-w-300 scroll-mt-20 px-4 pb-16 md:px-8 md:pb-24">
-        <details open={compareOpen} className="group rounded-card bg-card shadow-card" data-testid="compare">
-          <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 px-5 text-headline text-foreground focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
-            {P.compareSummary}
-            <Plus aria-hidden className="size-5 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-45" strokeWidth={1.75} />
-          </summary>
-          <div className="border-t border-border px-5 pb-4 md:px-7">
-            <CompareTable available={available} />
-          </div>
-        </details>
-      </section>
+      <OtherAudiences audience={audience} />
+
 
       <MSection>
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">

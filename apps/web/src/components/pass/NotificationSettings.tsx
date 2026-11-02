@@ -8,6 +8,7 @@
  */
 import { customerApi, inboxApi, LOCALE_LIST, t as translate, type MessageKey } from "@ll/shared";
 import { NotifyPrompt } from "@/components/pass/NotifyPrompt";
+import { ChevronDown } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ListGroup } from "@/components/ui/Card";
@@ -25,6 +26,8 @@ const GROUPS: { titleKey: MessageKey; channel: customerApi.AndroidChannelId; not
   { titleKey: "sh.set.groupOrders", channel: "orders" },
   { titleKey: "sh.set.groupOffers", channel: "offers", noteKey: "sh.set.offersNote" },
 ];
+/** Alerts only some kinds of shop send (wave-p): folded under "More alerts" so the common ones fit on one screen. */
+const MORE_TYPES = new Set<customerApi.NotificationType>(["order_ready", "ticket_updated", "quote_sent", "tiffin_update", "tiffin_menu", "catering_update", "hall_update"]);
 const CHANNEL_KEY: Record<customerApi.NotificationChannel, MessageKey> = { push: "sh.ch.push", sms: "sh.ch.sms", email: "sh.ch.email" };
 
 /** Inbox links: ll://shop/<slug> → /shops/<slug>; web links as they are. */
@@ -242,35 +245,52 @@ export function NotificationSettings() {
 
   const items = prefs?.items ?? [];
   const budget = prefs?.limits?.routinePushesPerDay ?? customerApi.ROUTINE_PUSHES_PER_DAY;
-  const groups = GROUPS.map((g) => ({ ...g, items: items.filter((x) => customerApi.NOTIFICATION_CATALOG.find((c) => c.type === x.type)?.androidChannel === g.channel) })).filter((g) => g.items.length);
+  // wave-p: a café regular should not scroll past tiffin, catering and hall switches. Bookings and shop messages stay in view
+  // (any shop can send them); the trade-specific ones (orders, repairs, quotes, tiffin, catering, halls) fold under "More alerts".
+  const groups = GROUPS.map((g) => ({ ...g, items: items.filter((x) => customerApi.NOTIFICATION_CATALOG.find((c) => c.type === x.type)?.androidChannel === g.channel && !MORE_TYPES.has(x.type)) })).filter((g) => g.items.length);
+  const more = items.filter((x) => MORE_TYPES.has(x.type));
   const label = (type: customerApi.NotificationType, fallback: string) => {
     const key = `sh.nt.${type}` as MessageKey;
     const out = t(key);
     return out === key ? fallback : out;
   };
 
-  return (
-    <div id="notifications-settings" className="flex flex-col gap-7">
-      {language}
-      {groups.map((g) => (
-        <ListGroup key={g.titleKey} title={t(g.titleKey)} footer={g.noteKey ? t(g.noteKey) : g.channel === "points" ? t("sh.set.budget", { n: budget }) : undefined}>
-          {g.items.map((item) => {
+  const row = (item: customerApi.NotificationPrefDto) => {
             const chans = (Object.keys(item.channels) as customerApi.NotificationChannel[]).sort((a, b) => ["push", "sms", "email"].indexOf(a) - ["push", "sms", "email"].indexOf(b));
-            const [first, ...more] = chans;
+            const [first, ...rest] = chans;
             if (!first) return null;
             return (
               <li key={item.type} className="py-2">
                 <Switch label={label(item.type, item.label)} description={locale === "en" ? item.description : undefined} checked={!!item.channels[first]} onChange={(v) => void toggle(item.type, first, v)} />
-                {more.map((ch) => (
+                {rest.map((ch) => (
                   <div key={ch} className="ps-4">
                     <Switch label={t("sh.set.alsoBy", { channel: t(CHANNEL_KEY[ch]) })} checked={!!item.channels[ch]} onChange={(v) => void toggle(item.type, ch, v)} />
                   </div>
                 ))}
               </li>
             );
-          })}
+  };
+
+  return (
+    <div id="notifications-settings" className="flex flex-col gap-7">
+      {language}
+      {groups.map((g) => (
+        <ListGroup key={g.titleKey} title={t(g.channel === "orders" ? "cust.set.groupBookings" : g.titleKey)} footer={g.noteKey ? t(g.noteKey) : g.channel === "points" ? t("sh.set.budget", { n: budget }) : undefined}>
+          {g.items.map(row)}
         </ListGroup>
       ))}
+      {more.length ? (
+        <details className="group rounded-card border border-line bg-card" data-testid="more-alerts">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
+            <span className="min-w-0">
+              <span className="block text-body-strong text-fg">{t("cust.set.moreTitle")}</span>
+              <span className="block text-meta text-fg-muted">{t("cust.set.moreBody")}</span>
+            </span>
+            <ChevronDown aria-hidden className="size-5 shrink-0 text-fg-muted transition-transform group-open:rotate-180" strokeWidth={1.75} />
+          </summary>
+          <ul className="flex flex-col divide-y divide-line border-t border-line px-4">{more.map(row)}</ul>
+        </details>
+      ) : null}
     </div>
   );
 }

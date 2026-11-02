@@ -33,21 +33,21 @@ export async function LiveProof() {
   return (
     <section
       aria-label="Live counts"
-      className="py-10 md:py-14"
+      className="py-6 md:py-14"
       data-shops={network.activeMerchants}
       data-streets={network.liveStreets}
       data-multi-pct={network.multiShopMemberPct}
     >
       <div className="mx-auto max-w-[1200px] px-4 md:px-8">
-        <dl className="grid gap-4 md:grid-cols-3">
+        <dl className="grid grid-cols-3 gap-2 md:gap-4">
           {stats.map((s, i) => (
-            <div key={s.label} className={["bg-tile-mint text-tile-mint-foreground", "bg-tile-butter text-tile-butter-foreground", "bg-tile-lilac text-tile-lilac-foreground"][i % 3] + " rounded-tile p-6"}>
-              <dd className="display text-mkt-md tabular-nums md:text-mkt-lg">{s.value}</dd>
-              <dt className="mt-1 text-body-strong">{s.label}</dt>
+            <div key={s.label} className={["bg-tile-mint text-tile-mint-foreground", "bg-tile-butter text-tile-butter-foreground", "bg-tile-lilac text-tile-lilac-foreground"][i % 3] + " rounded-tile p-3 md:p-6"}>
+              <dd className="display text-large-title tabular-nums md:text-mkt-lg">{s.value}</dd>
+              <dt className="mt-1 text-meta md:text-body-strong">{s.label}</dt>
             </div>
           ))}
         </dl>
-        <p className="mt-8 text-caption text-muted-foreground">{copy.landing.proof.note}</p>
+        <p className="mt-3 text-caption md:mt-8 text-muted-foreground">{copy.landing.proof.note}</p>
       </div>
     </section>
   );

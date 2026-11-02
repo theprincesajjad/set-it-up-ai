@@ -2,7 +2,7 @@
 import { Suspense, useSyncExternalStore } from "react";
 import { DEFAULT_LOCALE, LOCALES, negotiateLocale, normalizeLocale, type Locale } from "@ll/shared";
 import { translateWith, useCatalog } from "@/lib/i18n/catalog";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClasses } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/EmptyState";
 
 /** An error boundary can't read the server's locale, so it repeats the same order in the browser: ?lang → ll_lang cookie → browser language → en. */
@@ -35,6 +35,23 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
 
 function ErrorBody({ locale, reset }: { locale: Locale; reset: () => void }) {
   const m = useCatalog(locale);
-  const t = (k: "auth.error.title" | "auth.error.body" | "auth.error.retry") => translateWith(m, locale, k);
-  return <ErrorState title={t("auth.error.title")} description={t("auth.error.body")} action={<Button variant="secondary" onClick={reset}>{t("auth.error.retry")}</Button>} />;
+  const t = (k: "auth.error.title" | "auth.error.body" | "auth.error.retry" | "auth.notFound.home") => translateWith(m, locale, k);
+  // Wave P: a way out as well as a retry (a hard <a>, so it works even when the client router is what broke).
+  return (
+    <ErrorState
+      title={t("auth.error.title")}
+      description={t("auth.error.body")}
+      action={
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button variant="secondary" onClick={reset}>
+            {t("auth.error.retry")}
+          </Button>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a full page load on purpose: the client router may be what failed */}
+          <a href="/" className={buttonClasses({ variant: "ghost" })}>
+            {t("auth.notFound.home")}
+          </a>
+        </div>
+      }
+    />
+  );
 }

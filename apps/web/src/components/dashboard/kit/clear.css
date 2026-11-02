@@ -488,6 +488,18 @@
   font-weight: 650;
 }
 
+/* Wave P: settings-style side list from 1024px (PageTabs sideOnDesktop). */
+@media (min-width: 1024px) {
+  [data-theme-style="clear"] .kit-tabs[data-side] {
+    gap: 2px;
+  }
+  [data-theme-style="clear"] .kit-tabs[data-side] .kit-tab {
+    height: 40px;
+    font-size: 14px;
+    border-bottom-width: 0;
+  }
+}
+
 /* ---------- sheet (customer detail): strong glass, 12 from the viewport, r32, header 16, body 0 16 16 (audit #19) ---------- */
 [data-theme-style="clear"] .kit-scrim {
   background: var(--scrim);

@@ -7,6 +7,7 @@ import { NetworkGauges } from "@/components/dashboard/NetworkGauges";
 import { ListAsync } from "@/components/dashboard/ListStates";
 import { OverridesSheet } from "@/components/dashboard/admin/OverridesSheet";
 import { StageDialog } from "@/components/dashboard/admin/StageDialog";
+import { planLabel } from "@/components/dashboard/admin/cockpit";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { formatDate, formatNumber } from "@/lib/format";
@@ -51,7 +52,7 @@ export default function RolloutPage() {
                             <p className="font-medium text-fg">{f.name}</p>
                             <p className="truncate font-mono text-[11px] text-fg-muted">{f.key}</p>
                           </Td>
-                          <Td data-label="Plan" className="text-fg-muted max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">{f.freeForever ? "Free forever" : f.minPlan === "free" ? "Network" : f.minPlan[0]!.toUpperCase() + f.minPlan.slice(1)}</Td>
+                          <Td data-label="Plan" className="text-fg-muted max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)]">{f.freeForever ? "Free forever" : f.minPlan === "free" ? "Network" : planLabel(f.minPlan)}</Td>
                           <Td data-label="Stage" className="max-md:h-auto max-md:whitespace-normal max-md:border-0 max-md:p-0 max-md:first:ps-0 max-md:last:pe-0 max-md:before:mb-1 max-md:before:block max-md:before:text-caption max-md:before:text-fg-muted max-md:before:content-[attr(data-label)] max-md:col-span-2">
                             {stageLocked(f) ? (
                               <span className="inline-flex items-center gap-1.5">

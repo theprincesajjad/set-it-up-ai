@@ -288,6 +288,27 @@ export async function verifyEmailOtp(ctx: AppContext, body: authApi.EmailOtpVeri
   return authResponse(ctx, verified!, created, userAgent);
 }
 
+/**
+ * Forgot password: the emailed code (the same one-time code as email sign-in) proves the person owns the email; the new password
+ * replaces the old one, every other session ends, and the person is signed in. Never creates an account. Audit-logged without the
+ * password or the code.
+ */
+export async function resetPasswordWithEmailOtp(ctx: AppContext, body: authApi.PasswordResetBody, meta: { userAgent?: string | null; ip?: string | null } = {}): Promise<authApi.AuthResponse> {
+  const email = normalizeEmail(body.email);
+  await consumeOtp(ctx, "email_login", email, body.code);
+  const user = await findUserByEmail(ctx, email);
+  if (!user || user.deletedAt) throw new HttpError(400, "no_account", "There's no account with this email. Get started instead.");
+  const passwordHash = await bcrypt.hash(body.password, BCRYPT_ROUNDS);
+  await revokeAllSessions(ctx, user.id);
+  const [updated] = await ctx.db
+    .update(users)
+    .set({ passwordHash, emailVerifiedAt: user.emailVerifiedAt ?? ctx.now(), updatedAt: ctx.now() })
+    .where(eq(users.id, user.id))
+    .returning();
+  await ctx.db.insert(auditLogs).values({ actorUserId: user.id, action: "auth.password_reset", entity: "user", entityId: user.id, ip: meta.ip ?? null });
+  return authResponse(ctx, updated!, false, meta.userAgent);
+}
+
 export async function getMe(ctx: AppContext, authUser: AuthUser): Promise<authApi.MeResponse> {
   const [user] = await ctx.db.select().from(users).where(eq(users.id, authUser.id)).limit(1);
   if (!user || user.deletedAt) throw unauthorized();

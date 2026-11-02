@@ -86,6 +86,13 @@ Always `200` `OtpStartResponse` (does not reveal whether the account exists). Er
 Auth: none. Body `{ "email", "code", "name"? }`. Signs in, creating a password-less account if none exists; sets `emailVerified`.
 `200` → `AuthResponse`. Errors as `/otp/verify`.
 
+### POST /v1/auth/password-reset
+
+Auth: none. Body `{ "email", "code", "password" }`: the code from `/email-otp/start`, then a new password (8+ characters).
+Sets the password, marks the email verified, ends every other session, writes `auth.password_reset` to the audit log (no password,
+no code) and signs in. Never creates an account. `200` → `AuthResponse`. Errors: as `/otp/verify`, plus `400 no_account`. The web
+app calls it through `POST /api/auth/password-reset` ("Forgot password?" on /login).
+
 ## Sessions
 
 ### POST /v1/auth/refresh

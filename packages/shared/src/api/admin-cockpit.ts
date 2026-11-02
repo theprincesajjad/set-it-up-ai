@@ -80,6 +80,11 @@ export interface Cockpit {
   };
   /** 12 rolling weeks, oldest first. */
   weekly: WeeklyPoint[];
+  /** The founder's Monday list: the newest signups and the newest shops to start paying (6 each, newest first). */
+  recent: {
+    signups: { id: string; name: string; trade: string; status: BusinessStatus; plan: string; signedUpAt: string; source: string | null }[];
+    conversions: { id: string; name: string; plan: string; mrrCents: number; paidAt: string }[];
+  };
 }
 
 // ---------------------------------------------------------------------------

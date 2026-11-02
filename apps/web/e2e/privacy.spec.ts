@@ -82,6 +82,7 @@ test("an area shop's street is nowhere before booking, and on the confirmation a
   await page.getByRole("group", { name: "Pick a time" }).getByRole("button").and(page.locator(":not([disabled])")).last().click();
   await expect(TIMES.first()).toBeVisible();
   await TIMES.first().click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click(); // wave-p: the time step only picks the time; details are the next step
   await page.getByLabel("Your first name").fill("Ava");
   await page.getByRole("button", { name: "Sign in to book" }).click();
   await page.locator("input[type=tel]").first().fill(phone().slice(2));

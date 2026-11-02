@@ -11,6 +11,7 @@ import { BackLink, DefList, PageHeader, Panel, StatBlock, Table, Td, Th, Tr } fr
 import { BarChart, LineChart } from "@/components/dashboard/Charts";
 import { Async } from "@/components/dashboard/PageStates";
 import { BusinessStatus, FLAG_LABEL, planLabel } from "@/components/dashboard/admin/cockpit";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { browserApi } from "@/lib/api/browser";
@@ -53,6 +54,11 @@ export default function AdminBusinessPage() {
                   </Button>
                 }
               />
+              {d.health.flags.length ? (
+                <Banner tone={d.health.flags.includes("payment_failed") ? "danger" : "warning"} title={`At risk: ${d.health.flags.map((f) => FLAG_LABEL[f].toLowerCase()).join(", ")}`} action={<Button size="sm" variant="secondary" href={`/admin/merchants/${r.id}`}>Open support tools</Button>}>
+                  {d.health.detail.join(" ")}
+                </Banner>
+              ) : null}
               <StatBlock
                 items={[
                   { label: "MRR", value: r.mrrCents ? formatMoney(r.mrrCents) : "–", caption: planLabel(d.billing.plan) },
@@ -73,6 +79,7 @@ export default function AdminBusinessPage() {
                     ))}
                   </ol>
                 </Panel>
+                <div className="flex flex-col gap-6">
                 <Panel title="Health" description={d.health.changePct === null ? `${d.health.usageThisWeek} stamps, bookings and logins this week` : `${d.health.usageThisWeek} this week, ${d.health.usageLastWeek} last week (${d.health.changePct > 0 ? "+" : ""}${d.health.changePct}%)`}>
                   {d.health.flags.length ? (
                     <ul className="flex flex-col gap-2" aria-label="Risk flags">
@@ -86,6 +93,18 @@ export default function AdminBusinessPage() {
                     <p className="text-meta text-fg-muted">No risk flags.</p>
                   )}
                 </Panel>
+                <Panel title="Where they came from" description={a.matchedVisit ? "Matched to their landing visit" : a.landingPage || a.source ? "From the signup's own source" : "No landing visit on record (a rep, a referral, or counting was off)"}>
+                  <DefList
+                    items={[
+                      { label: "Landing page", value: a.landingPage ?? "–" },
+                      { label: "Variant", value: a.variant ? `${a.variant}${a.experimentId ? ` (${a.experimentId})` : ""}` : "–" },
+                      { label: "Source", value: a.source ?? a.utmSource ?? "–" },
+                      { label: "UTM", value: [a.utmSource, a.utmMedium, a.utmCampaign].some(Boolean) ? [a.utmSource, a.utmMedium, a.utmCampaign].map((x) => x ?? "–").join(" / ") : "–" },
+                      { label: "Device", value: a.device ?? "–" },
+                    ]}
+                  />
+                </Panel>
+                </div>
               </div>
               <div className="grid gap-6 lg:grid-cols-2">
                 <Panel>
@@ -99,31 +118,6 @@ export default function AdminBusinessPage() {
                 </Panel>
                 <Panel>
                   <LineChart title="Money processed per week" subtitle="Last 12 weeks" valueLabel="Processed" format={(c) => (c >= 100_000 ? `$${Math.round(c / 10_000) / 10}k` : `$${Math.round(c / 100)}`)} data={d.usage.map((u) => ({ label: u.weekStart, value: u.gmvCents }))} />
-                </Panel>
-              </div>
-              <div className="grid gap-6 lg:grid-cols-2">
-                <Panel title="Where they came from" description={a.matchedVisit ? "Matched to their landing visit" : a.landingPage || a.source ? "From the signup's own source" : "No landing visit on record (a rep, a referral, or counting was off)"}>
-                  <DefList
-                    items={[
-                      { label: "Landing page", value: a.landingPage ?? "–" },
-                      { label: "Variant", value: a.variant ? `${a.variant}${a.experimentId ? ` (${a.experimentId})` : ""}` : "–" },
-                      { label: "Source", value: a.source ?? a.utmSource ?? "–" },
-                      { label: "UTM", value: [a.utmSource, a.utmMedium, a.utmCampaign].some(Boolean) ? [a.utmSource, a.utmMedium, a.utmCampaign].map((x) => x ?? "–").join(" / ") : "–" },
-                      { label: "Device", value: a.device ?? "–" },
-                    ]}
-                  />
-                </Panel>
-                <Panel title="Money processed, 30 days">
-                  <DefList
-                    items={[
-                      { label: "Orders", value: formatMoney(d.gmv.last30.ordersCents) },
-                      { label: "Invoices", value: formatMoney(d.gmv.last30.invoicesCents) },
-                      { label: "Deposits", value: formatMoney(d.gmv.last30.depositsCents) },
-                      { label: "Tiffin", value: formatMoney(d.gmv.last30.tiffinCents) },
-                      { label: "Classes", value: formatMoney(d.gmv.last30.classesCents) },
-                      { label: "POS sales", value: formatMoney(d.gmv.last30.posCents) },
-                    ]}
-                  />
                 </Panel>
               </div>
               <Panel title="Plan and billing" description={d.billing.trial ? `Trial of ${planLabel(d.billing.trial.plan ?? "plus")}${d.billing.trial.startedAt ? ` from ${formatDate(d.billing.trial.startedAt)}` : ""}${d.billing.trial.endsAt ? ` to ${formatDate(d.billing.trial.endsAt)}` : ""}` : "No trial"} padded={false}>
@@ -159,6 +153,25 @@ export default function AdminBusinessPage() {
                 ) : (
                   <p className="px-4 py-4 text-meta text-fg-muted">No subscription yet.</p>
                 )}
+              </Panel>
+              <Panel title="Money processed, 30 days" description={`${formatMoney(d.gmv.last30.totalCents)} in the last 30 days, ${formatMoney(d.gmv.allTimeCents)} all time`}>
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-meta sm:grid-cols-3 lg:grid-cols-6">
+                  {(
+                    [
+                      ["Orders", d.gmv.last30.ordersCents],
+                      ["Invoices", d.gmv.last30.invoicesCents],
+                      ["Deposits", d.gmv.last30.depositsCents],
+                      ["Tiffin", d.gmv.last30.tiffinCents],
+                      ["Classes", d.gmv.last30.classesCents],
+                      ["POS sales", d.gmv.last30.posCents],
+                    ] as const
+                  ).map(([label, cents]) => (
+                    <div key={label}>
+                      <dt className="text-label text-fg-muted">{label}</dt>
+                      <dd className="text-body tabular text-fg">{formatMoney(cents)}</dd>
+                    </div>
+                  ))}
+                </dl>
               </Panel>
             </>
           );

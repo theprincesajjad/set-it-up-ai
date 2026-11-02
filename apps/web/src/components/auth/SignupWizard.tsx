@@ -1,39 +1,38 @@
 "use client";
 /**
- * Self-serve merchant signup in one screen: account (POST /v1/auth/register) and shop (POST /v1/merchants).
- * Four things about the shop (name, kind, where you work, mobile) plus the email and password for the account. "Where do you work?"
- * (onboarding-v1.md §3.2): a shop or salon gives its street address; "My place" a postal code only (the map shows the area, never
- * the address); "I travel to clients" nothing. Your name,
- * the neighbourhood, postal code, logo and GST/HST are not asked here: the API pins the address on the map and puts the shop
- * on its street, and the rest comes later (docs/audits/main-street-self-serve.md F8).
- * Then to the trade's own first step (lib/signupRoute.ts): a restaurant sees its plans, a salon its services and hours, a studio its classes.
+ * Self-serve shop signup as a stepped flow (wave P, team onboard; was one long form until Nov 2026).
+ *
+ *   1 link     "Do you have a website or Instagram?" (paste a link to import, or skip)
+ *   2 shop     "Is this you?" (the imported name, logo, colour, and what else we found) or "What's your shop called?"
+ *   3 kind     "What kind of shop is it?" (eight tiles and a search; the import's guess is preselected)
+ *   4 where    "Where do clients find you?" (a street address only for a storefront, a postal code for a home studio)
+ *   5 card     "Your loyalty card" (the trade's stamps and reward, editable, previewed in the shop's colour)
+ *   6 account  "Create your account" (mobile, email, password, terms): asked last, once the owner has made something.
+ *              Then POST /v1/auth/register, POST /v1/merchants (unchanged body: name, type, where, phone, attribution),
+ *              POST .../site-import/apply for what they kept, and PATCH .../program and .../rewards/:id if they changed the card.
+ *   live       "You're live": the card, the join QR and link, next steps, then the trade's first dashboard step (lib/signupRoute.ts).
+ *
+ * Every step is a URL (`?step=`); a step past the first unanswered one falls back to it. Answers live in sessionStorage (never the
+ * password), so refresh and Back keep them. Kept from the one-screen form: the `?shop=` sales-assistant prefill (starts at "Is this
+ * you?"), landing attribution (src, A/B variant, anonymous id), the signup_start beacon, the trial, and the terms line.
  */
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { AID_OFF, AID_PATTERN, LANDING_COOKIES, SOLO_ONLY_VERTICALS, VERTICALS, VERTICAL_TEMPLATES, normalizePostal, parseVariantCookie, type MessageKey, type merchantApi } from "@ll/shared";
-import { browserClient, sessionApi } from "@/lib/api/browser";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { AID_OFF, AID_PATTERN, LANDING_COOKIES, normalizePostal, onboardingPath, parseVariantCookie, tradeSetupFor, type merchantApi } from "@ll/shared";
+import { browserApi, browserClient, sessionApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { toE164 } from "@/lib/phone";
-import { howYouEarn } from "@/lib/program";
 import { routes } from "@/lib/routes";
-import { afterSignupPath } from "@/lib/signupRoute";
-import { cn } from "@/lib/cn";
+import { RESTAURANT_VERTICALS, afterSignupPath } from "@/lib/signupRoute";
 import { useLocaleOrEnglish } from "@/lib/i18n";
-import { ChoiceGroup, ChoiceTile, SiteImportStep, applyBodyFor, type SiteImportAccepted } from "@/components/onboarding";
-import { Banner } from "@/components/ui/Banner";
-import { Button } from "@/components/ui/Button";
-import { PhoneField } from "@/components/ui/PhoneField";
-import { Select } from "@/components/ui/Select";
-import { TextField } from "@/components/ui/TextField";
-
-/** The shop types most owners pick, in the order they pick them (onboarding-v1.md §3.1). Everything else is under "More types". */
-const CHIPS: merchantApi.CreateMerchantBody["vertical"][] = [
-  "nails", "brows_lashes", "barber", "salon", "makeup", "cafe", "bakery", "restaurant", "restaurant_south_asian", "tiffin", "caterer", "banquet_hall", "retail", "grocery", "pharmacy", "fitness", "pet", "repair_auto", "repair_electronics",
-];
-
-type Work = "home" | "shop" | "mobile";
-const WORK_ICON: Record<Work, "pin_area" | "shops" | "domain"> = { home: "pin_area", shop: "shops", mobile: "domain" };
+import { shopColorProps } from "@/lib/shopColor";
+import { applyBodyFor } from "@/components/onboarding/SiteImport";
+import { CardPreview } from "@/components/onboarding/signup/CardPreview";
+import { STEPS, cardFor, clearDraft, emptyDraft, loadDraft, resolveStep, saveDraft, withPrefill, type FlowStep, type SignupDraft, type StepErrors } from "@/components/onboarding/signup/draft";
+import { FlowShell } from "@/components/onboarding/signup/Shell";
+import { LinkStep, ShopStep, type Importer } from "@/components/onboarding/signup/StepsIntro";
+import { KindStep, LoyaltyStep, WhereStep } from "@/components/onboarding/signup/StepsShop";
+import { AccountStep, LiveStep, type NextStep } from "@/components/onboarding/signup/StepsFinish";
 
 /** The landing page's `src` (ll_src cookie, 30 days), when the link itself did not carry one. */
 function cookieSrc(): string | undefined {
@@ -87,77 +86,101 @@ export interface SignupWizardProps {
   signedInName?: string | null;
   /** From the sales assistant's link or a landing page (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
   prefill?: { shop?: string; vertical?: string; phone?: string; email?: string; plan?: string; src?: string; interval?: "year"; v?: { experimentId: string | null; variant: string } };
+  /** Tests inject a fake website reader. */
+  importer?: Importer;
 }
 
-export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
+export function SignupWizard({ signedInName, prefill, importer }: SignupWizardProps) {
   useEffect(beaconSignupStart, []);
-  const router = useRouter();
-  const { t, locale } = useLocaleOrEnglish();
-  const [account, setAccount] = useState({ email: prefill?.email ?? "", password: "" });
-  const [shop, setShop] = useState({ name: prefill?.shop ?? "", vertical: prefill?.vertical ?? "", address: "", postal: "", sells: "" });
-  // "Where do you work?": a nail, brow or makeup pro usually works from home; everyone else starts at "A shop or salon". Once the owner picks, we keep it.
-  const [work, setWork] = useState<Work>(prefill?.vertical && SOLO_ONLY_VERTICALS.includes(prefill.vertical) ? "home" : "shop");
-  const [workTouched, setWorkTouched] = useState(false);
-  const [phone, setPhone] = useState(prefill?.phone ?? "");
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [banner, setBanner] = useState<React.ReactNode>(null);
-  const [busy, setBusy] = useState(false);
-  // Once the account exists a retry (after a shop error) must not register again.
+  const { t } = useLocaleOrEnglish();
+  // The step in the address bar. Read from window.location (not useSearchParams) so a pushState and the render that follows agree.
+  const [requested, setRequested] = useState<string | null>(null);
+  const [draft, setDraft] = useState<SignupDraft | null>(null);
   const [registered, setRegistered] = useState(!!signedInName);
-  // Wave O: step 1, "Have a website or Instagram?". A link from the sales assistant already carries the shop, so it starts skipped.
-  const [imp, setImp] = useState<{ phase: "ask" | "done" | "skipped"; accepted?: SiteImportAccepted }>({ phase: prefill?.shop ? "skipped" : "ask" });
-  const [impBusy, setImpBusy] = useState(false);
-  const onImportPhase = useCallback((p: "form" | "loading" | "review") => setImpBusy(p !== "form"), []);
-  function takeImport(a: SiteImportAccepted) {
-    setImp({ phase: "done", accepted: a });
-    setImpBusy(false);
-    setShop((s) => ({ ...s, name: a.name ?? s.name, address: a.address ?? s.address }));
-    if (a.vertical) pickVertical(a.vertical);
-    if (a.phone) setPhone(a.phone.replace(/^\+1/, ""));
-    requestAnimationFrame(() => document.querySelector<HTMLInputElement>("input[name=shopName]")?.focus());
-  }
+  const [errors, setErrors] = useState<StepErrors>({});
+  const [banner, setBanner] = useState<ReactNode>(null);
+  const [busy, setBusy] = useState(false);
 
-  const template = shop.vertical ? VERTICAL_TEMPLATES[shop.vertical as keyof typeof VERTICAL_TEMPLATES] : null;
-  const otherOptions = useMemo(() => VERTICALS.filter((v) => !CHIPS.includes(v)).map((v) => ({ value: v, label: VERTICAL_TEMPLATES[v].label })).sort((a, b) => a.label.localeCompare(b.label)), []);
-  const pickVertical = (v: string) => {
-    setShop((s) => ({ ...s, vertical: v }));
-    if (!workTouched) setWork(SOLO_ONLY_VERTICALS.includes(v) ? "home" : "shop");
-  };
-
-  function focusFirstError() {
-    requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid=true]")?.focus());
-  }
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const errs: Record<string, string> = {};
-    if (!registered) {
-      if (!/^\S+@\S+\.\S+$/.test(account.email)) errs.email = t("su.err.email");
-      if (account.password.length < 8) errs.password = t("su.err.password");
+  // Restore the draft (sessionStorage) and lay the link's values over it (once per link: draft.prefillKey).
+  useEffect(() => {
+    const d = withPrefill(loadDraft() ?? emptyDraft(), prefill);
+    // sessionStorage is only readable after hydration (the server renders an empty shell), so the draft arrives in an effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraft(d);
+    try {
+      const u = new URL(window.location.href);
+      // A sales-assistant link starts at "Is this you?" so the owner confirms the name it carries.
+      const s = resolveStep(u.searchParams.get("step") ?? (prefill?.shop ? "shop" : null), d);
+      u.searchParams.set("step", s);
+      window.history.replaceState(window.history.state, "", u);
+      setRequested(s);
+    } catch {
+      // An odd URL: the flow still works from state.
     }
-    if (shop.name.trim().length < 2) errs.shopName = t("su.err.name");
-    if (!shop.vertical) errs.vertical = t("su.err.kind");
-    if (work === "shop" && shop.address.trim().length < 3) errs.address = t("su.err.street");
-    if (work === "home" && !normalizePostal(shop.postal)) errs.postal = t("su.err.postal");
-    const e164 = toE164(phone);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
+  useEffect(() => {
+    if (draft) saveDraft(draft);
+  }, [draft]);
+  // Browser Back and Forward move between steps.
+  useEffect(() => {
+    const onPop = () => setRequested(new URL(window.location.href).searchParams.get("step"));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const update = useCallback((patch: Partial<SignupDraft>) => setDraft((d) => (d ? { ...d, ...patch } : d)), []);
+  const step: FlowStep | null = draft ? resolveStep(requested, draft) : null;
+
+  // Keep the URL on the step actually shown (a deep link past an unanswered step lands on that step).
+  useEffect(() => {
+    if (!step) return;
+    const u = new URL(window.location.href);
+    if (u.searchParams.get("step") === step) return;
+    u.searchParams.set("step", step);
+    window.history.replaceState(window.history.state, "", u);
+  }, [step]);
+
+  const go = useCallback((s: FlowStep) => {
+    setErrors({});
+    setBanner(null);
+    const u = new URL(window.location.href);
+    u.searchParams.set("step", s);
+    window.history.pushState(window.history.state, "", u);
+    setRequested(s);
+  }, []);
+  const idx = step && step !== "live" ? STEPS.indexOf(step) : -1;
+  const next = useCallback(() => {
+    const i = idx;
+    if (i >= 0 && i < STEPS.length - 1) go(STEPS[i + 1]!);
+  }, [idx, go]);
+  const back = idx > 0 ? () => go(STEPS[idx - 1]!) : null;
+
+  async function create(password: string) {
+    if (!draft) return;
+    const errs: StepErrors = {};
+    if (!registered) {
+      if (!/^\S+@\S+\.\S+$/.test(draft.email.trim())) errs.email = t("su.err.email");
+      if (password.length < 8) errs.password = t("su.err.password");
+    }
+    const e164 = toE164(draft.phone);
     if (!e164) errs.phone = t("su.err.phone");
     setErrors(errs);
     setBanner(null);
-    if (Object.keys(errs).length) return focusFirstError();
+    if (Object.keys(errs).length) return requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid=true]")?.focus());
     setBusy(true);
     try {
       if (!registered) {
         try {
           // Your own name comes later (Settings); until then the shop's name, which is what a client sees as the stylist at a solo
           // studio. Never the part of the email before the @: it reached the public booking page and the confirmation (final audit).
-          await sessionApi.register({ name: shop.name.trim().slice(0, 120) || "Owner", email: account.email.trim(), password: account.password });
+          await sessionApi.register({ name: draft.name.trim().slice(0, 120) || "Owner", email: draft.email.trim(), password });
           setRegistered(true);
         } catch (err) {
           if (isApiError(err) && err.status === 409)
             setBanner(
               <>
                 {t("su.err.exists")}{" "}
-                <Link className="underline" href={`/login?next=${encodeURIComponent("/signup")}`}>
+                <Link className="underline" href={`/login?next=${encodeURIComponent("/signup?step=account")}`}>
                   {t("su.err.signIn")}
                 </Link>{" "}
                 {t("su.err.toAdd")}
@@ -169,22 +192,37 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
       }
       const source = prefill?.src ?? cookieSrc();
       const body: merchantApi.CreateMerchantBody = {
-        name: shop.name.trim(),
-        vertical: shop.vertical as merchantApi.CreateMerchantBody["vertical"],
-        workSetting: work,
-        ...(work === "shop" ? { address: shop.address.trim() } : {}),
-        ...(work === "home" ? { postalCode: normalizePostal(shop.postal)! } : {}),
+        name: draft.name.trim(),
+        vertical: draft.vertical as merchantApi.CreateMerchantBody["vertical"],
+        workSetting: draft.work,
+        ...(draft.work === "shop" ? { address: draft.address.trim() } : {}),
+        ...(draft.work === "home" ? { postalCode: normalizePostal(draft.postal)! } : {}),
         phone: e164!,
         city: "Toronto",
         ...(source ? { source } : {}),
         ...landingAb(prefill?.v),
-        ...(shop.vertical === "other" && shop.sells.trim() ? { description: shop.sells.trim() } : {}),
+        ...(draft.vertical === "other" && draft.sells.trim() ? { description: draft.sells.trim() } : {}),
       };
       const r = await browserClient.post<merchantApi.MerchantDetail>("/v1/merchants", body);
-      // The rest of what the owner kept from their website (logo, colour, links, hours, services): saved now that the shop exists.
-      const kept = imp.phase === "done" && imp.accepted ? applyBodyFor(imp.accepted) : null;
-      if (kept) await browserClient.post(`/v1/merchants/${r.merchant.id}/site-import/apply`, kept).catch(() => undefined);
-      router.push(afterSignupPath(routes.dashboard(r.merchant.id), body.vertical, prefill?.plan, work, prefill?.interval));
+      const id = r.merchant.id;
+      // The rest of what the owner kept from their website (logo, colour, links, hours, services), now that the shop exists.
+      const kept = draft.link === "read" && draft.accepted ? applyBodyFor(draft.accepted) : null;
+      if (kept) await browserClient.post(`/v1/merchants/${id}/site-import/apply`, kept).catch(() => undefined);
+      // Their card, if they changed the trade's defaults. Best effort: the shop exists either way and Rewards can fix it.
+      await applyCard(id, draft).catch(() => undefined);
+      setDraft({
+        ...draft,
+        created: {
+          id,
+          name: r.merchant.name,
+          vertical: draft.vertical,
+          workSetting: draft.work,
+          joinUrl: r.locations[0]?.joinUrl ?? null,
+          brandColor: draft.accepted?.brandColor ?? r.merchant.brandColor ?? null,
+          logo: draft.accepted?.logoPreview ?? draft.accepted?.logoUrl ?? r.merchant.logoUrl ?? null,
+        },
+      });
+      go("live");
     } catch (err) {
       if (isApiError(err) && err.status === 401) {
         setRegistered(false);
@@ -195,95 +233,95 @@ export function SignupWizard({ signedInName, prefill }: SignupWizardProps) {
     }
   }
 
-  const reward = template?.rewards[0] ? `${template.earnType === "stamps" ? template.stampGoal : template.rewards[0].pointsCost} ${template.terminology} = ${template.rewards[0].name}.` : "";
+  const nextSteps = draft?.created ? nextStepsFor(draft.created, t) : [];
+  if (!draft || !step) return <div className="min-h-dvh bg-bg" aria-busy="true" />;
+
+  // The colour flows through as soon as it is known: the site's colour right after the read, then the owner's pick.
+  const brandColor = draft.accepted ? (draft.accepted.brandColor ?? null) : draft.link === "read" ? (draft.imported?.fields.brandColor?.value ?? null) : null;
+  const colors = shopColorProps(draft.vertical || brandColor ? { vertical: draft.vertical || null, brandColor } : null);
+  const card = step === "card" || step === "account" ? cardFor(draft.vertical, draft.card) : null;
+  const aside =
+    step === "live" ? null : (
+      <div className="flex w-full max-w-[380px] flex-col gap-4">
+        <p className="text-meta font-[550] text-fg">{t("sf.preview.label")}</p>
+        <CardPreview name={draft.name} vertical={draft.vertical} brandColor={brandColor} logo={draft.accepted?.logoPreview ?? null} card={card} />
+        <p className="text-meta text-fg-muted">{t("sf.preview.caption")}</p>
+      </div>
+    );
+  const terms = rich(t("su.agree"), {
+    terms: (
+      <Link key="t" className="underline" href="/legal/terms">
+        {t("su.terms")}
+      </Link>
+    ),
+    privacy: (
+      <Link key="p" className="underline" href="/legal/privacy">
+        {t("su.privacyPolicy")}
+      </Link>
+    ),
+  });
+  const props = { draft, update, next };
+  const created = draft.created;
   return (
-    <div className="flex flex-col gap-6">
-      {imp.phase === "ask" ? <SiteImportStep onDone={takeImport} onSkip={() => { setImp({ phase: "skipped" }); setImpBusy(false); }} onPhase={onImportPhase} vertical={shop.vertical || null} /> : null}
-      {imp.phase === "done" && imp.accepted ? (
-        <Banner tone="success" action={<button type="button" className="inline-flex h-11 items-center rounded-r2 px-1 text-meta-strong text-link hover:underline focus-visible:focus-ring" onClick={() => setImp({ phase: "ask" })}>{t("imp.done.change")}</button>}>
-          <span className="flex items-center gap-3" data-import-done>
-            {imp.accepted.logoPreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={imp.accepted.logoPreview} alt="" width={32} height={32} className="size-8 shrink-0 rounded-full border border-border bg-card object-cover" />
-            ) : null}
-            <span>
-              {t("imp.done", { site: imp.accepted.from })} {applyBodyFor(imp.accepted) ? t("imp.done.extra") : null}
-            </span>
-          </span>
-        </Banner>
+    <FlowShell step={step === "live" ? null : idx + 1} total={STEPS.length} onBack={step === "live" ? null : back} exitHref={step === "live" ? null : "/"} colors={colors} aside={aside}>
+      {step === "link" ? <LinkStep {...props} importer={importer} /> : null}
+      {step === "shop" ? <ShopStep {...props} onRelink={() => { update({ link: "ask" }); go("link"); }} /> : null}
+      {step === "kind" ? <KindStep {...props} /> : null}
+      {step === "where" ? <WhereStep {...props} /> : null}
+      {step === "card" ? <LoyaltyStep {...props} /> : null}
+      {step === "account" ? <AccountStep draft={draft} update={update} registered={registered} busy={busy} banner={banner} errors={errors} onCreate={create} terms={terms} /> : null}
+      {step === "live" && created ? (
+        <LiveStep
+          draft={draft}
+          nextSteps={nextSteps}
+          primaryHref={afterSignupPath(routes.dashboard(created.id), created.vertical, prefill?.plan, created.workSetting, prefill?.interval)}
+          primaryLabel={prefill?.plan ? t("sf.live.checkout") : t("sf.live.go")}
+          onLeave={clearDraft}
+        />
       ) : null}
-    <form onSubmit={submit} noValidate className={cn("flex flex-col gap-4", impBusy && imp.phase === "ask" && "hidden")}>
-      {banner ? <Banner tone="warning">{banner}</Banner> : null}
-      <TextField name="shopName" label={t("su.shopName")} hint={work !== "shop" ? t("su.privateNote") : t("su.shopNameHint")} value={shop.name} onChange={(e) => setShop({ ...shop, name: e.target.value })} error={errors.shopName} maxLength={120} autoComplete="organization" />
-
-      <div role="radiogroup" aria-labelledby="signup-type" aria-invalid={errors.vertical ? true : undefined} className="flex flex-col gap-2">
-        <span id="signup-type" className="text-meta-strong text-fg">
-          {t("su.kind")}
-        </span>
-        <div className="flex flex-wrap gap-2">
-          {CHIPS.map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              data-vertical={v}
-              aria-checked={shop.vertical === v}
-              onClick={() => pickVertical(v)}
-              className={cn("h-10 rounded-full border px-4 text-meta font-medium focus-visible:focus-ring max-md:h-11", shop.vertical === v ? "border-fg bg-fg text-bg" : "border-line-strong bg-bg text-fg hover:bg-bg-subtle")}
-            >
-              {t(`su.chip.${v}` as MessageKey)}
-            </button>
-          ))}
-        </div>
-        {errors.vertical ? <p className="text-meta text-negative">{errors.vertical}</p> : null}
-      </div>
-      <Select label={t("su.moreTypes")} placeholder={t("su.moreTypesPick")} value={CHIPS.includes(shop.vertical as (typeof CHIPS)[number]) ? "" : shop.vertical} onChange={(e) => e.target.value && pickVertical(e.target.value)} options={otherOptions} />
-      {template ? (
-        <p className="rounded-card bg-bg-subtle px-4 py-3 text-meta text-fg">{locale === "en" ? t("su.template", { how: howYouEarn({ ...template, minSpendCents: 0 }), reward }) : t("su.templateShort")}</p>
-      ) : null}
-
-      <div className="flex flex-col gap-2">
-        <span id="signup-where" className="text-meta-strong text-fg">
-          {t("su.where")}
-        </span>
-        <ChoiceGroup aria-labelledby="signup-where" value={work} onValueChange={(v) => { setWork(v as Work); setWorkTouched(true); }}>
-          {(["home", "shop", "mobile"] as const).map((w) => (
-            <ChoiceTile key={w} value={w} icon={WORK_ICON[w]} trade={shop.vertical || null} label={t(`su.where.${w}`)} hint={t(`su.where.${w}Hint`)} />
-          ))}
-        </ChoiceGroup>
-      </div>
-
-      <PhoneField label={t("su.phone")} hint={t("su.phoneHint")} value={phone} onChangeDigits={setPhone} error={errors.phone} />
-      {work === "shop" ? <TextField name="street" label={t("su.street")} autoComplete="street-address" hint={t("su.streetHint")} value={shop.address} onChange={(e) => setShop({ ...shop, address: e.target.value })} error={errors.address} /> : null}
-      {work === "home" ? <TextField name="postal" label={t("su.postal")} autoComplete="postal-code" hint={t("su.postalHint")} value={shop.postal} onChange={(e) => setShop({ ...shop, postal: e.target.value.toUpperCase() })} error={errors.postal} maxLength={7} dir="ltr" className="max-w-[220px]" /> : null}
-      {shop.vertical === "other" ? <TextField label={t("su.sells")} optionalLabel maxLength={300} value={shop.sells} onChange={(e) => setShop({ ...shop, sells: e.target.value })} /> : null}
-      {!registered ? (
-        <>
-          <TextField name="email" label={t("su.email")} type="email" autoComplete="email" value={account.email} onChange={(e) => setAccount({ ...account, email: e.target.value })} error={errors.email} dir="ltr" />
-          <TextField name="password" label={t("su.password")} type="password" autoComplete="new-password" hint={t("su.passwordHint")} value={account.password} onChange={(e) => setAccount({ ...account, password: e.target.value })} error={errors.password} />
-        </>
-      ) : null}
-      <Button type="submit" size="lg" fullWidth loading={busy}>
-        {t("su.create")}
-      </Button>
-      <p className="text-meta text-fg-muted">
-        {t("su.later")}{" "}
-        {rich(t("su.agree"), {
-          terms: (
-            <Link key="t" className="underline" href="/legal/terms">
-              {t("su.terms")}
-            </Link>
-          ),
-          privacy: (
-            <Link key="p" className="underline" href="/legal/privacy">
-              {t("su.privacyPolicy")}
-            </Link>
-          ),
-        })}
-      </p>
-    </form>
-    </div>
+    </FlowShell>
   );
+}
+
+/** PATCH the program and the first reward when the owner changed the trade's defaults on "Your loyalty card". */
+async function applyCard(merchantId: string, d: SignupDraft): Promise<void> {
+  if (!d.card) return;
+  const c = cardFor(d.vertical, d.card);
+  const goalChanged = c.goal !== c.defaults.goal;
+  const rewardChanged = c.reward.trim() !== c.defaults.reward;
+  if (!goalChanged && !rewardChanged) return;
+  const api = browserApi.merchant(merchantId);
+  // A stamp card's goal lives on the program; changing it moves the reward that sat at the old goal (program-rules.ts).
+  if (c.earnType === "stamps" && goalChanged) await api.updateProgram({ stampGoal: c.goal });
+  const items = (await api.rewards()).items;
+  const first = items.find((r) => r.active) ?? items[0];
+  if (!first) return;
+  const patch: Record<string, unknown> = {};
+  if (rewardChanged) patch.name = c.reward.trim();
+  if (c.earnType !== "stamps" && goalChanged) patch.pointsCost = c.goal;
+  if (Object.keys(patch).length) await api.updateReward(first.id, patch);
+}
+
+/** Two or three things to do next, by kind of shop (the same first step lib/signupRoute.ts lands on, then the next ones). */
+function nextStepsFor(shop: NonNullable<SignupDraft["created"]>, t: ReturnType<typeof useLocaleOrEnglish>["t"]): NextStep[] {
+  const base = routes.dashboard(shop.id);
+  const s = (key: string) => `${base}/setup?step=${key}`;
+  const qr: NextStep = { icon: "qr_stand", title: t("sf.live.n.qr"), body: t("sf.live.n.qrBody"), href: s("qr_kit") };
+  if (onboardingPath(shop.vertical, shop.workSetting) !== "storefront")
+    return [
+      { icon: "price_tag", title: t("sf.live.n.services"), body: t("sf.live.n.servicesBody"), href: s("services") },
+      { icon: "calendar_week", title: t("sf.live.n.hours"), body: t("sf.live.n.hoursBody"), href: s("hours") },
+      { icon: "link", title: t("sf.live.n.share"), body: t("sf.live.n.shareBody"), href: s("share") },
+    ];
+  if (RESTAURANT_VERTICALS.includes(shop.vertical))
+    return [{ icon: "eat", title: t("sf.live.n.restaurant"), body: t("sf.live.n.restaurantBody"), href: afterSignupPath(base, shop.vertical, null, shop.workSetting) }, qr];
+  const first: NextStep =
+    shop.vertical === "pharmacy"
+      ? { icon: "check_done", title: t("sf.live.n.pharmacy"), body: t("sf.live.n.pharmacyBody"), href: s("pharmacy_rules") }
+      : tradeSetupFor(shop.vertical)
+        ? { icon: "services", title: t("sf.live.n.trade"), body: t("sf.live.n.tradeBody"), href: s("trade_setup") }
+        : { icon: "stamp_card", title: t("sf.live.n.stamp"), body: t("sf.live.n.stampBody"), href: s("first_stamp") };
+  return [first, qr, { icon: "team", title: t("sf.live.n.team"), body: t("sf.live.n.teamBody"), href: s("staff") }];
 }
 
 /** "{terms} and {privacy}" with links in place of the names. */

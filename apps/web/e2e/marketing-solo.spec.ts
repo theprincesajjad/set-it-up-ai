@@ -180,9 +180,12 @@ test("the three-field start leads into the sign-up wizard, prefilled", async ({ 
   await page.waitForURL(/\/signup\?/);
   const url = new URL(page.url());
   expect(Object.fromEntries(url.searchParams)).toMatchObject({ shop: "Mira Brow Bar", trade: "brows", contact: "mira@example.com", src: "nail-techs" });
+  // The stepped signup (wave P) starts on "Is this you?" with the name; the trade is picked on the next step; the email waits in the
+  // flow's saved answers for "Create your account".
   await expect(page.locator("input[name=shopName]")).toHaveValue("Mira Brow Bar");
-  await expect(page.locator("[data-vertical=brows_lashes]")).toHaveAttribute("aria-checked", "true");
-  await expect(page.locator("input[name=email]")).toHaveValue("mira@example.com");
+  await page.locator("[data-flow-footer] button[type=submit]").click();
+  await expect(page.locator("[data-vertical=brows_lashes]").first()).toHaveAttribute("aria-checked", "true");
+  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("ll_signup_v1") ?? "{}").email)).toBe("mira@example.com");
 
   // A mobile number goes to the phone field instead.
   await page.goto("/for-barbers");
@@ -190,9 +193,12 @@ test("the three-field start leads into the sign-up wizard, prefilled", async ({ 
   await page.locator("#start").getByLabel("Email or mobile").fill("(416) 555-0123");
   await page.locator("#start").getByRole("button", { name: "Get started free" }).click();
   await page.waitForURL(/\/signup\?/);
-  await expect(page.locator("[data-vertical=barber]")).toHaveAttribute("aria-checked", "true");
-  await expect(page.locator("input[type=tel]").first()).toHaveValue(/416/);
-  await expect(page.locator("input[name=email]")).toHaveValue("");
+  await expect(page.locator("input[name=shopName]")).toHaveValue("Corner Cuts");
+  await page.locator("[data-flow-footer] button[type=submit]").click();
+  await expect(page.locator("[data-vertical=barber]").first()).toHaveAttribute("aria-checked", "true");
+  const saved = await page.evaluate(() => JSON.parse(sessionStorage.getItem("ll_signup_v1") ?? "{}"));
+  expect(saved.phone).toBe("4165550123");
+  expect(saved.email).toBe("");
 });
 
 for (const [w, h] of [[1440, 900], [390, 844]] as const) {

@@ -13,7 +13,7 @@ const jar = (c: Record<string, string>) => ({ get: (n: string) => (c[n] ? { valu
 
 describe("BFF guard", () => {
   it("blocks token-returning endpoints", () => {
-    for (const p of ["/v1/auth/otp/verify", "/v1/auth/login", "/v1/auth/register", "/v1/auth/refresh", "/v1/auth/logout", "/v1/auth/email-otp/verify"]) expect(isBlockedBffPath(p)).toBe(true);
+    for (const p of ["/v1/auth/otp/verify", "/v1/auth/login", "/v1/auth/register", "/v1/auth/refresh", "/v1/auth/logout", "/v1/auth/email-otp/verify", "/v1/auth/password-reset"]) expect(isBlockedBffPath(p)).toBe(true);
     for (const p of ["/v1/auth/otp/start", "/v1/me", "/v1/auth/me"]) expect(isBlockedBffPath(p)).toBe(false);
   });
 });

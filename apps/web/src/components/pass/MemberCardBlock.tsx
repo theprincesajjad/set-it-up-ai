@@ -11,7 +11,7 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useWalletPass } from "./useWalletPass";
 import { WalletButtons } from "./WalletButtons";
 
-export function MemberCardBlock({ card, profile }: { card: customerApi.CardResponse | null; profile: customerApi.ProfileDto }) {
+export function MemberCardBlock({ card, profile, walletButtons = true }: { card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; /** Off when "Add to Wallet" already sits under the pass (wave-p: one wallet button per screen). */ walletButtons?: boolean }) {
   const { t } = useLocaleOrEnglish();
   const { os, available, busy, error: walletError, apple, google } = useWalletPass();
   return (
@@ -28,8 +28,8 @@ export function MemberCardBlock({ card, profile }: { card: customerApi.CardRespo
         <p dir="ltr" className="mt-5 font-mono text-title font-semibold tracking-[0.14em] text-foreground tabular-nums">{groupCode(card?.memberCode ?? profile.memberCode)}</p>
         <p className="mt-1 text-center text-meta text-muted-foreground">{t("pass.card.hint")}</p>
       </div>
-      {walletError ? <Banner tone="neutral" className="mt-4 w-full">{walletError}</Banner> : null}
-      <WalletButtons os={os} onApple={apple} onGoogle={google} busy={busy} available={available} className="mt-5 w-full" />
+      {walletButtons && walletError ? <Banner tone="neutral" className="mt-4 w-full">{walletError}</Banner> : null}
+      {walletButtons ? <WalletButtons os={os} onApple={apple} onGoogle={google} busy={busy} available={available} className="mt-5 w-full" /> : null}
     </section>
   );
 }

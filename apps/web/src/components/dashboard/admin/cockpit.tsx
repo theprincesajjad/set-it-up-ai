@@ -39,14 +39,16 @@ export const FLAG_LABEL: Record<adminCockpitApi.HealthFlag, string> = {
   usage_drop: "Usage dropped over 40%",
   no_activity_14d: "No activity 14 days",
 };
+/** Short pill text for dense tables; the full label is the pill's title. */
+const FLAG_SHORT: Record<adminCockpitApi.HealthFlag, string> = { payment_failed: "Payment failed", trial_ending_not_activated: "Trial ending", usage_drop: "Usage down", no_activity_14d: "Inactive 14 d" };
 export function FlagPills({ flags }: { flags: adminCockpitApi.HealthFlag[] }) {
   if (!flags.length) return <span className="text-meta text-fg-muted">–</span>;
   return (
     <span className="flex flex-wrap gap-1">
       {flags.map((f) => (
-        <StatusPill key={f} tone={f === "payment_failed" ? "negative" : "accent"}>
-          {FLAG_LABEL[f]}
-        </StatusPill>
+        <span key={f} title={FLAG_LABEL[f]}>
+          <StatusPill tone={f === "payment_failed" ? "negative" : "accent"}>{FLAG_SHORT[f]}</StatusPill>
+        </span>
       ))}
     </span>
   );

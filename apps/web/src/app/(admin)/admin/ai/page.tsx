@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import type { promosApi } from "@ll/shared";
-import { PageHeader, Panel, StatBlock } from "@/components/dashboard/kit";
+import { PageHeader, Panel, StatBlock, StatusPill } from "@/components/dashboard/kit";
 import { ListAsync } from "@/components/dashboard/ListStates";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -71,17 +71,11 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
 
   return (
     <>
-      <StatBlock
-        label="This month"
-        items={[
-          { label: "Spend", value: formatMoney(d.month.spendCents), caption: `of a ${formatMoney(d.monthlySpendCapCents)} cap` },
-          { label: "Calls", value: formatNumber(d.month.calls) },
-          { label: "Tokens in", value: formatNumber(d.month.inputTokens) },
-          { label: "Tokens out", value: formatNumber(d.month.outputTokens) },
-        ]}
-      />
-
-      <Panel title="Claude API key" description="Paste a key from the Claude Console. We check it with a quick call, store it encrypted and never show it again.">
+      <Panel
+        title="Claude API key"
+        description="Every AI feature uses this one key. It is checked with a quick call, stored encrypted and never shown again."
+        action={<StatusPill tone={d.key.source === "none" ? "neutral" : "positive"}>{d.key.source === "admin" ? "Connected" : d.key.source === "env" ? "Server key" : "Not connected"}</StatusPill>}
+      >
         <div className="flex flex-col gap-4" data-testid="ai-key">
           <p className="text-body text-fg">
             {d.key.source === "admin" ? (
@@ -95,6 +89,19 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
               "No key yet. AI features are off until you add one."
             )}
           </p>
+          {d.key.source !== "admin" ? (
+            <ol className="flex list-decimal flex-col gap-1 ps-5 text-meta text-fg-muted">
+              <li>
+                Open the{" "}
+                <a className="text-fg underline underline-offset-2" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+                  Claude Console
+                </a>{" "}
+                and choose Create key.
+              </li>
+              <li>Copy the key. It starts with sk-ant-.</li>
+              <li>Paste it below and press Check and save.</li>
+            </ol>
+          ) : null}
           {d.fake ? <Banner tone="info">Test mode: PROMO_AI_FAKE is on, so drafts come from a stand-in and no real calls are made.</Banner> : null}
           {!d.canStore ? <Banner tone="warning">Set APP_ENCRYPTION_KEY on the server before saving a key. Keys are never stored without encryption.</Banner> : null}
           <form
@@ -104,7 +111,7 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
               if (await run("save", () => browserApi.admin.ai.setKey(key.trim()), d.key.source === "admin" ? "Key rotated." : "Key saved.")) setKey("");
             }}
           >
-            <TextField label={d.key.source === "admin" ? "New key (rotate)" : "API key"} type="password" autoComplete="off" spellCheck={false} value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-ant-…" className="sm:min-w-[360px]" disabled={!d.canStore} />
+            <TextField label={d.key.source === "admin" ? "New key (rotate)" : "API key"} type="password" autoComplete="off" spellCheck={false} value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-ant-…" className="sm:min-w-[360px] sm:flex-1" disabled={!d.canStore} />
             <Button type="submit" loading={busy === "save"} disabled={!d.canStore || key.trim().length < 20}>
               {d.key.source === "admin" ? "Check and rotate" : "Check and save"}
             </Button>
@@ -117,6 +124,17 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
           {error ? <p role="alert" className="text-meta text-negative">{error}</p> : null}
         </div>
       </Panel>
+
+      <StatBlock
+        label="This month"
+        items={[
+          { label: "Spent this month", value: formatMoney(d.month.spendCents), caption: `of a ${formatMoney(d.monthlySpendCapCents)} cap · ${d.monthlySpendCapCents ? Math.round((d.month.spendCents / d.monthlySpendCapCents) * 100) : 0}% used`, dot: d.monthlySpendCapCents && d.month.spendCents >= d.monthlySpendCapCents * 0.8 ? "accent" : undefined },
+          { label: "Calls", value: formatNumber(d.month.calls) },
+          { label: "Tokens in", value: formatNumber(d.month.inputTokens) },
+          { label: "Tokens out", value: formatNumber(d.month.outputTokens) },
+        ]}
+      />
+
 
       <Panel title="Limits" description="Shops on Pro, Studio and the trial get the monthly quota; Free shops get the small taste. When the global cap is reached, AI pauses for everyone until the 1st.">
         <form
@@ -152,7 +170,7 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
       </Panel>
 
       <Panel padded={false} title="Top shops this month" description="Each shop's AI calls only ever use that shop's own details.">
-        <DataTable caption="AI usage by shop" columns={cols} rows={d.topShops} rowKey={(r) => r.merchantId} empty="No AI use yet this month." />
+        <DataTable caption="AI usage by shop" columns={cols} rows={d.topShops} rowKey={(r) => r.merchantId} empty={<p className="px-4 py-6 text-meta text-fg-muted">No AI use yet this month.</p>} />
       </Panel>
     </>
   );

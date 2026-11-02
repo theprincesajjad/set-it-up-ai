@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { merchantStaff, otpCodes, sessions, users } from "@ll/db";
+import { auditLogs, merchantStaff, otpCodes, sessions, users } from "@ll/db";
 import { createMerchant, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
 
 let env: TestEnv;
@@ -138,6 +138,32 @@ describe("email + password", () => {
     expect(bad.statusCode).toBe(400);
     const created = await call("POST", "/v1/auth/email-otp/verify", { email: "new@ll.ca", code: s2.json().devCode, name: "New" });
     expect(created.json()).toMatchObject({ created: true, user: { email: "new@ll.ca", name: "New" } });
+  });
+
+  it("resets a forgotten password with the emailed code: old sessions end, the new password works, never creates an account", async () => {
+    const reg = await call("POST", "/v1/auth/register", { email: "owner@ll.ca", password: "old-password-1", name: "Owner" });
+    const oldRefresh = reg.json().refreshToken;
+    const start = await call("POST", "/v1/auth/email-otp/start", { email: "owner@ll.ca" });
+    // A weak password is refused before the code is used.
+    expect((await call("POST", "/v1/auth/password-reset", { email: "owner@ll.ca", code: start.json().devCode, password: "short" })).statusCode).toBe(400);
+    const res = await call("POST", "/v1/auth/password-reset", { email: "owner@ll.ca", code: start.json().devCode, password: "new-password-2" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ created: false, user: { email: "owner@ll.ca" } });
+    expect(JSON.stringify(res.json())).not.toContain("new-password-2");
+    // The code is single use, the old session is gone, the old password fails and the new one works.
+    expect((await call("POST", "/v1/auth/password-reset", { email: "owner@ll.ca", code: start.json().devCode, password: "another-pass-3" })).statusCode).toBe(400);
+    expect((await call("POST", "/v1/auth/refresh", { refreshToken: oldRefresh })).statusCode).toBe(401);
+    expect((await call("POST", "/v1/auth/login", { email: "owner@ll.ca", password: "old-password-1" })).statusCode).toBe(401);
+    expect((await call("POST", "/v1/auth/login", { email: "owner@ll.ca", password: "new-password-2" })).statusCode).toBe(200);
+    const audit = await env.db.select().from(auditLogs).where(eq(auditLogs.action, "auth.password_reset"));
+    expect(audit).toHaveLength(1);
+    expect(JSON.stringify(audit)).not.toContain("new-password-2");
+    // No account for the email: a clear error, and nothing is created.
+    const s2 = await call("POST", "/v1/auth/email-otp/start", { email: "nobody@ll.ca" });
+    const none = await call("POST", "/v1/auth/password-reset", { email: "nobody@ll.ca", code: s2.json().devCode, password: "new-password-2" });
+    expect(none.statusCode).toBe(400);
+    expect(none.json().error.code).toBe("no_account");
+    expect(await env.db.select().from(users).where(eq(users.email, "nobody@ll.ca"))).toHaveLength(0);
   });
 });
 

@@ -17,8 +17,8 @@ export default function OnboardingFunnelPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         flush
-        title="Activation funnel"
-        description="Signup to 25 members who have visited. Goal: 60% inside 30 days."
+        title="New shop progress"
+        description="From signup to 25 members who have visited. Goal: 60% of shops inside 30 days."
         actions={<Segmented label="Period" value={days} onChange={setDays} options={[{ value: "30", label: "30 days" }, { value: "90", label: "90 days" }, { value: "365", label: "Year" }]} />}
       />
       <ListAsync state={f} errorTitle="Couldn't load the onboarding list.">
@@ -32,21 +32,6 @@ export default function OnboardingFunnelPage() {
                 { label: "Behind at day 14", value: formatNumber(d.behindAtDay14), caption: "Fewer than 12 members" },
               ]}
             />
-            <Panel title="From signup to active" description={`${formatNumber(d.signedUp)} shops signed in this period`}>
-              <ul className="flex flex-col gap-3" aria-label="Funnel">
-                {d.steps.map((s) => (
-                  <li key={s.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 text-body text-fg sm:grid-cols-[150px_minmax(0,1fr)_110px]">
-                    <span>{s.label}</span>
-                    <span className="order-last col-span-2 h-5 rounded-md bg-bg-subtle sm:order-none sm:col-span-1">
-                      <span className={`block h-5 rounded-md ${s.key === "activated" ? "bg-points" : "bg-trade"}`} style={{ width: `${Math.max(1, s.pct)}%` }} />
-                    </span>
-                    <span className="tabular text-meta text-fg-muted sm:text-left text-right">
-                      {formatNumber(s.count)} · {s.pct}%
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Panel>
             <Panel title="Call these first" description="No first stamp after 48 hours, then shops behind pace at day 14" padded={false}>
               {d.callList.length ? (
                 <TableWrap>
@@ -64,7 +49,7 @@ export default function OnboardingFunnelPage() {
                       {d.callList.map((c) => (
                         <Tr key={c.merchantId}>
                           <Td>
-                            <a className="font-medium text-fg underline-offset-2 hover:underline" href={`/admin/merchants/${c.merchantId}`}>
+                            <a className="font-medium text-fg underline-offset-2 hover:underline" href={`/admin/businesses/${c.merchantId}`}>
                               {c.name}
                             </a>
                             {c.ownerName ? <span className="block text-caption text-fg-muted">{c.ownerName}</span> : null}
@@ -72,7 +57,7 @@ export default function OnboardingFunnelPage() {
                           <Td>{verticalLabel(c.vertical)}</Td>
                           <Td className="tabular">{c.day}</Td>
                           <Td>{c.reason}</Td>
-                          <Td className="tabular">{c.phone ?? "–"}</Td>
+                          <Td className="tabular">{c.phone ? <a className="text-fg underline-offset-2 hover:underline" href={`tel:${c.phone}`}>{c.phone}</a> : "–"}</Td>
                         </Tr>
                       ))}
                     </tbody>
@@ -81,6 +66,21 @@ export default function OnboardingFunnelPage() {
               ) : (
                 <p className="px-5 py-6 text-meta text-fg-muted">Nobody is stuck. Every shop has given a first stamp.</p>
               )}
+            </Panel>
+            <Panel title="Activation funnel" description={`${formatNumber(d.signedUp)} shops signed in this period`}>
+              <ul className="flex flex-col gap-3" aria-label="Funnel">
+                {d.steps.map((s) => (
+                  <li key={s.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 text-body text-fg sm:grid-cols-[150px_minmax(0,1fr)_110px]">
+                    <span>{s.label}</span>
+                    <span className="order-last col-span-2 h-5 rounded-md bg-bg-subtle sm:order-none sm:col-span-1">
+                      <span className={`block h-5 rounded-md ${s.key === "activated" ? "bg-points" : "bg-trade"}`} style={{ width: `${Math.max(1, s.pct)}%` }} />
+                    </span>
+                    <span className="tabular text-meta text-fg-muted sm:text-left text-right">
+                      {formatNumber(s.count)} · {s.pct}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </Panel>
             <Panel title="By type" description="Shops signed and shops active" padded={false}>
               <TableWrap>

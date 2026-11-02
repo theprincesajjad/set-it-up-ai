@@ -51,6 +51,10 @@ export type EmailOtpStartBody = z.infer<typeof emailOtpStartBody>;
 export const emailOtpVerifyBody = z.object({ email: emailSchema, code: otpCodeSchema, name: nameSchema.optional() });
 export type EmailOtpVerifyBody = z.infer<typeof emailOtpVerifyBody>;
 
+/** POST /v1/auth/password-reset: an emailed sign-in code (POST /v1/auth/email-otp/start) proves the email, then sets a new password and signs in. */
+export const passwordResetBody = z.object({ email: emailSchema, code: otpCodeSchema, password: passwordSchema });
+export type PasswordResetBody = z.infer<typeof passwordResetBody>;
+
 /** POST /v1/auth/refresh and POST /v1/auth/logout */
 export const refreshBody = z.object({ refreshToken: z.string().min(20).max(200) });
 export type RefreshBody = z.infer<typeof refreshBody>;

@@ -10,6 +10,8 @@ import { VehicleLinks } from "@/components/pass/VehicleLinks";
 import { WaitlistLinks } from "@/components/pass/WaitlistLinks"; // phase-pro: p2
 import { TiffinLinks } from "@/components/pass/TiffinLinks";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
+import { CardFan } from "@/components/pass/ShopBrand";
+import Link from "next/link";
 import { Wallet } from "@/components/pass/Wallet";
 import { PageFrame } from "@/components/restaurant/PageFrame";
 import { URDU_LEADING } from "@/components/restaurant/PageFrame";
@@ -42,8 +44,17 @@ export default async function MePage({ searchParams }: Props) {
   if (!me) {
     const [locale, t] = await Promise.all([getLocale(sp), getT(sp)]);
     return (
-      <PageFrame locale={locale} className="flex flex-col gap-4 pt-2">
-        <PhoneSignIn devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} title={t("auth.phone.cardTitle")} intro={t("auth.phone.cardIntro")} />
+      <PageFrame locale={locale} className="flex flex-col gap-6 pt-2">
+        {/* wave-p: a returning customer sees their cards before anything is asked, and a newcomer gets a way out (find a shop). */}
+        <div className="flex justify-center pt-4">
+          <CardFan />
+        </div>
+        <PhoneSignIn devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} title={t("cust.me.signInTitle")} intro={t("auth.phone.cardIntro")} />
+        <div className="flex flex-col gap-1 border-t border-line pt-5">
+          <p className="text-body-strong text-fg">{t("cust.me.newTitle")}</p>
+          <p className="text-meta text-fg-muted">{t("cust.me.newBody")}</p>
+          <Link href="/map" className="mt-1 inline-flex min-h-11 items-center self-start text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring">{t("cust.me.newCta")}</Link>
+        </div>
       </PageFrame>
     );
   }

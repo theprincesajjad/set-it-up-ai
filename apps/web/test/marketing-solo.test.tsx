@@ -56,7 +56,7 @@ describe("price block", () => {
     expect(v.bookings.done).toBe("Booked · Sat 11:30 am");
     expect(v.promos.allowance).toBe(`${PROMOS_PER_MONTH_PLUS} promos a month with ${PLANS.plus.name}`);
     expect(PLANS.plus.name).toBe("Pro");
-    expect(v.hero.price).toBe(`Free to start, with ${P.trial} days of ${PLANS.plus.name} included. No credit card.`);
+    expect(v.hero.price).toBe(`Free to start, with ${P.trial} days of ${PLANS.plus.name} included. ${PLANS.plus.name} is $${PLANS.plus.priceCents / 100} a month if you keep it. No credit card.`);
   });
 });
 

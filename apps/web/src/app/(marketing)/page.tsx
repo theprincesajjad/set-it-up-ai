@@ -12,7 +12,7 @@ import { CounterPhone, CounterTablet, MapPhone, PassPhone, PromoMock, TodayDeskt
 import "@/components/marketing/home/home.css";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { copy } from "@/copy/en-CA";
-import { marketingPlans, planLine, planNote, planVars, proHighlights } from "@/lib/marketing/plan-copy";
+import { marketingPlans, planLine, planNote, planVars } from "@/lib/marketing/plan-copy";
 import { fill } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
 
@@ -31,8 +31,6 @@ const VARS = { ...planVars(), orderFee: Number((FEES.orderBpsFree / 100).toFixed
 const f = (s: string) => fill(s, VARS);
 
 const ROUTER_ART: MapCategoryId[] = ["coffee", "beauty", "eat", "all"];
-/** The Pro section's pictures, one per money feature (public/icons3d). */
-const PRO_ART: Record<string, string> = { winback: "bell", reviews: "top", promos: "megaphone", report: "price_tag" };
 
 function Primary({ href = "/signup", cta, children, className }: { href?: string; cta: string; children: React.ReactNode; className?: string }) {
   return (
@@ -43,9 +41,28 @@ function Primary({ href = "/signup", cta, children, className }: { href?: string
   );
 }
 
+/** Under the hero buttons: what it costs, in one glance (loyalty free, Pro's monthly price and its first-year price, the trial). */
+function HeroPrice() {
+  const pro = marketingPlans("shop").find((p) => p.key === "monthly")!;
+  const P = L.hero.price;
+  return (
+    <p className="hm-trial" data-testid="hero-price">
+      <b>{P.free}</b> {f(P.pro)}{" "}
+      {pro.yearly?.was ? (
+        <>
+          <s>{pro.yearly.was}</s> <b>{pro.yearly.now}</b> {P.first}
+        </>
+      ) : (
+        `${pro.yearly?.line ?? ""}.`
+      )}{" "}
+      {f(P.trial)}
+    </p>
+  );
+}
+
 /** One outcome row: the words on one side, the product on the other (sides alternate from md). */
-function Outcome({ i, children }: { i: number; children: React.ReactNode }) {
-  const r = L.outcomes.rows[i]!;
+function Outcome({ id, i, children }: { id: (typeof L.outcomes.rows)[number]["id"]; i: number; children: React.ReactNode }) {
+  const r = L.outcomes.rows.find((x) => x.id === id)!;
   const points = r.id === "promos" ? [...r.points, planLine("promoAllowance")] : r.points;
   return (
     <div className={i % 2 ? "hm-row hm-row-flip" : "hm-row"} id={`outcome-${r.id}`}>
@@ -60,11 +77,6 @@ function Outcome({ i, children }: { i: number; children: React.ReactNode }) {
             </li>
           ))}
         </ul>
-        {r.id === "promos" ? (
-          <div className="hm-ctas hm-row-cta">
-            <Primary cta="promos">{L.outcomes.cta}</Primary>
-          </div>
-        ) : null}
       </div>
       <figure className="hm-row-art" role="img" aria-label={r.label}>
         {children}
@@ -84,16 +96,16 @@ function Outcome({ i, children }: { i: number; children: React.ReactNode }) {
 }
 
 /**
- * The home page, landing v4 (scratchpad diagnosis: "Turn first visits into regulars"): the promise and the product (the Clear Today screen
- * and the customer's pass on an iPhone), four facts with a button, live network counts, how it works beside the counter, four outcome
- * rows with real-screen mocks, where-do-you-fit, why Pro (the money features, with the trial as the ask), the three plans (lib/marketing/plan-copy.ts), the dated comparison, questions, a visit,
- * and the closing ask; on phones a sticky bar keeps the button in reach. Static (re-generated every 5 minutes for the live counts),
+ * The home page (landing v4, cut down in wave P so it reads like a product site, not a wall): the promise, the price and the product
+ * (the Today screen and the customer's pass), live network counts, how it works beside the counter, three outcome rows with real-screen
+ * mocks, where-do-you-fit, the three plans (lib/marketing/plan-copy.ts), the dated comparison, questions, a visit, and the closing ask;
+ * on phones a sticky bar keeps the button in reach. Gone in wave P: the facts strip (it repeated the hero), the pass row (the hero shows
+ * the pass) and the separate "why Pro" block (the Pro card says the same). Static (re-generated every 5 minutes for the live counts),
  * CSS-only motion, no client script of its own beyond the visit form.
  */
 export default function Home() {
   const waUrl = whatsappUrl(L.book.whatsappText);
   const plans = marketingPlans("shop");
-  const pro = proHighlights("shop");
   return (
     // data-solo-trade="home": the landing beacon's page marker (LandingMeasure below); "/" is counted for the admin funnel (wave N).
     <div className="hm" data-solo-trade="home">
@@ -110,7 +122,7 @@ export default function Home() {
               {L.hero.secondary}
             </a>
           </div>
-          <p className="hm-trial">{planLine("priceLine")}</p>
+          <HeroPrice />
           <ul className="hm-trust">
             {L.hero.trust.map((t) => (
               <li key={t}>
@@ -130,21 +142,6 @@ export default function Home() {
             </IPhone>
           </div>
           <p className="hm-caption">{L.hero.caption}</p>
-        </div>
-      </section>
-
-      {/* 2. Facts and the first ask */}
-      <section className="hm-facts" aria-label={L.facts.label}>
-        <div className="hm-wrap hm-facts-in">
-          <ul>
-            {L.facts.items.map((x) => (
-              <li key={x.line}>
-                <b>{f(x.value)}</b>
-                <span>{x.line}</span>
-              </li>
-            ))}
-          </ul>
-          <Primary cta="afterhero">{L.facts.cta}</Primary>
         </div>
       </section>
 
@@ -194,20 +191,16 @@ export default function Home() {
             <p className="hm-lede">{L.outcomes.sub}</p>
           </div>
           <div className="hm-rows">
-            <Outcome i={0}>
+            {/* The pass row is gone (wave P): the hero already shows the card on a phone, and step 2 of "how" says Wallet. */}
+            <Outcome id="week" i={0}>
               <IPhone className="hm-row-phone">
                 <TodayPhone />
               </IPhone>
             </Outcome>
-            <Outcome i={1}>
-              <IPhone className="hm-row-phone" status="light">
-                <PassPhone />
-              </IPhone>
-            </Outcome>
-            <Outcome i={2}>
+            <Outcome id="promos" i={1}>
               <PromoMock />
             </Outcome>
-            <Outcome i={3}>
+            <Outcome id="map" i={2}>
               <IPhone className="hm-row-phone">
                 <MapPhone />
               </IPhone>
@@ -253,41 +246,6 @@ export default function Home() {
               </Link>
             ))}
           </nav>
-        </div>
-      </section>
-
-      {/* 7. Why Pro: the money features (lib/marketing/plan-copy.ts), illustrative samples, and the trial as the ask before the prices */}
-      <section className="hm-sec" id="pro" aria-labelledby="hm-pro">
-        <div className="hm-wrap">
-          <div className="hm-head">
-            <h2 className="hm-h2" id="hm-pro">
-              {pro.title}
-            </h2>
-            <p className="hm-lede">{pro.sub}</p>
-          </div>
-          <ul className="hm-pro">
-            {pro.items.map((x) => (
-              <li key={x.id} className="hm-pro-card" data-pro={x.id}>
-                <div className="hm-pro-demo" aria-hidden>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/icons3d/${PRO_ART[x.id]}@2x.png`} alt="" width={30} height={30} loading="lazy" decoding="async" />
-                  <span>
-                    <b>{x.sample}</b>
-                    <small>{x.sampleLine}</small>
-                  </span>
-                </div>
-                <h3>{x.title}</h3>
-                <p>{x.body}</p>
-              </li>
-            ))}
-          </ul>
-          <p className="hm-pro-note">{pro.caption}</p>
-          <div className="hm-ctarow hm-ctarow-start">
-            <Primary cta="pro">{pro.trialCta}</Primary>
-            <a className="hm-link" href="#pricing" data-cta="seepricing">
-              {L.outcomes.pricing}
-            </a>
-          </div>
         </div>
       </section>
 
@@ -408,9 +366,6 @@ export default function Home() {
             <Primary cta="final" className="hm-btn-inv">
               {L.final.cta}
             </Primary>
-            <a className="hm-btn2 hm-btn2-inv" href="#pricing" data-cta="seepricing">
-              {L.final.pricing}
-            </a>
           </div>
         </div>
       </section>

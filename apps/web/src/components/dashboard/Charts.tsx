@@ -104,7 +104,7 @@ function Plot({ data, format, height, kind, title, valueLabel, compareLabel }: P
   const hasCompare = data.some((d) => d.compare != null);
   // Wide enough for the longest tick ("1,200" was clipped to "200" at a fixed 32px, so the axis read 200 / 600 / 0).
   const axisWidth = Math.max(32, Math.max(...[0, max / 2, max].map((v) => format(v).length)) * 7 + 8);
-  const peakAt = data.findIndex((d) => d.value === Math.max(...data.map((x) => x.value)));
+  const peakAt = data.findLastIndex((d) => d.value === Math.max(...data.map((x) => x.value)));
   const config = {
     value: { label: valueLabel, color: "var(--trade)" },
     compare: { label: compareLabel ?? "Compared", color: "var(--chart-3)" },

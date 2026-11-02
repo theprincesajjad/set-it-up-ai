@@ -1,11 +1,12 @@
 "use client";
-import { UserPlus } from "lucide-react";
+import { KeyRound, Languages, Link2, MoreHorizontal, UserMinus, UserPlus, Wallet } from "lucide-react";
 import { useState } from "react";
 import { LOCALE_LIST, type merchantApi } from "@ll/shared";
 import { StaffScheduleSheet } from "@/components/dashboard/calendar/StaffScheduleSheet";
 import { PaySheet } from "@/components/dashboard/queue/PaySheet";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
-import { Empty, PageHeader, SkeletonRows } from "@/components/dashboard/kit";
+import { EmptyState, PageHeader, SkeletonRows, Tag } from "@/components/dashboard/kit";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { Avatar } from "@/components/ui/Avatar";
@@ -30,7 +31,7 @@ const ROLES: { value: merchantApi.StaffRole; label: string; desc: string }[] = [
 ];
 
 export default function StaffPage() {
-  const { api, role, me, enabled } = useMerchant();
+  const { api, role, me, enabled, detail } = useMerchant();
   const toast = useToast();
   const state = useApi(() => api.team(), [api]);
   const owner = role === "owner";
@@ -48,84 +49,123 @@ export default function StaffPage() {
   const [locale, setLocale] = useState<merchantApi.StaffMember["locale"]>("en");
   const [station, setStation] = useState("");
   const act = useAction();
+  const { t } = useLocaleOrEnglish();
+  const menuItem = "min-h-11 gap-2.5 text-body md:min-h-9";
+  const roleLabel = (r: merchantApi.StaffRole) => t(`own.staff.role.${r}` as "own.staff.role.staff");
+  const copyLink = async (userId: string) => {
+    await navigator.clipboard?.writeText(`${window.location.origin}/shops/${detail.merchant.slug}/book?staff=${userId}`).catch(() => undefined);
+    toast({ message: t("people.linkCopied"), tone: "success" });
+  };
   // Instructors only make sense where the studio runs classes.
   const roles = ROLES.filter((r) => r.value !== "instructor" || enabled("booking.classes"));
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Staff" description="Unlimited staff, always free. Everyone gets their own login and counter PIN." actions={owner ? <Button size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>Invite staff</Button> : undefined} />
+      <PageHeader flush title={t("own.staff.title")} description={t("own.staff.desc")} actions={owner ? <Button size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>{t("own.staff.invite")}</Button> : undefined} />
       <Async state={state} skeleton={<SkeletonRows rows={3} />}>
-        {(d) =>
-          d.items.length <= 1 && owner ? (
-            <Empty className="border-y border-line" action={<Button variant="secondary" size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>Invite staff</Button>}>It&apos;s only you so far. Add staff so they can add stamps or points with their own sign-in.</Empty>
-          ) : (
-            <ul className="divide-y divide-line border-y border-line">
-                {d.items.map((s) => {
-                  const self = s.userId === me.user.id;
-                  return (
-                    <li key={s.userId} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
-                      <div className="flex min-w-0 flex-1 items-start gap-3">
-                        <Avatar name={s.name ?? s.email} id={s.userId} size={32} />
-                        <div className="min-w-0 flex-1">
-                          <p className="flex flex-wrap items-center gap-x-2 text-meta-strong text-fg">
-                            <span className="min-w-0 break-words">{s.name ?? s.email ?? "Invited"}</span>
-                            {self ? <span className="font-normal text-fg-muted">(you)</span> : null}
-                            {!owner || self ? <span className="font-normal text-fg-muted">· {s.role[0]!.toUpperCase() + s.role.slice(1)}</span> : null}
-                          </p>
-                          <p className="break-words text-meta text-fg-muted">{s.phone ? maskPhone(s.phone) : s.email}</p>
-                          <p className="text-meta text-fg-muted tabular">
-                            Added {formatDate(s.createdAt)} · {s.hasPin ? "PIN set" : "No PIN yet"}{s.locale !== "en" ? ` · ${LOCALE_LIST.find((l) => l.code === s.locale)?.englishName ?? s.locale}` : ""}{s.station ? ` · ${s.station} station` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 ps-11 [&>:last-child:nth-child(odd)]:col-span-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:ps-0">
-                        {owner && !self ? (
-                          <label className="min-w-0 sm:shrink-0">
-                            <span className="sr-only">{`Role for ${s.name ?? "staff"}`}</span>
-                            <select value={s.role} onChange={async (e) => {
-                              const r = await act.run(() => api.setRole(s.userId, e.target.value as merchantApi.StaffRole));
-                              if (r) await state.reload();
-                            }} className="h-8 w-full rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle sm:w-auto">
-                              {roles.map((r) => (
-                                <option key={r.value} value={r.value}>
-                                  {r.label}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        ) : null}
-                        {enabled("booking.appointments") && role !== "staff" ? (
-                          <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => setSchedule(s)}>
-                            Hours and services
-                          </Button>
-                        ) : null}
-                        {/* phase-solo D: "Dev's link": /shops/<slug>/book?staff=<id> books straight with this person. */}
-                        {enabled("booking.appointments") ? <StaffLinkButton userId={s.userId} name={(s.name ?? s.email ?? "").split(" ")[0] ?? ""} /> : null}
-                        {enabled("staff.payouts") && role !== "staff" ? (
-                          <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => setPay(s)}>
-                            How paid
-                          </Button>
-                        ) : null}
-                        <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
-                          Language and station
+        {(d) => (
+          <>
+            {/* Square-style team list: who they are on the left, one main action and a "more" menu on the right (was six buttons a row). */}
+            <ul aria-label={t("own.staff.listLabel")} className="staff-list divide-y divide-line overflow-hidden rounded-card bg-card shadow-card">
+              {d.items.map((s) => {
+                const self = s.userId === me.user.id;
+                const display = s.name ?? s.email ?? t("own.staff.invited");
+                const first = (s.name ?? s.email ?? "").split(" ")[0] ?? "";
+                const booking = enabled("booking.appointments");
+                const canPin = owner || self;
+                const lang = s.locale !== "en" ? LOCALE_LIST.find((l) => l.code === s.locale)?.englishName ?? s.locale : null;
+                return (
+                  <li key={s.userId} className="flex flex-wrap items-center gap-x-3 gap-y-3 px-4 py-3.5 sm:flex-nowrap sm:px-5">
+                    <Avatar name={display} id={s.userId} size={40} />
+                    <div className="min-w-0 flex-1 basis-40">
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-strong text-fg">
+                        <span className="min-w-0 break-words">{display}</span>
+                        {self ? <span className="text-meta font-normal text-fg-muted">({t("own.staff.you")})</span> : null}
+                        {!owner || self ? <Tag>{roleLabel(s.role)}</Tag> : null}
+                      </p>
+                      <p className="break-words text-meta text-fg-muted">{s.phone ? maskPhone(s.phone) : s.email}</p>
+                      <p className="text-meta text-fg-muted tabular">
+                        {[t("own.staff.added", { date: formatDate(s.createdAt) }), s.hasPin ? t("own.staff.pinSet") : t("own.staff.noPin"), lang, s.station ? t("own.staff.station", { station: s.station }) : null].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    <div className="flex w-full items-center justify-end gap-2 ps-[52px] sm:w-auto sm:ps-0">
+                      {owner && !self ? (
+                        <label className="min-w-0 max-sm:flex-1">
+                          <span className="sr-only">{t("own.staff.roleFor", { name: s.name ?? t("own.staff.someone") })}</span>
+                          <select value={s.role} onChange={async (e) => {
+                            const r = await act.run(() => api.setRole(s.userId, e.target.value as merchantApi.StaffRole));
+                            if (r) await state.reload();
+                          }} className="h-11 w-full rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle sm:h-9 sm:w-auto">
+                            {roles.map((r) => (
+                              <option key={r.value} value={r.value}>
+                                {roleLabel(r.value)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                      {booking && role !== "staff" ? (
+                        <Button variant="secondary" size="sm" className="max-sm:min-h-11 max-sm:flex-1" onClick={() => setSchedule(s)}>
+                          {t("own.staff.hours")}
                         </Button>
-                        {owner || self ? (
-                          <Button variant="secondary" size="sm" className="max-sm:w-full" onClick={() => setPinFor(s)}>
-                            {s.hasPin ? "Reset PIN" : "Set PIN"}
-                          </Button>
-                        ) : null}
-                        {owner && !self ? (
-                          <Button variant="ghost" size="sm" className="max-sm:w-full max-sm:border max-sm:border-line" onClick={() => setRemove(s)}>
-                            Remove
-                          </Button>
-                        ) : null}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-          )
-        }
+                      ) : canPin ? (
+                        <Button variant="secondary" size="sm" className="max-sm:min-h-11 max-sm:flex-1" onClick={() => setPinFor(s)}>
+                          {s.hasPin ? t("own.staff.resetPin") : t("own.staff.setPin")}
+                        </Button>
+                      ) : null}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger aria-label={t("own.staff.more", { name: first || display })} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-fg hover:bg-bg-subtle focus-visible:focus-ring sm:size-9">
+                          <MoreHorizontal aria-hidden className="size-5" strokeWidth={1.75} />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-60">
+                          {booking ? (
+                            <DropdownMenuItem className={menuItem} data-testid="staff-link" onClick={() => copyLink(s.userId)}>
+                              <Link2 aria-hidden />
+                              {t("people.staffLink", { name: first || t("people.copyLink") })}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {booking && canPin ? (
+                            <DropdownMenuItem className={menuItem} onClick={() => setPinFor(s)}>
+                              <KeyRound aria-hidden />
+                              {s.hasPin ? t("own.staff.resetPin") : t("own.staff.setPin")}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {enabled("staff.payouts") && role !== "staff" ? (
+                            <DropdownMenuItem className={menuItem} onClick={() => setPay(s)}>
+                              <Wallet aria-hidden />
+                              {t("own.staff.pay")}
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem className={menuItem} onClick={() => { setEdit(s); setLocale(s.locale); setStation(s.station ?? ""); }}>
+                            <Languages aria-hidden />
+                            {t("own.staff.langStation")}
+                          </DropdownMenuItem>
+                          {owner && !self ? (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem variant="destructive" className={menuItem} onClick={() => setRemove(s)}>
+                                <UserMinus aria-hidden />
+                                {t("own.staff.remove")}
+                              </DropdownMenuItem>
+                            </>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {d.items.length <= 1 && owner ? (
+              <EmptyState
+                icon={UserPlus}
+                title={t("own.staff.soloTitle")}
+                description={enabled("booking.appointments") ? t("own.staff.soloBodyBooking") : t("own.staff.soloBody")}
+                action={<Button size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>{t("own.staff.invite")}</Button>}
+              />
+            ) : null}
+          </>
+        )}
       </Async>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <StaffScheduleSheet open={!!schedule} onClose={() => setSchedule(null)} member={schedule} />
@@ -229,28 +269,5 @@ export default function StaffPage() {
         }}
       />
     </div>
-  );
-}
-
-/** phase-solo D: copy this person's own booking link (people-side.md gap 8). */
-function StaffLinkButton({ userId, name }: { userId: string; name: string }) {
-  const { detail } = useMerchant();
-  const { t } = useLocaleOrEnglish();
-  const toast = useToast();
-  const link = `${typeof window === "undefined" ? "" : window.location.origin}/shops/${detail.merchant.slug}/book?staff=${userId}`;
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="max-sm:w-full max-sm:border max-sm:border-line"
-      title={t("people.staffLinkHint", { name })}
-      data-testid="staff-link"
-      onClick={async () => {
-        await navigator.clipboard?.writeText(link).catch(() => undefined);
-        toast({ message: t("people.linkCopied"), tone: "success" });
-      }}
-    >
-      {t("people.staffLink", { name: name || t("people.copyLink") })}
-    </Button>
   );
 }

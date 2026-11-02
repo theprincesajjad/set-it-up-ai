@@ -70,10 +70,16 @@ test.describe("pricing: Free, Pro, Studio", () => {
       await expect(shops.locator("[data-plan=pro]")).toContainText("$99");
       await expect(shops).toContainText("Prices in CAD");
       expect((await page.locator("main").innerText()).toLowerCase()).not.toContain("founding pro");
+      // Wave P: both plan tables fold away under the cards in one "See everything in each plan", and the booking-app comparison is the one dated table (#booking-apps).
+      await expect(page.getByTestId("compare")).not.toHaveAttribute("open", "");
+      await page.getByTestId("compare").locator("summary").click();
       await expect(page.getByRole("table", { name: "Compare Free, Pro and Studio" })).toBeVisible();
       await expect(page.getByTestId("solo-table")).toContainText("30 a month, then email");
-      await expect(page.getByTestId("solo-compare")).toContainText("Fresha");
-      await expect(page.getByTestId("solo-compare")).toContainText("Oct 29, 2026");
+      await expect(page.getByTestId("solo-compare")).toHaveCount(0);
+      await expect(page.locator("#booking-apps")).toContainText("Fresha");
+      // One audience at a time: restaurant and BIA plans are a card each here.
+      await expect(page.locator("#restaurants")).toHaveCount(0);
+      await expect(page.locator("[data-audience=restaurant]")).toHaveAttribute("href", "/pricing?for=restaurant#restaurants");
       // No horizontal page scroll at phone width.
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
       await page.screenshot({ path: shot(`pricing-${w}`), fullPage: true });

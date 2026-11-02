@@ -1,10 +1,11 @@
 /**
- * Merchant onboarding (docs/research/merchant-onboarding.md): one-screen signup that lands on "give your first stamp",
+ * Merchant onboarding (docs/research/merchant-onboarding.md): the stepped signup (wave P) that ends on "You're live" and lands on "give your first stamp",
  * the first stamp showing up on its own, the activation view on Home, the paid-tier moment for a South Asian
  * restaurant once it is active, and the admin funnel. Screenshots go to $E2E_SHOTS (default e2e/screenshots/onboarding).
  */
 import { expect, test, type Page } from "@playwright/test";
 import { API } from "./fixtures";
+import { atStep, cont, primary } from "./signup-flow";
 
 const SHOTS = process.env.E2E_SHOTS ?? "e2e/screenshots/onboarding";
 const shot = (name: string) => `${SHOTS}/${name}.png`;
@@ -40,29 +41,55 @@ async function newShop(vertical: string, name: string) {
 }
 const stamp = (id: string, token: string) => call("POST", `/v1/merchants/${id}/counter/award`, { phone: phone(), amountCents: 2500, idempotencyKey: `e2e-${rand()}-${rand()}` }, token);
 
-test("signup is one screen and lands on the first stamp; the stamp shows up by itself; Home shows the activation view", async ({ page }) => {
+test("signup is a stepped flow that ends on You're live and lands on the first stamp; the stamp shows up by itself; Home shows the activation view", async ({ page }) => {
   const email = `owner-${rand()}@example.com`;
   await page.goto("/signup");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Set up your shop, free");
-  await expect(page.getByRole("radio", { name: "Tiffin kitchen" })).toBeVisible();
-  await expect(page.getByRole("radio", { name: "South Asian restaurant" })).toBeVisible();
-  // Gym / studio, pet shops, caterers and banquet halls are first-class choices, not hidden under "More types".
-  for (const t of ["Gym or studio", "Pet shop or groomer", "Caterer", "Banquet hall", "Grocer or butcher", "Auto care"]) await expect(page.getByRole("radio", { name: t })).toBeVisible();
-  // Old fields are gone: nothing here is needed to give the first stamp.
-  await expect(page.getByLabel(/Postal code/)).toHaveCount(0);
-  await expect(page.getByLabel(/Shop email/)).toHaveCount(0);
+  // Focused shell: no marketing nav or footer, a step counter, one question.
+  await atStep(page, "link");
+  await expect(page.getByText("Step 1 of 6")).toBeVisible();
+  await expect(page.locator("footer")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Do you have a website or Instagram?");
+  await page.getByRole("button", { name: "I don't have one, skip" }).click();
+  await atStep(page, "shop");
+  // Validation is inline, on the step.
+  await cont(page);
+  await expect(page.getByText("Shop name is required.")).toBeVisible();
   await page.getByLabel("Shop name").fill(`Sunrise Bakery ${rand()}`);
   // Your name is not asked at signup any more (Settings, later).
   await expect(page.getByLabel("Your name")).toHaveCount(0);
-  await expect(page.getByLabel("Neighbourhood")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await atStep(page, "kind");
+  // Eight popular types as tiles; every other type (tiffin, South Asian restaurant, gym, pet shop ...) is one search away.
+  await expect(page.locator("[data-step=kind] [role=radiogroup]").first().getByRole("radio")).toHaveCount(8);
+  for (const [q, name] of [["tiff", "Tiffin kitchen"], ["south", "South Asian restaurant"], ["gym", "Gym or studio"], ["pet", "Pet shop or groomer"], ["cater", "Caterer"], ["banquet", "Banquet hall"], ["butcher", "Grocer or butcher"], ["auto", "Auto care"]] as const) {
+    await page.getByRole("textbox", { name: /Search every type/ }).fill(q);
+    await expect(page.locator("[data-trade-results]").getByRole("radio", { name })).toBeVisible();
+  }
+  await page.getByRole("textbox", { name: /Search every type/ }).fill("");
   await page.getByRole("radio", { name: "Bakery" }).click();
-  await expect(page.getByText(/We start you on: 1 stamp per visit/)).toBeVisible();
-  await page.getByLabel(/Your mobile number/).fill("4165550134");
+  await cont(page);
+  await atStep(page, "where");
+  await expect(page.getByLabel(/Shop email/)).toHaveCount(0);
   await page.getByLabel("Street address").fill("2210 Danforth Ave");
+  await cont(page);
+  await atStep(page, "card");
+  // The bakery's own card, previewed: 1 stamp a visit, the template's goal and reward.
+  await expect(page.getByText("One stamp each visit.")).toBeVisible();
+  await page.getByRole("textbox", { name: "The reward", exact: true }).fill("Free croissant");
+  await expect(page.locator("[data-card-rule]").first()).toContainText("Free croissant");
+  await cont(page);
+  await atStep(page, "account");
+  await page.getByLabel(/Your mobile number/).fill("4165550134");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill("onboarding-e2e-1");
+  await page.getByLabel("Password", { exact: true }).fill("onboarding-e2e-1");
+  await expect(page.getByText(/By continuing you agree to the/)).toBeVisible();
   await page.screenshot({ path: shot("01-signup"), fullPage: true });
   await page.getByRole("button", { name: "Create my shop" }).click();
+  await atStep(page, "live");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("is live");
+  await expect(page.getByRole("img", { name: /QR code to join/ })).toBeVisible();
+  await expect(page.locator("[data-live-next] li")).toHaveCount(3);
+  await page.locator("[data-live-primary]").click();
 
   await page.waitForURL(/\/m\/[^/]+\/setup\?step=first_stamp/);
   const id = new URL(page.url()).pathname.split("/")[2]!;
@@ -148,11 +175,22 @@ test("admin sees the activation funnel and who to call", async ({ page }) => {
 
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  test("signup fits a phone: no sideways scroll, chips wrap", async ({ page }) => {
+  test("every signup step fits a phone: no sideways scroll, the button stays in reach", async ({ page }) => {
     await page.goto("/signup");
+    await atStep(page, "link");
+    const fits = async () => {
+      const { sw, iw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+      expect(sw).toBeLessThanOrEqual(iw + 1);
+      const box = await primary(page).boundingBox();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(844);
+    };
+    await fits();
+    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByLabel("Shop name").fill("Corner Café");
+    await cont(page);
+    await atStep(page, "kind");
     await expect(page.getByRole("radio", { name: "Café" })).toBeVisible();
-    const { sw, iw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
-    expect(sw).toBeLessThanOrEqual(iw + 1);
+    await fits();
     await page.screenshot({ path: shot("06-signup-390"), fullPage: true });
   });
 });

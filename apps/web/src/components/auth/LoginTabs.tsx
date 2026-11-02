@@ -5,7 +5,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { EmailSignIn } from "./EmailSignIn";
 
-export function LoginTabs({ next, initial, devAutofill }: { next?: string | null; initial: "customer" | "shop"; devAutofill: boolean }) {
+export function LoginTabs({ next, initial, devAutofill, reset }: { next?: string | null; initial: "customer" | "shop"; devAutofill: boolean; reset?: boolean }) {
   const [tab, setTab] = useState(initial);
   const { t } = useLocaleOrEnglish();
   return (
@@ -26,7 +26,7 @@ export function LoginTabs({ next, initial, devAutofill }: { next?: string | null
       ) : (
         // Shop owner and staff sign-in stays English in every language.
         <div lang="en" dir="ltr">
-          <EmailSignIn next={next} devAutofill={devAutofill} />
+          <EmailSignIn next={next} devAutofill={devAutofill} initialMode={reset ? "reset" : "password"} />
         </div>
       )}
       </div>

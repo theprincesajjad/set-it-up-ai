@@ -44,8 +44,8 @@ export function TiersEditor({ tiers, goal, onChange, error, disabled, locked }: 
       )}
       {error ? <p className="text-meta font-medium text-negative">{error}</p> : null}
       {tiers.length < 3 && goal > 2 ? (
-        <Button variant="secondary" size="md" className="self-start" disabled={disabled} onClick={() => onChange([...tiers, { pointsCost: nextFree(), name: "" }])}>
-          <Plus aria-hidden className="size-4" /> Add a reward on the way
+        <Button variant="secondary" size="md" className="self-start" iconStart={Plus} disabled={disabled} onClick={() => onChange([...tiers, { pointsCost: nextFree(), name: "" }])}>
+          Add a reward on the way
         </Button>
       ) : null}
     </div>

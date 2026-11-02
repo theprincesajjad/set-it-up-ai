@@ -25,11 +25,11 @@ export function consentState(c: Pick<merchantApi.CustomerSummary, "marketingCons
 
 export const CONSENT_LABEL: Record<ConsentState, string> = { opted_in: "Opted in", no_consent: "Hasn't opted in", muted: "Muted" };
 
-export type CustomerFilter = "all" | "regulars" | "slipping" | "reward" | "new" | "birthday" | "can_text" | "vip" | "at_risk" | "opted_in" | "muted";
+export type CustomerFilter = "all" | "regulars" | "slipping" | "reward" | "new" | "birthday" | "can_text" | "vip" | "at_risk" | "lapsed" | "opted_in" | "muted";
 
 /** `?segment=` on the Customers URL (Home links to it) to the chip it selects. */
 export function filterFromSegment(segment: string | null | undefined): CustomerFilter {
-  const map: Record<string, CustomerFilter> = { regulars: "regulars", slipping: "slipping", reward: "reward", new: "new", birthday: "birthday", texts: "can_text", can_text: "can_text" };
+  const map: Record<string, CustomerFilter> = { regulars: "regulars", slipping: "slipping", reward: "reward", new: "new", birthday: "birthday", texts: "can_text", can_text: "can_text", lapsed: "lapsed" };
   return (segment && map[segment]) || "all";
 }
 
@@ -50,6 +50,9 @@ export function filterQuery(f: CustomerFilter, now: number = Date.now()): { quer
       return { query: { vip: "true" } };
     case "at_risk":
       return { query: { lapsedDays: 60 } };
+    case "lapsed":
+      // "Not back in a month": no visit in the last 30 days.
+      return { query: { lapsedDays: 30 } };
     case "new":
       // "New this month": since the 1st (Toronto), matching the chip count.
       return { query: { sort: "joined", joinedAfter: startOfMonthToronto(now) } };

@@ -1,5 +1,5 @@
 "use client";
-import { Download, Upload } from "lucide-react";
+import { Download, Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -64,6 +64,7 @@ function AppointmentCustomers({ toggle }: { toggle: ReactNode }) {
 
 function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
   const { api, base, detail, role, enabled, viewingAs } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   // Done-for-you migration: reps and admins (viewing as the shop) can import on any plan.
   const canImport = enabled("customers.csv_import") || !!viewingAs;
   const router = useRouter();
@@ -92,6 +93,7 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
       { value: "all", label: "All", count: c?.all },
       { value: "regulars", label: "Regulars", count: c?.regulars },
       { value: "slipping", label: "Slipping away", count: c?.slipping },
+      { value: "lapsed", label: t("own.cust.lapsed") },
       { value: "reward", label: "Reward ready", count: c?.rewardReady },
       { value: "new", label: "New this month", count: c?.newThisMonth },
       { value: "birthday", label: "Birthday this month", count: c?.birthdayMonth },
@@ -99,7 +101,7 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
     ];
     if (vip) f.push({ value: "vip", label: "VIP" });
     return f;
-  }, [vip, counts.data]);
+  }, [vip, counts.data, t]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q.trim()), 250);
@@ -179,9 +181,16 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
         }
       />
 
-      <div className="cust-tools mb-5">
-        <Capsules label="Filters" options={filters} value={filter} onChange={setFilter} />
-      </div>
+      {counts.data?.all === 0 && !filtered ? null : (
+        <div className="cust-tools mb-5 flex flex-col gap-3">
+          <label className="relative block w-full max-w-md">
+            <span className="sr-only">{t("own.cust.searchLabel")}</span>
+            <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
+            <input type="search" data-testid="customer-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("own.cust.search")} className="h-11 w-full rounded-r2 border border-input bg-card ps-9 pe-3 text-body text-fg outline-none focus-visible:focus-ring lg:h-9" />
+          </label>
+          <Capsules label="Filters" options={filters} value={filter} onChange={setFilter} />
+        </div>
+      )}
 
       {error && !rows.length ? (
         <ListError title="Couldn't load your customers." onRetry={() => setNonce((n) => n + 1)} detail={error} />

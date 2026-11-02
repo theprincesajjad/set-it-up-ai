@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
-import { buildIcs, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn, totalText } from "@/lib/booking";
+import { buildIcs, dayPart, DAY_PARTS, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn, totalText } from "@/lib/booking";
 import { cn } from "@/lib/cn";
 import { addOnPriceTime } from "@/lib/dashboard/add-ons"; // phase-pro: P5
 import { dayDate, todayIso } from "@/lib/restaurant/util";
@@ -31,6 +31,7 @@ type Booked = appointmentsApi.CreateMyAppointmentResponse;
 
 const DAYS = 14;
 
+
 /**
  * /shops/<slug>/book: pick a stylist and services (Figma M1), pick a time with the policy in plain words and the
  * card or deposit row (M2), pay the deposit or save a card, then a confirmation with a calendar file.
@@ -40,7 +41,8 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const f = useFmt();
   const { t, money, date, time, pick } = f;
   const dur = (min: number) => durationText(t as never, min);
-  const [step, setStep] = useState<"services" | "addons" | "time" | "pay" | "done">("services"); // phase-pro: P5 "addons"
+  // wave-p: "details" is its own step (who is coming, the note, the policy and sign-in), so the time step is only the time.
+  const [step, setStep] = useState<"services" | "addons" | "time" | "details" | "pay" | "done">("services"); // phase-pro: P5 "addons"
   // A one-person shop (a solo nail tech) has nobody to choose between: book with her, and skip the "Anyone" picker.
   const solo = data.staff.length === 1;
   const [staffId, setStaffId] = useState<string | null>(initial?.staff && data.staff.some((s) => s.id === initial.staff) ? initial.staff : solo ? data.staff[0]!.id : null);
@@ -62,6 +64,11 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const [finished, setFinished] = useState<appointmentsApi.MyAppointmentDto | null>(null);
   const [wantsSignIn, setWantsSignIn] = useState(false);
   const pending = useRef(false);
+  const signInRef = useRef<HTMLDivElement>(null);
+  // wave-p: the sign-in box replaces the button, so bring it into view (the phone field takes focus by itself).
+  useEffect(() => {
+    if (wantsSignIn) signInRef.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  }, [wantsSignIn]);
   // Who is coming: the shop sees a name on the calendar, never "Walk-in". Asked once, when the account has no name yet.
   const [firstName, setFirstName] = useState("");
   const [nameTried, setNameTried] = useState(false);
@@ -113,13 +120,16 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const visible = useMemo(() => data.services.filter((s) => (category === "all" || s.categoryName === category) && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand)), [data.services, category, staffId, pickedPet?.sizeBand]);
   const days = useMemo(() => nextDays(todayIso(), DAYS), []);
 
+  const servicesKey = data.services.map((s) => s.id).join(",");
   // Drop chosen services the newly picked stylist doesn't do.
   useEffect(() => {
     // Keep the selection valid when the stylist changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIds((cur) => cur.filter((id) => data.services.some((s) => s.id === id && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand))));
     setSlot(null);
-  }, [staffId, data.services, pickedPet?.sizeBand]);
+    // wave-p: keyed on the service ids, not the array: signing in refreshes the page props, and a new array must not drop the chosen time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffId, servicesKey, pickedPet?.sizeBand]);
 
   const loadTimes = useCallback(async () => {
     if (!ids.length) return;
@@ -203,6 +213,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       if (isApiError(e) && e.status === 409) {
         setBanner({ tone: "danger", text: t("bk.taken") });
         setSlot(null);
+        setStep("time");
         void loadTimes();
       } else if (isApiError(e) && e.status === 402) setBanner({ tone: "info", text: t("bk.unavailable") });
       else setBanner({ tone: "danger", text: isApiError(e) && e.isNetwork ? t("rc.error.body") : errorMessage(e) });
@@ -228,7 +239,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     </p>
   );
   const head = <ShopHead shop={shop} href={`/shops/${encodeURIComponent(shop.slug)}`} />;
-  const back = (to: "services" | "addons" | "time", label = t("bk.back")) => (
+  const back = (to: "services" | "addons" | "time" | "details", label = t("bk.back")) => (
     <button type="button" onClick={() => { setStep(to); setBanner(null); }} aria-label={label} className="inline-flex size-11 items-center justify-center rounded-full border border-line text-fg hover:bg-bg-subtle focus-visible:focus-ring">
       <ChevronLeft aria-hidden className="size-5 rtl:rotate-180" strokeWidth={1.75} />
     </button>
@@ -265,8 +276,8 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             <CircleCheck className="size-6" strokeWidth={2} />
           </span>
           <Heading level={2}>{t("bk.done.title")}</Heading>
-          <p className="text-body">{t("bk.done.body", { services: finished.items.map((i) => i.name).join(", "), shop: shop.name, when: when(finished.startsAt).replace(/\s([ap])\.m\.$/i, (_, x: string) => ` ${x.toUpperCase()}M`) })}</p>
-          {finished.staffName && finished.staffName !== shop.name ? <p className="text-meta">{finished.staffName}</p> : null}
+          {/* wave-p: one sentence; the when, where and with whom are on the next-visit card right under this (never twice). */}
+          <p className="text-body">{t("cust.bk.done.sub")}</p>
           {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta-strong">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
           {/* The confirmation is where a home studio's address is first shown (it arrives only once the booking is confirmed). */}
           {finished.merchant.addressPrivate && finished.merchant.address ? (
@@ -360,8 +371,9 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   // ---- end phase-pro: P5 ----
 
   // ---- time
-  if (step === "time") {
-    const label = deposit > 0 ? t("bk.cta.deposit", { amount: money(deposit) }) : needsCard ? t("bk.cta.card") : t("bk.cta.free");
+  if (step === "time" || (step === "details" && !slot)) {
+    // wave-p: 40-odd times in one grid is a wall; split by part of the day like Fresha and Booksy do.
+    const parts = DAY_PARTS.map((part) => ({ part, items: times.filter((x) => dayPart(x.startsAt) === part) })).filter((g) => g.items.length);
     return (
       <div className="flex flex-col gap-5 pb-28">
         {head}
@@ -384,21 +396,27 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             );
           })}
         </div>
+        {banner ? <Banner tone={banner.tone}>{banner.text}</Banner> : null}
         {avError ? <Banner tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void loadTimes()}>{t("rc.tryAgain")}</Button>}>{t("rc.error.body")}</Banner> : null}
         {avLoading && !av ? (
           <div className="flex flex-wrap gap-2" aria-busy>
             {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-11 w-24 rounded-input" />)}
           </div>
         ) : (
-          <div className="flex flex-col gap-3" aria-live="polite" aria-busy={avLoading}>
+          <div className="flex flex-col gap-4" aria-live="polite" aria-busy={avLoading}>
             <p className="text-meta-strong text-fg">{times.length ? t("bk.time.count", { day: date(dayDate(day), { weekday: "long" }, "UTC"), n: times.length, staff: staffName || t("bk.anyone") }) : t("bk.time.none", { day: date(dayDate(day), { weekday: "long" }, "UTC") })}</p>
-            <div className="flex flex-wrap gap-2">
-              {times.map((x) => (
-                <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} disabled={avLoading} onClick={() => setSlot(x)} className={cn("h-11 min-w-[88px] rounded-input border px-4 text-body tabular-nums focus-visible:focus-ring", slot?.startsAt === x.startsAt ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
-                  {time(x.startsAt)}
-                </button>
-              ))}
-            </div>
+            {parts.map(({ part, items }) => (
+              <div key={part} className="flex flex-col gap-2" data-testid={`times-${part}`}>
+                <p className="text-caption uppercase tracking-[0.06em] text-fg-muted">{t(`cust.bk.part.${part}`)}</p>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {items.map((x) => (
+                    <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} disabled={avLoading} onClick={() => setSlot(x)} className={cn("h-11 whitespace-nowrap rounded-input border px-1 text-body tabular-nums focus-visible:focus-ring", slot?.startsAt === x.startsAt ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+                      {time(x.startsAt)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
             {/* ---- phase-pro: p2 ---- "Full. Tell me if a spot opens" */}
             {workDays?.size && !pharmacy && ids.length ? (
               times.length === 0 && workDays.has(day) ? (
@@ -420,6 +438,41 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             ) : null}
           </div>
         )}
+        <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
+          <p className="text-meta text-fg-muted">{slot ? `${when(slot.startsAt)} – ${time(endsAtOf(slot))}${shownStaff ? ` · ${shownStaff}` : ""}` : t("cust.bk.pickOne")}</p>
+          <Button size="lg" variant="shop" fullWidth disabled={!slot} onClick={() => { setBanner(null); setStep("details"); window.scrollTo?.({ top: 0 }); }}>{t("cust.bk.continue")}</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- details (wave-p): what you are booking, who is coming, the policy, then sign in and book. One action at a time.
+  if (step === "details" && slot) {
+    const label = deposit > 0 ? t("bk.cta.deposit", { amount: money(deposit) }) : needsCard ? t("bk.cta.card") : t("bk.cta.free");
+    const signingIn = wantsSignIn && !signedIn;
+    return (
+      <div className="flex flex-col gap-5 pb-28">
+        {head}
+        <div className="flex flex-col gap-3">
+          {back("time")}
+          <Heading>{t("cust.bk.details.title")}</Heading>
+        </div>
+        <section aria-label={t("cust.bk.details.summary")} data-testid="book-summary" className="flex flex-col gap-3 rounded-card border border-line bg-card p-4">
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-headline text-fg">{date(slot.startsAt, { weekday: "long", month: "long", day: "numeric" })}</p>
+              <p className="text-body text-fg">{time(slot.startsAt)} – {time(endsAtOf(slot))}</p>
+            </div>
+            <button type="button" onClick={() => setStep("time")} className="min-h-11 shrink-0 px-1 text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring">{t("cust.bk.details.change")}</button>
+          </div>
+          <div className="flex items-end justify-between gap-3 border-t border-line pt-3">
+            <div className="min-w-0">
+              <p className="text-body-strong text-fg">{servicesText}</p>
+              <p className="text-meta text-fg-muted">{[dur(av?.blockMin ?? sel.durationMin), shownStaff].filter(Boolean).join(" · ")}</p>
+            </div>
+            {pharmacy ? null : <p className="shrink-0 text-headline tabular-nums text-fg">{totalText(t as never, data, sel, money)}</p>}
+          </div>
+        </section>
         {policy}
         {needsCard ? (
           <div className="flex items-center gap-3 rounded-card border border-line p-4">
@@ -428,7 +481,6 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
               <p className="text-body-strong text-fg">{t("bk.card.title")}</p>
               <p className="text-meta text-fg-muted">{deposit > 0 ? t("bk.card.deposit", { amount: money(deposit) }) : t("bk.card.setup")}</p>
             </div>
-            <button type="button" disabled={!slot || busy} onClick={submit} className="text-body-strong text-fg focus-visible:focus-ring disabled:text-fg-subtle">{t("bk.card.add")}</button>
           </div>
         ) : null}
         {needsName && !pharmacy ? (
@@ -455,11 +507,16 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           </>
         )}
         {banner ? <Banner tone={banner.tone}>{banner.text}</Banner> : null}
-        {wantsSignIn && !signedIn ? <PhoneSignIn heading="h2" devAutofill={devAutofill} title={t("bk.cta.signIn")} intro={t("bk.signIn.hint")} /> : null}
-        <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
-          <p className="text-meta text-fg-muted">{slot ? `${when(slot.startsAt)} – ${time(endsAtOf(slot))}${shownStaff ? ` · ${shownStaff}` : ""}` : t("bk.chooseTime")}</p>
-          <Button size="lg" variant="shop" fullWidth loading={busy} disabled={!slot} onClick={submit}>{signedIn || !slot ? label : t("bk.cta.signIn")}</Button>
-        </div>
+        {signingIn ? (
+          <div ref={signInRef} className="scroll-mt-4 rounded-card border border-line bg-card p-4">
+            <PhoneSignIn heading="h2" devAutofill={devAutofill} title={t("cust.bk.signIn.title")} intro={t("cust.bk.signIn.intro", { shop: shop.name })} />
+          </div>
+        ) : (
+          <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
+            {signedIn ? null : <p className="text-meta text-fg-muted">{t("cust.bk.signIn.why")}</p>}
+            <Button size="lg" variant="shop" fullWidth loading={busy} onClick={submit}>{signedIn ? label : t("bk.cta.signIn")}</Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -478,6 +535,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           </p>
         ) : null}
       </div>
+      {solo ? null : <p className="-mb-3 text-meta-strong text-fg">{t("cust.bk.who")}</p>}
       {solo ? null : <div role="radiogroup" aria-label={t("bk.anyone")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {[{ id: null as string | null, name: t("bk.anyone"), initials: "Any" }, ...data.staff].map((s) => {
           const on = s.id === staffId;

@@ -323,6 +323,18 @@ export async function cockpit(ctx: AppContext, days: api.CockpitPeriod): Promise
       activeCustomers: delta(c[0]!, c[1]!),
     },
     weekly,
+    recent: {
+      signups: [...open]
+        .filter((f) => f.m.createdAt <= now)
+        .sort((a, b) => b.m.createdAt.getTime() - a.m.createdAt.getTime())
+        .slice(0, 6)
+        .map((f) => ({ id: f.m.id, name: f.m.name, trade: f.m.vertical, status: f.status, plan: f.plan, signedUpAt: f.m.createdAt.toISOString(), source: f.m.signupSrc ?? f.m.signupUtmSource ?? (f.m.signupPage ? f.m.signupPage : null) })),
+      conversions: facts
+        .filter((f) => f.status === "paying" && f.everPaidAt && f.everPaidAt <= now)
+        .sort((a, b) => b.everPaidAt!.getTime() - a.everPaidAt!.getTime())
+        .slice(0, 6)
+        .map((f) => ({ id: f.m.id, name: f.m.name, plan: f.plan, mrrCents: f.mrrCents, paidAt: f.everPaidAt!.toISOString() })),
+    },
   };
 }
 

@@ -120,8 +120,12 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   const [userName, setUserName] = useState<string | null>(signedInName ?? null);
 
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // Move focus to the new step's heading when the step changes, never on the first render: a signed-in visitor opens a shop page
+  // on the "details" step, and focusing it then scrolled the page past the shop's own header (wave-p).
+  const firstStep = useRef(step);
   useEffect(() => {
-    if (step !== "phone") headingRef.current?.focus();
+    if (step !== "phone" && step !== firstStep.current) headingRef.current?.focus();
+    firstStep.current = "phone";
   }, [step]);
 
   useEffect(() => {
@@ -244,14 +248,15 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   if (showHeader && step === "phone") {
     const also = alsoHere ? alsoEarningT(t, locale, alsoHere.verticals.map((vertical) => ({ vertical })), alsoHere.total) : null;
     return (
-      <div className="-mx-4 -mt-4 flex min-h-[calc(100dvh-1px)] flex-col px-6 pt-[52px] pb-[30px]">
-        <div className="flex items-center gap-2">
+      <div className="-mx-4 -mt-4 flex min-h-[calc(100dvh-1px)] flex-col px-6 pt-10 pb-[30px]">
+        {/* wave-p: the language switch sits on the brand row (it floated alone between the row and the card before). */}
+        <div className="flex min-h-11 items-center gap-2">
           <LogoMark size={22} />
           <span className="display text-[15px] leading-[18px] text-fg">{BRAND.name.toLowerCase()}</span>
+          {topSlot ? <div className="ms-auto">{topSlot}</div> : null}
         </div>
-        {topSlot ? <div className="mt-4">{topSlot}</div> : null}
         {/* The shop's card, in its colour, before anything is asked: what the customer is about to carry. */}
-        <BrandPassCard as="div" shop={info.merchant} className={topSlot ? "mt-6" : "mt-9"} kicker={[locale === "en" ? placeKind(info.merchant.vertical) : placeKindLabel(locale, info.merchant.vertical), street?.name.toLowerCase() ?? info.location.address].filter(Boolean).join(" · ")}>
+        <BrandPassCard as="div" shop={info.merchant} className="mt-7" kicker={[locale === "en" ? placeKind(info.merchant.vertical) : placeKindLabel(locale, info.merchant.vertical), street?.name.toLowerCase() ?? info.location.address].filter(Boolean).join(" · ")}>
           {program?.earnType === "stamps" ? <MiniStamps goal={program.stampGoal} /> : null}
         </BrandPassCard>
         <h1 className="display mt-5 text-[32px] leading-[35px] tracking-[-0.01em] text-fg">{joinHeadlineT(t, locale, program, info.merchant.vertical)}</h1>
@@ -282,16 +287,27 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
     );
   }
 
+  // wave-p: on the counter-QR page the code and name steps keep the first step's frame (brand row, gutter, the shop in its colour)
+  // with a step count, so the three screens read as one short flow rather than a different page each time.
+  const stepNo = step === "code" ? 2 : 3;
   return (
-    <div className="flex flex-col gap-6">
+    <div className={showHeader ? "-mx-4 -mt-4 flex min-h-[calc(100dvh-1px)] flex-col gap-6 px-6 pt-10 pb-[30px]" : "flex flex-col gap-6"}>
       {showHeader ? (
-        <header className="flex items-center gap-3.5 pt-2">
-          <BrandMark shop={info.merchant} size={56} />
-          <div className="min-w-0">
-            <p className="truncate text-headline text-fg"><bdi>{shop}</bdi></p>
-            <p className="truncate text-meta italic text-fg-muted">{[locale === "en" ? placeKind(info.merchant.vertical) : null, info.location.name !== shop ? info.location.name : info.location.address].filter(Boolean).join(" · ")}</p>
+        <>
+          <div className="flex min-h-11 items-center gap-2">
+            <LogoMark size={22} />
+            <span className="display text-[15px] leading-[18px] text-fg">{BRAND.name.toLowerCase()}</span>
+            {topSlot ? <div className="ms-auto">{topSlot}</div> : null}
           </div>
-        </header>
+          <header className="flex items-center gap-3.5 rounded-card bg-trade-soft p-3">
+            <BrandMark shop={info.merchant} size={44} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-body-strong text-fg"><bdi>{shop}</bdi></p>
+              <p className="truncate text-meta text-fg-muted">{[locale === "en" ? placeKind(info.merchant.vertical) : placeKindLabel(locale, info.merchant.vertical), street?.name.toLowerCase() ?? info.location.address].filter(Boolean).join(" · ")}</p>
+            </div>
+            {signedIn ? null : <p className="shrink-0 text-caption text-fg-muted tabular-nums" data-testid="join-step">{t("cust.join.step", { n: stepNo, total: 3 })}</p>}
+          </header>
+        </>
       ) : null}
 
       {banner ? <Banner tone="warning">{banner}</Banner> : null}
@@ -346,11 +362,14 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
 
       {step === "details" || step === "joining" ? (
         <form onSubmit={submitDetails} noValidate className="flex flex-col gap-5">
-          <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none">
-            {needsName ? t("auth.join.almost") : t("auth.join.welcomeBack", { name })}
-          </h1>
+          <div className="flex flex-col gap-1.5">
+            <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none">
+              {needsName ? t("cust.join.nameTitle") : signedIn ? t("cust.join.oneTap", { name }) : t("auth.join.welcomeBack", { name })}
+            </h1>
+            {needsName ? <p className="text-body text-fg-muted">{t("cust.join.nameSub", { shop })}</p> : null}
+          </div>
           {needsName ? (
-            <TextField label={t("auth.join.firstNameOptional")} autoComplete="given-name" value={name} onChange={(e) => { setName(e.target.value); if (error) setError(null); }} error={error} maxLength={60} autoFocus />
+            <TextField label={t("auth.join.firstNameOptional")} autoComplete="given-name" value={name} onChange={(e) => { setName(e.target.value); if (error) setError(null); }} error={error} maxLength={60} autoFocus={!signedIn} />
           ) : null}
           {/* Consent was offered on the first step; visitors who were already signed in skipped it. */}
           {signedIn ? consentBox : null}

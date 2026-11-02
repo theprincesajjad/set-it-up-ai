@@ -64,7 +64,6 @@ test.describe("landing", () => {
       page.getByRole("heading", { name: "Live at your counter today." }),
       page.getByRole("heading", { name: "Built to bring customers back." }),
       page.getByRole("region", { name: "Where do you fit?" }),
-      page.getByRole("heading", { name: "Get more from the customers you have." }),
       page.getByRole("heading", { name: "Simple pricing." }),
       page.getByRole("heading", { name: "How we compare." }),
       page.getByRole("heading", { name: "Frequently asked questions" }),
@@ -81,7 +80,17 @@ test.describe("landing", () => {
     await expect(router.getByRole("link", { name: /See restaurant plans/ })).toHaveAttribute("href", "/for-restaurants");
     await expect(router.getByRole("link", { name: /See the BIA page/ })).toHaveAttribute("href", "/for-bias");
     // Calls to action down the page (landing v4): every one carries data-cta.
-    for (const c of ["hero", "how", "afterhero", "promos", "outcomes", "pro", "pricing", "final", "sticky", "seepricing"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
+    for (const c of ["hero", "how", "outcomes", "pricing", "final", "sticky", "seepricing"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
+    // Wave P: the page was cut down (facts strip, pass row and the separate Pro block are gone), so it has fewer asks.
+    for (const gone of ["afterhero", "promos", "pro"]) await expect(page.locator(`[data-cta=${gone}]`)).toHaveCount(0);
+    expect(await page.locator('main a[href^="/signup"]').count()).toBeLessThanOrEqual(8);
+    // What it costs, in the hero: loyalty free, Pro's price, the struck first-year price; never "founding".
+    const price = page.getByTestId("hero-price");
+    await expect(price).toContainText("Loyalty is free forever.");
+    await expect(price).toContainText("Pro is $29 a month");
+    await expect(price.locator("s")).toHaveText("$290");
+    await expect(price).toContainText("$199 first year.");
+    await expect(page.locator("main")).not.toContainText(/founding/i);
 
     await expect(page.locator("form")).toHaveCount(1);
     const text = await visibleText(page);
@@ -187,7 +196,8 @@ test.describe("pricing", () => {
   });
 
   test("savings calculator: $5,000 reads $400 to $500 pickup and up to $1,450 delivery, sourced, no drivers", async ({ page }) => {
-    await page.goto("/pricing");
+    // Wave P: /pricing shows one audience at a time; the calculator is in the restaurant view.
+    await page.goto("/pricing?for=restaurant");
     await expect(page.getByTestId("calc-pickup")).toHaveText("$400 to $500");
     await expect(page.getByTestId("calc-delivery")).toContainText("up to $1,450");
     await expect(page.getByTestId("calc-flat")).toContainText("$199");

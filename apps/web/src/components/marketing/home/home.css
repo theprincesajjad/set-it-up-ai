@@ -7,7 +7,7 @@
 @media (min-width: 768px) { .hm { --hm-gutter: 32px; } }
 .hm h1, .hm h2, .hm h3, .hm p { margin: 0; }
 .hm-wrap { width: min(100% - 2 * var(--hm-gutter), 1200px); margin-inline: auto; }
-.hm-sec { padding-block: clamp(64px, 8vw, 112px); }
+.hm-sec { padding-block: clamp(48px, 8vw, 112px); }
 .hm-white { background: var(--card); }
 .hm-head { display: grid; gap: 14px; max-width: 46rem; margin-bottom: clamp(32px, 4vw, 56px); }
 .hm-center { margin-inline: auto; text-align: center; justify-items: center; }
@@ -41,7 +41,9 @@
 .hm-hero { padding-top: clamp(36px, 5vw, 64px); }
 .hm-hero-copy { display: grid; justify-items: center; text-align: center; gap: 22px; }
 .hm-hero-copy .hm-lede { max-width: 46rem; }
-.hm-trial { margin-top: -6px; font-size: 14px; color: var(--muted-foreground); }
+.hm-trial { margin-top: -6px; max-width: 34rem; font-size: 15px; line-height: 1.5; color: var(--muted-foreground); text-wrap: balance; }
+.hm-trial b { font-weight: 650; color: var(--foreground); }
+.hm-trial s { text-decoration-thickness: 1.5px; }
 .hm-trust { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; padding: 0; margin: 0; list-style: none; font-size: 15px; font-weight: 550; color: var(--muted-foreground); }
 .hm-trust li, .hm-checks li { display: inline-flex; align-items: center; gap: 8px; }
 .hm-trust svg, .hm-checks svg { width: 16px; height: 16px; color: var(--success); flex: none; }
@@ -161,6 +163,15 @@
 .hm-door-b { font-size: 15px; line-height: 1.45; color: var(--muted-foreground); }
 .hm-door-cta { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 15px; font-weight: 650; }
 .hm-door-cta svg { width: 16px; height: 16px; }
+/* Phones (wave P): each door is a compact row, the picture beside the words, so the four fit in about one screen. */
+@media (max-width: 699.98px) {
+  .hm-door { grid-template-columns: 44px 1fr; grid-template-rows: none; column-gap: 14px; row-gap: 2px; padding: 16px; border-radius: 20px; }
+  .hm-door > :not(img) { grid-column: 2; }
+  .hm-door img { grid-row: 1 / span 4; width: 44px !important; height: 44px !important; margin: 2px 0 0; }
+  .hm-door-t { font-size: 18px; }
+  .hm-door-b { font-size: 14px; }
+  .hm-door-cta { min-height: 36px; }
+}
 
 .hm-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 24px; font-size: 15px; }
 .hm-chips span { font-weight: 650; margin-inline-end: 8px; }

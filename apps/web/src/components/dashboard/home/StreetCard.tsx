@@ -27,7 +27,7 @@ export function StreetCard() {
           {!s.onMap ? (
             <>
               <h2 className="text-body-strong text-fg">Your shop is not on the map yet</h2>
-              <p className="mt-1 text-meta text-fg-muted">We could not find your address, so shoppers cannot see a pin. Check the street address in Locations, then try again.</p>
+              <p className="mt-1 text-meta text-fg-muted">We couldn&apos;t find your address, so shoppers can&apos;t see a pin yet. Check the street address in Locations, then try again.</p>
             </>
           ) : !s.neighbourhood ? (
             <>

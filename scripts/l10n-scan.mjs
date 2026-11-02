@@ -65,6 +65,8 @@ export const SCAN_TARGETS = [
   "apps/web/src/app/(pass)",
   "apps/web/src/components/pass",
   "apps/web/src/components/restaurant",
+  // wave-p: onboard. The stepped signup (every string through t(), en/hi/ur/pa).
+  "apps/web/src/components/onboarding/signup",
   // phase-solo G: shop websites (the public renderer and its routes)
   "apps/web/src/app/(site)",
   "apps/web/src/components/site/presets",

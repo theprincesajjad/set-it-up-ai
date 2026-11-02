@@ -11,6 +11,7 @@ import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { DealCard } from "./DealCard";
+import { Switch } from "@/components/ui/Switch";
 
 export function DealsInbox() {
   return (
@@ -95,19 +96,12 @@ function Inbox() {
         <DealCard key={d.id} deal={d} onClaim={() => void claim(d)} claiming={busy === d.id} error={errors[d.id] || null} highlight={focus === d.id} />
       ))}
       {shops.length ? (
-        <div className="flex flex-col gap-2 rounded-card border border-line bg-card p-3">
+        <div className="flex flex-col gap-1 rounded-card border border-line bg-card px-4 py-3">
+          {/* wave-p: a real switch (it read as a plain line of text before): on means this shop may send offers. */}
           {shops.map((d) => (
-            <button
-              key={d.merchant.id}
-              type="button"
-              disabled={busy === `consent:${d.merchant.id}`}
-              onClick={() => void setConsent(d, !d.optedIn)}
-              aria-pressed={d.optedIn}
-              className="flex min-h-11 items-center justify-between gap-3 text-start text-meta-strong text-fg focus-visible:focus-ring"
-              data-testid="deal-consent"
-            >
-              <bdi>{d.optedIn ? t("deal.optOut", { shop: d.merchant.name }) : t("deal.optIn", { shop: d.merchant.name })}</bdi>
-            </button>
+            <div key={d.merchant.id} data-testid="deal-consent">
+              <Switch label={t("deal.optIn", { shop: d.merchant.name })} checked={!!d.optedIn} disabled={busy === `consent:${d.merchant.id}`} onChange={(on) => void setConsent(d, on)} />
+            </div>
           ))}
           <p className="text-meta text-fg-muted">{t("deal.limits")}</p>
           {consentNote ? <p role="status" className="text-meta text-fg">{consentNote}</p> : null}

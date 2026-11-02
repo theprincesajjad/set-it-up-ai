@@ -7,6 +7,7 @@
  * Needs a running, seeded web and API (e2e/run-all.sh). Screenshots go to $AB_SHOTS when it is set.
  */
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import { atStep, cont } from "./signup-flow";
 import { API } from "./fixtures";
 
 const IN_T1 = { "x-ll-experiments-now": "2026-11-15T15:00:00Z" };
@@ -79,13 +80,26 @@ test("an ad URL with ?v=price lands the price variant, sticks, and the signup ca
   expect(new URL(page.url()).searchParams.get("v")).toBe("t1-barber-lead:price");
   expect(sent.map((e) => e.k)).toContain("start_submit");
 
-  // The wizard: a barber working from home (solo setup), then services and hours put the link live.
+  // The stepped signup (wave P): the start form's shop name lands on "Is this you?", the trade is already picked; a barber working
+  // from home (solo setup), then services and hours put the link live.
+  await atStep(page, "shop");
+  expect(new URL(page.url()).searchParams.get("v")).toBe("t1-barber-lead:price");
+  await cont(page);
+  await atStep(page, "kind");
+  await cont(page);
+  await atStep(page, "where");
   await page.locator('[role=radio][data-value="home"]').click();
-  await page.locator("input[type=tel]").first().fill(`647${String(Math.floor(2000000 + Math.random() * 7999999))}`);
   await page.locator("input[name=postal]").fill("M6R 2K1");
-  await page.locator("input[name=email]").fill(email);
+  await cont(page);
+  await atStep(page, "card");
+  await cont(page);
+  await atStep(page, "account");
+  await page.locator("input[type=tel]").first().fill(`647${String(Math.floor(2000000 + Math.random() * 7999999))}`);
+  await expect(page.locator("input[name=email]")).toHaveValue(email);
   await page.locator("input[name=password]").fill("ab-e2e-pass-1");
-  await page.locator("form button[type=submit]").last().click();
+  await cont(page);
+  await atStep(page, "live");
+  await page.locator("[data-live-primary]").click();
   await page.waitForURL(/\/setup\?step=your_link/, { timeout: 30_000 });
   const merchantId = new URL(page.url()).pathname.split("/")[2]!;
   const next = () => page.locator("[data-step-card] footer").locator("button, a").last().click();

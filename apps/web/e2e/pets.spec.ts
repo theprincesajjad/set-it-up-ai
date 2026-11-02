@@ -218,6 +218,7 @@ test("a dog owner books a groom for their dog: only the dog's size is priced, no
   const times = page.getByRole("button", { name: /^\d{1,2}:\d{2}\s?[ap]\.?m\.?$/i });
   await expect(times.first()).toBeVisible();
   await times.first().click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click(); // wave-p: the time step only picks the time; details are the next step
   await page.getByRole("button", { name: /^Book/ }).last().click();
   await expect(page.getByRole("heading", { name: "you are booked" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId("next-visit").getByText(/for Biscuit/)).toBeVisible();

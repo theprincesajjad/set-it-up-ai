@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
 import { Button } from "@/components/ui/Button";
@@ -174,6 +174,18 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
   const { t } = useLocaleOrEnglish();
   const pathname = usePathname() ?? "";
   const soloCalendar = useSoloCalendar();
+  // Wave P: every dashboard page was titled "Dashboard". The browser tab and history now read "<page heading> · <shop>", taken from
+  // the page's own h1 once it has rendered (client pages cannot export metadata).
+  const shopName = detail.merchant.name;
+  useEffect(() => {
+    const set = () => {
+      const h = document.querySelector("main h1")?.textContent?.trim();
+      if (h) document.title = `${h} · ${shopName}`;
+    };
+    set();
+    const id = window.setTimeout(set, 800);
+    return () => window.clearTimeout(id);
+  }, [pathname, shopName]);
   const entries = buildMerchantNav(base, role, new Set(features.features.filter((f) => f.enabled).map((f) => f.key)), {
     vertical: detail.merchant.vertical,
     plan: features.plan,

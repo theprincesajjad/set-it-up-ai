@@ -7,7 +7,7 @@ import { Download } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { adminCockpitApi } from "@ll/shared";
-import { PageHeader } from "@/components/dashboard/kit";
+import { PageHeader, QuietButton } from "@/components/dashboard/kit";
 import { BusinessStatus, FlagPills, planLabel } from "@/components/dashboard/admin/cockpit";
 import { Button } from "@/components/ui/Button";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
@@ -18,6 +18,7 @@ import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
+import { relativeTime } from "@/lib/dashboard/time";
 
 type Row = adminCockpitApi.BusinessRow;
 type StatusFilter = "" | adminCockpitApi.BusinessStatus | "at_risk";
@@ -68,6 +69,8 @@ function BusinessesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [more, setMore] = useState(false);
+  const filtered = !!(q || status || trade || plan || city || from || to || active || dir !== "desc");
 
   const query = useMemo(
     () => ({ q: q.trim() || undefined, status: status || undefined, trade: trade || undefined, plan: plan || undefined, city: city || undefined, signedFrom: from || undefined, signedTo: to || undefined, activeWithin: active || undefined, sort, dir }),
@@ -113,17 +116,34 @@ function BusinessesList() {
   };
 
   const cols: Column<Row>[] = [
-    { key: "name", header: "Business", mobile: "title", cell: (r) => <span className="font-medium">{r.name}</span> },
-    { key: "trade", header: "Trade", mobile: "hidden", cell: (r) => verticalLabel(r.trade) },
-    { key: "status", header: "Status", mobile: "trailing", cell: (r) => <BusinessStatus status={r.status} /> },
-    { key: "plan", header: "Plan", mobile: "hidden", cell: (r) => planLabel(r.plan) },
-    { key: "city", header: "City", mobile: "hidden", cell: (r) => r.city ?? "–" },
+    {
+      key: "name",
+      header: "Business",
+      mobile: "title",
+      cell: (r) => (
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-medium">{r.name}</span>
+          <span className="truncate text-caption text-fg-muted max-md:hidden">{[verticalLabel(r.trade), r.city].filter(Boolean).join(" · ")}</span>
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status and plan",
+      mobile: "trailing",
+      cell: (r) => (
+        <span className="flex items-center gap-2 whitespace-nowrap">
+          <BusinessStatus status={r.status} />
+          {r.plan !== "free" ? <span className="text-fg-muted max-md:hidden">{planLabel(r.plan)}</span> : null}
+        </span>
+      ),
+    },
     { key: "mrr", header: "MRR", align: "end", mobile: "hidden", cell: (r) => (r.mrrCents ? formatMoney(r.mrrCents) : "–") },
-    { key: "gmv", header: "Processed, 30 d", align: "end", mobile: "hidden", cell: (r) => formatMoney(r.gmv30dCents) },
-    { key: "usage", header: "Stamps · bookings, 30 d", align: "end", mobile: "subtitle", cell: (r) => `${formatNumber(r.stamps30d)} stamps · ${formatNumber(r.bookings30d)} bookings` },
+    { key: "gmv", header: "Processed, 30 d", align: "end", mobile: "hidden", cell: (r) => (r.gmv30dCents ? formatMoney(r.gmv30dCents) : "–") },
+    { key: "usage", header: "Stamps · bookings", align: "end", mobile: "subtitle", cell: (r) => `${formatNumber(r.stamps30d)} · ${formatNumber(r.bookings30d)}` },
     { key: "flags", header: "Health", mobile: "hidden", cell: (r) => <FlagPills flags={r.flags} /> },
-    { key: "signed", header: "Signed up", mobile: "hidden", cell: (r) => formatDate(r.signedUpAt) },
-    { key: "active", header: "Last active", mobile: "hidden", cell: (r) => (r.lastActiveAt ? formatDate(r.lastActiveAt) : "Never") },
+    { key: "signed", header: "Signed up", mobile: "hidden", cell: (r) => <span className="whitespace-nowrap">{formatDate(r.signedUpAt)}</span> },
+    { key: "active", header: "Last active", mobile: "hidden", cell: (r) => <span className="whitespace-nowrap">{r.lastActiveAt ? relativeTime(r.lastActiveAt) : "Never"}</span> },
   ];
   const counts = data?.counts;
   const chips: { value: StatusFilter; label: string; n?: number }[] = [
@@ -170,15 +190,41 @@ function BusinessesList() {
                 </Chip>
               ))}
             </ChipGroup>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
               <Select label="Trade" value={trade} onChange={(e) => setTrade(e.target.value)} options={[{ value: "", label: "All trades" }, ...(data?.facets.trades ?? []).map((t) => ({ value: t, label: verticalLabel(t) }))]} />
               <Select label="Plan" value={plan} onChange={(e) => setPlan(e.target.value)} options={[{ value: "", label: "All plans" }, ...["free", "plus", "studio", "pro", "restaurant"].map((p) => ({ value: p, label: planLabel(p) }))]} />
               <Select label="City" value={city} onChange={(e) => setCity(e.target.value)} options={[{ value: "", label: "All cities" }, ...(data?.facets.cities ?? []).map((c) => ({ value: c, label: c }))]} />
-              <TextField type="date" label="Signed up from" value={from} onChange={(e) => setFrom(e.target.value)} />
-              <TextField type="date" label="Signed up to" value={to} onChange={(e) => setTo(e.target.value)} />
               <Select label="Last active" value={active} onChange={(e) => setActive(e.target.value)} options={ACTIVE_OPTIONS} />
               <Select label="Sort by" value={sort} onChange={(e) => setSort(e.target.value as adminCockpitApi.BusinessSort)} options={adminCockpitApi.BUSINESS_SORTS.map((s) => ({ value: s, label: SORT_LABEL[s] }))} />
-              <Select label="Order" value={dir} onChange={(e) => setDir(e.target.value as "asc" | "desc")} options={[{ value: "desc", label: "High to low, newest first" }, { value: "asc", label: "Low to high, oldest first" }]} />
+            </div>
+            {more ? (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                <TextField type="date" label="Signed up from" value={from} onChange={(e) => setFrom(e.target.value)} />
+                <TextField type="date" label="Signed up to" value={to} onChange={(e) => setTo(e.target.value)} />
+                <Select label="Order" value={dir} onChange={(e) => setDir(e.target.value as "asc" | "desc")} options={[{ value: "desc", label: "High to low, newest first" }, { value: "asc", label: "Low to high, oldest first" }]} />
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <QuietButton onClick={() => setMore((m) => !m)} aria-expanded={more}>
+                {more ? "Fewer filters" : "Signup dates and order"}
+              </QuietButton>
+              {filtered ? (
+                <QuietButton
+                  onClick={() => {
+                    setQ("");
+                    setStatus("");
+                    setTrade("");
+                    setPlan("");
+                    setCity("");
+                    setFrom("");
+                    setTo("");
+                    setActive("");
+                    setDir("desc");
+                  }}
+                >
+                  Clear filters
+                </QuietButton>
+              ) : null}
             </div>
           </div>
         }

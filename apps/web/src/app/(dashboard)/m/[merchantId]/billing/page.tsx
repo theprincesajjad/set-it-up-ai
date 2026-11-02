@@ -1,5 +1,6 @@
 "use client";
-import { Check, CreditCard } from "lucide-react";
+import { Check, ChevronDown, CreditCard } from "lucide-react";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { APPOINTMENT_VERTICALS, FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PAID_PLAN_IDS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type PaidPlanId, type PlanId, type billingApi } from "@ll/shared";
@@ -76,12 +77,17 @@ export default function BillingPage() {
 function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload: () => Promise<void> }) {
   const { api, base, enabled, merchantId, detail } = useMerchant();
   const params = useSearchParams();
+  const { t } = useLocaleOrEnglish();
   const [period, setPeriod] = useState<"month" | "year">(params.get("interval") === "year" ? "year" : "month");
   const [cancel, setCancel] = useState(false);
   const act = useAction();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const sub = b.subscription;
   const restaurantFirst = RESTAURANT_VERTICALS.includes(detail.merchant.vertical) || !!b.restaurantTier;
+  // Wave P: the plan that fits this kind of shop gets a "Best fit" mark and the solid button (one person who books: Pro; a shop
+  // with chairs or a counter: Studio; repairs: Service).
+  const v = detail.merchant.vertical;
+  const fit: PaidPlanId = /^repair|alterations|print/.test(v) ? "pro" : APPOINTMENT_VERTICALS.includes(v) && (b.usage?.calendars.used ?? 0) <= 1 ? "plus" : "studio";
   const subscribe = params.get("subscribe");
   const autoRan = useRef(false);
 
@@ -207,7 +213,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
               <div className={`flex h-full flex-col gap-3 bg-bg p-5 ${isPicked ? "ring-2 ring-inset ring-link" : ""}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-body-strong text-fg">{p.name}</h3>
-                  {p.current ? <Dot tone="positive">Current</Dot> : isPicked ? <Dot tone="info">{PB.preselected}</Dot> : null}
+                  {p.current ? <Dot tone="positive">Current</Dot> : isPicked ? <Dot tone="info">{PB.preselected}</Dot> : !picked && p.id === fit && !sub ? <Dot tone="info">{t("own.bill.fit")}</Dot> : null}
                 </div>
                 <p className="text-[28px] font-semibold leading-8 tracking-[-0.01em] tabular-nums text-fg">
                   {fy ? (
@@ -233,7 +239,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
                 </ul>
                 <div className="mt-auto flex flex-col gap-3 pt-2">
                   {p.id === "free" || p.current || sub ? null : (
-                    <Button loading={act.busy} variant={isPicked || (!picked && p.id === "plus") ? "primary" : "secondary"} onClick={() => checkout(p.id as PaidPlanId)}>
+                    <Button loading={act.busy} variant={isPicked || (!picked && p.id === fit) ? "primary" : "secondary"} onClick={() => checkout(p.id as PaidPlanId)}>
                       {`Subscribe to ${p.name}`}
                     </Button>
                   )}
@@ -246,7 +252,19 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       <p className="text-meta text-fg-muted">{copy.soon.pricingPromise}</p>
 
       {/* A nail tech, a barber or a groomer never needs the restaurant ladder: it is only noise between their plans and the FAQ. */}
-      {restaurantFirst || APPOINTMENT_VERTICALS.includes(detail.merchant.vertical) ? null : restaurant}
+      {/* Wave P: for a café or a shop that only might sell food online, the restaurant ladder folds away behind one line. */}
+      {restaurantFirst || APPOINTMENT_VERTICALS.includes(detail.merchant.vertical) ? null : (
+        <details className="group rounded-card bg-card shadow-card" open={!!subscribe?.startsWith("restaurant-") || undefined} data-testid="restaurant-plans">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
+            <span>
+              <span className="block text-body-strong text-fg">{t("own.bill.foodTitle")}</span>
+              <span className="block text-meta text-fg-muted">{t("own.bill.foodBody")}</span>
+            </span>
+            <ChevronDown aria-hidden className="size-5 shrink-0 text-fg-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="border-t border-line p-5">{restaurant}</div>
+        </details>
+      )}
 
       {enabled("payments.in_app") ? (
         <Section title="Payments in the app">

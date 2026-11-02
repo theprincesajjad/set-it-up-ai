@@ -195,6 +195,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
           nearby={nearby}
           footer={headline.kind === "ready" && wallet.items.length > 1 ? `${headline.value} ${locale === "en" ? headline.label : t("sh.wallet.heroReady", { n: headline.value })} · ${locale === "en" ? headline.context : t("sh.wallet.heroAcross", { n: wallet.items.length })}` : null}
           onChanged={async () => { await refreshWallet(); if (hero) await loadDetails([hero.id]); }}
+          onOpenShop={(id) => { if (id) { setOpenShop(id); if (!details[id]) void loadDetails([id]); } selectTab("shops"); }}
         />
       ) : null}
       {tab === "shops" ? (
@@ -209,7 +210,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
 }
 
 /** The pass itself (frame 15:184): the featured shop with its ring, my QR and wallet buttons, that shop's rewards and recent visits. */
-function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, extras, nearby, footer, onChanged }: { nearby: networkApi.ShopListItemDto[]; hero: customerApi.MembershipDto | null; wallet: customerApi.WalletResponse; details: Details; loading: boolean; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; nextVisit?: React.ReactNode; extras?: React.ReactNode; footer: string | null; onChanged: () => Promise<void> }) {
+function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, extras, nearby, footer, onChanged, onOpenShop }: { onOpenShop: (id?: string) => void; nearby: networkApi.ShopListItemDto[]; hero: customerApi.MembershipDto | null; wallet: customerApi.WalletResponse; details: Details; loading: boolean; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; nextVisit?: React.ReactNode; extras?: React.ReactNode; footer: string | null; onChanged: () => Promise<void> }) {
   const { t, locale, date } = useLocaleOrEnglish();
   const d = hero ? details[hero.id] : undefined;
   const visits = useMemo(() => (hero && d ? hideQuickUndos(d.history.items.map((tx) => ({ tx, m: hero }))).slice(0, 3) : []), [hero, d]);
@@ -218,6 +219,7 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
       {nextVisit}
       {hero ? <ShopPassHero m={hero} line={progressLine(hero, t, locale)} footer={footer} /> : null}
       {hero ? <PassActions card={card} profile={profile} /> : null}
+      {hero && wallet.items.length > 1 ? <OtherCards items={wallet.items.filter((m) => m.id !== hero.id)} onOpen={onOpenShop} /> : null}
       <NearbyOnStreet shops={nearby} />
       {!hero ? (
         <EmptyState icon={Store} media={<CardFan />} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button variant="secondary" href="/map">{t("sh.wallet.empty")}</Button>} />
@@ -244,9 +246,44 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
           ) : null}
         </>
       )}
-      <MemberCardBlock card={card} profile={profile} />
+      <MemberCardBlock card={card} profile={profile} walletButtons={!hero} />
       {extras}
     </>
+  );
+}
+
+/**
+ * wave-p: the customer's other cards, right under the featured one (like a wallet's stack): rewards ready first, three at most,
+ * then "See all". Before this, a seven-card customer saw one card and a line of grey text.
+ */
+function OtherCards({ items, onOpen }: { items: customerApi.MembershipDto[]; onOpen: (id?: string) => void }) {
+  const { t, locale } = useLocaleOrEnglish();
+  const sorted = [...items].sort((a, b) => b.rewardsAvailableCount - a.rewardsAvailableCount);
+  const shown = sorted.slice(0, 3);
+  return (
+    <PassPanel title={t("cust.me.otherCards", { n: items.length })}>
+      {shown.map((m) => {
+        const ready = m.rewardsAvailableCount > 0;
+        return (
+          <li key={m.id} {...shopColorProps(m.merchant)} className="-mx-4">
+            <button type="button" onClick={() => onOpen(m.id)} className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-start transition-colors hover:bg-hover focus-visible:focus-ring">
+              <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={40} tone="trade" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-body-strong text-foreground"><bdi>{m.merchant.name}</bdi></span>
+                <span className={cn("block truncate text-meta", ready ? "text-points-text" : "text-muted-foreground")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
+              </span>
+              <span className="shrink-0 text-body-strong tabular-nums text-foreground">{unitsText(locale, m.balance, m.terminology)}</span>
+              <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground rtl:rotate-180" strokeWidth={1.75} />
+            </button>
+          </li>
+        );
+      })}
+      {items.length > shown.length ? (
+        <li className="-mx-4">
+          <button type="button" onClick={() => onOpen()} className="flex min-h-12 w-full items-center px-4 text-start text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring">{t("cust.me.seeAllCards", { n: items.length + 1 })}</button>
+        </li>
+      ) : null}
+    </PassPanel>
   );
 }
 

@@ -23,6 +23,9 @@ async function call<T>(method: string, path: string, body?: unknown, token?: str
 
 /** The card's black button, and the step the URL is on. */
 const primary = (page: Page) => page.locator("[data-step-card] footer").locator("button, a").last();
+/** The signup flow's step and its primary button (e2e/signup-flow.ts). */
+const flowStep = (page: Page, step: string) => expect(page.locator(`[data-step=${step}]`)).toBeVisible({ timeout: 30_000 });
+const flowNext = (page: Page) => page.locator("[data-flow-footer] button[type=submit]").click();
 const onStep = (page: Page, step: string) => page.waitForURL(new RegExp(`/setup\\?step=${step}`), { timeout: 20_000 });
 
 for (const run of [
@@ -47,17 +50,31 @@ for (const run of [
     await page.goto(`${href.pathname}${href.search}`);
     if (run.lang === "ur") await expect(page.locator('[dir="rtl"]').first()).toBeAttached();
 
-    // Signup: one screen. A nail tech works from home: a postal code, never a street.
-    await page.locator("[data-vertical=nails]").click();
+    // Signup, one question per screen (wave P). The link carried the trade, so "What kind of shop?" is answered already.
+    await flowStep(page, "link");
+    await page.locator("[data-flow-secondary]").click();
+    await flowStep(page, "shop");
+    await page.locator("input[name=shopName]").fill(`Nails by Mo ${rand()}`);
+    await flowNext(page);
+    await flowStep(page, "kind");
+    await expect(page.locator("[data-vertical=nails]").first()).toHaveAttribute("aria-checked", "true");
+    await flowNext(page);
+    // A nail tech works from home: a postal code, never a street.
+    await flowStep(page, "where");
     await expect(page.locator('[role=radio][data-value="home"]')).toHaveAttribute("aria-checked", "true");
     await expect(page.locator("input[name=street]")).toHaveCount(0);
-    await page.locator("input[name=shopName]").fill(`Nails by Mo ${rand()}`);
-    await page.locator("input[type=tel]").first().fill(digits());
     await page.locator("input[name=postal]").fill("M6R 2K1");
+    await flowNext(page);
+    await flowStep(page, "card");
+    await flowNext(page);
+    await flowStep(page, "account");
+    await page.locator("input[type=tel]").first().fill(digits());
     await page.locator("input[name=email]").fill(email);
     await page.locator("input[name=password]").fill(password);
     await page.screenshot({ path: shot(`01-signup-${tag}`), fullPage: true });
-    await page.locator("form button[type=submit]").last().click();
+    await flowNext(page);
+    await flowStep(page, "live");
+    await page.locator("[data-live-primary]").click();
 
     // Card 1: the link, prefilled from the studio name.
     await onStep(page, "your_link");

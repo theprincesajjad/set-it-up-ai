@@ -1,5 +1,5 @@
 "use client";
-import { Check } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { FEATURES, PLANS, featureOffer, type FeatureKey } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
@@ -7,6 +7,9 @@ import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
+import { useApi } from "@/lib/dashboard/useApi";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { PageHeader } from "./kit";
 import { useMerchant } from "./MerchantContext";
 import { SubscribeButton } from "./SubscribeButton";
 
@@ -111,8 +114,14 @@ export function NotifyLink({ keys, className }: { keys: FeatureKey[]; className?
 export function FeatureTeaser({ featureKey, title, description }: { featureKey: FeatureKey; title?: string; description?: string }) {
   const { feature, role, api, refresh, base, detail } = useMerchant();
   const toast = useToast();
+  const { t } = useLocaleOrEnglish();
   const shops = useNetworkShops();
   const f = feature(featureKey);
+  const wantsTrial = role === "owner" && !!f && !f.enabled && detail.merchant.plan === "free" && featureOffer(featureKey).kind === "plan";
+  const overview = useApi(wantsTrial ? () => api.billing.overview() : null, [api, wantsTrial]);
+  const [trialBusy, setTrialBusy] = useState(false);
+  const ov = overview.data;
+  const trialOpen = !!ov && ov.plan === "free" && !ov.restaurantTier && !ov.subscription && !!ov.usage && !ov.usage.trialUsed;
   const def = FEATURES[featureKey];
   if (!f || f.enabled) return null;
   const offer = featureOffer(featureKey);
@@ -135,41 +144,80 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
             : offer.kind === "plan" || offer.kind === "restaurant"
             ? `On ${offer.name} · $${offer.priceCents / 100} a month`
             : "Not on your plan";
+  /** "Try Pro free for 14 days": only while a Free shop has never had its trial (read from the billing overview). */
+  const trialButton = trialOpen ? (
+    <Button
+      size="sm"
+      loading={trialBusy}
+      data-testid="teaser-trial"
+      onClick={async () => {
+        setTrialBusy(true);
+        try {
+          await api.billing.startTrial();
+          await refresh();
+        } catch (e) {
+          toast({ message: errorMessage(e), tone: "error" });
+        } finally {
+          setTrialBusy(false);
+        }
+      }}
+    >
+      {t("trial.banner.start")}
+    </Button>
+  ) : null;
+  const planOffer = !wrongTrade && state === "plan" && (offer.kind === "plan" || offer.kind === "restaurant") ? offer : null;
+  const blurb = planOffer?.kind === "plan" ? PLANS[planOffer.plan].blurb : null;
   return (
-    // Same top and order as every page header (title, one line, then the state) — polish-audit D15.
-    <div className="max-w-[560px]">
-      <h1 className="text-title font-semibold text-foreground">{title ?? f.name}</h1>
-      <p className="mt-1 text-body text-muted-foreground">{description ?? TEASER_COPY[featureKey] ?? f.description}</p>
-      <p className="mt-3 text-meta text-muted-foreground">{status}</p>
-      <div className="mt-5 flex flex-wrap items-center gap-4">
-        {!wrongTrade && state === "hidden" ? <NotifyLink keys={[featureKey]} /> : null}
-        {!wrongTrade && state === "plan" && (offer.kind === "plan" || offer.kind === "restaurant") ? (role === "owner" ? <SubscribeButton offer={offer} /> : <span className="text-meta text-muted-foreground">Ask the shop owner to subscribe.</span>) : null}
-        {state === "beta" && role === "owner" ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={async () => {
-              try {
-                await api.setBeta(true);
-                await refresh();
-                toast({ message: "You have early access. New tools show up in your menu.", tone: "success" });
-              } catch (e) {
-                toast({ message: errorMessage(e), tone: "error" });
-              }
-            }}
-          >
-            Try it early
-          </Button>
-        ) : null}
-        {role === "owner" ? (
-          <a href={offer.kind === "plan" ? `${base}/billing?plan=${offer.plan}` : `${base}/billing`} className="text-meta text-muted-foreground hover:text-foreground">
-            See plans
-          </a>
-        ) : null}
-        <a href={base} className="text-meta text-muted-foreground hover:text-foreground">
-          Back to home
-        </a>
-      </div>
+    // Wave P: the same page header as every other page (h1 at page size), then one white card that says what the plan adds and what
+    // to tap: the free trial first when the shop can still have one, then Subscribe, then See plans. Never a bare line of links.
+    <div className="flex max-w-[680px] flex-col gap-6" data-testid="feature-teaser">
+      <PageHeader flush title={title ?? f.name} description={description ?? TEASER_COPY[featureKey] ?? f.description} />
+      <section className="flex flex-col gap-4 rounded-card bg-card p-5 shadow-card sm:p-6">
+        <div className="flex items-start gap-3">
+          <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-tile bg-trade-soft text-trade">
+            <Lock className="size-[18px]" strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-body-strong text-fg">{status}</p>
+            {blurb ? <p className="mt-1 text-meta text-fg-muted">{blurb}</p> : null}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {!wrongTrade && state === "hidden" ? <NotifyLink keys={[featureKey]} /> : null}
+          {planOffer ? (
+            role === "owner" ? (
+              <>
+                {planOffer.kind === "plan" && planOffer.plan === "plus" ? trialButton : null}
+                <SubscribeButton offer={planOffer} variant={planOffer.kind === "plan" && planOffer.plan === "plus" && trialOpen ? "secondary" : "primary"} />
+              </>
+            ) : (
+              <span className="text-meta text-muted-foreground">Ask the shop owner to subscribe.</span>
+            )
+          ) : null}
+          {state === "beta" && role === "owner" ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await api.setBeta(true);
+                  await refresh();
+                  toast({ message: "You have early access. New tools show up in your menu.", tone: "success" });
+                } catch (e) {
+                  toast({ message: errorMessage(e), tone: "error" });
+                }
+              }}
+            >
+              Try it early
+            </Button>
+          ) : null}
+          {role === "owner" ? (
+            <Button variant="ghost" size="sm" href={offer.kind === "plan" ? `${base}/billing?plan=${offer.plan}` : `${base}/billing`}>
+              See plans
+            </Button>
+          ) : null}
+        </div>
+      </section>
     </div>
   );
 }

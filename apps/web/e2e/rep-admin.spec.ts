@@ -86,6 +86,8 @@ test.describe("rep on a street day (phone)", () => {
     await page.getByLabel("Shop name").fill(name);
     await page.getByLabel("What kind of shop").selectOption("cafe");
     await page.getByLabel("Street address").fill("620 Danforth Ave");
+    // Wave P: the shop, then the owner (two steps).
+    await page.getByRole("button", { name: "Next", exact: true }).click();
     await page.getByLabel("Owner's mobile").fill(`416555${String(1000 + Math.floor(Math.random() * 8999))}`);
     await shot(page, "rep-signup");
     await page.getByRole("button", { name: "Create the shop" }).click();
@@ -114,7 +116,8 @@ test.describe("founder's console (desktop)", () => {
     await page.goto("/admin");
     await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
     await expect(page.getByText("Pace against the plan")).toBeVisible();
-    await expect(page.getByRole("term").filter({ hasText: "MRR" })).toBeVisible();
+    // Wave P: MRR is a top tile of the overview (no longer repeated in the launch plan's numbers).
+    await expect(page.getByRole("region", { name: "Overview" }).getByText("MRR", { exact: true })).toBeVisible();
     await expect(page.getByRole("term").filter({ hasText: "Fee revenue, 30 days" })).toBeVisible();
     const funnel = page.getByRole("table", { name: "Funnel by area" });
     await expect(funnel.getByRole("row", { name: /The Danforth/ })).toBeVisible();
@@ -198,9 +201,11 @@ test.describe("founder's console (desktop)", () => {
     expect((await write(8)).status).toBe(403);
   });
 
-  test("Today splits MRR into plans, restaurant tiers and add-ons", async ({ page }) => {
+  test("Plans and payments splits MRR into plans, restaurant tiers and add-ons", async ({ page }) => {
     await signIn(page, ADMIN);
-    await page.goto("/admin");
+    // Wave P: the split moved from Today to /admin/plans with the rest of the money.
+    await page.goto("/admin/plans");
+    await expect(page.getByRole("heading", { level: 1, name: "Plans and payments" })).toBeVisible();
     const split = page.getByTestId("mrr-split");
     await expect(split).toBeVisible();
     for (const label of ["Pro and Service", "Restaurant tiers", "WhatsApp packs", "Extra locations", "Other add-ons"]) await expect(split.getByText(label)).toBeVisible();

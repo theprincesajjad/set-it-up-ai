@@ -113,6 +113,7 @@ test("pharmacy: the booked screen shows the exact reminder text, with no service
   const times = page.getByRole("button", { name: /^\d{1,2}:\d\d [ap]\.m\.$/ });
   await expect(times.first()).toBeVisible();
   await times.first().click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click(); // wave-p: the time step only picks the time; details are the next step
   await page.getByRole("button", { name: /Sign in to book|Book/ }).first().click();
   await signInShopper(page);
   await expect(page.getByTestId("pharmacy-reminder")).toBeVisible({ timeout: 30_000 });

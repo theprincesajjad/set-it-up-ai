@@ -156,10 +156,12 @@ export const copy = {
     },
     hero: {
       title: ["Turn first visits", "into regulars."],
-      sub: "A free loyalty program with a digital stamp card, promos and weekly reports.",
+      sub: "A free loyalty program for cafés, salons, shops and studios: a digital stamp card, promos and weekly reports.",
+      /** The price under the buttons (wave P): loyalty free, Pro's price and its first-year price, the trial. Filled from PLANS. */
+      price: { free: "Loyalty is free forever.", pro: "{pro} is {monthly} a month, or", first: "first year.", trial: "{trial} days of {pro} free, no credit card." },
       primary: "Start free",
       secondary: "See how it works",
-      trust: ["Free forever", "No app for customers", "Set up in 5 minutes"],
+      trust: ["No app for customers", "Set up in 5 minutes", "No contract"],
       stageLabel: "The dashboard a shop owner sees, and the stamp card on a customer's iPhone",
       caption: "Sample data. Your own numbers fill in as you go.",
     },
@@ -311,7 +313,7 @@ export const copy = {
     },
     final: {
       title: "Start bringing customers back.",
-      sub: "Free forever for loyalty. Set up in about 5 minutes.",
+      sub: "Free forever for loyalty. Set up in about 5 minutes, from your phone.",
       cta: "Start free",
       pricing: "See pricing",
     },
@@ -448,6 +450,13 @@ export const copy = {
       { id: "bia", label: "I run a BIA", href: "/pricing?for=bia#bias" },
     ],
     freeBadge: "Every shop",
+    planTableSummary: "See everything in each plan",
+    othersLabel: "Pricing for restaurants, BIAs and shops",
+    others: [
+      { id: "shop", eyebrow: "Shops, salons and studios", title: "Free, or {from} a month for Pro", body: "Loyalty free forever. Pro and Studio when you want more.", cta: "See shop plans", href: "/pricing?for=shop#shops" },
+      { id: "restaurant", eyebrow: "Restaurants and sweet shops", title: "From {from} a month", body: "Commission-free ordering, tiffin, catering and banquets.", cta: "See restaurant plans", href: "/pricing?for=restaurant#restaurants" },
+      { id: "bia", eyebrow: "BIAs and neighbourhood groups", title: "From {from} a campaign", body: "Passport weeks and points weekends. Shops join free.", cta: "See BIA campaigns", href: "/pricing?for=bia#bias" },
+    ] as const,
     freeLead: "Your loyalty program and its reports. No subscription and no fee on loyalty.",
     freeLines: ["Points, visits or stamps", "Rewards and a welcome bonus", "Customer list and basic reports", "Map listing and wallet pass", "Unlimited staff and locations"],
     plusLine: "The waitlist that fills cancelled slots, automatic rebooking, review requests, add-ons, promos and your week every Sunday.",
@@ -1237,7 +1246,7 @@ export const copy = {
       { who: "Grocers and halal butchers", what: "Weekly flyer, counter pre-orders, qurbani, WhatsApp list orders.", price: "{studioMonthly}/mo" },
       { who: "Garages, tire shops and car washes", what: "Service reminders, tire season and storage, wash check-in.", price: "{monthly}/mo ({serviceMonthly} with estimates)" },
       { who: "Pharmacies", what: "Pharmacist appointments, no prices, no notes kept.", price: "Free" },
-      { who: "Restaurants, tiffin, caterers and banquet halls", what: "The restaurant plans below, {studio} included.", price: "{restaurantPrices}/mo" },
+      { who: "Restaurants, tiffin, caterers and banquet halls", what: "Their own plans, with {studio} included.", price: "{restaurantPrices}/mo" },
     ],
     faq: [
       { q: "Do you take a cut of my sales?", a: "Not on the loyalty program, and not on your own online orders on a paid plan. Deposits, invoices and tiffin billing carry {cut}. Card fees are Stripe's standard rate." },

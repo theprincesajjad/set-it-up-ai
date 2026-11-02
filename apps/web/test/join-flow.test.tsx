@@ -175,7 +175,7 @@ describe("<JoinFlow> (counter QR join)", () => {
 
   it("signed-in visitors start at name + consent", () => {
     render(<JoinFlow info={info} deps={makeDeps()} signedIn signedInName="Alex Chen" />);
-    expect(screen.getByRole("heading", { name: "Welcome back, Alex." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Hi Alex. One tap to join." /* wave-p: a signed-in visitor may never have been here */ })).toBeTruthy();
     expect(screen.queryByLabelText("Mobile number")).toBeNull();
   });
 });

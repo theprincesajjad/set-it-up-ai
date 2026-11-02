@@ -4,10 +4,11 @@
  * whom) · Next visit · Visits (12 months) · Stamps, with the segments Booked, Due for a visit, No-show twice, New this month, and a
  * staff filter. A chair renter who keeps their clients private gets their own clients, always (gap 8).
  */
-import { Search } from "lucide-react";
+import { Link2, Search, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { inboxApi } from "@ll/shared";
-import { Capsules } from "@/components/dashboard/kit";
+import { Capsules, EmptyState } from "@/components/dashboard/kit";
+import { useToast } from "@/components/ui/Toast";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { PLANS } from "@ll/shared"; // phase-pro: p3
 import { PlanLine } from "@/components/onboarding/PlanLine"; // phase-pro: p3
@@ -21,7 +22,8 @@ import { useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen: (memberId: string) => void }) {
-  const { api, role, base, enabled } = useMerchant();
+  const { api, role, base, enabled, detail } = useMerchant();
+  const toast = useToast();
   const { t, date } = useLocaleOrEnglish();
   const [segment, setSegment] = useState<inboxApi.ClientSegment>("all");
   const [staffId, setStaffId] = useState("");
@@ -44,17 +46,24 @@ export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen:
   const d = list.data;
   const rows = [...(d?.items ?? []), ...extra];
   const visit = (v: inboxApi.ClientRow["lastVisit"]) => (v ? `${date(v.at, { month: "short", day: "numeric" })} · ${v.services}${v.staffName ? ` · ${t("people.with", { name: v.staffName })}` : ""}` : "—");
+  // A brand-new book: no filters to play with yet, just how clients arrive.
+  const none = !!d && d.counts.all === 0 && !debounced && !staffId;
+  const filtered = segment !== "all" || !!debounced || !!staffId;
+  const copyBookingLink = async () => {
+    await navigator.clipboard?.writeText(`${window.location.origin}/shops/${detail.merchant.slug}/book`).catch(() => undefined);
+    toast({ message: t("people.linkCopied"), tone: "success" });
+  };
   const segs = (["all", "upcoming", "due", "no_show_twice", "new"] as const).map((s) => ({ value: s, label: t(`people.seg.${s}`), count: d?.counts[s] ?? null }));
 
   return (
     <div className="flex flex-col gap-4" data-testid="clients-list">
-      <div className="cust-tools flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      {none ? null : <div className="cust-tools flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <Capsules label={t("people.col.name")} options={segs} value={segment} onChange={setSegment} />
         <div className="flex flex-wrap items-end gap-2">
           <label className="relative block">
             <span className="sr-only">{t("inbox.search")}</span>
             <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("people.col.name")} className="h-11 w-56 rounded-r2 border border-input bg-card ps-9 pe-3 text-body text-fg outline-none focus-visible:focus-ring md:h-8" />
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("own.cust.search")} className="h-11 w-full min-w-56 sm:w-64 rounded-r2 border border-input bg-card ps-9 pe-3 text-body text-fg outline-none focus-visible:focus-ring md:h-8" />
           </label>
           {d?.staffLocked ? (
             <p className="text-meta text-fg-muted">{t("people.staffMine")}</p>
@@ -68,7 +77,7 @@ export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen:
             />
           ) : null}
         </div>
-      </div>
+      </div>}
 
       {/* phase-pro: p3 -- Free: who is due, and what Pro does about it */}
       {!enabled("service.rebooking") && (d?.counts.due ?? 0) > 0 ? (
@@ -78,7 +87,22 @@ export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen:
       ) : null}
       {list.error ? <p className="text-meta text-negative">{list.error}</p> : null}
       {!d && !list.error ? <div className="h-60 animate-pulse rounded-r4 bg-bg-subtle" aria-hidden /> : null}
-      {d && !rows.length ? <SurfaceCard padded><p className="text-meta text-fg-muted">{t("people.empty")}</p></SurfaceCard> : null}
+      {none ? (
+        <EmptyState
+          icon={Users}
+          title={t("own.cust.clientsEmptyTitle")}
+          description={t("own.cust.clientsEmptyBody")}
+          action={<Button size="sm" iconStart={Link2} onClick={copyBookingLink}>{t("own.cust.copyBookingLink")}</Button>}
+          secondaryAction={role !== "staff" ? <Button size="sm" variant="secondary" href={`${base}/customers/import`}>{t("own.cust.import")}</Button> : null}
+        />
+      ) : d && !rows.length ? (
+        <EmptyState
+          icon={Search}
+          title={t("people.empty")}
+          description={t("own.cust.noMatchBody")}
+          action={filtered ? <Button size="sm" variant="secondary" onClick={() => { setQ(""); setSegment("all"); setStaffId(""); }}>{t("own.cust.clear")}</Button> : null}
+        />
+      ) : null}
       {rows.length ? (
         <SurfaceCard className="overflow-hidden">
           <table className="w-full table-fixed text-start">
@@ -129,9 +153,9 @@ export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen:
           </table>
         </SurfaceCard>
       ) : null}
-      {d ? (
+      {d && rows.length ? (
         <div className="flex items-center justify-between text-meta text-fg-muted">
-          <span className="tabular">{`${formatNumber(rows.length)} / ${formatNumber(d.total)}`}</span>
+          <span className="tabular">{t("own.cust.showing", { shown: formatNumber(rows.length), total: formatNumber(d.total) })}</span>
           {cursor ? (
             <Button
               variant="secondary"

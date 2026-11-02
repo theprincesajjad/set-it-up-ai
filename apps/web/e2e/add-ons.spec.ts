@@ -84,6 +84,7 @@ test("a client books a gel manicure with nail art at 390: the step, the total an
   await expect(TIMES.first()).toBeVisible();
   await TIMES.first().click();
   await page.screenshot({ path: shot("time-390") });
+  await page.getByRole("button", { name: "Continue", exact: true }).click(); // wave-p: the time step only picks the time; details are the next step
 
   const posted = page.waitForRequest((r) => r.url().endsWith("/v1/me/appointments") && r.method() === "POST");
   const name = page.getByLabel("Your first name");

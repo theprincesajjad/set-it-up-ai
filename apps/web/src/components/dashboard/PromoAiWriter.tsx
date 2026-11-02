@@ -73,7 +73,7 @@ export function PromoAiWriter({ onDraft }: { onDraft: (apply: (cur: PromoDraft) 
           </p>
           <p className="mt-1 text-meta text-fg-muted">Pick a goal. Claude drafts the whole promo from your shop’s details: offer, dates, who it’s for and the notification.</p>
         </div>
-        <ChipGroup label="Goal">
+        <ChipGroup label="Goal" className="flex-wrap overflow-visible">
           {promosApi.PROMO_AI_GOALS.map((g) => (
             <Chip key={g} selected={goal === g} onClick={() => setGoal(g)}>
               {GOAL_LABEL[g]}

@@ -58,7 +58,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, c
 }
 
 /** Underline tabs for in-page views. */
-export function PageTabs<T extends string>({ items, value, onChange, label, className }: { items: { id: T; label: ReactNode; count?: number | null }[]; value: T; onChange: (v: T) => void; label: string; className?: string }) {
+export function PageTabs<T extends string>({ items, value, onChange, label, className, sideOnDesktop }: { items: { id: T; label: ReactNode; count?: number | null }[]; value: T; onChange: (v: T) => void; label: string; className?: string; /** Wave P: a settings-style list down the left from 1024px (Shopify/Square settings); a scrolling row on phones. */ sideOnDesktop?: boolean }) {
   const listRef = useRef<HTMLDivElement>(null);
   // On a phone the row scrolls sideways: a page opened on a later tab (?tab=wallet) shows that tab, not a cut-off "W".
   useEffect(() => {
@@ -71,7 +71,7 @@ export function PageTabs<T extends string>({ items, value, onChange, label, clas
     else if (r.right > l.right) list.scrollLeft += r.right - l.right + 16;
   }, [value]);
   return (
-    <div ref={listRef} role="tablist" aria-label={label} className={cn("kit-tabs flex gap-5 overflow-x-auto border-b border-line [scrollbar-width:none]", className)}>
+    <div ref={listRef} role="tablist" aria-label={label} data-side={sideOnDesktop ? "" : undefined} className={cn("kit-tabs flex gap-5 overflow-x-auto border-b border-line [scrollbar-width:none]", sideOnDesktop && "lg:sticky lg:top-24 lg:flex-col lg:gap-0.5 lg:self-start lg:overflow-visible lg:border-b-0", className)}>
       {items.map((t) => {
         const on = t.id === value;
         return (
@@ -81,7 +81,12 @@ export function PageTabs<T extends string>({ items, value, onChange, label, clas
             type="button"
             aria-selected={on}
             onClick={() => onChange(t.id)}
-            className={cn("kit-tab -mb-px inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-meta transition-colors focus-visible:focus-ring", on ? "border-primary font-semibold text-primary-text" : "border-transparent text-fg-muted hover:text-fg")}
+            className={cn(
+              "kit-tab -mb-px inline-flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-meta transition-colors focus-visible:focus-ring",
+              on ? "border-primary font-semibold text-primary-text" : "border-transparent text-fg-muted hover:text-fg",
+              sideOnDesktop && "lg:mb-0 lg:w-full lg:justify-start lg:rounded-input lg:border-b-0 lg:px-3 lg:text-body",
+              sideOnDesktop && (on ? "lg:bg-card lg:shadow-card" : "lg:hover:bg-bg-subtle"),
+            )}
           >
             {t.label}
             {t.count != null ? <span className="tabular text-fg-muted">{t.count}</span> : null}

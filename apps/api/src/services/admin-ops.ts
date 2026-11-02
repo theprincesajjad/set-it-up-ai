@@ -264,14 +264,20 @@ export async function adminCosts(ctx: AppContext): Promise<adminApi.AdminCosts> 
   const since = new Date(ctx.now().getTime() - 30 * DAY);
   const [all, subs, fees] = await Promise.all([ctx.db.select().from(merchants).where(ne(merchants.status, "closed")), liveSubscriptions(ctx.db), feesSince(ctx.db, since)]);
   const subBy = new Map<string, number>();
-  for (const { s, founding } of subs) subBy.set(s.merchantId, (subBy.get(s.merchantId) ?? 0) + subscriptionMrrCents(s, founding));
+  // The plan a shop pays for (a restaurant tier reads as "restaurant"), not merchants.plan, which stays "free" for restaurant tiers.
+  const paidPlanBy = new Map<string, adminApi.ShopCostRow["plan"]>();
+  for (const { s, founding } of subs) {
+    const mrr = subscriptionMrrCents(s, founding);
+    subBy.set(s.merchantId, (subBy.get(s.merchantId) ?? 0) + mrr);
+    if (mrr > 0 && !paidPlanBy.has(s.merchantId)) paidPlanBy.set(s.merchantId, s.restaurantTier ? "restaurant" : (s.plan as adminApi.ShopCostRow["plan"]));
+  }
   const addOnBy = await addOnMrrByMerchant(ctx.db, subs);
   const shops: adminApi.ShopCostRow[] = all
     .map((m) => {
       const c = shopCost(m);
       const sub = (subBy.get(m.id) ?? 0) + (addOnBy.get(m.id)?.totalCents ?? 0);
       const fee = fees.get(m.id)?.fee ?? 0;
-      return { merchantId: m.id, name: m.name, plan: m.plan, smsCredits: m.smsCreditsUsed, whatsappMessages: m.whatsappCreditsUsed, messagingCents: c.messagingCents, infraCents: c.infraCents, costCents: c.totalCents, subscriptionCents: sub, feeCents30d: fee, marginCents: sub + fee - c.totalCents };
+      return { merchantId: m.id, name: m.name, plan: paidPlanBy.get(m.id) ?? m.plan, smsCredits: m.smsCreditsUsed, whatsappMessages: m.whatsappCreditsUsed, messagingCents: c.messagingCents, infraCents: c.infraCents, costCents: c.totalCents, subscriptionCents: sub, feeCents30d: fee, marginCents: sub + fee - c.totalCents };
     })
     .sort((a, b) => b.costCents - a.costCents || a.name.localeCompare(b.name));
   const sum = (f: (r: adminApi.ShopCostRow) => number) => shops.reduce((a, r) => a + f(r), 0);

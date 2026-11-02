@@ -150,12 +150,16 @@ test.describe("website chat and the founder's console", () => {
 
   test("the assistant's sign-up link opens the form pre-filled, and only with safe values", async ({ page }) => {
     await page.goto("/signup?ref=assistant&shop=Nawab%20Biryani%20House&vertical=restaurant&phone=%2B16475550199");
+    // The stepped signup (wave P) opens on "Is this you?" with the name; the type and the mobile number are on later steps.
     await expect(page.getByLabel("Shop name")).toHaveValue("Nawab Biryani House");
-    await expect(page.getByRole("radio", { name: "Restaurant", exact: true })).toBeChecked();
-    await expect(page.getByLabel("Your mobile number")).toHaveValue(/647.*555.*0199/);
+    await page.locator("[data-flow-footer] button[type=submit]").click();
+    await expect(page.getByRole("radio", { name: "Restaurant", exact: true })).toHaveAttribute("aria-checked", "true");
+    expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem("ll_signup_v1") ?? "{}").phone)).toBe("6475550199");
     await page.goto("/signup?shop=%3Cscript%3Ealert(1)%3C%2Fscript%3E&vertical=weapons");
     await expect(page.getByLabel("Shop name")).toHaveValue("scriptalert(1)/script");
-    // No shop type is picked from an unsafe value. (The "Where do you work?" tiles always have one answer selected since phase solo.)
+    // No shop type is picked from an unsafe value, and the earlier link's type does not carry over.
+    await page.locator("[data-flow-footer] button[type=submit]").click();
+    await expect(page.locator("[data-step=kind]")).toBeVisible();
     await expect(page.locator("[data-vertical][aria-checked=true]")).toHaveCount(0);
     await expect(page.locator("[data-vertical]").first()).toBeVisible();
   });

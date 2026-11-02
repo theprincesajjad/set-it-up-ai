@@ -1,12 +1,13 @@
 "use client";
-import { Plus } from "lucide-react";
+import { Plus, Scissors } from "lucide-react";
 import { useState } from "react";
 import { RETENTION, SERVICE_STARTERS, type appointmentsApi } from "@ll/shared";
 import { AddOnsEditor } from "@/components/dashboard/calendar/AddOnsEditor"; // phase-pro: P5
 import { PolicyCard } from "@/components/dashboard/calendar/PolicyCard";
 import { ServiceEditor } from "@/components/dashboard/calendar/ServiceEditor";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { PageHeader, Segmented, Tag } from "@/components/dashboard/kit";
+import { EmptyState, PageHeader, Segmented, Tag } from "@/components/dashboard/kit";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -25,6 +26,7 @@ export default function ServicesPage() {
 
 function Services() {
   const { api, enabled, role, detail } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   // Pharmacist appointments (flu shot, vaccine, medication review): no price, no deposit, no points, no rebooking (docs/research/pharmacies-wellness.md).
   const pharmacy = detail.merchant.vertical === "pharmacy";
   const both = enabled("booking.appointments") && enabled("service.tickets");
@@ -71,7 +73,23 @@ function Services() {
           </>
         }
       />
-      <DataTable
+      {list.data && !list.data.items.length && !repair ? (
+        // Wave P: a first-run empty state with the fastest way in (the usual list for this kind of shop) as the primary.
+        <EmptyState
+          icon={Scissors}
+          title={t("own.svc.emptyTitle")}
+          description={t("own.svc.emptyBody")}
+          action={
+            manager && starters.length ? (
+              <Button size="sm" loading={act.busy} onClick={async () => { const r = await act.run(() => api.appointments.addStarterServices()); if (r) await list.reload(); }}>
+                Add the usual {detail.merchant.vertical === "pet" ? "groomer services, priced by dog size" : "services"}
+              </Button>
+            ) : manager ? <Button size="sm" iconStart={Plus} onClick={() => setEdit("new")}>{pharmacy ? "Add appointment type" : "Add a service"}</Button> : null
+          }
+          secondaryAction={manager && starters.length ? <Button size="sm" variant="secondary" onClick={() => setEdit("new")}>{t("own.svc.addOwn")}</Button> : null}
+        />
+      ) : (
+        <DataTable
         caption={repair ? "Price list" : "Services"}
         columns={columns}
         rows={list.data?.items ?? []}
@@ -91,6 +109,7 @@ function Services() {
           </span>
         }
       />
+      )}
       {!repair && !pharmacy && enabled("booking.appointments") ? <AddOnsEditor services={list.data?.items ?? []} manager={manager} /> /* phase-pro: P5 */ : null}
       {!repair && !pharmacy && enabled("booking.appointments") && manager ? <PolicyCard /> : null}
       {pharmacy ? (

@@ -1,11 +1,12 @@
 /**
- * Wave O, team import: signup with a website. The owner pastes their site (a local fixture served by the e2e stack, never the
- * internet), sees the progress state and the review card (every value with its source), confirms, finishes the form and lands
+ * Wave O, team import, on the stepped signup (wave P): the owner pastes their site (a local fixture served by the e2e stack, never the
+ * internet), sees "Reading …", confirms "Is this you?" (every value with its source), walks the prefilled steps and lands
  * in the dashboard; the dashboard and the shop's pass page then show the imported name, logo and colour. Also the Instagram path
  * and Settings, "Refresh from my website". Screenshots go to $E2E_SHOTS (default e2e/screenshots/site-import).
  */
 import { expect, test, type Page } from "@playwright/test";
 import { API } from "./fixtures";
+import { atStep, cont } from "./signup-flow";
 
 const SHOTS = process.env.E2E_SHOTS ?? "e2e/screenshots/site-import";
 const shot = (name: string) => `${SHOTS}/${name}.png`;
@@ -17,54 +18,64 @@ test.setTimeout(180_000);
 
 async function importAndReview(page: Page, url: string) {
   await page.goto("/signup");
-  await expect(page.getByRole("heading", { name: "Have a website or Instagram?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Do you have a website or Instagram?" })).toBeVisible();
   await page.getByRole("textbox", { name: "Website or Instagram" }).fill(url);
   await page.getByRole("button", { name: "Fill it in for me" }).click();
-  await expect(page.getByRole("heading", { name: "Here's what we found" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Is this you?" })).toBeVisible({ timeout: 30_000 });
 }
 
 test.describe("signup with a website, at 390", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("URL → review → confirm → dashboard and pass show the imported name, logo and colour", async ({ page }) => {
+  test("URL → reading → Is this you? → the rest of the steps prefilled → dashboard and pass show the imported name, logo and colour", async ({ page }) => {
     await page.goto("/signup");
-    await expect(page.getByRole("heading", { name: "Have a website or Instagram?" })).toBeVisible();
-    // The form is still there for anyone who would rather type (existing flow unchanged).
-    await expect(page.getByLabel("Shop name")).toBeVisible();
+    // Step 1 of the stepped signup (wave P): one question, nothing else on screen.
+    await expect(page.getByRole("heading", { name: "Do you have a website or Instagram?" })).toBeVisible();
+    await expect(page.getByLabel("Shop name")).toHaveCount(0);
     await page.screenshot({ path: shot("01-step1-390"), fullPage: true });
 
     await page.getByRole("textbox", { name: "Website or Instagram" }).fill(SITE);
     await page.getByRole("button", { name: "Fill it in for me" }).click();
-    await expect(page.getByRole("heading", { name: "Here's what we found" })).toBeVisible({ timeout: 30_000 });
-    // While reviewing, the signup form waits underneath.
-    await expect(page.getByLabel("Shop name")).toBeHidden();
+    // The read: "Reading studio-verde.test…" with ticks landing one by one.
+    await expect(page.getByRole("heading", { name: /^Reading studio-verde\.test/ })).toBeVisible();
+    await expect(page.locator("[data-import-progress] [data-read-item]")).toHaveCount(4);
+    await expect(page.getByRole("heading", { name: "Is this you?" })).toBeVisible({ timeout: 30_000 });
+    await expect(page).toHaveURL(/step=shop/);
     const review = page.locator("[data-import-review]");
-    await expect(review.locator("[data-import-row=name]")).toContainText("Studio Verde Hair & Colour");
+    await expect(page.getByLabel("Shop name")).toHaveValue("Studio Verde Hair & Colour");
     await expect(review.locator("[data-import-row=name]")).toContainText("From your site's business details");
     await expect(review.locator("[data-import-row=phone]")).toContainText("(647) 555-0188");
     await expect(review.locator("[data-import-row=brandColor]")).toContainText("#0F6E66");
-    await expect(review.locator("[data-import-row=brandColor]")).toContainText("From your site's theme colour");
     await expect(review.locator("[data-import-row=logo] img")).toBeVisible();
     await expect(review.locator("[data-import-row=hours]")).toBeVisible();
     await expect(review.locator("[data-import-row=services]")).toContainText("Balayage");
+    // The card preview already wears the site's colour and name.
+    await expect(page.locator("[data-card-preview]").first()).toContainText("Studio Verde Hair & Colour");
     await page.screenshot({ path: shot("02-review-390"), fullPage: true });
 
-    // Edit one value, take one suggested service, confirm.
-    await review.locator("[data-import-row=name]").getByRole("button", { name: /^Edit/ }).click();
-    await review.locator("[data-import-row=name]").getByRole("textbox").fill(`Studio Verde ${rand()}`);
-    const name = await review.locator("[data-import-row=name]").getByRole("textbox").inputValue();
+    // Edit the name, take one suggested service, confirm.
+    const name = `Studio Verde ${rand()}`;
+    await page.getByLabel("Shop name").fill(name);
     await review.locator("[data-import-row=services]").getByText("Balayage").click();
-    await page.getByRole("button", { name: "Use these details" }).click();
+    await page.getByRole("button", { name: "Yes, that's me" }).click();
 
-    await expect(page.locator("[data-import-done]")).toContainText("Filled in from studio-verde.test");
-    await expect(page.getByLabel("Shop name")).toHaveValue(name);
-    await expect(page.getByRole("radio", { name: "Salon", exact: true })).toHaveAttribute("aria-checked", "true");
+    // The type is the site's guess, marked; the address and the phone wait on their own steps.
+    await expect(page.getByRole("radio", { name: /Salon/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator("[data-vertical=salon]").first()).toContainText("From your site");
+    await cont(page);
+    await atStep(page, "where");
     await expect(page.getByLabel("Street address")).toHaveValue("88 Ossington Ave, Toronto, ON M6J 2Y7");
+    await cont(page);
+    await atStep(page, "card");
+    await cont(page);
+    await atStep(page, "account");
     await expect(page.getByLabel(/Your mobile number/)).toHaveValue("(647) 555-0188");
     await page.getByLabel("Email").fill(`import-${rand()}@example.com`);
-    await page.getByLabel("Password").fill("site-import-e2e-1");
+    await page.getByLabel("Password", { exact: true }).fill("site-import-e2e-1");
     await page.screenshot({ path: shot("03-prefilled-390"), fullPage: true });
     await page.getByRole("button", { name: "Create my shop" }).click();
+    await atStep(page, "live");
+    await page.locator("[data-live-primary]").click();
 
     await page.waitForURL(/\/m\/[^/]+\//, { timeout: 60_000 });
     const id = new URL(page.url()).pathname.split("/")[2]!;
@@ -98,25 +109,30 @@ test.describe("signup with a website, at 390", () => {
     await page.screenshot({ path: shot("06-instagram-390"), fullPage: true });
   });
 
-  test("Skip, I'll type it: the plain form", async ({ page }) => {
+  test("Skip: a plain name question, and the website can still be added from there", async ({ page }) => {
     await page.goto("/signup");
-    await page.getByRole("button", { name: "Skip, I'll type it" }).click();
-    await expect(page.getByRole("heading", { name: "Have a website or Instagram?" })).toHaveCount(0);
+    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await expect(page.getByRole("heading", { name: "What's your shop called?" })).toBeVisible();
     await expect(page.getByLabel("Shop name")).toBeVisible();
+    await page.getByRole("button", { name: "Have a website? Fill it in for me" }).click();
+    await expect(page.getByRole("heading", { name: "Do you have a website or Instagram?" })).toBeVisible();
   });
 });
 
 test.describe("at 1440", () => {
   test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: false, deviceScaleFactor: 1 });
 
-  test("the review card on desktop, and in Urdu", async ({ page }) => {
+  test("Is this you? on desktop, and in Urdu", async ({ page }) => {
     await importAndReview(page, `http://priya-nails.test:${FIXTURE_PORT}/`);
     await expect(page.getByText(/left your street address out/)).toBeVisible();
+    // The split layout: the live card on the end side.
+    await expect(page.locator("[data-flow-aside] [data-card-preview]")).toBeVisible();
     await page.screenshot({ path: shot("07-review-1440"), fullPage: true });
+    await page.evaluate(() => sessionStorage.clear());
     await page.goto("/signup?lang=ur");
     await page.locator("input[name=siteImportUrl]").fill(`http://bloor-barbers.test:${FIXTURE_PORT}/`);
     await page.getByRole("button", { name: "میرے لیے بھر دیں" }).click();
-    await expect(page.getByRole("heading", { name: "ہمیں یہ ملا" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "کیا یہ آپ ہیں؟" })).toBeVisible({ timeout: 30_000 });
     await page.screenshot({ path: shot("08-review-ur-1440"), fullPage: true });
   });
 

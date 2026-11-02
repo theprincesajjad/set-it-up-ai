@@ -81,7 +81,7 @@ export default function ExperimentPage() {
                       </Button>
                     ) : null}
                     {r.status !== "ended" ? (
-                      <Button variant="danger" onClick={() => setEnding(true)}>
+                      <Button variant="ghost" onClick={() => setEnding(true)}>
                         End experiment
                       </Button>
                     ) : null}

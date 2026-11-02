@@ -1,6 +1,6 @@
 "use client";
-import { PageHeader, Panel } from "@/components/dashboard/kit";
-import { Check } from "lucide-react";
+import { Meter, PageHeader, Panel, QuietLink } from "@/components/dashboard/kit";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { VERTICALS, type Vertical, type merchantApi } from "@ll/shared";
@@ -34,9 +34,23 @@ function Signup() {
   const [f, setF] = useState({ name: "", vertical: "" as Vertical | "", address: "", ownerName: "", neighbourhoodId: "" });
   const [phone, setPhone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+  // Today's street-day area: a scouting area is not in the public list yet, but the rep is signing shops on it.
+  const [today, setToday] = useState<{ id: string; name: string } | null>(null);
+  const areaOptions = [...(today && !(hoods ?? []).some((h) => h.id === today.id) ? [{ value: today.id, label: `${today.name} (today's street day)` }] : []), ...(hoods ?? []).map((h) => ({ value: h.id, label: h.id === today?.id ? `${h.name} (today's street day)` : h.name }))];
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ detail: merchantApi.MerchantDetail; kit: merchantApi.QrKit | null; phone: string } | null>(null);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
+
+  // On a street day the shop is almost always on today's strip: start there.
+  useEffect(() => {
+    if (leadId) return;
+    void browserApi.rep.today().then((t) => {
+      if (!t.streetDay?.isToday) return;
+      setToday({ id: t.streetDay.areaId, name: t.streetDay.areaName });
+      setF((x) => ({ ...x, neighbourhoodId: x.neighbourhoodId || t.streetDay!.areaId }));
+    }).catch(() => undefined);
+  }, [leadId]);
 
   useEffect(() => {
     if (!leadId) return;
@@ -82,20 +96,49 @@ function Signup() {
     );
   }
 
+  const shopReady = f.name.trim().length >= 2 && !!f.vertical && f.address.trim().length >= 3;
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader title="Sign up a shop" description="Name, type, address and the owner's mobile. About two minutes." actions={<Button size="sm" variant="secondary" href={leadId ? `/rep/new?leadId=${leadId}` : "/rep/new"}>Full setup</Button>} />
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <PageHeader
+        title="Sign up a shop"
+        description={step === 1 ? "The shop first, then the owner's mobile. About two minutes." : `${f.name.trim()} · ${f.address.trim()}`}
+      />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between text-meta">
+          <span className="font-medium text-fg">Step {step} of 2: {step === 1 ? "The shop" : "The owner"}</span>
+          <QuietLink href={leadId ? `/rep/new?leadId=${leadId}` : "/rep/new"}>Full setup instead</QuietLink>
+        </div>
+        <Meter value={step} max={2} label={`Step ${step} of 2`} />
+      </div>
       <Panel>
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (ready && !busy) void create(); }}>
-          <TextField label="Shop name" value={f.name} onChange={(e) => set("name", e.target.value)} autoComplete="off" />
-          <Select label="What kind of shop" placeholder="Pick one" value={f.vertical} onChange={(e) => set("vertical", e.target.value)} options={VERTICALS.map((v) => ({ value: v, label: verticalLabel(v) }))} />
-          <TextField label="Street address" value={f.address} onChange={(e) => set("address", e.target.value)} autoComplete="off" />
-          <PhoneField label="Owner's mobile" defaultValue={phone?.replace(/^\+1/, "") ?? ""} key={phone ?? "none"} onChangeE164={setPhone} />
-          <TextField label="Owner's name" optionalLabel value={f.ownerName} onChange={(e) => set("ownerName", e.target.value)} />
-          <Select label="Neighbourhood" placeholder="Pick the strip" value={f.neighbourhoodId} onChange={(e) => set("neighbourhoodId", e.target.value)} options={(hoods ?? []).map((h) => ({ value: h.id, label: h.name }))} />
-          {error ? <Banner tone="danger">{error}</Banner> : null}
-          <Button type="submit" size="lg" loading={busy} disabled={!ready}>Create the shop</Button>
-        </form>
+        {step === 1 ? (
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (shopReady) setStep(2);
+            }}
+          >
+            <TextField label="Shop name" value={f.name} onChange={(e) => set("name", e.target.value)} autoComplete="off" />
+            <Select label="What kind of shop" placeholder="Pick one" value={f.vertical} onChange={(e) => set("vertical", e.target.value)} options={VERTICALS.map((v) => ({ value: v, label: verticalLabel(v) }))} />
+            <TextField label="Street address" value={f.address} onChange={(e) => set("address", e.target.value)} autoComplete="off" />
+            <Select label="Neighbourhood" hint="Optional. The strip the shop is on." placeholder="Pick the strip" value={f.neighbourhoodId} onChange={(e) => set("neighbourhoodId", e.target.value)} options={areaOptions} />
+            <Button type="submit" size="lg" disabled={!shopReady} iconEnd={ArrowRight}>
+              Next
+            </Button>
+            {!shopReady ? <p className="text-center text-meta text-fg-muted">Add the shop&apos;s name, kind and street address.</p> : null}
+          </form>
+        ) : (
+          <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (ready && !busy) void create(); }}>
+            <PhoneField autoFocus label="Owner's mobile" hint="We text the owner an invite to finish their details." defaultValue={phone?.replace(/^\+1/, "") ?? ""} key={phone ?? "none"} onChangeE164={setPhone} />
+            <TextField label="Owner's name" optionalLabel value={f.ownerName} onChange={(e) => set("ownerName", e.target.value)} />
+            {error ? <Banner tone="danger">{error}</Banner> : null}
+            <Button type="submit" size="lg" loading={busy} disabled={!ready}>Create the shop</Button>
+            <Button type="button" variant="ghost" iconStart={ArrowLeft} onClick={() => setStep(1)}>
+              Back to the shop
+            </Button>
+          </form>
+        )}
       </Panel>
     </div>
   );

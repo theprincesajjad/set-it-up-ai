@@ -6,7 +6,7 @@ import { StatusDot } from "./Badge";
 import { ShopLogo } from "./ShopTile";
 
 /** Show-to-save card with a live ticking clock so screenshots can't be reused (system.md §6). v2: white, hairline, no tint. */
-export function DiscountCard({ card, shop, memberName, live = true }: { card: { name: string; percentOff: number; amountOffCents: number; terms: string | null }; shop: { name: string; vertical: string; logoUrl?: string | null; brandColor?: string | null }; memberName?: string | null; live?: boolean }) {
+export function DiscountCard({ card, shop, memberName, live = true, note }: { card: { name: string; percentOff: number; amountOffCents: number; terms: string | null }; shop: { name: string; vertical: string; logoUrl?: string | null; brandColor?: string | null }; memberName?: string | null; live?: boolean; /** Replaces "Join to carry this card" (a customer who already has the card, wave-p). */ note?: string }) {
   const { t, locale, money } = useLocaleOrEnglish();
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
@@ -37,7 +37,7 @@ export function DiscountCard({ card, shop, memberName, live = true }: { card: { 
           <StatusDot tone="positive">{t("ui.validToday")}</StatusDot>
         </div>
       ) : (
-        <span className="text-meta text-fg-muted">{t("wp.ui.joinCarry")}</span>
+        <span className="text-meta text-fg-muted">{note ?? t("wp.ui.joinCarry")}</span>
       )}
     </div>
   );

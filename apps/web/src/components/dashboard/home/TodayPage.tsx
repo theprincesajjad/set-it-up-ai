@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { HoursCard, NumbersCard, NeedsYouCard, QuickActionsCard, UpNextCard } from "./TodayCards";
 import { StreetCard } from "./StreetCard";
 import { ThisWeekTile } from "./ThisWeekTile"; // phase-pro: p6
+import { SetupGuide, showSetupGuide } from "./SetupGuide";
 import { TrialCard } from "./TrialCard"; // phase-pro: p1
 import { useThemeStyle } from "@/components/ui/ThemeStyle";
 
@@ -167,6 +168,9 @@ export function TodayPage() {
     upLabel = pickups.length ? t("shell.today.upNextPickups") : t("shell.today.upNextSchedule");
     loading = (today.loading && !today.data) || (ordersOn && orders.loading && !orders.data);
   }
+  // Wave P: while the setup guide is up, its next step is not repeated as a Needs you row.
+  const guide = manager && showSetupGuide(onboarding.data);
+  if (guide) needs = needs.filter((r) => r.key !== "setup");
 
   useEffect(() => {
     if (!manager || loading) return;
@@ -266,6 +270,8 @@ export function TodayPage() {
         }
       />
 
+      {/* Wave P: a shop that has only just started sees its setup first, as a checklist with the next step open. */}
+      {manager && guide && ob ? <SetupGuide c={ob} base={base} booking={family === "appointments" || !!ob.solo} /> : null}
       {manager ? <TrialCard /> : null /* phase-pro: p1 */}
       {manager ? <ThisWeekTile /> : null /* phase-pro: p6 */}
 
@@ -311,7 +317,7 @@ export function TodayPage() {
       {manager ? (
         <>
           {m.vertical === "grocery" && hasGroceryFeature(set) ? <GroceryHome /> : null}
-          {ob && showActivation ? <ActivationCard c={ob} base={base} /> : null}
+          {ob && showActivation && !(guide && ob.solo && ob.path !== "storefront") ? <ActivationCard c={ob} base={base} /> : null /* wave P: for a solo pro the setup guide already covers the first-bookings steps */}
           <StreetCard />
           {ob ? <UpsellCard upsell={ob.upsell} base={base} activeLine={ob.activatedAt ? `Your regulars are on the card: ${ob.activeMembers} customers have visited` : undefined} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
           {upsellKeys.length === 3 ? (

@@ -92,6 +92,47 @@ for (const vp of [
   });
 }
 
+test.describe("Monday morning (wave P)", () => {
+  test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+
+  test("Today leads with who is slipping, who signed up and who paid; each row opens the business", async ({ page }) => {
+    await signIn(page, ADMIN);
+    await page.goto("/admin");
+    const overview = page.getByRole("region", { name: "Overview" });
+    await expect(page.getByRole("link", { name: /API (healthy|slow|errors)/ })).toBeVisible();
+    await expect(overview.getByRole("list", { name: "New signups" }).getByRole("link")).toHaveCount(6);
+    await expect(overview.getByRole("list", { name: "Started paying" }).getByRole("link").first()).toBeVisible();
+    const risk = overview.getByRole("list", { name: "Shops at risk" });
+    await expect(risk.getByRole("link", { name: /Kings Cuts/ })).toBeVisible();
+    await risk.getByRole("link", { name: /Kings Cuts/ }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Kings Cuts" })).toBeVisible();
+    await expect(page.getByText(/^At risk: payment failed/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open support tools" })).toBeVisible();
+  });
+
+  test("Health tiles filter the list; Plans and payments shows money and who needs a call", async ({ page }) => {
+    await signIn(page, ADMIN);
+    await page.goto("/admin/health");
+    await page.getByRole("link", { name: /Payment failed/ }).first().click();
+    await expect(page).toHaveURL(/flag=payment_failed/);
+    await expect(page.getByText(/Showing \d+ with “Payment failed”/)).toBeVisible();
+    await expect(page.locator("text=Kings Cuts >> visible=true").first()).toBeVisible();
+    await expect(page.locator("text=Tip Top Nails >> visible=true")).toHaveCount(0);
+
+    await page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Plans and payments" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Plans and payments" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Payments that need a call" })).toContainText("Kings Cuts");
+    await expect(page.getByRole("heading", { name: "MRR by plan" })).toBeVisible();
+    await page.getByRole("radio", { name: /In trial/ }).click();
+    await expect(page.locator("text=Tip Top Nails >> visible=true").first()).toBeVisible();
+    await shot(page, "plans-1440");
+
+    // The old shop list folds into Businesses.
+    await page.goto("/admin/merchants");
+    await expect(page).toHaveURL(/\/admin\/businesses$/);
+  });
+});
+
 test.describe("security", () => {
   test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
 

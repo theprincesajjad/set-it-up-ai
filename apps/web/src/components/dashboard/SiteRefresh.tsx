@@ -118,7 +118,7 @@ export function SiteRefresh({ onApplied }: { onApplied?: () => void }) {
           <div className="min-w-0 flex-1">
             <TextField label={t("imp.settings.label")} placeholder={t("imp.placeholder")} type="text" inputMode="url" autoCapitalize="none" spellCheck={false} dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={500} />
           </div>
-          <Button type="submit" variant="secondary" size="sm" loading={busy && !result}>
+          <Button type="submit" variant="secondary" size="md" className="shrink-0" loading={busy && !result}>
             {t("imp.settings.go")}
           </Button>
         </form>

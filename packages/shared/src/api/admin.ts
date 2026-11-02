@@ -344,7 +344,8 @@ export interface AdminOverview {
 export interface ShopCostRow {
   merchantId: string;
   name: string;
-  plan: PlanId;
+  /** The plan the shop pays for ("restaurant" for a restaurant tier), else its own plan. */
+  plan: PlanId | "restaurant";
   smsCredits: number;
   whatsappMessages: number;
   messagingCents: number;

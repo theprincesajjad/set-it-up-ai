@@ -63,11 +63,12 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
                 <Button size="lg" variant="secondary" href="#plans" className="rounded-full!">
                   {t("mkt.rest.ctaSave")}
                 </Button>
-                <Button size="lg" variant="secondary" href="#book" className="rounded-full!">
-                  {t("mkt.rest.ctaBook")}
-                </Button>
               </div>
-              {locale === "en" ? <p className="mt-5 max-w-[34rem] text-meta text-muted-foreground">0% commission on your own orders · add your menu yourself, or we type it in · 50% off your first year</p> : null}
+              {/* Wave P: two buttons, not three; the visit is a link under them, and the price is in the first line a person reads. */}
+              <a href="#book" className="mt-4 inline-flex min-h-11 items-center text-body-strong text-foreground underline decoration-input/60 underline-offset-4 hover:decoration-foreground">
+                {t("mkt.rest.ctaBook")}
+              </a>
+              {locale === "en" ? <p className="mt-3 max-w-[34rem] text-meta text-muted-foreground">From {moneyShort(RESTAURANT_PLANS.starter.priceCents)} a month, flat · 0% commission on your own orders · add your menu yourself, or we type it in · 50% off your first year</p> : null}
             </div>
             <PhoneStage arts={["eat", "bakery"]}>
               <RestaurantPhone />

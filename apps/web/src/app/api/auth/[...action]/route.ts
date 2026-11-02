@@ -6,6 +6,7 @@
  *   POST /api/auth/email-otp/verify  { email, code, name? }
  *   POST /api/auth/login             { email, password }
  *   POST /api/auth/register          { email, password, name }
+ *   POST /api/auth/password-reset    { email, code, password }
  *   POST /api/auth/logout
  *   GET  /api/auth/session           → { user | null }
  */

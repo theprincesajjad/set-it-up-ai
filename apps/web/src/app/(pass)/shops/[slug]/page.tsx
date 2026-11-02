@@ -305,7 +305,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
                   </ListGroup>
                 ) : null}
                 {shop.discountCards.map((c) => (
-                  <DiscountCard key={c.id} card={c} shop={m} live={false} />
+                  <DiscountCard key={c.id} card={c} shop={m} live={false} note={membership ? t("cust.shop.onCard") : undefined} />
                 ))}
               </>
             ),

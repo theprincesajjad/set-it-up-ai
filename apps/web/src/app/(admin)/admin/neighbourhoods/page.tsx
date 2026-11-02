@@ -38,10 +38,10 @@ export default function NeighbourhoodsPage() {
       <PageHeader title="Neighbourhoods and bonuses" description="The launch calendar (opening dates, street day, who walks it), BIA details and the bonuses the network pays for." actions={<Button size="sm" iconStart={Plus} onClick={() => setN(blankN())}>Add neighbourhood</Button>} />
       <ListAsync state={hoods} errorTitle="Couldn't load the neighbourhoods.">
         {(d) => (
-          <ul className="grid gap-px overflow-hidden rounded-card bg-card shadow-card md:grid-cols-2 xl:grid-cols-3 [&>li]:bg-bg md:[&>li]:shadow-[0_0_0_1px_var(--ll-color-line)]">
+          <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {d.items.map((h) => (
-              <li key={h.id}>
-                <div className="flex h-full flex-col gap-4 bg-bg p-5">
+              <li key={h.id} className="overflow-hidden rounded-card bg-card shadow-card">
+                <div className="flex h-full flex-col gap-4 p-5">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h2 className="text-body-strong text-fg">{h.name}</h2>
@@ -49,8 +49,8 @@ export default function NeighbourhoodsPage() {
                     </div>
                     <Dot tone={h.status === "live" ? "positive" : h.status === "pilot" ? "info" : "neutral"}>{h.status[0]!.toUpperCase() + h.status.slice(1)}</Dot>
                   </div>
-                  <DensityBar label="Shops live" value={h.merchants} target={h.storefrontEstimate ?? 40} unit="shops" />
-                  <p className="text-meta text-fg-muted">{formatNumber(h.activatedMerchants)} activated{h.biaContactName ? ` · BIA: ${h.biaContactName}` : ""}</p>
+                  <DensityBar label="Shops signed against the target" value={h.merchants} target={h.targetShops} unit="shops" />
+                  <p className="text-meta text-fg-muted">{formatNumber(h.activatedMerchants)} activated{h.storefrontEstimate ? ` · about ${formatNumber(h.storefrontEstimate)} storefronts` : ""}{h.biaContactName ? ` · BIA: ${h.biaContactName}` : ""}</p>
                   {h.opensOn || h.streetDayOn ? (
                     <p className="text-meta text-fg-muted">
                       {h.opensOn ? `Opens ${formatDate(`${h.opensOn}T12:00:00`, true)}` : null}{h.opensOn && h.streetDayOn ? " · " : null}

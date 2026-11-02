@@ -28,7 +28,7 @@ export const PLAN_MARKETING = {
 
 export const PLAN_COPY = {
   /** The line under each hero's buttons. */
-  priceLine: "Free to start, with {trial} days of {pro} included. No credit card.",
+  priceLine: "Free to start, with {trial} days of {pro} included. {pro} is {monthly} a month if you keep it. No credit card.",
   /** The trial as a button label. */
   trialCta: "Start free, with {trial} days of {pro}",
   /** Promo demo: how many promos a paid plan sends. */

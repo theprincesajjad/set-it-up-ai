@@ -1,8 +1,8 @@
 "use client";
-import { CalendarPlus, ChevronLeft } from "lucide-react";
+import { CalendarPlus, ChevronLeft, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
-import { BigNumber, Heading, Pill, ShopHead, useFmt } from "@/components/restaurant/ui";
+import { Heading, Pill, ShopHead, useFmt } from "@/components/restaurant/ui";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { ReminderCard } from "@/components/pass/ReminderCard";
 import { SetupBox } from "@/components/pass/SetupBox";
@@ -10,7 +10,8 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
-import { buildIcs, durationText, nextDays, timesOn } from "@/lib/booking";
+import { buildIcs, dayPart, DAY_PARTS, durationText, nextDays, timesOn } from "@/lib/booking";
+import { shopColorProps } from "@/lib/shopColor";
 import { cn } from "@/lib/cn";
 import { dayDate, todayIso } from "@/lib/restaurant/util";
 
@@ -114,31 +115,42 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
   return (
     <div className="flex flex-col gap-6">
       <ShopHead shop={m} href={`/shops/${encodeURIComponent(m.slug)}`} />
-      <div className="flex flex-col gap-2">
-        <Heading>{t("bk.manage.title")}</Heading>
-        <div className="flex flex-wrap items-center gap-2">
-          <Pill tone={appt.status === "booked" && !appt.pending ? "ink" : "neutral"}>{appt.status === "booked" && appt.pending ? (pay?.deposit ? t("bk.depositHold", { amount: money(pay.deposit.amountCents) }) : t("bk.card.title")) : t(`bk.status.${appt.status}` as "bk.status.booked")}</Pill>
-          <span className="text-body text-fg-muted">{when(appt.startsAt)}</span>
-        </div>
-      </div>
+      {/* wave-p: one ticket in the shop's colour: when (the thing people come here to check), what, with whom, where. */}
+      <Heading>{t("bk.manage.title")}</Heading>
       {note ? <Banner tone={note.tone}>{note.text}</Banner> : null}
-
-      <ul className="divide-y divide-line border-y border-line">
-        {appt.items.map((i, idx) => (
-          <li key={`${i.name}${idx}`} className="flex items-start justify-between gap-3 py-3">
+      <section aria-label={t("bk.manage.title")} data-testid="appt-ticket" {...(m.brandColor ? shopColorProps({ brandColor: m.brandColor, vertical: null }) : {})} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill tone={appt.status === "booked" && !appt.pending ? "ink" : "neutral"}>{appt.status === "booked" && appt.pending ? (pay?.deposit ? t("bk.depositHold", { amount: money(pay.deposit.amountCents) }) : t("bk.card.title")) : t(`bk.status.${appt.status}` as "bk.status.booked")}</Pill>
+          </div>
+          <p className={cn("text-[22px] font-semibold leading-7 text-fg", appt.status === "cancelled" && "text-fg-muted line-through")}>{date(appt.startsAt, { weekday: "long", month: "long", day: "numeric" })}</p>
+          <p className="text-body text-fg tabular-nums">{time(appt.startsAt)} – {time(appt.endsAt)}</p>
+        </div>
+        <ul className="divide-y divide-line border-t border-line">
+          {appt.items.map((i, idx) => (
+            <li key={`${i.name}${idx}`} className="flex items-start justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="text-body-strong text-fg">{i.name}</p>
+                <p className="text-meta text-fg-muted">{i.kind === "add_on" ? `${t("addon.sheet.tag")} · ` : "" /* phase-pro: P5 */}{durationText(t as never, i.durationMin)}{appt.staffName ? ` · ${appt.staffName}` : ""}{appt.petName ? ` · ${t("bk.next.for", { pet: appt.petName })}` : ""}</p>
+              </div>
+              {rx ? null : <p className="shrink-0 text-body tabular-nums text-fg">{money(i.priceCents)}</p>}
+            </li>
+          ))}
+          {rx || (appt.items.length < 2 && !appt.tax.applies) ? null : <li className="flex items-center justify-between py-3">
+            <span className="text-body-strong text-fg">{appt.tax.applies ? t("bk.totalLabel") : t("bk.totalPlain")}</span>
+            <span className="text-headline tabular-nums text-fg">{money(appt.totalCents)}</span>
+          </li>}
+        </ul>
+        {m.address ? (
+          <div className="flex items-start gap-3 border-t border-line pt-3">
+            <MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-fg" strokeWidth={1.5} />
             <div className="min-w-0">
-              <p className="text-body-strong text-fg">{i.name}</p>
-              <p className="text-meta text-fg-muted">{i.kind === "add_on" ? `${t("addon.sheet.tag")} · ` : "" /* phase-pro: P5 */}{durationText(t as never, i.durationMin)}{appt.staffName ? ` · ${appt.staffName}` : ""}{appt.petName ? ` · ${t("bk.next.for", { pet: appt.petName })}` : ""}</p>
+              <p className="text-body text-fg"><bdi>{m.address}</bdi></p>
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${m.name} ${m.address}`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-meta-strong text-fg underline underline-offset-2">{t("bk.next.directions")}</a>
             </div>
-            {rx ? null : <p className="shrink-0 text-body tabular-nums text-fg">{money(i.priceCents)}</p>}
-          </li>
-        ))}
-        {rx ? null : <li className="flex items-center justify-between py-3">
-          <span className="text-body-strong text-fg">{appt.tax.applies ? t("bk.totalLabel") : t("bk.totalPlain")}</span>
-          <BigNumber className="text-[28px]">{money(appt.totalCents)}</BigNumber>
-        </li>}
-      </ul>
-      {m.address ? <p className="text-meta text-fg-muted">{m.address}</p> : null}
+          </div>
+        ) : null}
+      </section>
       {live ? <ReminderCard text={appt.reminderText} /> : null}
 
       {/* A held booking (deposit or card not done yet) is not confirmed: say so and let the customer finish it from here, as at the end of the booking flow. */}
@@ -153,13 +165,16 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
         </section>
       ) : null}
 
-      {live ? (
+      {live && mode === "view" ? (
         <p className="rounded-card bg-bg-subtle p-4 text-body text-fg">{!inside ? t("bk.manage.cancelFree", { when: when(appt.freeChangeUntil).replace(/\.$/, "") }) : feeCents > 0 && appt.hasCardOnFile ? t("bk.manage.cancelFee", { fee: money(feeCents) }) : t("bk.manage.cancelLate")}</p>
       ) : null}
 
       {mode === "move" ? (
         <div className="flex flex-col gap-4">
-          <button type="button" onClick={() => setMode("view")} aria-label={t("bk.back")} className="inline-flex size-11 items-center justify-center rounded-full border border-line focus-visible:focus-ring"><ChevronLeft aria-hidden className="size-5 rtl:rotate-180" /></button>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setMode("view")} aria-label={t("bk.back")} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-line focus-visible:focus-ring"><ChevronLeft aria-hidden className="size-5 rtl:rotate-180" /></button>
+            <h2 className="text-headline text-fg">{t("cust.manage.pickNew")}</h2>
+          </div>
           <div role="group" aria-label={t("bk.time.title")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
             {days.map((d) => {
               const n = timesOn(av, d).length;
@@ -171,13 +186,23 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
               );
             })}
           </div>
-          <div className="flex flex-wrap gap-2" aria-live="polite">
+          <div className="flex flex-col gap-4" aria-live="polite">
             {!av ? <p className="text-meta text-fg-muted">{t("bk.time.loading")}</p> : null}
-            {timesOn(av, day).map((x) => (
-              <button key={x.startsAt} type="button" aria-pressed={slot === x.startsAt} onClick={() => setSlot(x.startsAt)} className={cn("h-11 min-w-[88px] rounded-input border px-4 tabular-nums focus-visible:focus-ring", slot === x.startsAt ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg")}>{time(x.startsAt)}</button>
-            ))}
+            {DAY_PARTS.map((part) => {
+              const items = timesOn(av, day).filter((x) => dayPart(x.startsAt) === part);
+              return items.length ? (
+                <div key={part} className="flex flex-col gap-2">
+                  <p className="text-caption uppercase tracking-[0.06em] text-fg-muted">{t(`cust.bk.part.${part}`)}</p>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {items.map((x) => (
+                      <button key={x.startsAt} type="button" aria-pressed={slot === x.startsAt} onClick={() => setSlot(x.startsAt)} className={cn("h-11 whitespace-nowrap rounded-input border px-1 tabular-nums focus-visible:focus-ring", slot === x.startsAt ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg")}>{time(x.startsAt)}</button>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })}
           </div>
-          <Button size="lg" fullWidth loading={busy} disabled={!slot} onClick={move}>{t("bk.manage.reschedule")}</Button>
+          <Button size="lg" variant="shop" fullWidth loading={busy} disabled={!slot} onClick={move}>{t("bk.manage.reschedule")}</Button>
         </div>
       ) : mode === "cancel" ? (
         <div className="flex flex-col gap-3">
@@ -187,7 +212,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {appt.status === "booked" ? <Button size="lg" fullWidth iconStart={CalendarPlus} onClick={download}>{t("bk.done.calendar")}</Button> : null}
+          {appt.status === "booked" ? <Button size="lg" variant="shop" fullWidth iconStart={CalendarPlus} onClick={download}>{t("bk.done.calendar")}</Button> : null}
           {live ? <Button size="lg" variant="secondary" fullWidth onClick={() => setMode("move")}>{t("bk.manage.reschedule")}</Button> : null}
           {live ? <Button size="lg" variant="ghost" fullWidth onClick={() => setMode("cancel")}>{t("bk.manage.cancel")}</Button> : null}
           <Button size="lg" variant="ghost" fullWidth href={`/shops/${encodeURIComponent(m.slug)}/book`}>{t("bk.done.another")}</Button>

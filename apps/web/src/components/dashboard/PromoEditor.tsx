@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { promosApi, type merchantApi } from "@ll/shared";
-import { FeatureTeaser } from "@/components/dashboard/FeatureTeaser";
 import { PromoAiWriter } from "@/components/dashboard/PromoAiWriter";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { DEAL_TILE, DealCard } from "@/components/pass/DealCard";
@@ -131,7 +130,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
         {aiNote ? <Banner tone="info">{aiNote}</Banner> : null}
 
         <Panel>
-          <fieldset disabled={locked}>
+          <fieldset disabled={locked} className="min-w-0">
             <legend className="text-body-strong text-fg">What kind of promo?</legend>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {promosApi.PROMO_TYPES.map((k) => {
@@ -143,7 +142,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                     disabled={needsBoost && !boosts}
                     aria-pressed={d.promoType === k}
                     onClick={() => setD((x) => applyType(x, k))}
-                    className={cn("flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-input border p-3 text-start text-label focus-visible:focus-ring disabled:opacity-50", d.promoType === k ? "border-brand bg-bg-subtle text-fg" : "border-line-strong text-fg hover:bg-bg-subtle")}
+                    className={cn("flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-input border p-3 text-start text-label focus-visible:focus-ring disabled:opacity-50", d.promoType === k ? "border-fg bg-bg-subtle text-fg shadow-[inset_0_0_0_1px_var(--ll-color-fg)]" : "border-line-strong text-fg hover:bg-bg-subtle")}
                     data-testid={`promo-type-${k}`}
                   >
                     {typeLabel(k, term)}
@@ -156,9 +155,9 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
         </Panel>
 
         <Panel>
-          <fieldset disabled={locked} className="flex flex-col gap-4">
+          <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
             <legend className="text-body-strong text-fg">What they get</legend>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
               {(Object.keys(KIND_INFO) as PromoKind[]).map((k) => {
                 const Icon = KIND_ICON[k];
                 const disabled = (k === "multiplier" || k === "bonus_points") && !boosts;
@@ -169,7 +168,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                     disabled={disabled}
                     aria-pressed={d.kind === k}
                     onClick={() => set("kind", k)}
-                    className={cn("flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-input border p-2 text-center text-label focus-visible:focus-ring disabled:opacity-50", d.kind === k ? "border-brand bg-bg-subtle text-fg" : "border-line-strong text-fg hover:bg-bg-subtle")}
+                    className={cn("flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-input border p-2 text-center text-label focus-visible:focus-ring disabled:opacity-50", d.kind === k ? "border-fg bg-bg-subtle text-fg shadow-[inset_0_0_0_1px_var(--ll-color-fg)]" : "border-line-strong text-fg hover:bg-bg-subtle")}
                   >
                     <Icon aria-hidden className="size-5" />
                     {k === "multiplier" ? `Multiply ${term}` : k === "bonus_points" ? `Extra ${term}` : KIND_INFO[k].label}
@@ -199,7 +198,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             {items.length ? (
               <div>
                 <p className="text-label text-fg">Which services or items (optional)</p>
-                <ChipGroup label="Eligible services or items" className="mt-2">
+                <ChipGroup label="Eligible services or items" className="mt-2 flex-wrap overflow-visible">
                   {items.map((it) => (
                     <Chip key={it.id} selected={d.itemIds.includes(it.id)} onClick={() => set("itemIds", d.itemIds.includes(it.id) ? d.itemIds.filter((x) => x !== it.id) : [...d.itemIds, it.id])}>
                       {it.name}
@@ -216,7 +215,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
         </Panel>
 
         <Panel>
-          <fieldset disabled={locked} className="flex flex-col gap-4">
+          <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
             <legend className="text-body-strong text-fg">The words</legend>
             <TextField label="Title" value={d.title} onChange={(e) => set("title", e.target.value)} maxLength={60} showCount error={errors.title} placeholder={`Double ${term} on slow afternoons`} />
             <TextField type="textarea" label="Description" optionalLabel value={d.body} onChange={(e) => set("body", e.target.value)} maxLength={280} showCount error={errors.body} />
@@ -235,7 +234,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
         </Panel>
 
         <Panel>
-          <fieldset disabled={locked} className="flex flex-col gap-4">
+          <fieldset disabled={locked} className="flex min-w-0 flex-col gap-4">
             <legend className="text-body-strong text-fg">Who it’s for and how they hear</legend>
             <Select label="Who it's for" value={d.segment} onChange={(e) => set("segment", e.target.value as PromoDraft["segment"])} options={promosApi.PROMO_SEGMENTS.map((s) => ({ value: s, label: SEGMENT_LABEL[s] }))} data-testid="promo-segment" />
             <p className="-mt-2 text-meta text-fg-muted" aria-live="polite">
@@ -269,7 +268,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             <TextField type="datetime-local" label="Starts" value={d.startsLocal} onChange={(e) => set("startsLocal", e.target.value)} error={errors.startsLocal} disabled={locked} hint="Toronto time" />
             <TextField type="datetime-local" label="Ends" optionalLabel value={d.endsLocal} onChange={(e) => set("endsLocal", e.target.value)} error={errors.endsLocal} disabled={locked} hint="Ended promos hide automatically." />
           </div>
-          <fieldset className="mt-4" disabled={locked}>
+          <fieldset className="mt-4 min-w-0" disabled={locked}>
             <legend className="text-label text-fg">Only on these days (optional)</legend>
             <ChipGroup label="Days of the week" className="mt-2">
               {WEEKDAYS.map((w, i) => (
@@ -291,19 +290,19 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
           <Button variant="tonal" className="mt-3" iconStart={Megaphone} href={`${base}/messages/new?subject=${encodeURIComponent(d.title)}&body=${encodeURIComponent(d.body || d.title)}`}>
             Write a campaign about it
           </Button>
-          <div className="mt-4">
-            {enabled("ads.sponsored_promo") && promo?.status === "live" ? (
+          {/* Wave P: boosting only shows when it can be done; the "opens once N shops" notice was a dead end in the middle of a form. */}
+          {enabled("ads.sponsored_promo") && promo?.status === "live" ? (
+            <div className="mt-4">
               <Link href={`${base}/ads/new?promoId=${promo.id}`} className="text-label text-fg underline">
                 Boost this promo
               </Link>
-            ) : (
-              <FeatureTeaser featureKey="ads.sponsored_promo" title="Boost this promo" />
-            )}
-          </div>
+            </div>
+          ) : null}
         </Panel>
 
         {error ? <Banner tone="danger">{error}</Banner> : null}
-        <div className="flex flex-wrap gap-2">
+        {/* Wave P: the save row stays in reach on a long form (above the phone tab bar). */}
+        <div className="promo-actions sticky bottom-[calc(96px+env(safe-area-inset-bottom))] z-10 flex flex-wrap gap-2 rounded-card bg-card/95 p-3 shadow-card backdrop-blur md:bottom-4">
           {!promo || promo.status === "draft" ? (
             <>
               <Button loading={busy === "publish"} onClick={() => submit(true)} data-testid="promo-publish">

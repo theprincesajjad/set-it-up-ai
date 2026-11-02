@@ -183,15 +183,16 @@ test("customer books with a deposit; a taken time says so", async ({ page }) => 
   await expect(page.getByText("Deposit $40 to hold").first()).toBeVisible();
   await page.screenshot({ path: shot("m1-390") });
   await page.getByRole("button", { name: "Choose a time" }).click();
-  // The policy is on screen before any card field.
-  await expect(page.getByText(/Change or cancel free until 24 hours before/)).toBeVisible();
-  await expect(page.getByText("Card to hold the booking")).toBeVisible();
   // A day with room for a two hour service: the last bookable day in the strip.
   await page.getByRole("group", { name: "Pick a time" }).getByRole("button").and(page.locator(":not([disabled])")).last().click();
   await expect(TIMES.first()).toBeVisible();
   const takenLabel = (await TIMES.first().textContent())!.trim();
   await TIMES.first().click();
   await page.screenshot({ path: shot("m2-390") });
+  await page.getByRole("button", { name: "Continue", exact: true }).click(); // wave-p: the time step only picks the time; details are the next step
+  // The policy is on screen before any card field (wave-p: on the "Check and book" step, under the booking summary).
+  await expect(page.getByText(/Change or cancel free until 24 hours before/)).toBeVisible();
+  await expect(page.getByText("Card to hold the booking")).toBeVisible();
 
   // Someone else takes that chair first: just before the booking request goes out, the shop books the same time.
   let taken = false;
@@ -220,6 +221,7 @@ test("customer books with a deposit; a taken time says so", async ({ page }) => 
   await expect(page.getByRole("button", { name: takenLabel, exact: true })).toHaveCount(0);
   await expect(TIMES.first()).toBeEnabled();
   await TIMES.first().click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click(); // wave-p: the time step only picks the time; details are the next step
   await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();
   await expect(page.getByText(/We are holding this time until/)).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();

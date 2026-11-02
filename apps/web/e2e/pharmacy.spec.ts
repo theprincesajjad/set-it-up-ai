@@ -136,6 +136,10 @@ test("appointments: types have no price, and the shopper books with no notes and
   await expect(page.getByText("No charge here").first()).toBeVisible();
   await page.getByRole("checkbox").first().click();
   await page.getByRole("button", { name: /Choose a time|Pick a time/i }).click();
+  // wave-p: the privacy card is on the "Check and book" step, after a time is picked.
+  await page.getByRole("group", { name: "Pick a time" }).getByRole("button").and(page.locator(":not([disabled])")).nth(1).click();
+  await page.getByRole("button", { name: /^\d{1,2}:\d\d [ap]\.m\.$/ }).first().click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click(); // wave-p: the time step only picks the time; details are the next step
   await expect(page.getByTestId("pharmacy-privacy")).toContainText("No notes, no health details");
   await expect(page.getByRole("textbox", { name: /note/i })).toHaveCount(0);
   await page.screenshot({ path: shot("06-book-390-desktop"), fullPage: true });

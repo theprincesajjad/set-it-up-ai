@@ -54,7 +54,7 @@ export default function UsersPage() {
   ];
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Users & roles" description="Look someone up by name, email, phone digits or member code." />
+      <PageHeader title="People and roles" description="Look someone up by name, email, phone digits or member code." />
       {error ? <Banner tone="danger">{error}</Banner> : null}
       <DataTable caption="Users" columns={cols} rows={rows} rowKey={(u) => u.id} loading={loading} toolbar={
         <div className="grid gap-3 sm:grid-cols-[1fr_200px]">

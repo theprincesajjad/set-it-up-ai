@@ -22,7 +22,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <LocaleScope locale={await getLocale()}>
       <ConsoleShell kind="admin" me={me}>
-        {children}
+        {/* Admin pages are written in English only; the menu follows the chosen language (and its direction), the pages stay
+            left to right so numbers like "-70.6%" and "12 h ago" are not reordered in Urdu. */}
+        <div lang="en" dir="ltr">
+          {children}
+        </div>
       </ConsoleShell>
     </LocaleScope>
   );

@@ -25,6 +25,8 @@ export const sessionApi = {
   verifyEmailOtp: (body: { email: string; code: string; name?: string }) => authClient.post<SessionResponse>("/email-otp/verify", body),
   login: (body: { email: string; password: string }) => authClient.post<SessionResponse>("/login", body),
   register: (body: { email: string; password: string; name: string }) => authClient.post<SessionResponse>("/register", body),
+  /** Forgot password: the emailed code, then a new password; signs in. */
+  resetPassword: (body: { email: string; code: string; password: string }) => authClient.post<SessionResponse>("/password-reset", body),
   logout: () => authClient.post<{ ok: true }>("/logout", {}),
   session: () => authClient.get<{ user: SessionResponse["user"] | null }>("/session"),
 };

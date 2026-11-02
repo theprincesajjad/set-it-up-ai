@@ -50,9 +50,9 @@ export default function SettingsPage() {
     ...(role === "owner" ? [{ id: "danger" as const, label: "Pause or close" }] : []),
   ];
   return (
-    <div className="flex max-w-[860px] flex-col gap-6 pb-20">
-      <PageHeader flush title="Settings" description={detail.merchant.name} />
-      <PageTabs<Tab> label="Settings" items={items} value={tab} onChange={setTab} />
+    <div className="flex max-w-[1080px] flex-col gap-6 pb-20 lg:grid lg:grid-cols-[208px_minmax(0,1fr)] lg:gap-x-8">
+      <PageHeader flush title="Settings" description={detail.merchant.name} className="lg:col-span-2" />
+      <PageTabs<Tab> label="Settings" items={items} value={tab} onChange={setTab} sideOnDesktop className="lg:row-span-8" />
       {/* Profile and Hours stay mounted so an unsaved draft survives a tab switch; only the active tab shows its save bar. */}
       <div role="tabpanel" hidden={tab !== "profile"} className="flex flex-col gap-6">
         {/* Wave O: read the shop's website again and take the fields that changed (owner and manager). */}

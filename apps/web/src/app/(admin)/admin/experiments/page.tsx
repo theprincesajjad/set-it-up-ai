@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { Meter, PageHeader, Panel, StatusPill, Table, TableWrap, Td, Th, Tr } from "@/components/dashboard/kit";
 import { ListAsync } from "@/components/dashboard/ListStates";
 import { browserApi } from "@/lib/api/browser";
@@ -8,6 +9,7 @@ import { useApi } from "@/lib/dashboard/useApi";
 
 /** The pre-registered landing tests (packages/shared/src/experiments.ts) and how far each is toward its horizon. */
 export default function ExperimentsPage() {
+  const router = useRouter();
   const list = useApi(() => browserApi.admin.experiments(), []);
   return (
     <div className="flex flex-col gap-6">
@@ -30,7 +32,7 @@ export default function ExperimentsPage() {
                 </thead>
                 <tbody>
                   {d.items.map((t) => (
-                    <Tr key={t.experiment.id} data-experiment={t.experiment.id}>
+                    <Tr key={t.experiment.id} data-experiment={t.experiment.id} onOpen={() => router.push(`/admin/experiments/${t.experiment.id}`)}>
                       <Td>
                         <a className="font-medium text-fg underline-offset-2 hover:underline" href={`/admin/experiments/${t.experiment.id}`}>
                           {t.experiment.id}
