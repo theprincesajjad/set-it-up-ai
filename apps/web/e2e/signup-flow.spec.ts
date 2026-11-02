@@ -6,6 +6,7 @@
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { API } from "./fixtures";
 import { atStep, cont, primary, signUpThroughFlow } from "./signup-flow";
 
 const SHOTS = process.env.E2E_SHOTS ?? "e2e/screenshots/signup-flow";
@@ -213,6 +214,35 @@ test.describe("at 390", () => {
     await cont(page);
     await expect(page.getByText("That email already has an account.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", `/login?next=${encodeURIComponent("/signup?step=account")}`);
+  });
+
+  test("signed in with no shop yet (after a password reset): the account step asks only for the mobile number", async ({ page }) => {
+    const email = `reset-${rand()}@example.com`;
+    const password = "signup-flow-4";
+    const r = await fetch(`${API}/v1/auth/register`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: "Owner", email, password }) });
+    expect(r.ok).toBe(true);
+    await page.goto(`/login?next=${encodeURIComponent("/signup")}`);
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill(password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL(/\/signup/);
+    await atStep(page, "link");
+    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByLabel("Shop name").fill(`Back Again ${rand()}`);
+    await cont(page);
+    await page.locator("[data-vertical=bakery]").click();
+    await cont(page);
+    await page.getByLabel("Street address").fill("40 Roncesvalles Ave");
+    await cont(page);
+    await cont(page);
+    await atStep(page, "account");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your mobile number");
+    await expect(page.getByLabel("Email")).toHaveCount(0);
+    await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0);
+    await page.getByRole("textbox", { name: /Your mobile number/ }).fill(digits());
+    await page.screenshot({ path: shot("11-account-signed-in-390") });
+    await cont(page);
+    await atStep(page, "live");
   });
 
   test("a pricing button's plan: the celebration leads on to checkout", async ({ page }) => {
