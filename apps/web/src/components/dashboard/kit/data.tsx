@@ -4,6 +4,7 @@
  * Owner: workstream C. Moved verbatim from kit.tsx (workstream A split); no behaviour change.
  * Import from "@/components/dashboard/kit" (the barrel), not from this file.
  */
+import type { Format as NumberFlowFormat } from "@number-flow/react";
 import { Inbox, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Children, cloneElement, isValidElement, type ReactNode, type ThHTMLAttributes, type TdHTMLAttributes, type HTMLAttributes } from "react";
@@ -20,6 +21,10 @@ import { QuietButton } from "./page";
 export interface StatItem {
   label: string;
   value: ReactNode;
+  /** Kit (wave Q): the raw number behind `value`. When set, the Clear Today tiles roll it in with NumberFlow (AnimatedNumber); `value` stays the fallback. */
+  num?: number;
+  /** Intl options for `num` (currency, percent). */
+  numFormat?: NumberFlowFormat;
   /** Real comparison only. `good` true = positive colour, false = negative, null = muted. */
   delta?: { text: string; good: boolean | null; /** "vs previous 30 days", hidden on phones. */ context?: string } | null;
   caption?: ReactNode;

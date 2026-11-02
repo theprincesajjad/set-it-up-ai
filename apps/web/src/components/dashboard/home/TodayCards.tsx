@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { StatBlock, type StatItem } from "@/components/dashboard/kit";
 import { useShopVertical } from "@/components/dashboard/useShopVertical";
 import { ActionPill } from "@/components/ui/ActionPill";
@@ -264,7 +265,7 @@ function ClearStat({ item: s, icon: Icon, loading }: { item: StatItem; icon: Luc
         <span className={cn("min-w-0 font-[550] text-muted-foreground", CLEAR_TEXT)}>{label}</span>
       </div>
       <div className="-mt-1 text-[32px] font-[650] leading-9 tracking-[-0.032em] tabular-nums text-foreground lg:mt-0 lg:text-4xl lg:leading-10">
-        {loading ? <span className="skeleton inline-block h-8 w-16 rounded-sm align-middle" /> : s.value}
+        {loading ? <span className="skeleton inline-block h-8 w-16 rounded-sm align-middle" /> : s.num != null ? <AnimatedNumber value={s.num} format={s.numFormat} /> : s.value}
       </div>
       {chip && !loading ? (
         <span className={cn("inline-flex h-6 max-w-full items-center gap-1 self-start whitespace-nowrap rounded-xl px-2 text-xs font-[600] leading-4", chipTone)}>{chip}</span>

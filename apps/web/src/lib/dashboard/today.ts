@@ -157,10 +157,10 @@ export function loyaltyNumbers(i: LoyaltyInput, f: Fmt, now: Date): StatItem[] {
   const wd = f.weekday(now);
   const visits = d ? deltaVs(d.visits, d.typicalVisitsSoFar, wd, f) : null;
   return [
-    { label: f.t("shell.today.visits"), value: d ? f.number(d.visits) : "–", delta: visits, caption: d && !visits ? f.t("shell.today.noTypical") : undefined },
-    { label: f.t(termKey(i.terminology)), value: d ? f.number(d.stampsGiven) : "–" },
-    { label: f.t("shell.today.redeemed"), value: d ? f.number(d.redemptions) : "–", caption: i.today && i.today.rewardsWaiting.count > 0 ? f.t("shell.today.waitingN", { n: f.number(i.today.rewardsWaiting.count) }) : undefined },
-    { label: f.t("shell.today.newMembers"), value: d ? f.number(d.newMembers) : "–", caption: d && d.newMembers === 0 ? f.t("shell.today.nobodyJoined") : undefined },
+    { label: f.t("shell.today.visits"), value: d ? f.number(d.visits) : "–", num: d ? d.visits : undefined, delta: visits, caption: d && !visits ? f.t("shell.today.noTypical") : undefined },
+    { label: f.t(termKey(i.terminology)), value: d ? f.number(d.stampsGiven) : "–", num: d ? d.stampsGiven : undefined },
+    { label: f.t("shell.today.redeemed"), value: d ? f.number(d.redemptions) : "–", num: d ? d.redemptions : undefined, caption: i.today && i.today.rewardsWaiting.count > 0 ? f.t("shell.today.waitingN", { n: f.number(i.today.rewardsWaiting.count) }) : undefined },
+    { label: f.t("shell.today.newMembers"), value: d ? f.number(d.newMembers) : "–", num: d ? d.newMembers : undefined, caption: d && d.newMembers === 0 ? f.t("shell.today.nobodyJoined") : undefined },
   ];
 }
 
@@ -246,7 +246,7 @@ export function restaurantNumbers(d: restaurantApi.RestaurantHomeResponse | null
   return [
     {
       label: f.t("shell.today.openOrders"),
-      value: d ? f.number(d.orders.open) : "–",
+      value: d ? f.number(d.orders.open) : "–", num: d ? d.orders.open : undefined,
       caption: d ? (d.orders.open ? f.t("shell.today.orderSplit", { new: d.orders.new, cooking: d.orders.preparing, ready: d.orders.ready }) : f.t("shell.today.nothingOpen")) : undefined,
     },
     { label: f.t("shell.today.avgWait"), value: d ? (d.avgWaitMin == null ? "–" : f.t("shell.age.min", { n: d.avgWaitMin })) : "–", caption: d ? f.t("shell.today.quoted", { n: d.quotedWaitMin }) : undefined },
@@ -287,12 +287,12 @@ export function appointmentNumbers(i: AppointmentsInput, f: Fmt, nowMs: number):
   const left = list ? list.filter((a) => a.status === "booked" && dayStart(a.startsAt) > nowMs).length : 0;
   const d = i.today?.today;
   return [
-    { label: f.t("shell.today.appointments"), value: list ? f.number(list.length) : "–", caption: list ? f.t("shell.today.stillToCome", { n: left }) : undefined },
+    { label: f.t("shell.today.appointments"), value: list ? f.number(list.length) : "–", num: list ? list.length : undefined, caption: list ? f.t("shell.today.stillToCome", { n: left }) : undefined },
     ...(i.board
-      ? [{ label: f.t("shell.today.walkIns"), value: f.number(i.board.stats.servedToday + i.board.stats.waiting), caption: f.t("shell.today.walkInsWaiting", { n: i.board.stats.waiting }) }]
-      : [{ label: f.t("shell.today.visits"), value: d ? f.number(d.visits) : "–" }]),
-    { label: f.t("shell.today.newMembers"), value: d ? f.number(d.newMembers) : "–" },
-    { label: f.t("shell.today.redeemed"), value: d ? f.number(d.redemptions) : "–" },
+      ? [{ label: f.t("shell.today.walkIns"), value: f.number(i.board.stats.servedToday + i.board.stats.waiting), num: i.board.stats.servedToday + i.board.stats.waiting, caption: f.t("shell.today.walkInsWaiting", { n: i.board.stats.waiting }) }]
+      : [{ label: f.t("shell.today.visits"), value: d ? f.number(d.visits) : "–", num: d ? d.visits : undefined }]),
+    { label: f.t("shell.today.newMembers"), value: d ? f.number(d.newMembers) : "–", num: d ? d.newMembers : undefined },
+    { label: f.t("shell.today.redeemed"), value: d ? f.number(d.redemptions) : "–", num: d ? d.redemptions : undefined },
   ];
 }
 
@@ -342,10 +342,10 @@ export function studioNumbers(sessions: classesApi.ClassSessionDto[] | null, tod
   const wait = list?.reduce((n, s) => n + s.waitlisted, 0) ?? 0;
   const d = today?.today;
   return [
-    { label: f.t("shell.today.classes"), value: list ? f.number(list.length) : "–" },
+    { label: f.t("shell.today.classes"), value: list ? f.number(list.length) : "–", num: list ? list.length : undefined },
     { label: f.t("shell.today.classFill"), value: list ? (cap ? `${f.number(Math.round((booked / cap) * 100))}%` : "–") : "–", caption: list ? f.t("shell.today.spotsBooked", { booked, cap }) : undefined },
-    { label: f.t("shell.today.waitlisted"), value: list ? f.number(wait) : "–" },
-    { label: f.t("shell.today.checkIns"), value: d ? f.number(d.visits) : "–" },
+    { label: f.t("shell.today.waitlisted"), value: list ? f.number(wait) : "–", num: list ? wait : undefined },
+    { label: f.t("shell.today.checkIns"), value: d ? f.number(d.visits) : "–", num: d ? d.visits : undefined },
   ];
 }
 
@@ -379,10 +379,10 @@ export function studioUp(sessions: classesApi.ClassSessionDto[] | null, f: Fmt, 
 
 export function serviceNumbers(s: serviceApi.TicketSummaryResponse | null, f: Fmt): StatItem[] {
   return [
-    { label: f.t("shell.today.needsYouNow"), value: s ? f.number(s.needsYou) : "–" },
-    { label: f.t("shell.today.dueToday"), value: s ? f.number(s.dueToday) : "–" },
-    { label: f.t("shell.today.overdue"), value: s ? f.number(s.overdue) : "–" },
-    { label: f.t("shell.today.readyToCollect"), value: s ? f.number(s.readyUncollected) : "–", caption: s && s.readyUncollected ? f.t("shell.today.oldestDays", { n: s.oldestReadyDays }) : undefined },
+    { label: f.t("shell.today.needsYouNow"), value: s ? f.number(s.needsYou) : "–", num: s ? s.needsYou : undefined },
+    { label: f.t("shell.today.dueToday"), value: s ? f.number(s.dueToday) : "–", num: s ? s.dueToday : undefined },
+    { label: f.t("shell.today.overdue"), value: s ? f.number(s.overdue) : "–", num: s ? s.overdue : undefined },
+    { label: f.t("shell.today.readyToCollect"), value: s ? f.number(s.readyUncollected) : "–", num: s ? s.readyUncollected : undefined, caption: s && s.readyUncollected ? f.t("shell.today.oldestDays", { n: s.oldestReadyDays }) : undefined },
   ];
 }
 

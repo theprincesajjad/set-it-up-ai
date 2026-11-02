@@ -88,6 +88,15 @@ export const SCAN_TARGETS = [
   "apps/web/src/components/ui/Link.tsx",
   "apps/web/src/components/ui/Modal.tsx",
   "apps/web/src/components/ui/EmptyState.tsx",
+  // Wave Q kit compositions (shown on customer and owner screens)
+  "apps/web/src/components/ui/AnimatedNumber.tsx",
+  "apps/web/src/components/ui/Celebrate.tsx",
+  "apps/web/src/components/ui/StepProgress.tsx",
+  "apps/web/src/components/ui/NumberStepper.tsx",
+  "apps/web/src/components/ui/DatePicker.tsx",
+  "apps/web/src/components/ui/FileDrop.tsx",
+  "apps/web/src/components/ui/ColorField.tsx",
+  "apps/web/src/components/ui/CardCarousel.tsx",
   // Staff counter, door tablet and kiosk (v3 sweep): staff work in Hindi, Urdu and Punjabi too
   "apps/web/src/components/dashboard/counter",
   "apps/web/src/components/dashboard/queue/DoorTablet.tsx",

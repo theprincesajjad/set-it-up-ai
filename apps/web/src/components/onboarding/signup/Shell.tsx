@@ -1,7 +1,7 @@
 "use client";
 /**
- * The focused signup shell: no marketing nav or footer. A slim top bar (Back, the mark, "Step 2 of 6", Exit) with a progress line in
- * the shop's colour once it is known; one question per screen under a large heading; the primary button sticks to the bottom on
+ * The focused signup shell: no marketing nav or footer. A slim top bar (Back, the mark, "Step 2 of 6", Exit) with segmented progress
+ * (StepProgress) in the shop's colour once it is known; one question per screen under a large heading; the primary button sticks to the bottom on
  * phones. At lg and up the screen splits: the question on the start side, a live preview of the card on the end side.
  */
 import { ArrowLeft } from "lucide-react";
@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useEffect, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { LogoMark } from "@/components/site/Brand";
 import { Button } from "@/components/ui/Button";
+import { StepProgress } from "@/components/ui/StepProgress";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n";
 import type { ShopColorProps } from "@/lib/shopColor";
@@ -59,8 +60,10 @@ export function FlowShell({ step, total, onBack, exitHref = "/", colors, aside, 
             ) : null}
           </div>
         </div>
-        <div aria-hidden className="h-[3px] w-full bg-lg-seg-track">
-          <div className="h-full bg-trade transition-[width] duration-500 ease-out motion-reduce:transition-none" style={{ width: `${pct}%` }} />
+        {/* Kit (wave Q): one segment per step in the shop's colour (StepProgress on the ReUI Stepper). The "Step 2 of 6" text above is
+            what assistive tech reads, so the segments are hidden from it. */}
+        <div aria-hidden className="mx-auto max-w-[1200px] px-4 pb-2.5 md:px-6" data-flow-bar data-pct={pct}>
+          <StepProgress step={step} total={total} />
         </div>
       </header>
       <main id="main" className={cn("mx-auto grid w-full max-w-[1200px] flex-1", !!aside && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 lg:px-6")}>

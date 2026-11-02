@@ -4756,6 +4756,32 @@ export const en = {
   "cust.shop.onCard": "It's on your card. Show it at the counter.",
   "cust.bk.who": "Who would you like?",
   // ---- end wave-p: customer ----
+  // ---- wave-q: kit ----
+  "kit.decrease": "Decrease",
+  "kit.increase": "Increase",
+  "kit.prev": "Previous",
+  "kit.next": "Next",
+  "kit.slideOf": "{n} of {total}",
+  "kit.goToSlide": "Show card {n}",
+  "kit.pickDate": "Pick a date",
+  "kit.prevMonth": "Previous month",
+  "kit.nextMonth": "Next month",
+  "kit.today": "Today",
+  "kit.file.drop": "Drag a file here, or",
+  "kit.file.browse": "choose one",
+  "kit.file.tap": "Choose a photo",
+  "kit.file.types": "{types}, up to {mb} MB",
+  "kit.file.remove": "Remove",
+  "kit.file.replace": "Replace",
+  "kit.file.tooBig": "That file is over {mb} MB. Try a smaller one.",
+  "kit.file.wrongType": "That kind of file won't work here. Use {types}.",
+  "kit.color.custom": "Your own colour",
+  "kit.color.hex": "Colour code",
+  "kit.color.adjusted": "We made it a little deeper so text on it stays easy to read.",
+  "kit.color.invalid": "Use a code like #1F6F5C.",
+  "kit.rating": "{n} out of {max} stars",
+  "kit.meter": "{used} of {max} used",
+  // ---- end wave-q: kit ----
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -5,13 +5,14 @@
  */
 import { ArrowRight, Check, Copy, Eye, EyeOff, Share2 } from "lucide-react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { TRIAL_DAYS } from "@ll/shared";
 import type { Icon3dName } from "@ll/design-tokens";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n";
 import { Banner } from "@/components/ui/Banner";
 import { Button, buttonClasses } from "@/components/ui/Button";
+import { celebrate } from "@/components/ui/Celebrate";
 import { Icon3d } from "@/components/ui/Icon3d";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { QrCode } from "@/components/ui/QrCode";
@@ -92,11 +93,17 @@ export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, onLeave 
   // Rendered on the client only (the flow waits for the saved answers), so the browser can be asked directly.
   const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
   const link = shop.joinUrl;
+  // Kit (wave Q): one confetti burst from the check mark in the shop's colours (lazy canvas-confetti; nothing under reduced motion).
+  const check = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const id = window.setTimeout(() => void celebrate({ origin: check.current }), 350);
+    return () => window.clearTimeout(id);
+  }, []);
   return (
     <div className="mx-auto flex w-full max-w-[960px] flex-col px-4 pb-36 pt-8 md:px-6 md:pb-16 md:pt-12" data-step="live">
       <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
         <div className="flex flex-col animate-in fade-in-0 slide-in-from-bottom-3 duration-500 motion-reduce:animate-none">
-          <span aria-hidden className="grid size-14 place-items-center rounded-full bg-trade text-trade-foreground animate-in zoom-in-50 duration-500 motion-reduce:animate-none">
+          <span ref={check} aria-hidden className="grid size-14 place-items-center rounded-full bg-trade text-trade-foreground animate-in zoom-in-50 duration-500 motion-reduce:animate-none">
             <Check className="size-7" strokeWidth={3} />
           </span>
           <h1 tabIndex={-1} data-autofocus className="mt-5 text-balance text-[30px] font-[700] leading-9 tracking-[-0.02em] text-fg outline-none md:text-[40px] md:leading-11.5">
