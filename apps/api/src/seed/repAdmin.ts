@@ -48,9 +48,12 @@ export async function seedRepAdmin(db: Db, o: { repId: string; log: (m: string) 
     { i: 1, outcome: "not_in", stage: "contacted" },
     { i: 2, outcome: "not_interested", stage: "lost" },
   ];
+  // About 40 minutes ago, but never before midnight in Toronto: the street day counts only today's visits, and a seed run just after
+  // midnight would otherwise file them under yesterday.
+  const visitedAt = [40, 20, 5, 1, 0].map((min) => new Date(now.getTime() - min * 60000)).find((d) => ymd(d) === ymd(now))!;
   for (const m of morning) {
     await db.update(leads).set({ stage: m.stage }).where(eq(leads.id, inserted[m.i]!));
-    await db.insert(leadActivities).values({ leadId: inserted[m.i]!, repUserId: o.repId, kind: "visit", outcome: m.outcome, createdAt: new Date(now.getTime() - 40 * 60000), clientId: `seed-street-${m.i}` });
+    await db.insert(leadActivities).values({ leadId: inserted[m.i]!, repUserId: o.repId, kind: "visit", outcome: m.outcome, createdAt: visitedAt, clientId: `seed-street-${m.i}` });
   }
   await db.insert(leads).values({
     businessName: "Biryani Hub",

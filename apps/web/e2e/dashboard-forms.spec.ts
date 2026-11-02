@@ -41,6 +41,10 @@ test.describe("settings", () => {
     await page.goto(`/m/${id}/settings`);
     await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
     const about = page.getByLabel("About your shop");
+    // Edit once React has attached. A fill that lands in the middle of hydration (a loaded full run) has its select-all undone
+    // by React's textarea hydration, which puts the server text back and the caret at the start, so the edit is inserted in
+    // front of the old text. Typing wholly before hydration is covered in slow-hydration.spec.ts.
+    await expect.poll(() => about.evaluate((n) => Object.keys(n).some((k) => k.startsWith("__reactProps")))).toBe(true);
     const original = await about.inputValue();
     await expect(saveBar(page)).toHaveCount(0);
 

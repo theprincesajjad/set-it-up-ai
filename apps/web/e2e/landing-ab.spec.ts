@@ -138,6 +138,17 @@ test("assignment on the nail page: a fresh visitor gets an arm, the lash look ke
   const direct = await page.request.get("/for-nail-techs/nails/yours");
   expect(direct.headers()["x-robots-tag"]).toBe("noindex");
 
+  // The footer links the other trade pages. Scrolled into view, they must not be fetched ahead (a prefetch runs the proxy's
+  // assignment and replaced this page's ll_v with the barber test's), so the nail assignment stands.
+  const ahead: string[] = [];
+  page.on("request", (r) => {
+    if (/\/for-(barbers|groomers)/.test(new URL(r.url()).pathname)) ahead.push(r.url());
+  });
+  await page.getByRole("contentinfo").getByRole("link", { name: "For barbers" }).scrollIntoViewIfNeeded();
+  await page.waitForTimeout(1500);
+  expect(ahead).toEqual([]);
+  expect(await cookie(context, "ll_v")).toBe("t1-nails-lead:yours");
+
   await page.locator("[data-landing-notice] a").click();
   await page.waitForURL(/\/for-nail-techs$/);
   expect(await cookie(context, "ll_aid")).toBe("off");

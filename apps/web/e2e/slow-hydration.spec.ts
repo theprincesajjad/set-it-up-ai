@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { cafeQr, newPhone } from "./fixtures";
+import { API, cafeQr, newPhone } from "./fixtures";
 
 /**
  * A slow phone on 3G: the server-rendered HTML is on screen and usable for seconds before React attaches its handlers.
@@ -106,5 +106,30 @@ test.describe("typing before hydration (3 s JS delay)", () => {
     await expect(field).toHaveValue(formatted(phone), { timeout: 20_000 });
     await form.getByRole("button", { name: "Book my visit" }).click();
     await expect(page.getByText("Thanks. We will call or message you within 1 business day.")).toBeVisible();
+  });
+
+  // React's textarea hydration writes the server text back over what was typed (useHydratedValue puts it back): the owner's
+  // "About your shop" keeps the edit, and the save bar shows because the edit reached state.
+  test("settings (owner): a textarea edited before hydration keeps the edit", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("Email").fill("owner+hearth-and-crumb@example.com");
+    await page.getByLabel("Password").fill("localloyalty-demo");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+    const login = await (await fetch(`${API}/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "owner+hearth-and-crumb@example.com", password: "localloyalty-demo" }) })).json();
+    const { items } = await (await fetch(`${API}/v1/merchants`, { headers: { authorization: `Bearer ${login.accessToken}` } })).json();
+    const settings = `/m/${items[0].id}/settings`;
+    await slowJs(page);
+    await page.goto(settings, { waitUntil: "domcontentloaded" });
+    const about = page.getByLabel("About your shop");
+    await expect(about).toBeVisible();
+    const original = await about.inputValue();
+    await typeBeforeHydration(about, `${original} Typed early.`);
+    await expect.poll(() => isHydrated(about), { timeout: 20_000 }).toBe(true);
+    await expect(about).toHaveValue(`${original} Typed early.`);
+    const bar = page.getByRole("region", { name: "Unsaved changes" });
+    await expect(bar).toBeVisible();
+    await bar.getByRole("button", { name: "Discard" }).click();
+    await expect(about).toHaveValue(original);
   });
 });

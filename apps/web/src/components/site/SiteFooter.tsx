@@ -30,6 +30,14 @@ const COLS = [
   },
 ];
 
+const LINK = "inline-flex min-h-11 items-center text-meta text-fg-muted transition-colors hover:text-fg focus-visible:focus-ring md:min-h-0";
+/**
+ * The A/B landing pages get a plain anchor, like every other link into them (PoweredBy, the solo nav): their beacon counts only a full
+ * document load (ab-spec §4.1), and a <Link> prefetch runs the proxy's assignment, which wrote that page's `ll_v` over the one the
+ * visitor already had (the footer is on every landing page). Next strips the prefetch headers before the proxy, so it cannot tell.
+ */
+const LANDING_AB = /^\/for-(nail-techs|barbers|groomers)(\?|$)/;
+
 /** Marketing footer: shop, neighbourhood and company links on the quiet grey band. "For shoppers" lives here, not in the top nav. Links are 44px tall on phones (wave P), and every trade page and sign-in are one tap away. */
 export function SiteFooter() {
   return (
@@ -45,9 +53,15 @@ export function SiteFooter() {
             <ul className="mt-2 flex flex-col md:mt-3 md:gap-2.5">
               {c.links.map((l) => (
                 <li key={l.href + l.label}>
-                  <Link href={l.href} className="inline-flex min-h-11 items-center text-meta text-fg-muted transition-colors hover:text-fg focus-visible:focus-ring md:min-h-0">
-                    {l.label}
-                  </Link>
+                  {LANDING_AB.test(l.href) ? (
+                    <a href={l.href} className={LINK}>
+                      {l.label}
+                    </a>
+                  ) : (
+                    <Link href={l.href} className={LINK}>
+                      {l.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

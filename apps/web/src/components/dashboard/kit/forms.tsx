@@ -168,8 +168,10 @@ export function TabPanel({ active, children, className }: { active: boolean; chi
 export function SaveBar({ dirty, message, error, onDiscard, children }: { dirty: boolean; message?: ReactNode; error?: string | null; onDiscard?: () => void; children: ReactNode }) {
   const { t } = useLocaleOrEnglish();
   if (!dirty) return null;
+  // On a phone with the bottom tab bar (`data-tabbar`, 16 + 64 px tall) the bar sits just above it; at the very bottom the tab bar
+  // covered Discard and Save.
   return (
-    <div role="region" aria-label={t("forms.save.region")} data-testid="save-bar" className="kit-savebar fixed inset-x-0 bottom-0 z-sticky border-t border-line bg-bg px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] md:px-8 lg:start-[240px] print:hidden">
+    <div role="region" aria-label={t("forms.save.region")} data-testid="save-bar" className="kit-savebar fixed inset-x-0 bottom-0 z-sticky border-t border-line bg-bg px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] [:root:has([data-tabbar])_&]:max-md:bottom-[calc(88px+env(safe-area-inset-bottom))] [:root:has([data-tabbar])_&]:max-md:pb-3 md:px-8 lg:start-[240px] print:hidden">
       <div className="mx-auto flex max-w-[1136px] flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <p className="flex items-center gap-2.5 text-body-strong text-fg" aria-live="polite">
           <span aria-hidden className={cn("size-2 shrink-0 rounded-full", error ? "bg-negative" : "bg-points")} />

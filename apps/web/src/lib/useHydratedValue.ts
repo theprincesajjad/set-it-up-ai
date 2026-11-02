@@ -9,6 +9,26 @@ function assign<T>(ref: Ref<T> | undefined, el: T | null) {
 }
 
 const noSubscribe = () => () => {};
+
+/**
+ * Textareas need one more step. React's textarea hydration (initTextarea) writes the server-rendered text back into `value` before
+ * any ref or effect runs, so by mount the typed text is gone and there is nothing left to adopt (inputs keep theirs). This module
+ * loads before the components that import it hydrate, so it records what was typed into a not-yet-hydrated textarea (by id): the
+ * ones already edited when it loads, and every later keystroke until React attaches. The mount effect puts that text back.
+ */
+const typedTextareas = new Map<string, string>();
+const reactAttached = (node: Element) => Object.keys(node).some((k) => k.startsWith("__reactProps"));
+if (typeof document !== "undefined") {
+  for (const t of Array.from(document.querySelectorAll("textarea"))) if (t.id && t.value !== t.defaultValue && !reactAttached(t)) typedTextareas.set(t.id, t.value);
+  document.addEventListener(
+    "input",
+    (e) => {
+      const t = e.target;
+      if (t instanceof HTMLTextAreaElement && t.id && !reactAttached(t)) typedTextareas.set(t.id, t.value);
+    },
+    true,
+  );
+}
 /**
  * True only while this component is hydrating server-rendered HTML; false when it mounts later on the client (a dialog that
  * opens, a list that loads). Only then can the DOM hold input React never saw; on a later mount a mismatch just means the
@@ -41,7 +61,13 @@ export function useHydratedValue<T extends TextLike>(current: string, adopt: (do
   );
   useEffect(() => {
     const el = elRef.current;
-    if (first.hydrating && el && el.value !== first.current) first.adopt(el.value, el);
+    if (!first.hydrating || !el) return;
+    if (el instanceof HTMLTextAreaElement && typedTextareas.has(el.id)) {
+      const typed = typedTextareas.get(el.id)!;
+      typedTextareas.delete(el.id);
+      if (typed !== el.value) el.value = typed;
+    }
+    if (el.value !== first.current) first.adopt(el.value, el);
   }, [first]);
   return ref;
 }
