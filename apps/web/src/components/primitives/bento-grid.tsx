@@ -1,6 +1,6 @@
 /* Magic UI (MIT, magicui.design) registry item bento-grid, adapted by the kit team (wave Q): tokens instead of neutral-* and rgba shadows
    (card-clear surface), lucide ArrowRight instead of @radix-ui/react-icons, a plain link instead of Button asChild (Base UI has no asChild),
-   the whole card is the link target (44px+) and the CTA is always shown (no hover-only reveal: touch and keyboard), a 4px hover lift that is off for reduced motion, RTL-safe. Vendored: not linted. */
+   the whole card is the link target (44px+) and the CTA is always shown (no hover-only reveal: touch and keyboard), a 4px hover lift that is off for reduced motion, RTL-safe. LOCAL PATCH (visitor, wave Q): optional `eyebrow` line above the name. Vendored: not linted. */
 /* eslint-disable */
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react"
 import { ArrowRight } from "lucide-react"
@@ -18,6 +18,8 @@ interface BentoCardProps extends ComponentPropsWithoutRef<"div"> {
   background?: ReactNode
   Icon?: ElementType
   description: string
+  /** A small line above the name (who the card is for). */
+  eyebrow?: string
   href?: string
   cta?: string
 }
@@ -30,7 +32,7 @@ const BentoGrid = ({ children, className, ...props }: BentoGridProps) => {
   )
 }
 
-const BentoCard = ({ name, className, background, Icon, description, href, cta, ...props }: BentoCardProps) => (
+const BentoCard = ({ name, className, background, Icon, description, eyebrow, href, cta, ...props }: BentoCardProps) => (
   <div
     className={cn(
       "group relative col-span-3 flex flex-col justify-between overflow-hidden rounded-card bg-card text-card-foreground card-clear",
@@ -45,6 +47,7 @@ const BentoCard = ({ name, className, background, Icon, description, href, cta, 
           <Icon className="size-5" strokeWidth={1.8} />
         </span>
       ) : null}
+      {eyebrow ? <p className="text-meta text-muted-foreground">{eyebrow}</p> : null}
       <h3 className="text-headline font-[650] text-foreground">{name}</h3>
       <p className="max-w-lg text-body text-muted-foreground">{description}</p>
     </div>

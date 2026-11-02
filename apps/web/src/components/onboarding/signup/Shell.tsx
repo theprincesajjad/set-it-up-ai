@@ -11,8 +11,10 @@ import { LogoMark } from "@/components/site/Brand";
 import { Button } from "@/components/ui/Button";
 import { StepProgress } from "@/components/ui/StepProgress";
 import { cn } from "@/lib/cn";
-import { useLocaleOrEnglish } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import type { ShopColorProps } from "@/lib/shopColor";
+import type { MessageKey } from "@ll/shared";
+import { STEPS } from "./draft";
 
 export interface FlowShellProps {
   /** 1-based; null hides the counter (the celebration). */
@@ -62,15 +64,20 @@ export function FlowShell({ step, total, onBack, exitHref = "/", colors, aside, 
         </div>
         {/* Kit (wave Q): one segment per step in the shop's colour (StepProgress on the ReUI Stepper). The "Step 2 of 6" text above is
             what assistive tech reads, so the segments are hidden from it. */}
-        <div aria-hidden className="mx-auto max-w-[1200px] px-4 pb-2.5 md:px-6" data-flow-bar data-pct={pct}>
-          <StepProgress step={step} total={total} />
+        {/* Wave Q: the step names under the segments from md ("Link · Name · Type · Location · Card · Account"). */}
+        <div aria-hidden className="mx-auto max-w-[1200px] px-4 pb-2.5 md:px-6 md:pb-3" data-flow-bar data-pct={pct}>
+          <StepProgress step={step} total={total} labels={total === STEPS.length ? STEPS.map((s) => t(`sf.steps.${s}` as MessageKey)) : undefined} />
         </div>
       </header>
       <main id="main" className={cn("mx-auto grid w-full max-w-[1200px] flex-1", !!aside && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 lg:px-6")}>
         <div className="min-w-0">{children}</div>
         {aside ? (
           <aside className="hidden lg:block" data-flow-aside>
-            <div className="sticky top-[88px] my-10 flex min-h-[560px] flex-col items-center justify-center rounded-[28px] bg-trade-soft p-10">{aside}</div>
+            <div className="sticky top-[108px] my-10 flex min-h-[560px] flex-col items-center justify-center overflow-hidden rounded-[28px] bg-trade-soft p-10 ring-1 ring-inset ring-trade/10">
+              {/* A soft light behind the card, in the shop's colour. */}
+              <span aria-hidden className="pointer-events-none absolute start-1/2 top-1/2 size-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-trade opacity-[0.10] blur-3xl rtl:translate-x-1/2" />
+              <div className="relative flex w-full flex-col items-center">{aside}</div>
+            </div>
           </aside>
         ) : null}
       </main>

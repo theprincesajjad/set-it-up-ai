@@ -1,15 +1,19 @@
-import { ArrowRight, Check, Plus } from "lucide-react";
+import { ArrowRight, CalendarCheck, Check, Landmark, Stamp, UtensilsCrossed } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { MapCategoryId } from "@ll/design-tokens";
 import { BRAND, FEES } from "@ll/shared";
 import { CompetitorTable } from "@/components/marketing/CompetitorTable";
+import { Faq } from "@/components/marketing/Faq";
+import { TradeMarquee } from "@/components/marketing/TradeMarquee";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { LiveProof } from "@/components/marketing/LiveProof";
 import { LandingMeasure } from "@/components/marketing/landing-ab/LandingMeasure";
 import { IPhone } from "@/components/marketing/device/IPhone";
 import { CounterPhone, CounterTablet, MapPhone, PassPhone, PromoMock, TodayDesktop, TodayPhone } from "@/components/marketing/home/mocks";
 import "@/components/marketing/home/home.css";
+import { BentoCard, BentoGrid } from "@/components/primitives/bento-grid";
+import { BlurFadeStatic } from "@/components/primitives/blur-fade-static";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { copy } from "@/copy/en-CA";
 import { marketingPlans, planLine, planNote, planVars } from "@/lib/marketing/plan-copy";
@@ -30,7 +34,13 @@ export const metadata: Metadata = {
 const VARS = { ...planVars(), orderFee: Number((FEES.orderBpsFree / 100).toFixed(2)) };
 const f = (s: string) => fill(s, VARS);
 
-const ROUTER_ART: MapCategoryId[] = ["coffee", "beauty", "eat", "all"];
+/** Where-do-you-fit as a bento (wave Q): the art, the trade colour, the icon and the span of each door, in L.router.items order. */
+const ROUTER: { art: MapCategoryId; trade?: string; Icon: typeof Stamp; span: string }[] = [
+  { art: "coffee", trade: "cafe", Icon: Stamp, span: "md:col-span-2" },
+  { art: "beauty", trade: "nails", Icon: CalendarCheck, span: "md:col-span-1" },
+  { art: "eat", trade: "restaurant", Icon: UtensilsCrossed, span: "md:col-span-1" },
+  { art: "all", Icon: Landmark, span: "md:col-span-2" },
+];
 
 function Primary({ href = "/signup", cta, children, className }: { href?: string; cta: string; children: React.ReactNode; className?: string }) {
   return (
@@ -60,12 +70,39 @@ function HeroPrice() {
   );
 }
 
+/** A small sample inside the two wide bento cards: the stamp card and a street passport (decorative; the hero caption says sample data). */
+function BentoDemo({ i }: { i: number }) {
+  const B = L.hero.bento;
+  if (i === 0)
+    return (
+      <div className="hm-bento-demo" aria-hidden>
+        <b>{B.stamps}</b>
+        <span className="hm-bento-stamps">
+          {Array.from({ length: 10 }, (_, k) => (
+            <i key={k} />
+          ))}
+        </span>
+      </div>
+    );
+  if (i === 3)
+    return (
+      <div className="hm-bento-demo" aria-hidden>
+        <b>{B.passport}</b>
+        <span className="hm-bento-bar">
+          <i />
+        </span>
+        <small>{B.shops}</small>
+      </div>
+    );
+  return null;
+}
+
 /** One outcome row: the words on one side, the product on the other (sides alternate from md). */
 function Outcome({ id, i, children }: { id: (typeof L.outcomes.rows)[number]["id"]; i: number; children: React.ReactNode }) {
   const r = L.outcomes.rows.find((x) => x.id === id)!;
   const points = r.id === "promos" ? [...r.points, planLine("promoAllowance")] : r.points;
   return (
-    <div className={i % 2 ? "hm-row hm-row-flip" : "hm-row"} id={`outcome-${r.id}`}>
+    <BlurFadeStatic className={i % 2 ? "hm-row hm-row-flip" : "hm-row"} id={`outcome-${r.id}`}>
       <div className="hm-row-copy">
         <h3 className="hm-h3">{r.title}</h3>
         <p className="hm-body">{r.body}</p>
@@ -91,7 +128,7 @@ function Outcome({ id, i, children }: { id: (typeof L.outcomes.rows)[number]["id
           </span>
         ))}
       </figure>
-    </div>
+    </BlurFadeStatic>
   );
 }
 
@@ -101,7 +138,9 @@ function Outcome({ id, i, children }: { id: (typeof L.outcomes.rows)[number]["id
  * mocks, where-do-you-fit, the three plans (lib/marketing/plan-copy.ts), the dated comparison, questions, a visit, and the closing ask;
  * on phones a sticky bar keeps the button in reach. Gone in wave P: the facts strip (it repeated the hero), the pass row (the hero shows
  * the pass) and the separate "why Pro" block (the Pro card says the same). Static (re-generated every 5 minutes for the live counts),
- * CSS-only motion, no client script of its own beyond the visit form.
+ * CSS-only motion, no client script of its own beyond the visit form and the questions.
+ * Wave Q (kit): a stacked window and glass notes give the hero depth, a Marquee of trades sits under it, where-do-you-fit is a
+ * BentoGrid, the questions are the kit Accordion, and sections below the fold rise in with BlurFadeStatic (CSS scroll timeline, no JS).
  */
 export default function Home() {
   const waUrl = whatsappUrl(L.book.whatsappText);
@@ -134,23 +173,38 @@ export default function Home() {
         </div>
         <div className="hm-wrap">
           <div className="hm-stage" role="img" aria-label={L.hero.stageLabel}>
+            {/* Wave Q depth: a second window stacked behind the Today screen, and two glass notes floating over the edges (wide screens). */}
+            <div className="hm-window-back" aria-hidden />
             <div className="hm-window">
               <TodayDesktop />
             </div>
             <IPhone className="hm-hero-phone" status="light">
               <PassPhone />
             </IPhone>
+            {L.hero.floats.map((x, k) => (
+              <span key={x.b} className={`hm-float glass-sheet hm-stage-float ${k ? "hm-stage-float-b" : "hm-stage-float-a"}`} aria-hidden>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/icons3d/${x.icon}@2x.png`} alt="" width={32} height={32} loading="lazy" decoding="async" />
+                <span>
+                  <b>{x.b}</b>
+                  <small>{x.s}</small>
+                </span>
+              </span>
+            ))}
           </div>
           <p className="hm-caption">{L.hero.caption}</p>
         </div>
       </section>
+
+      {/* 2. The trades it is set up for, a slow row (kit Marquee, CSS only). */}
+      <TradeMarquee />
 
       {/* 3. Live proof: real counts, hidden until the network passes 10 businesses. */}
       <LiveProof />
 
       {/* 4. How it works, beside the counter */}
       <section className="hm-sec hm-white" id="how" aria-labelledby="hm-how">
-        <div className="hm-wrap hm-how">
+        <BlurFadeStatic className="hm-wrap hm-how">
           <div>
             <h2 className="hm-h2" id="hm-how">
               {L.how.title}
@@ -178,7 +232,7 @@ export default function Home() {
               <CounterPhone />
             </IPhone>
           </figure>
-        </div>
+        </BlurFadeStatic>
       </section>
 
       {/* 5. Outcomes, each with the real screen */}
@@ -222,22 +276,32 @@ export default function Home() {
             <h2 className="hm-h2">{L.router.title}</h2>
             <p className="hm-lede">{L.router.sub}</p>
           </div>
-          <ul className="hm-doors">
-            {L.router.items.map((d, i) => (
-              <li key={d.href}>
-                <Link href={d.href} prefetch={false} className="hm-door">
-                  <CategoryIcon category={ROUTER_ART[i]} size={56} />
-                  <span className="hm-door-k">{d.eyebrow}</span>
-                  <span className="hm-door-t">{d.title}</span>
-                  <span className="hm-door-b">{d.body}</span>
-                  <span className="hm-door-cta">
-                    {d.cta}
-                    <ArrowRight aria-hidden strokeWidth={2.2} />
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <BlurFadeStatic>
+            <BentoGrid className="hm-bento auto-rows-auto gap-3 md:auto-rows-[16.5rem] md:gap-4">
+              {L.router.items.map((d, i) => {
+                const r = ROUTER[i]!;
+                return (
+                  <BentoCard
+                    key={d.href}
+                    data-trade={r.trade}
+                    className={`col-span-3 bg-background ${r.span}`}
+                    eyebrow={d.eyebrow}
+                    name={d.title}
+                    description={d.body}
+                    Icon={r.Icon}
+                    href={d.href}
+                    cta={d.cta}
+                    background={
+                      <>
+                        <BentoDemo i={i} />
+                        <CategoryIcon category={r.art} size={i === 0 || i === 3 ? 168 : 120} className="hm-bento-art" />
+                      </>
+                    }
+                  />
+                );
+              })}
+            </BentoGrid>
+          </BlurFadeStatic>
           <nav aria-label={copy.solo.chipsLabel} className="hm-chips">
             <span>{copy.solo.chipsLabel}</span>
             {copy.solo.chips.map((c) => (
@@ -258,7 +322,7 @@ export default function Home() {
             </h2>
             <p className="hm-lede">{f(L.pricing.sub)}</p>
           </div>
-          <div className="hm-plans">
+          <BlurFadeStatic className="hm-plans">
             {plans.map((p) => (
               <div key={p.key} data-plan={p.key} className={p.key === "monthly" ? "hm-plan hm-plan-pro" : "hm-plan"}>
                 <div className="hm-plan-h">
@@ -294,7 +358,7 @@ export default function Home() {
                 </Primary>
               </div>
             ))}
-          </div>
+          </BlurFadeStatic>
           <p className="hm-plans-note">
             <span>{planNote("shop")}</span>
             <Link href="/pricing" prefetch={false}>
@@ -319,23 +383,15 @@ export default function Home() {
           <h2 className="hm-h2" id="hm-faq">
             {L.faqTitle}
           </h2>
-          <div>
-            {L.faq.map((q) => (
-              <details key={q.q}>
-                <summary>
-                  {q.q}
-                  <Plus aria-hidden strokeWidth={2} />
-                </summary>
-                <p>{f(q.a)}</p>
-              </details>
-            ))}
-          </div>
+          <BlurFadeStatic>
+            <Faq items={L.faq.map((q) => ({ q: q.q, a: f(q.a) }))} />
+          </BlurFadeStatic>
         </div>
       </section>
 
       {/* 11. A hand getting set up */}
       <section className="hm-sec" id="book" aria-labelledby="hm-book">
-        <div className="hm-wrap hm-book">
+        <BlurFadeStatic className="hm-wrap hm-book">
           <div>
             <h2 className="hm-h2" id="hm-book">
               {L.book.title}
@@ -350,7 +406,7 @@ export default function Home() {
           <div className="hm-book-form">
             <ContactForm kind="visit" />
           </div>
-        </div>
+        </BlurFadeStatic>
       </section>
 
       {/* 12. The closing ask */}

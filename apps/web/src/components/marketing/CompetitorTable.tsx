@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { BRAND } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
 import { COMPETITORS, formatAsOf } from "@/lib/marketing/sources";
@@ -28,7 +29,8 @@ export function CompetitorTable() {
         {c.rows.map((label, i) => (
           <dl key={label} className="card-clear px-5 py-4">
             <dt className="text-meta text-muted-foreground">{label}</dt>
-            <dd className="mt-1 text-title font-semibold text-foreground">
+            <dd className="mt-1 flex items-center gap-2 text-title font-semibold text-foreground">
+              <Check aria-hidden className="size-4 shrink-0 text-success" strokeWidth={2.6} />
               {BRAND.name}: {c.us[i]}
             </dd>
             {COMPETITORS.map((x) => (
@@ -40,7 +42,7 @@ export function CompetitorTable() {
         ))}
       </div>
       <div className="card-clear hidden overflow-hidden sm:block">
-        <table className="w-full text-[15px] leading-6">
+        <table className="w-full table-fixed text-[15px] leading-6">
           <caption className="sr-only">
             {BRAND.name} compared with {COMPETITORS.map((x) => x.name).join(" and ")}, as of {formatAsOf(oldest)}
           </caption>
@@ -49,7 +51,7 @@ export function CompetitorTable() {
               <th scope="col" className="px-5 py-4 text-start md:px-6">
                 <span className="sr-only">Item</span>
               </th>
-              <th scope="col" className="px-5 py-4 text-start text-foreground md:px-6">
+              <th scope="col" className="bg-info-soft px-5 py-4 text-start text-info-text md:px-6">
                 {BRAND.name}
               </th>
               {COMPETITORS.map((x) => (
@@ -65,7 +67,12 @@ export function CompetitorTable() {
                 <th scope="row" className="px-5 py-4 text-start font-normal text-muted-foreground md:px-6">
                   {label}
                 </th>
-                <td className="px-5 py-4 font-semibold text-foreground md:px-6">{c.us[i]}</td>
+                <td className="bg-info-soft/60 px-5 py-4 font-semibold text-foreground md:px-6">
+                  <span className="inline-flex items-center gap-2">
+                    <Check aria-hidden className="size-4 shrink-0 text-success" strokeWidth={2.6} />
+                    {c.us[i]}
+                  </span>
+                </td>
                 {COMPETITORS.map((x) => (
                   <td key={x.id} className="px-5 py-4 text-muted-foreground md:px-6">
                     {get(x, i)}

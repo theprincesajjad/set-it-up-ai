@@ -1,4 +1,5 @@
 "use client";
+import { Rating } from "@/components/primitives/rating";
 import { MessageCircle, Star } from "lucide-react";
 import { useState } from "react";
 import type { commerceApi, whatsappApi } from "@ll/shared";
@@ -24,12 +25,11 @@ export default function ReviewsPage() {
   );
 }
 
-function Stars({ n, className }: { n: number; className?: string }) {
+/** Wave Q: the ReUI Rating (stars in the points colour) inside one role=img, so a screen reader hears one sentence. */
+function Stars({ n, className, size = "sm" }: { n: number; className?: string; size?: "sm" | "default" | "lg" }) {
   return (
-    <span className={className ?? "inline-flex items-center gap-0.5"} role="img" aria-label={`${n} out of 5 stars`}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star key={i} aria-hidden className={`size-3.5 ${i <= n ? "fill-fg text-fg" : "text-line-strong"}`} strokeWidth={1.5} />
-      ))}
+    <span className={className ?? "inline-flex items-center"} role="img" aria-label={`${n} out of 5 stars`}>
+      <Rating rating={n} size={size} aria-hidden className="gap-0.5" />
     </span>
   );
 }
@@ -87,7 +87,7 @@ function Reviews() {
         label="Review numbers"
         loading={stats.loading && !s}
         items={[
-          { label: "Average rating", value: s?.averageRating != null ? s.averageRating.toFixed(1) : "None yet", caption: s?.averageRating != null ? `${formatNumber(s.responded)} answers · ${formatNumber(s.requested)} asked` : "Shows after the first answer" },
+          { label: "Average rating", value: s?.averageRating != null ? <span className="inline-flex items-center gap-2">{s.averageRating.toFixed(1)}<Rating rating={s.averageRating} size="sm" aria-hidden className="gap-0.5" /></span> : "None yet", caption: s?.averageRating != null ? `${formatNumber(s.responded)} answers · ${formatNumber(s.requested)} asked` : "Shows after the first answer" },
           { label: "Answer rate", value: s ? `${Math.round(s.responseRate * 100)}%` : "", caption: s ? `${formatNumber(s.responded)} of ${formatNumber(s.sent)} sent` : "" },
           { label: "Opened the Google link", value: formatNumber(s?.googleOpened ?? 0), caption: s ? `Of ${formatNumber(s.requested)} asked` : "" },
           { label: "Private feedback to read", value: formatNumber(s?.privateToRead ?? 0), caption: unreadCaption(s?.privateToReadByRating) || "Nothing waiting" },
@@ -413,7 +413,7 @@ function Detail({ review, onClose }: { review: whatsappApi.ReviewDto | null; onC
     <Sheet open={!!r} onClose={onClose} label="Review detail" title={r?.customer.name ?? "Guest"} subtitle={r?.responded ? "Answer" : "Review request"}>
       {r ? (
         <div className="flex flex-col gap-5">
-          <div>{r.rating ? <Stars n={r.rating} className="inline-flex items-center gap-1 [&_svg]:size-5" /> : <p className="text-meta text-fg-muted">They haven&apos;t answered yet.</p>}</div>
+          <div>{r.rating ? <Stars n={r.rating} size="default" className="inline-flex items-center" /> : <p className="text-meta text-fg-muted">They haven&apos;t answered yet.</p>}</div>
           {r.feedback ? <blockquote className="whitespace-pre-wrap border-s-2 border-line ps-4 text-body text-fg">{r.feedback}</blockquote> : r.responded ? <p className="text-meta text-fg-muted">They left a rating without a comment.</p> : null}
           {r.reply ? (
             <div className="rounded-card bg-bg-subtle px-4 py-3">

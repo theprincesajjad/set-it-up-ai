@@ -1,5 +1,7 @@
 "use client";
+import { UserSearch } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/kit";
+import { HealthPill, PanelEmpty } from "@/components/dashboard/admin/AdminKit";
 import { useEffect, useState } from "react";
 import type { adminApi } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
@@ -33,7 +35,12 @@ export default function UsersPage() {
     return () => clearTimeout(t);
   }, [q, role]);
   const cols: Column<adminApi.AdminUser>[] = [
-    { key: "name", header: "Name", mobile: "title", cell: (u) => u.name ?? u.email ?? "No name" },
+    { key: "name", header: "Name", mobile: "title", cell: (u) => (
+      <span className="flex items-center gap-2">
+        <span className="truncate font-medium">{u.name ?? u.email ?? "No name"}</span>
+        {u.platformRole !== "none" ? <HealthPill size="sm" tone={u.platformRole === "admin" ? "info" : "neutral"}>{u.platformRole === "admin" ? "Admin" : "Rep"}</HealthPill> : null}
+      </span>
+    ) },
     { key: "contact", header: "Contact", mobile: "subtitle", cell: (u) => [u.email, u.phone ? maskPhone(u.phone) : null].filter(Boolean).join(" · ") },
     { key: "code", header: "Member code", mobile: "hidden", cell: (u) => <span className="font-mono">{u.memberCode}</span> },
     { key: "shops", header: "Shops", align: "end", mobile: "hidden", cell: (u) => `${u.memberships} member · ${u.staffOf} staff` },
@@ -61,7 +68,7 @@ export default function UsersPage() {
           <TextField type="search" label="Search users" hideLabel placeholder="At least 3 characters" value={q} onChange={(e) => setQ(e.target.value)} />
           <Select hideLabel label="Role" value={role} onChange={(e) => setRole(e.target.value)} options={[{ value: "", label: "Any role" }, { value: "rep", label: "Reps" }, { value: "admin", label: "Admins" }]} />
         </div>
-      } empty={<p className="p-6 text-center text-meta text-fg-muted">Search to find a user. We don&apos;t list everyone, for privacy.</p>} />
+      } empty={<PanelEmpty icon={UserSearch} title={q.trim().length >= 3 || role ? "Nobody matches" : "Search to find someone"} description={q.trim().length >= 3 || role ? "Try a different spelling, the last digits of the phone, or the member code." : "Type at least 3 characters of a name, email, phone or member code. We don't list everyone, for privacy."} />} />
     </div>
   );
 }

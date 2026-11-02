@@ -65,7 +65,7 @@ export default function BiaPage() {
       </section>
 
       {/* 2. The measurement gap: why a board report with a 30-day return exists. */}
-      <MSection tone="subtle" id="why">
+      <MSection tone="subtle" id="why" reveal>
         <div className="grid gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
           <div>
             <MHeading eyebrow={B.gap.eyebrow} title={B.gap.title} sub={B.gap.body} className="mb-4!" />
@@ -91,7 +91,7 @@ export default function BiaPage() {
       </MSection>
 
       {/* 3. How a campaign runs: who does what and when. */}
-      <MSection id="how">
+      <MSection id="how" reveal>
         <MHeading eyebrow={B.run.eyebrow} title={B.run.title} />
         <ol className="grid items-stretch gap-4 md:grid-cols-2 lg:grid-cols-4">
           {B.run.steps.map((s, i) => (
@@ -108,7 +108,7 @@ export default function BiaPage() {
       </MSection>
 
       {/* 4. Packages and how BIAs pay. */}
-      <MSection tone="subtle" id="packages">
+      <MSection tone="subtle" id="packages" reveal>
         <MHeading eyebrow={B.packages.eyebrow} title={B.packages.title} />
         <ul className="grid items-stretch gap-4 md:grid-cols-3">
           {TIERS.map(({ kind }) => {
@@ -139,7 +139,7 @@ export default function BiaPage() {
       </MSection>
 
       {/* 5. Trust: shops, shoppers, data. */}
-      <MSection>
+      <MSection reveal>
         <ul className="grid items-stretch gap-4 md:grid-cols-3">
           {B.trust.map((t) => (
             <li key={t.t} className="rounded-sheet border border-border bg-background p-6">
@@ -151,7 +151,7 @@ export default function BiaPage() {
       </MSection>
 
       {/* 6. FAQ */}
-      <MSection tone="subtle">
+      <MSection tone="subtle" reveal>
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
           <MHeading eyebrow={B.faqEyebrow} title={B.faqTitle} className="mb-0!" />
           <Faq items={B.faq.map((f) => ({ q: f.q, a: fill(f.a, { goal: passportGoal }) }))} />

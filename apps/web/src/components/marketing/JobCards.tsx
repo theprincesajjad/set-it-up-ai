@@ -13,7 +13,7 @@ export function whatsappRange(): string {
 export function JobCards() {
   const r = copy.restaurants;
   return (
-    <MSection id="jobs">
+    <MSection id="jobs" reveal>
       <MHeading eyebrow={r.jobsEyebrow} title={r.jobsTitle} />
       <div className="grid items-stretch gap-4 md:grid-cols-2">
         {r.jobs.map((j, n) => (

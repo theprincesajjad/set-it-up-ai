@@ -61,6 +61,46 @@
 @media (min-width: 1100px) { .hm-window { zoom: 0.76; margin-inline-start: 112px; } .hm-hero-phone { --s: 0.58; } }
 @media (min-width: 1264px) { .hm-window { zoom: 0.9; margin-inline-start: 120px; } .hm-hero-phone { --s: 0.62; inset-inline-start: -8px; } }
 
+/* Wave Q depth: a second window stacked behind the Today screen, and two glass notes over the stage's edges (never over a number). */
+.hm-window-back { display: none; }
+.hm-stage-float { display: none; }
+@media (min-width: 1100px) {
+  .hm-window-back { display: block; position: absolute; z-index: 0; inset-block: -18px 58px; inset-inline: calc(112px + 4%) 4%; border-radius: 26px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border), var(--lg-shadow); opacity: 0.7; }
+  .hm-window { position: relative; z-index: 1; }
+  .hm-hero-phone { z-index: 2; }
+  .hm-stage .hm-stage-float { display: flex; z-index: 3; max-width: 280px; box-shadow: var(--lg-shadow-lg); }
+  .hm-stage-float-a { inset-inline-end: 3%; top: -30px; }
+  .hm-stage-float-b { inset-inline-end: 44%; bottom: 4px; }
+}
+@media (min-width: 1264px) { .hm-window-back { inset-inline-start: calc(120px + 4%); } }
+
+/* ---------- Trades (kit Marquee) ---------- */
+.hm-trades { padding-block: clamp(28px, 4vw, 48px) 0; }
+.hm-trades-label { text-align: center; font-size: 14px; font-weight: 600; color: var(--muted-foreground); margin-bottom: 10px; }
+.hm-trades-row { -webkit-mask-image: linear-gradient(90deg, transparent, var(--foreground) 8%, var(--foreground) 92%, transparent); mask-image: linear-gradient(90deg, transparent, var(--foreground) 8%, var(--foreground) 92%, transparent); }
+.hm-trade { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 18px 0 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border), var(--ll-shadow-card); font-size: 15px; font-weight: 600; white-space: nowrap; color: var(--foreground); }
+[dir="rtl"] .hm-trade { padding: 0 12px 0 18px; }
+.hm-trade img { width: 36px; height: 36px; flex: none; margin-block: -4px; }
+
+/* ---------- Where do you fit (kit BentoGrid) ---------- */
+.hm-bento-art { position: absolute; inset-block-start: 18px; inset-inline-end: 18px; filter: drop-shadow(0 12px 18px color-mix(in srgb, var(--foreground) 14%, transparent)); }
+@media (max-width: 767.98px) { .hm-bento-art { width: 64px !important; height: 64px !important; inset-block-start: 14px; inset-inline-end: 14px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .hm-bento-art { transition: transform 300ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .group:hover .hm-bento-art { transform: translateY(-4px) rotate(-3deg) scale(1.04); }
+}
+
+/* Sample visuals in the wide bento cards (md and up). */
+.hm-bento-demo { position: absolute; inset-block-start: 36px; inset-inline-start: 34%; display: grid; gap: 10px; padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border), var(--ll-shadow-card); }
+.hm-bento-demo b { font-size: 13px; font-weight: 650; }
+.hm-bento-stamps { display: flex; gap: 6px; }
+.hm-bento-stamps i { width: 22px; height: 22px; border-radius: 50%; background: var(--trade); box-shadow: inset 0 0 0 1px var(--trade); }
+.hm-bento-stamps i:last-child { background: var(--card); box-shadow: inset 0 0 0 1.5px var(--border-strong); }
+.hm-bento-bar { height: 8px; width: 220px; border-radius: 99px; background: var(--muted); overflow: hidden; }
+.hm-bento-bar i { display: block; height: 100%; width: 60%; border-radius: inherit; background: var(--success); }
+.hm-bento-demo small { font-size: 12px; color: var(--muted-foreground); }
+@media (max-width: 767.98px) { .hm-bento-demo { display: none; } }
+
 /* ---------- Facts ---------- */
 .hm-facts { padding-block: 32px 8px; }
 .hm-facts-in { display: grid; gap: 16px; align-items: center; padding: 16px; border-radius: 24px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
@@ -279,3 +319,10 @@
     @keyframes hm-sticky { 0%, 4% { transform: translateY(110%); visibility: hidden; } 8%, 88% { transform: none; visibility: visible; } 94%, 100% { transform: translateY(110%); visibility: hidden; } }
   }
 }
+
+/* ---------- Sign-in stage (components/marketing/AuthLayout.tsx, wave Q) ---------- */
+.auth-stage { height: 460px; }
+.auth-phone { --s: 0.62; }
+.auth-note { position: absolute; display: flex; z-index: 3; inset-inline-start: 18px; bottom: 26px; max-width: 220px; box-shadow: var(--lg-shadow-lg); }
+@media (min-width: 1100px) { .auth-stage { height: 500px; } .auth-phone { --s: 0.68; } .auth-note { inset-inline-start: 26px; } }
+

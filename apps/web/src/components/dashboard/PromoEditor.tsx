@@ -11,6 +11,7 @@ import { DEAL_TILE, DealCard } from "@/components/pass/DealCard";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
@@ -20,6 +21,35 @@ import { cn } from "@/lib/cn";
 import { HOLIDAY_LABEL, KIND_INFO, SEGMENT_LABEL, TYPE_INFO, WEEKDAYS, applyType, promoBody, quickRange, validatePromo, type PromoDraft, type PromoKind } from "@/lib/dashboard/promos";
 import { fromLocalInput } from "@/lib/dashboard/time";
 import { useApi, useNow } from "@/lib/dashboard/useApi";
+
+const ymd = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+const fromYmd = (v: string) => {
+  const [y, m, day] = v.slice(0, 10).split("-").map(Number);
+  return y && m && day ? new Date(y, m - 1, day) : undefined;
+};
+
+/** A "YYYY-MM-DDTHH:mm" (Toronto wall time) value as a day picker plus a time field. */
+function DateTimeField({ id, label, value, onChange, error, hint, disabled, defaultTime, clearable, notBefore }: { id: string; label: string; value: string; onChange: (v: string) => void; error?: string; hint?: string; disabled?: boolean; defaultTime: string; clearable?: boolean; notBefore?: string }) {
+  const day = value ? fromYmd(value) : undefined;
+  const time = value.slice(11, 16);
+  const min = notBefore ? fromYmd(notBefore) : undefined;
+  return (
+    <fieldset disabled={disabled} className="flex min-w-0 flex-col gap-1.5" aria-describedby={`${id}-note`}>
+      <div className="grid grid-cols-[minmax(0,1fr)_7.5rem] items-end gap-2">
+        <DatePicker id={id} label={label} value={day} onChange={(x) => (x ? onChange(`${ymd(x)}T${time || defaultTime}`) : clearable ? onChange("") : undefined)} disabled={min ? { before: min } : undefined} />
+        <TextField type="time" label={`${label.replace(" (optional)", "")}, time`} hideLabel value={time} disabled={disabled || !value} onChange={(e) => value && onChange(`${value.slice(0, 10)}T${e.target.value || defaultTime}`)} />
+      </div>
+      <p id={`${id}-note`} className={cn("flex items-center gap-2 text-meta", error ? "font-medium text-negative" : "text-fg-muted")}>
+        <span className="min-w-0 flex-1">{error ?? hint}</span>
+        {clearable && value && !disabled ? (
+          <button type="button" onClick={() => onChange("")} className="inline-flex min-h-11 items-center text-meta font-medium text-fg underline underline-offset-4 focus-visible:focus-ring">
+            Clear
+          </button>
+        ) : null}
+      </p>
+    </fieldset>
+  );
+}
 
 /** "Double stamps" or "Double points": the type names follow the shop's own word. */
 const typeLabel = (k: promosApi.PromoType, term: string) => (k === "double_stamps" ? `Double ${term}` : k === "bonus_stamps" ? `Bonus ${term}` : TYPE_INFO[k].label);
@@ -265,8 +295,9 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             ))}
           </ChipGroup>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <TextField type="datetime-local" label="Starts" value={d.startsLocal} onChange={(e) => set("startsLocal", e.target.value)} error={errors.startsLocal} disabled={locked} hint="Toronto time" />
-            <TextField type="datetime-local" label="Ends" optionalLabel value={d.endsLocal} onChange={(e) => set("endsLocal", e.target.value)} error={errors.endsLocal} disabled={locked} hint="Ended promos hide automatically." />
+            {/* Wave Q: a day from the kit DatePicker (a month in a popover, the shop's language) and a time beside it, not datetime-local. */}
+            <DateTimeField id="promo-starts" label="Starts" value={d.startsLocal} onChange={(v) => set("startsLocal", v)} error={errors.startsLocal} disabled={locked} hint="Toronto time" defaultTime="09:00" />
+            <DateTimeField id="promo-ends" label="Ends (optional)" value={d.endsLocal} onChange={(v) => set("endsLocal", v)} error={errors.endsLocal} disabled={locked} hint="Ended promos hide automatically." defaultTime="23:59" clearable notBefore={d.startsLocal} />
           </div>
           <fieldset className="mt-4 min-w-0" disabled={locked}>
             <legend className="text-label text-fg">Only on these days (optional)</legend>

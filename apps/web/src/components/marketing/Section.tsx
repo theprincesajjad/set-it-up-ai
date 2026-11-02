@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BlurFadeStatic } from "@/components/primitives/blur-fade-static";
 import { cn } from "@/lib/cn";
 
 export type SectionTone = "canvas" | "subtle" | "peach" | "mint" | "butter" | "lilac" | "sky" | "rose" | "brand" | "ink";
@@ -18,11 +19,11 @@ const TONE: Record<SectionTone, string> = {
   ink: "bg-forest text-forest-foreground",
 };
 
-/** Marketing section: cream by default, a pastel or deep band when asked, generous vertical rhythm. */
-export function MSection({ children, className, id, tone = "canvas" }: { children: ReactNode; className?: string; id?: string; tone?: SectionTone }) {
+/** Marketing section: cream by default, a pastel or deep band when asked, generous vertical rhythm. `reveal` (wave Q): the content rises in as it scrolls into view (kit BlurFadeStatic, CSS only); the band itself stays put. Below the fold only. */
+export function MSection({ children, className, id, tone = "canvas", reveal }: { children: ReactNode; className?: string; id?: string; tone?: SectionTone; reveal?: boolean }) {
   return (
     <section id={id} className={cn("py-16 md:py-24", TONE[tone], className)}>
-      <div className="mx-auto max-w-[1200px] px-4 md:px-8">{children}</div>
+      {reveal ? <BlurFadeStatic className="mx-auto max-w-[1200px] px-4 md:px-8">{children}</BlurFadeStatic> : <div className="mx-auto max-w-[1200px] px-4 md:px-8">{children}</div>}
     </section>
   );
 }

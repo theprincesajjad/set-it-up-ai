@@ -39,15 +39,22 @@ export async function LiveProof() {
       data-multi-pct={network.multiShopMemberPct}
     >
       <div className="mx-auto max-w-[1200px] px-4 md:px-8">
-        <dl className="grid grid-cols-3 gap-2 md:gap-4">
-          {stats.map((s, i) => (
-            <div key={s.label} className={["bg-tile-mint text-tile-mint-foreground", "bg-tile-butter text-tile-butter-foreground", "bg-tile-lilac text-tile-lilac-foreground"][i % 3] + " rounded-tile p-3 md:p-6"}>
-              <dd className="display text-large-title tabular-nums md:text-mkt-lg">{s.value}</dd>
-              <dt className="mt-1 text-meta md:text-body-strong">{s.label}</dt>
+        {/* Wave Q: one card with three hairline-split columns (was three pastel tiles), a live dot beside the note. */}
+        <dl className="card-clear grid grid-cols-3 divide-x divide-border overflow-hidden rtl:divide-x-reverse">
+          {stats.map((s) => (
+            <div key={s.label} className="flex flex-col-reverse justify-end gap-1 px-3 py-4 md:px-8 md:py-7">
+              <dt className="text-meta text-muted-foreground md:text-body">{s.label}</dt>
+              <dd className="text-[28px] leading-none font-[750] tracking-[-0.035em] tabular-nums text-foreground md:text-[52px]">{s.value}</dd>
             </div>
           ))}
         </dl>
-        <p className="mt-3 text-caption md:mt-8 text-muted-foreground">{copy.landing.proof.note}</p>
+        <p className="mt-3 flex items-center gap-2 text-caption text-muted-foreground md:mt-4">
+          <span aria-hidden className="relative flex size-2">
+            <span className="absolute inset-0 rounded-full bg-success opacity-60 motion-safe:animate-ping" />
+            <span className="relative size-2 rounded-full bg-success" />
+          </span>
+          {copy.landing.proof.note}
+        </p>
       </div>
     </section>
   );

@@ -45,7 +45,8 @@ const variants: Record<ButtonVariant, string> = {
   /** On a black band (marketing CTA): white fill, black text. */
   inverse: "bg-card text-foreground hover:bg-muted",
   /** A shop's own colour (customer pages under `shopColorProps`): the trade fill with its computed text colour (AA-checked in design-tokens). */
-  shop: "bg-trade text-trade-foreground shadow-none hover:brightness-95 active:brightness-90",
+  // wave-q: `hover:bg-trade` keeps the shop's colour under the pointer (the primitive's own hover fill turned it dark grey on desktop).
+  shop: "bg-trade text-trade-foreground shadow-none hover:bg-trade hover:brightness-95 active:bg-trade active:brightness-90",
 };
 
 /** 10 px radius for small buttons, a capsule for the big one, 16 for the counter key. */

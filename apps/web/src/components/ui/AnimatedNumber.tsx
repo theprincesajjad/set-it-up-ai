@@ -6,6 +6,7 @@
  *   <AnimatedNumber value={32} />                                     32, rolls from 0 on first view (countUp), then between values
  *   <AnimatedNumber value={1290} format={{ style: "currency", currency: "CAD" }} />   cents are your job: pass dollars
  *   <AnimatedNumber value={0.42} format={{ style: "percent" }} countUp={false} />
+ *   <AnimatedNumber value={8} from={7} />                               rolls 7 → 8 on mount (a balance right after an award)
  *
  * Accessibility and tests: the rolling digits are aria-hidden; a visually hidden plain-text copy carries the final value, so screen readers
  * read one number once and `getByText("32")` keeps working in jsdom and Playwright. prefers-reduced-motion: no roll, no count-up (NumberFlow
@@ -26,20 +27,30 @@ export interface AnimatedNumberProps {
   suffix?: string;
   /** Count up from 0 the first time it is shown. Default true. */
   countUp?: boolean;
+  /** Where the first roll starts (instead of 0), e.g. the balance before an award. Implies a first roll; ignored under reduced motion. */
+  from?: number;
   /** Colour the change: up = success text, down = destructive text, for a short moment. Default off. */
   trendTint?: boolean;
   className?: string;
+}
+
+/** The custom element really upgraded (a browser). jsdom never runs NumberFlow's define(), so an update there must skip the batched
+ * willUpdate/didUpdate calls (`isolate`), or React throws "willUpdate is not a function" when the value changes. */
+function flowDefined() {
+  if (typeof window === "undefined" || typeof customElements === "undefined") return false;
+  const el = customElements.get("number-flow-react") as (CustomElementConstructor & { prototype: { willUpdate?: unknown } }) | undefined;
+  return typeof el?.prototype?.willUpdate === "function";
 }
 
 function prefersReducedMotion() {
   return typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function AnimatedNumber({ value, format, prefix, suffix, countUp = true, trendTint, className }: AnimatedNumberProps) {
+export function AnimatedNumber({ value, format, prefix, suffix, countUp = true, from, trendTint, className }: AnimatedNumberProps) {
   const { info } = useLocaleOrEnglish();
   // With countUp the digits start at 0 and roll to the value right after mount (the dashboard's tiles mount when their data arrives, so the
   // roll is the "numbers just came in" moment). The sr-only copy always holds the real value, also for SSR and no-JS.
-  const [shown, setShown] = useState(countUp ? 0 : value);
+  const [shown, setShown] = useState(from ?? (countUp ? 0 : value));
   const [tint, setTint] = useState<"up" | "down" | null>(null);
   const prev = useRef<number | null>(null);
   useEffect(() => {
@@ -60,7 +71,7 @@ export function AnimatedNumber({ value, format, prefix, suffix, countUp = true, 
     <span className={cn("relative inline-flex tabular-nums", tint === "up" && "text-success-text", tint === "down" && "text-destructive-text", "transition-colors duration-500", className)}>
       <span className="sr-only">{`${prefix ?? ""}${text}${suffix ?? ""}`}</span>
       <span aria-hidden dir="ltr" className="inline-flex">
-        <NumberFlow value={shown} locales={info.bcp47} format={format} prefix={prefix} suffix={suffix} willChange={false} />
+        <NumberFlow value={shown} locales={info.bcp47} format={format} prefix={prefix} suffix={suffix} willChange={false} isolate={!flowDefined()} />
       </span>
     </span>
   );

@@ -84,7 +84,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       <JobCards />
 
       {/* 4. Festival calendar: the next 120 days, from the in-app calendar. */}
-      <MSection tone="butter" id="festivals">
+      <MSection tone="butter" id="festivals" reveal>
         <div className="grid gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
           <MHeading eyebrow={R.festivalsEyebrow} title={R.festivalsTitle} sub={R.festivalsSub} className="mb-0!" />
           <FestivalList today={torontoToday()} />
@@ -92,7 +92,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       </MSection>
 
       {/* 5. Kitchen screens in Urdu, right to left. */}
-      <MSection>
+      <MSection reveal>
         <div className="grid items-center gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
           <MHeading eyebrow={R.kitchenEyebrow} title={R.kitchenTitle} sub={R.kitchenSub} className="mb-0!" />
           <KitchenTicket />
@@ -100,7 +100,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       </MSection>
 
       {/* 6. Plans and the math, with its limit: we do not deliver. */}
-      <MSection tone="ink" id="plans">
+      <MSection tone="ink" id="plans" reveal>
         <div className="grid gap-10 md:grid-cols-[1fr_1fr] md:items-center md:gap-16">
           <div>
             <p className="text-meta-strong opacity-90">{R.plansEyebrow}</p>
@@ -131,7 +131,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       </MSection>
 
       {/* 7. Week one: we do the typing. */}
-      <MSection>
+      <MSection reveal>
         <MHeading eyebrow={R.weekEyebrow} title={R.weekTitle} />
         <ol className="grid items-stretch gap-4 md:grid-cols-3">
           {R.week.map((w) => (
@@ -145,7 +145,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
       </MSection>
 
       {/* 8. FAQ: the five objections we expect. */}
-      <MSection>
+      <MSection reveal>
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
           <MHeading eyebrow={R.faqEyebrow} title={R.faqTitle} className="mb-0!" />
           <Faq items={R.faq.map((f) => ({ q: f.q, a: fill(f.a, { billing: pct(FEES.tiffinBps) }) }))} />

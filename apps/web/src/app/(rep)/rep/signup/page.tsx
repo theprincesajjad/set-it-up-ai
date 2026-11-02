@@ -1,8 +1,10 @@
 "use client";
-import { Meter, PageHeader, Panel, QuietLink } from "@/components/dashboard/kit";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { PageHeader, Panel, QuietLink } from "@/components/dashboard/kit";
+import { ArrowLeft, ArrowRight, Check, Printer, Store } from "lucide-react";
+import { FlowSteps } from "@/components/dashboard/admin/AdminKit";
+import { celebrate } from "@/components/ui/Celebrate";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { VERTICALS, type Vertical, type merchantApi } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -19,7 +21,10 @@ import { useNeighbourhoods } from "@/lib/dashboard/useNeighbourhoods";
  * Two-minute signup at the counter: shop name, type, address and the owner's mobile. The shop is created from its
  * vertical template, the owner gets the invite by text, and the QR code is on screen. Everything else (staff,
  * categories, tuning the program) is finished later from the shop's page or with the full setup.
+ * Wave Q (kit): the steps are the ReUI Stepper (The shop, The owner, Live) and going live is a real milestone, so it gets the confetti
+ * (canvas-confetti, lazy, nothing under reduced motion).
  */
+const STEP_NAMES = ["The shop", "The owner", "Live"];
 export default function SignupPage() {
   return (
     <Suspense fallback={<Skeleton className="h-60 rounded-card" />}>
@@ -41,6 +46,11 @@ function Signup() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ detail: merchantApi.MerchantDetail; kit: merchantApi.QrKit | null; phone: string } | null>(null);
   const set = (k: keyof typeof f, v: string) => setF((x) => ({ ...x, [k]: v }));
+  const qrRef = useRef<HTMLDivElement>(null);
+  // The shop just went live: one burst from the QR code.
+  useEffect(() => {
+    if (done) celebrate({ origin: qrRef.current ?? undefined });
+  }, [done]);
 
   // On a street day the shop is almost always on today's strip: start there.
   useEffect(() => {
@@ -78,19 +88,25 @@ function Signup() {
   if (done) {
     const loc = done.kit?.locations[0];
     return (
-      <div className="flex flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+        <FlowSteps step={null} labels={STEP_NAMES} label="Done: the shop is live" />
         <PageHeader title={`${done.detail.merchant.name} is live`} description={`The owner has an invite by text at ${done.phone}. They can finish the details later.`} />
         <Panel>
           <div className="flex flex-col items-center gap-3 text-center">
-            {loc ? <div role="img" aria-label={`QR code for ${done.detail.merchant.name}`} className="size-52 rounded-card border border-line p-3 [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: loc.qrSvg }} /> : null}
+            {loc ? <div ref={qrRef} role="img" aria-label={`QR code for ${done.detail.merchant.name}`} className="size-56 rounded-r6 bg-card p-3 shadow-[inset_0_0_0_1px_var(--border),var(--ll-shadow-card)] [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: loc.qrSvg }} /> : null}
             <p className="text-meta text-fg-muted">Customers scan this at the counter to join and earn their first points.</p>
-            {done.kit?.staffScript ? <p className="rounded-card bg-bg-subtle p-3 text-meta text-fg">{done.kit.staffScript}</p> : null}
+            {done.kit?.staffScript ? (
+              <figure className="w-full rounded-r4 bg-bg-subtle p-3 text-start">
+                <figcaption className="text-caption font-semibold uppercase tracking-[0.04em] text-fg-muted">What staff say</figcaption>
+                <p className="mt-1 text-meta text-fg">{done.kit.staffScript}</p>
+              </figure>
+            ) : null}
           </div>
         </Panel>
         <div className="grid gap-2 sm:grid-cols-3">
           <Button href="/rep/day" size="lg" iconStart={Check}>Back to the street day</Button>
-          <Button variant="secondary" size="lg" href={`/rep/merchants/${done.detail.merchant.id}/kit`}>Print the QR kit</Button>
-          <Button variant="secondary" size="lg" href={`/rep/merchants/${done.detail.merchant.id}`}>Finish details</Button>
+          <Button variant="secondary" size="lg" iconStart={Printer} href={`/rep/merchants/${done.detail.merchant.id}/kit`}>Print the QR kit</Button>
+          <Button variant="secondary" size="lg" iconStart={Store} href={`/rep/merchants/${done.detail.merchant.id}`}>Finish details</Button>
         </div>
       </div>
     );
@@ -103,12 +119,11 @@ function Signup() {
         title="Sign up a shop"
         description={step === 1 ? "The shop first, then the owner's mobile. About two minutes." : `${f.name.trim()} · ${f.address.trim()}`}
       />
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between text-meta">
-          <span className="font-medium text-fg">Step {step} of 2: {step === 1 ? "The shop" : "The owner"}</span>
+      <div className="flex flex-col gap-3">
+        <FlowSteps step={step} labels={STEP_NAMES} label={`Step ${step} of 2: ${step === 1 ? "The shop" : "The owner"}`} />
+        <div className="flex items-center justify-end text-meta">
           <QuietLink href={leadId ? `/rep/new?leadId=${leadId}` : "/rep/new"}>Full setup instead</QuietLink>
         </div>
-        <Meter value={step} max={2} label={`Step ${step} of 2`} />
       </div>
       <Panel>
         {step === 1 ? (

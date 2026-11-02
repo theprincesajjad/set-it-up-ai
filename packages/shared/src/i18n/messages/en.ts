@@ -4756,6 +4756,23 @@ export const en = {
   "cust.shop.onCard": "It's on your card. Show it at the counter.",
   "cust.bk.who": "Who would you like?",
   // ---- end wave-p: customer ----
+  // ---- wave-q: onboard ----
+  "sf.steps.link": "Link",
+  "sf.steps.shop": "Name",
+  "sf.steps.kind": "Type",
+  "sf.steps.where": "Location",
+  "sf.steps.card": "Card",
+  "sf.steps.account": "Account",
+  "sf.shop.otherColour": "Pick a different colour",
+  "sf.shop.logoNone": "No logo found. Your first letter goes on the card until you add one in Settings.",
+  "sf.card.colourHint": "Pick your shop's colour, or keep ours for your kind of shop.",
+  "sf.card.colourReset": "Use our pick",
+  "sf.acct.making": "You're making",
+  "sf.acct.pwOk": "At least 8 characters",
+  "sf.live.nextHint": "Swipe for more. All of it is also in your dashboard.",
+  "sf.live.nStep": "Step {n}",
+  "sf.live.start": "Start",
+  // ---- end wave-q: onboard ----
   // ---- wave-q: kit ----
   "kit.decrease": "Decrease",
   "kit.increase": "Increase",
@@ -4782,6 +4799,17 @@ export const en = {
   "kit.rating": "{n} out of {max} stars",
   "kit.meter": "{used} of {max} used",
   // ---- end wave-q: kit ----
+  // ---- wave-q: customer ----
+  "cust.bk.moreDates": "More dates",
+  "cust.bk.pickDate": "Pick a date",
+  "cust.bk.pickDateSub": "We show the times from that day.",
+  "cust.set.offersOff": "Offers off",
+  "cust.set.muted": "Muted",
+  // ---- end wave-q: customer ----
+  // ---- wave-q: owner ----
+  "ownq.set.look": "Your look",
+  "ownq.set.links": "Logo and cover photo links",
+  // ---- end wave-q: owner ----
 } as const;
 
 export type MessageKey = keyof typeof en;

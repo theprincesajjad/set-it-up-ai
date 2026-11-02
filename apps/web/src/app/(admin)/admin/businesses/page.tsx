@@ -2,16 +2,20 @@
 /**
  * Every business that signed up (wave N): search, filter by trade, plan, city, status (trial, paying, churned, at risk), signup date
  * and last active, sort on the server, and export the filtered list as CSV. A row opens the business's detail page.
+ * Wave Q (kit): the table is the ReUI Data Grid (TanStack) with server sorting from the column headers and page numbers; signup dates are
+ * the kit DatePicker (loaded when the date filters open); the status capsules carry their counts; skeleton rows and a real empty state.
  */
-import { Download } from "lucide-react";
+import { Download, SearchX } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { adminCockpitApi } from "@ll/shared";
 import { PageHeader, QuietButton } from "@/components/dashboard/kit";
 import { BusinessStatus, FlagPills, planLabel } from "@/components/dashboard/admin/cockpit";
 import { Button } from "@/components/ui/Button";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
-import { DataTable, type Column } from "@/components/ui/DataTable";
+import { AdminGrid, type AdminColumn } from "@/components/dashboard/admin/AdminGrid";
+import { PanelEmpty } from "@/components/dashboard/admin/AdminKit";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { verticalLabel } from "@/components/ui/VerticalIcon";
@@ -19,6 +23,11 @@ import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { relativeTime } from "@/lib/dashboard/time";
+
+const DatePicker = dynamic(() => import("@/components/ui/DatePicker").then((m) => m.DatePicker), { ssr: false });
+/** yyyy-mm-dd in local time (what the API filter takes) and back. */
+const ymd = (d: Date | undefined) => (d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` : "");
+const fromYmd = (s: string) => (s ? new Date(`${s}T12:00:00`) : undefined);
 
 type Row = adminCockpitApi.BusinessRow;
 type StatusFilter = "" | adminCockpitApi.BusinessStatus | "at_risk";
@@ -70,18 +79,22 @@ function BusinessesList() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [more, setMore] = useState(false);
+  const [page, setPage] = useState({ pageIndex: 0, pageSize: PAGE });
   const filtered = !!(q || status || trade || plan || city || from || to || active || dir !== "desc");
 
   const query = useMemo(
     () => ({ q: q.trim() || undefined, status: status || undefined, trade: trade || undefined, plan: plan || undefined, city: city || undefined, signedFrom: from || undefined, signedTo: to || undefined, activeWithin: active || undefined, sort, dir }),
     [q, status, trade, plan, city, from, to, active, sort, dir],
   );
+  // A new filter or sort starts again on page 1.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setPage((p) => (p.pageIndex ? { ...p, pageIndex: 0 } : p)), [query]);
   useEffect(() => {
     let live = true;
     const t = setTimeout(() => {
       setLoading(true);
       browserApi.admin.cockpit
-        .businesses({ ...query, limit: PAGE, offset: 0 })
+        .businesses({ ...query, limit: page.pageSize, offset: page.pageIndex * page.pageSize })
         .then((r) => {
           if (!live) return;
           setData(r);
@@ -95,7 +108,11 @@ function BusinessesList() {
       live = false;
       clearTimeout(t);
     };
-  }, [query]);
+  }, [query, page]);
+  const onSort = useCallback((x: { key: string; dir: "asc" | "desc" }) => {
+    setSort(x.key as adminCockpitApi.BusinessSort);
+    setDir(x.dir);
+  }, []);
 
   const exportCsv = async () => {
     setExporting(true);
@@ -115,36 +132,48 @@ function BusinessesList() {
     }
   };
 
-  const cols: Column<Row>[] = [
+  const cols: AdminColumn<Row>[] = [
     {
-      key: "name",
+      id: "name",
       header: "Business",
-      mobile: "title",
+      sortKey: "name",
+      size: 240,
       cell: (r) => (
         <span className="flex min-w-0 flex-col">
-          <span className="truncate font-medium">{r.name}</span>
-          <span className="truncate text-caption text-fg-muted max-md:hidden">{[verticalLabel(r.trade), r.city].filter(Boolean).join(" · ")}</span>
+          <span className="truncate font-medium text-fg">{r.name}</span>
+          <span className="truncate text-caption text-fg-muted">{[verticalLabel(r.trade), r.city].filter(Boolean).join(" · ")}</span>
         </span>
       ),
     },
     {
-      key: "status",
+      id: "status",
       header: "Status and plan",
-      mobile: "trailing",
+      size: 160,
       cell: (r) => (
         <span className="flex items-center gap-2 whitespace-nowrap">
           <BusinessStatus status={r.status} />
-          {r.plan !== "free" ? <span className="text-fg-muted max-md:hidden">{planLabel(r.plan)}</span> : null}
+          {r.plan !== "free" ? <span className="text-fg-muted">{planLabel(r.plan)}</span> : null}
         </span>
       ),
     },
-    { key: "mrr", header: "MRR", align: "end", mobile: "hidden", cell: (r) => (r.mrrCents ? formatMoney(r.mrrCents) : "–") },
-    { key: "gmv", header: "Processed, 30 d", align: "end", mobile: "hidden", cell: (r) => (r.gmv30dCents ? formatMoney(r.gmv30dCents) : "–") },
-    { key: "usage", header: "Stamps · bookings", align: "end", mobile: "subtitle", cell: (r) => `${formatNumber(r.stamps30d)} · ${formatNumber(r.bookings30d)}` },
-    { key: "flags", header: "Health", mobile: "hidden", cell: (r) => <FlagPills flags={r.flags} /> },
-    { key: "signed", header: "Signed up", mobile: "hidden", cell: (r) => <span className="whitespace-nowrap">{formatDate(r.signedUpAt)}</span> },
-    { key: "active", header: "Last active", mobile: "hidden", cell: (r) => <span className="whitespace-nowrap">{r.lastActiveAt ? relativeTime(r.lastActiveAt) : "Never"}</span> },
+    { id: "mrr", header: "MRR", sortKey: "mrrCents", align: "end", size: 90, cell: (r) => <span className="tabular">{r.mrrCents ? formatMoney(r.mrrCents) : "–"}</span> },
+    { id: "gmv", header: "Processed, 30 d", sortKey: "gmv30dCents", align: "end", size: 130, cell: (r) => <span className="tabular">{r.gmv30dCents ? formatMoney(r.gmv30dCents) : "–"}</span> },
+    { id: "usage", header: "Stamps · bookings", sortKey: "stamps30d", align: "end", size: 130, cell: (r) => <span className="tabular">{`${formatNumber(r.stamps30d)} · ${formatNumber(r.bookings30d)}`}</span> },
+    { id: "flags", header: "Health", size: 150, cell: (r) => <FlagPills flags={r.flags} /> },
+    { id: "signed", header: "Signed up", sortKey: "signedUpAt", size: 100, cell: (r) => <span className="whitespace-nowrap">{formatDate(r.signedUpAt)}</span> },
+    { id: "active", header: "Last active", sortKey: "lastActiveAt", size: 110, cell: (r) => <span className="whitespace-nowrap">{r.lastActiveAt ? relativeTime(r.lastActiveAt) : "Never"}</span> },
   ];
+  const clearAll = () => {
+    setQ("");
+    setStatus("");
+    setTrade("");
+    setPlan("");
+    setCity("");
+    setFrom("");
+    setTo("");
+    setActive("");
+    setDir("desc");
+  };
   const counts = data?.counts;
   const chips: { value: StatusFilter; label: string; n?: number }[] = [
     { value: "", label: "All" },
@@ -165,20 +194,26 @@ function BusinessesList() {
           </Button>
         }
       />
-      <DataTable
-        caption="Businesses"
+      <AdminGrid
+        label="Businesses"
         columns={cols}
         rows={rows}
+        total={data?.total ?? 0}
         rowKey={(r) => r.id}
         loading={loading}
-        error={error}
+        sort={{ key: sort, dir }}
+        onSortChange={onSort}
+        page={page}
+        onPageChange={setPage}
         onRowClick={(r) => router.push(`/admin/businesses/${r.id}`)}
-        hasMore={!!data && rows.length < data.total}
-        onLoadMore={async () => {
-          const r = await browserApi.admin.cockpit.businesses({ ...query, limit: PAGE, offset: rows.length });
-          setRows((x) => [...x, ...r.items]);
-        }}
-        empty="No business matches these filters."
+        mobile={(r) => ({ title: r.name, meta: [verticalLabel(r.trade), r.mrrCents ? `${formatMoney(r.mrrCents)}/mo` : null, r.lastActiveAt ? `active ${relativeTime(r.lastActiveAt)}` : "never active"].filter(Boolean).join(" · "), trailing: <BusinessStatus status={r.status} /> })}
+        empty={
+          error ? (
+            <PanelEmpty title="Couldn't load the businesses" description={error} />
+          ) : (
+            <PanelEmpty icon={SearchX} title="No business matches these filters" description="Try another status or clear the filters." action={filtered ? <QuietButton onClick={clearAll}>Clear filters</QuietButton> : undefined} />
+          )
+        }
         toolbar={
           <div className="flex flex-col gap-3">
             <TextField type="search" label="Search businesses" hideLabel placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -186,7 +221,7 @@ function BusinessesList() {
               {chips.map((c) => (
                 <Chip key={c.value || "all"} selected={status === c.value} onClick={() => setStatus(c.value)}>
                   {c.label}
-                  {c.n !== undefined ? <span className="ms-1 tabular text-fg-muted">{c.n}</span> : null}
+                  {c.n !== undefined ? <span className={`ms-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-caption tabular ${status === c.value ? "bg-primary-foreground/20" : "bg-muted text-fg-muted"}`}>{c.n}</span> : null}
                 </Chip>
               ))}
             </ChipGroup>
@@ -199,8 +234,8 @@ function BusinessesList() {
             </div>
             {more ? (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-                <TextField type="date" label="Signed up from" value={from} onChange={(e) => setFrom(e.target.value)} />
-                <TextField type="date" label="Signed up to" value={to} onChange={(e) => setTo(e.target.value)} />
+                <DatePicker label="Signed up from" value={fromYmd(from)} onChange={(d) => setFrom(ymd(d))} />
+                <DatePicker label="Signed up to" value={fromYmd(to)} onChange={(d) => setTo(ymd(d))} />
                 <Select label="Order" value={dir} onChange={(e) => setDir(e.target.value as "asc" | "desc")} options={[{ value: "desc", label: "High to low, newest first" }, { value: "asc", label: "Low to high, oldest first" }]} />
               </div>
             ) : null}
@@ -209,19 +244,7 @@ function BusinessesList() {
                 {more ? "Fewer filters" : "Signup dates and order"}
               </QuietButton>
               {filtered ? (
-                <QuietButton
-                  onClick={() => {
-                    setQ("");
-                    setStatus("");
-                    setTrade("");
-                    setPlan("");
-                    setCity("");
-                    setFrom("");
-                    setTo("");
-                    setActive("");
-                    setDir("desc");
-                  }}
-                >
+                <QuietButton onClick={clearAll}>
                   Clear filters
                 </QuietButton>
               ) : null}

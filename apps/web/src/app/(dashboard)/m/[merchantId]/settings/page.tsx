@@ -12,7 +12,9 @@ import { SiteRefresh } from "@/components/dashboard/SiteRefresh";
 import { WalletCardSettings } from "@/components/dashboard/wallet/WalletCardSettings";
 import { PeopleSettings } from "@/components/dashboard/inbox/PeopleSettings";
 import { TaxStatus } from "@/components/dashboard/TaxStatus";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/primitives/accordion";
 import { Banner } from "@/components/ui/Banner";
+import { ColorField } from "@/components/ui/ColorField";
 import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ShopLogo } from "@/components/ui/ShopTile";
@@ -95,6 +97,8 @@ function Profile({ active }: { active: boolean }) {
   const [phone, setPhone] = useState<string | null>(m.phone);
   const [phoneDigits, setPhoneDigits] = useState(initialDigits);
   const [tried, setTried] = useState(false);
+  const [colorKey, setColorKey] = useState(0);
+  const { t } = useLocaleOrEnglish();
   const act = useAction();
   const set = (k: keyof ProfileDraft, v: string) => setF((x) => ({ ...x, [k]: v }));
   const errors = profileErrors(f, phone, phoneDigits);
@@ -115,21 +119,30 @@ function Profile({ active }: { active: boolean }) {
     <>
       <Panel>
         <form id="profile-form" className="flex flex-col gap-5" noValidate onSubmit={(e) => { e.preventDefault(); void save(); }}>
-          <div className="flex items-start gap-4">
-            <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: HEX.test(f.brandColor) ? f.brandColor : DEFAULT_BRAND }} size={72} />
-            <div className="min-w-0 flex-1">
-              <TextField type="url" label="Logo URL" optionalLabel hint="Square image. Without one we show your initials." value={f.logoUrl} error={shown.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} />
-            </div>
-          </div>
           <TextField label="Shop name" value={f.name} error={shown.name} onChange={(e) => set("name", e.target.value)} maxLength={120} />
           <TextField type="textarea" label="About your shop" value={f.description} onChange={(e) => set("description", e.target.value)} maxLength={2000} showCount />
-          <TextField type="url" label="Cover photo URL" optionalLabel value={f.coverUrl} error={shown.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <TextField label="Brand colour" value={f.brandColor} error={shown.brandColor} onChange={(e) => set("brandColor", e.target.value)} hint="Colours your shop page, join page and customer card. We adjust it if text would be hard to read." />
+          {/* Wave Q: the brand colour is the kit ColorField (trade swatches, your own colour, hex, a live contrast sample); the logo and
+              cover links fold into an Accordion under it, since most shops never paste one. */}
+          <section aria-labelledby="look-h" className="flex flex-col gap-4 border-y border-line py-5">
+            <div className="flex items-center gap-4">
+              <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: HEX.test(f.brandColor) ? f.brandColor : DEFAULT_BRAND }} size={64} />
+              <div className="min-w-0">
+                <h2 id="look-h" className="text-body-strong text-fg">{t("ownq.set.look")}</h2>
+                <p className="text-meta text-fg-muted">Colours your shop page, join page and customer card. We adjust it if text would be hard to read.</p>
+              </div>
             </div>
-            <input type="color" aria-label="Pick brand colour" value={HEX.test(f.brandColor) ? f.brandColor : DEFAULT_BRAND} onChange={(e) => set("brandColor", e.target.value.toUpperCase())} className="mt-[26px] h-12 w-14 shrink-0 cursor-pointer rounded-input border border-line bg-bg p-1" />
-          </div>
+            <ColorField key={colorKey} label="Brand colour" value={HEX.test(f.brandColor) ? f.brandColor : null} onChange={(c) => set("brandColor", c ?? DEFAULT_BRAND)} vertical={m.vertical} />
+            {shown.brandColor ? <p className="text-meta font-medium text-negative">{shown.brandColor}</p> : null}
+            <Accordion defaultValue={f.logoUrl || f.coverUrl || shown.logoUrl || shown.coverUrl ? ["links"] : []} className="rounded-input border border-line px-4">
+              <AccordionItem value="links">
+                <AccordionTrigger className="min-h-12 items-center text-body font-[550] text-fg hover:no-underline">{t("ownq.set.links")}</AccordionTrigger>
+                <AccordionContent keepMounted className="flex flex-col gap-4 pb-4 text-body">
+                  <TextField type="url" label="Logo URL" optionalLabel hint="Square image. Without one we show your initials." value={f.logoUrl} error={shown.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} />
+                  <TextField type="url" label="Cover photo URL" optionalLabel value={f.coverUrl} error={shown.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </section>
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField type="email" label="Email" optionalLabel value={f.email} error={shown.email} onChange={(e) => set("email", e.target.value)} />
             <PhoneField label="Shop phone" value={phoneDigits} onChangeDigits={setPhoneDigits} onChangeE164={setPhone} error={shown.phone} />
@@ -143,7 +156,7 @@ function Profile({ active }: { active: boolean }) {
           </div>
         </form>
       </Panel>
-      <SaveBar dirty={dirty && active} error={act.error} onDiscard={() => { setF(initial); setPhoneDigits(initialDigits); setPhone(m.phone); setTried(false); act.setError(null); }}>
+      <SaveBar dirty={dirty && active} error={act.error} onDiscard={() => { setF(initial); setColorKey((k) => k + 1); setPhoneDigits(initialDigits); setPhone(m.phone); setTried(false); act.setError(null); }}>
         <Button type="submit" form="profile-form" size="sm" loading={act.busy}>
           Save profile
         </Button>

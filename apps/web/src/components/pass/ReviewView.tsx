@@ -2,13 +2,14 @@
 import { Star } from "lucide-react";
 import { useRef, useState } from "react";
 import type { whatsappApi } from "@ll/shared";
+import { Rating } from "@/components/primitives/rating";
 import { Banner } from "@/components/ui/Banner";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
-import { useLocaleOrEnglish } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 
@@ -93,13 +94,12 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
 /** 1 to 5 star picker (radio group, arrow keys move it) or a read-only row. */
 function Stars({ value, onChange, readOnly, label }: { value: number; onChange?: (n: number) => void; readOnly?: boolean; label: (n: number) => string }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  // wave-q: the stored rating is the kit Rating (ReUI) in the points colour; the picker below keeps its radio group and arrow keys.
   if (readOnly)
     return (
-      <div role="img" aria-label={label(value)} className="flex gap-1.5">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Star key={i} aria-hidden className={cn("size-8", i <= value ? "fill-fg text-fg" : "text-line-strong")} strokeWidth={1.5} />
-        ))}
-      </div>
+      <span role="img" aria-label={label(value)} className="inline-flex">
+        <Rating rating={value} size="lg" className="[&_svg]:size-8" />
+      </span>
     );
   const move = (to: number) => {
     const n = Math.min(5, Math.max(1, to));
@@ -127,9 +127,9 @@ function Stars({ value, onChange, readOnly, label }: { value: number; onChange?:
             e.preventDefault();
             move((value || (next > 0 ? 0 : 2)) + next);
           }}
-          className="inline-flex size-12 items-center justify-center rounded-full focus-visible:focus-ring"
+          className="group/star inline-flex size-12 items-center justify-center rounded-full focus-visible:focus-ring"
         >
-          <Star aria-hidden className={cn("size-9 transition-colors", i <= value ? "fill-fg text-fg" : "text-line-strong hover:text-fg-subtle")} strokeWidth={1.5} />
+          <Star key={i <= value ? `on-${value}` : "off"} aria-hidden className={cn("size-9 transition-[color,fill,transform] duration-150 group-hover/star:scale-110 motion-reduce:transition-none", i <= value ? "fill-points text-points motion-safe:animate-stamp-pop" : "text-line-strong group-hover/star:text-points/70")} strokeWidth={1.5} />
         </button>
       ))}
     </div>

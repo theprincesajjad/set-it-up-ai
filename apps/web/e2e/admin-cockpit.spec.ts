@@ -164,3 +164,58 @@ test.describe("security", () => {
     await shot(page, "health-ur-1440");
   });
 });
+
+test.describe("kit components (wave Q)", () => {
+  test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+
+  test("KPI tiles roll the API's numbers; health tiles mark the filter; the funnel shows what continued", async ({ page }) => {
+    await signIn(page, ADMIN);
+    const o = (await (await fetch(`${API}/v1/admin/cockpit?days=30`, { headers: { authorization: `Bearer ${await token(ADMIN)}` } })).json()) as { shops: { paying: number } };
+    await page.goto("/admin");
+    const growth = page.getByRole("group", { name: "Growth" });
+    await expect(growth.getByRole("link", { name: /Paying shops/ }).locator(".sr-only")).toHaveText(String(o.shops.paying));
+    await expect(page.getByRole("link", { name: /API (healthy|slow|errors)/ }).locator("[data-tone]")).toBeVisible();
+
+    await page.goto("/admin/health?flag=payment_failed");
+    await expect(page.getByRole("link", { name: /Payment failed/ }).first()).toHaveAttribute("aria-current", "true");
+
+    await page.goto("/admin/funnel");
+    await expect(page.getByRole("list", { name: "Conversion funnel" })).toContainText("continued");
+  });
+
+  test("businesses: sort from the header and page through; audit log is a timeline; AI spend is a meter", async ({ page }) => {
+    await signIn(page, ADMIN);
+    await page.goto("/admin/businesses");
+    const grid = page.getByRole("table", { name: "Businesses" });
+    await expect(grid).toBeVisible();
+    await grid.getByRole("button", { name: /^MRR/ }).click();
+    await expect(grid.getByRole("button", { name: /^MRR, sorted high to low/ })).toBeVisible();
+    await page.getByRole("combobox", { name: "Rows per page" }).click();
+    await page.getByRole("option", { name: "25" }).click();
+    await page.getByRole("button", { name: "Go to page 2" }).click();
+    await expect(page.getByText(/^26–\d+ of \d+$/)).toBeVisible();
+
+    await page.goto("/admin/audit");
+    await expect(page.getByRole("list", { name: /^Audit entries/ }).first().getByRole("listitem").first()).toBeVisible();
+
+    await page.goto("/admin/ai");
+    await expect(page.getByRole("meter", { name: "Spent against the monthly cap" })).toBeVisible();
+  });
+
+  test("rep signup shows its steps and celebrates nothing under reduced motion", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await signIn(page, { email: "rep@localloyalty.example", password: "localloyalty-rep" });
+    await page.goto("/rep/signup");
+    await expect(page.getByRole("progressbar", { name: "Step 1 of 2: The shop" })).toBeVisible();
+    await page.getByLabel("Shop name").fill(`Kit Steps Cafe ${Date.now() % 100000}`);
+    await page.getByLabel("What kind of shop").selectOption("cafe");
+    await page.getByLabel("Street address").fill("700 Danforth Ave");
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(page.getByRole("progressbar", { name: "Step 2 of 2: The owner" })).toBeVisible();
+    await page.getByLabel("Owner's mobile").fill(`416555${String(1000 + Math.floor(Math.random() * 8999))}`);
+    await page.getByRole("button", { name: "Create the shop" }).click();
+    await expect(page.getByRole("progressbar", { name: "Done: the shop is live" })).toBeVisible();
+    await expect(page.locator("body > canvas")).toHaveCount(0);
+  });
+});

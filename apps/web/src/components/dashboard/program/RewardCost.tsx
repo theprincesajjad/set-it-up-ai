@@ -5,6 +5,7 @@
  */
 import { GROCER_NET_MARGIN_PCT, rewardBackPct } from "@ll/shared";
 import { Panel } from "@/components/dashboard/kit";
+import { Meter, MeterIndicator, MeterTrack } from "@/components/primitives/meter";
 import { rewardCostLine } from "@/lib/grocery";
 
 export function RewardCost({ pointsPerDollar, pointsCost, rewardValueCents }: { pointsPerDollar: number; pointsCost: number; rewardValueCents: number }) {
@@ -17,9 +18,12 @@ export function RewardCost({ pointsPerDollar, pointsCost, rewardValueCents }: { 
   return (
     <Panel title="What this costs you" description={`$${(rewardValueCents / 100).toFixed(0)} off after $${spend.toLocaleString("en-CA")} spent.`}>
       <p className={high ? "text-[16px] font-semibold text-points-text" : "text-[16px] font-semibold text-fg"}>{line}</p>
-      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-bg-muted" role="img" aria-label={`${pct}% back against a typical grocer net margin of ${GROCER_NET_MARGIN_PCT}%`}>
-        <div className="h-full rounded-full bg-points" style={{ width: `${share}%` }} />
-      </div>
+      {/* Wave Q: a Base UI Meter (role meter, value text) instead of a hand-drawn width bar. The track spans twice the margin. */}
+      <Meter value={share} max={100} aria-label={`${pct}% back against a typical grocer net margin of ${GROCER_NET_MARGIN_PCT}%`} className="mt-3">
+        <MeterTrack className="h-2 rounded-full bg-bg-muted">
+          <MeterIndicator className={high ? "rounded-full bg-points" : "rounded-full bg-positive"} />
+        </MeterTrack>
+      </Meter>
       <p className="mt-2 text-meta text-fg-muted">
         {pct}% back, against a typical net margin of about {GROCER_NET_MARGIN_PCT}% for a small grocer (an estimate from Canadian small-business data). That is about {Math.round((pct / GROCER_NET_MARGIN_PCT) * 100)}% of the profit on the dollars members spend. Fixed-dollar rewards keep the cost predictable.
       </p>

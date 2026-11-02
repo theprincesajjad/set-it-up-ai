@@ -13,6 +13,7 @@ import { Badge as BadgePrimitive } from "@/components/primitives/badge";
 import { TableCell, TableHead, TableRow } from "@/components/primitives/table";
 import { useShopVertical } from "@/components/dashboard/useShopVertical";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { StatTile as ToneStatTile } from "@/components/ui/StatTile";
 import { TONES, type Tone } from "@/components/ui/tones";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,7 @@ import { QuietButton } from "./page";
 export interface StatItem {
   label: string;
   value: ReactNode;
-  /** Kit (wave Q): the raw number behind `value`. When set, the Clear Today tiles roll it in with NumberFlow (AnimatedNumber); `value` stays the fallback. */
+  /** Kit (wave Q): the raw number behind `value`. When set, StatBlock (tiles and hairline grid) and the Clear Today tiles roll it in with NumberFlow (AnimatedNumber); `value` stays the fallback. */
   num?: number;
   /** Intl options for `num` (currency, percent). */
   numFormat?: NumberFlowFormat;
@@ -37,6 +38,11 @@ export interface StatItem {
   spark?: number[];
 }
 
+/** The number as shown: rolled in (AnimatedNumber) when the item carries `num`, else the `value` node as given. */
+function statValue(s: StatItem): ReactNode {
+  return typeof s.num === "number" && Number.isFinite(s.num) ? <AnimatedNumber value={s.num} format={s.numFormat} /> : s.value;
+}
+
 /** One bordered block, numbers separated by vertical hairlines (label above, big number, small delta below). */
 export function StatBlock({ items, loading, label = "Key numbers", className, bare, cols: colsProp, tiles }: { items: StatItem[]; loading?: boolean; label?: string; className?: string; /** No outer border (inside another bordered block). */ bare?: boolean; cols?: 2 | 3 | 4 | 5; /** Main Street Warm: each number is a pastel StatTile (big Fraunces number, delta line, sparkline from `item.spark`). Without it the hairline grid is drawn (pages whose tests read it as a description list keep it). */ tiles?: boolean }) {
   const n = colsProp ?? (items.length >= 4 ? 4 : items.length === 3 ? 3 : 2);
@@ -49,7 +55,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
             key={s.label}
             tone={s.tone ?? TONES[idx % TONES.length]!}
             label={s.label}
-            value={s.value}
+            value={statValue(s)}
             delta={s.delta ? { pct: s.delta.good === true ? 1 : s.delta.good === false ? -1 : 0, good: s.delta.good, text: s.delta.context ? `${s.delta.text} ${s.delta.context}` : s.delta.text } : null}
             caption={s.caption}
             spark={s.spark}
@@ -85,7 +91,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
               )}
             </dt>
             <dd className="kit-stat-v mt-1.5 text-[clamp(22px,6.2vw,30px)] font-semibold leading-9 tracking-[-0.01em] text-fg tabular">
-              {loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : s.value}
+              {loading ? <span className="skeleton inline-block h-7 w-16 rounded-sm align-middle" /> : statValue(s)}
             </dd>
             <dd className="kit-stat-d mt-1 min-h-4 text-[12px] font-normal leading-4 tabular">
               {s.delta ? (

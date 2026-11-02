@@ -1,5 +1,7 @@
 "use client";
-import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/primitives/popover";
+import { DayCalendar } from "@/components/ui/DatePicker";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { appointmentsApi } from "@ll/shared";
@@ -227,8 +229,9 @@ function Calendar() {
       />
       <div className="flex flex-wrap items-center gap-2">
         <ToolbarButton onClick={() => setDate(today)}>Today</ToolbarButton>
-        <button type="button" aria-label={view === "week" ? "Previous week" : "Previous day"} onClick={() => go(-1)} className="inline-flex size-8 items-center justify-center rounded-full text-fg hover:bg-bg-subtle focus-visible:focus-ring"><ChevronLeft aria-hidden className="size-4" /></button>
-        <button type="button" aria-label={view === "week" ? "Next week" : "Next day"} onClick={() => go(1)} className="inline-flex size-8 items-center justify-center rounded-full text-fg hover:bg-bg-subtle focus-visible:focus-ring"><ChevronRight aria-hidden className="size-4" /></button>
+        <button type="button" aria-label={view === "week" ? "Previous week" : "Previous day"} onClick={() => go(-1)} className="relative inline-flex size-8 items-center justify-center rounded-full text-fg after:absolute after:-inset-1.5 hover:bg-bg-subtle focus-visible:focus-ring"><ChevronLeft aria-hidden className="size-4" /></button>
+        <button type="button" aria-label={view === "week" ? "Next week" : "Next day"} onClick={() => go(1)} className="relative inline-flex size-8 items-center justify-center rounded-full text-fg after:absolute after:-inset-1.5 hover:bg-bg-subtle focus-visible:focus-ring"><ChevronRight aria-hidden className="size-4" /></button>
+        <JumpToDay date={date} today={today} onPick={setDate} />
         <Segmented label="View" value={view} onChange={(v) => { setView(v); if (v === "week" && !only) setOnly(staff[0]?.userId ?? ""); }} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }]} />
         <Select hideLabel label="Staff" value={view === "week" ? chosenStaff : only} onChange={(e) => setOnly(e.target.value)} options={[...(view === "week" ? [] : [{ value: "", label: "All staff" }]), ...staff.map((s) => ({ value: s.userId, label: s.name }))]} className="h-8 !min-h-0 py-0 text-meta" />
       </div>
@@ -332,5 +335,42 @@ function Calendar() {
         }
       />
     </div>
+  );
+}
+
+/** Wave Q: jump to any day: the kit DayCalendar (react-day-picker, the shop's language, 44px days) in a popover from the toolbar. */
+function JumpToDay({ date, today, onPick }: { date: string; today: string; onPick: (d: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const toDate = (v: string) => {
+    const [y, m, d] = v.split("-").map(Number);
+    return new Date(y!, m! - 1, d!);
+  };
+  const fmt = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+  const label = dateLabel(date, { weekday: "short", month: "short", day: "numeric" });
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        aria-label={`Pick a day: ${label}`}
+        data-testid="calendar-jump"
+        className="relative inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-card px-3 after:absolute after:-inset-y-1.5 after:inset-x-0 text-meta font-medium text-fg shadow-xs hover:bg-bg-subtle focus-visible:focus-ring data-popup-open:border-fg"
+      >
+        <CalendarDays aria-hidden className="size-4 text-fg-muted" strokeWidth={1.8} />
+        {label}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-0">
+        <DayCalendar
+          mode="single"
+          selected={toDate(date)}
+          defaultMonth={toDate(date)}
+          today={toDate(today)}
+          onSelect={(d: Date | undefined) => {
+            if (d) onPick(fmt(d));
+            setOpen(false);
+          }}
+          tone="trade"
+          autoFocus
+        />
+      </PopoverContent>
+    </Popover>
   );
 }

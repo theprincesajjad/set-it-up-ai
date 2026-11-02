@@ -16,6 +16,7 @@
  * password), so refresh and Back keep them. Kept from the one-screen form: the `?shop=` sales-assistant prefill (starts at "Is this
  * you?"), landing attribution (src, A/B variant, anonymous id), the signup_start beacon, the trial, and the terms line.
  */
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AID_OFF, AID_PATTERN, LANDING_COOKIES, normalizePostal, onboardingPath, parseVariantCookie, tradeSetupFor, type merchantApi } from "@ll/shared";
@@ -24,7 +25,7 @@ import { errorMessage, isApiError } from "@/lib/api/errors";
 import { toE164 } from "@/lib/phone";
 import { routes } from "@/lib/routes";
 import { RESTAURANT_VERTICALS, afterSignupPath } from "@/lib/signupRoute";
-import { useLocaleOrEnglish } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { shopColorProps } from "@/lib/shopColor";
 import { applyBodyFor } from "@/components/onboarding/SiteImport";
 import { CardPreview } from "@/components/onboarding/signup/CardPreview";
@@ -32,7 +33,10 @@ import { STEPS, cardFor, clearDraft, emptyDraft, loadDraft, resolveStep, saveDra
 import { FlowShell } from "@/components/onboarding/signup/Shell";
 import { LinkStep, ShopStep, type Importer } from "@/components/onboarding/signup/StepsIntro";
 import { KindStep, LoyaltyStep, WhereStep } from "@/components/onboarding/signup/StepsShop";
-import { AccountStep, LiveStep, type NextStep } from "@/components/onboarding/signup/StepsFinish";
+import { AccountStep, type NextStep } from "@/components/onboarding/signup/StepsFinish";
+
+// "You're live" (confetti, the carousel, motion) loads only once the shop exists.
+const LiveStep = dynamic(() => import("@/components/onboarding/signup/LiveStep").then((m) => m.LiveStep), { ssr: false, loading: () => <div className="min-h-[70dvh]" data-step="live" aria-busy="true" /> });
 
 /** The landing page's `src` (ll_src cookie, 30 days), when the link itself did not carry one. */
 function cookieSrc(): string | undefined {
@@ -208,6 +212,9 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
       // The rest of what the owner kept from their website (logo, colour, links, hours, services), now that the shop exists.
       const kept = draft.link === "read" && draft.accepted ? applyBodyFor(draft.accepted) : null;
       if (kept) await browserClient.post(`/v1/merchants/${id}/site-import/apply`, kept).catch(() => undefined);
+      // The colour picked on "Your loyalty card" when nothing was imported (wave Q). Best effort, like the card: Settings can change it.
+      const pickedColor = draft.link !== "read" || !draft.accepted ? draft.color : null;
+      if (pickedColor) await browserClient.patch(`/v1/merchants/${id}`, { brandColor: pickedColor }).catch(() => undefined);
       // Their card, if they changed the trade's defaults. Best effort: the shop exists either way and Rewards can fix it.
       await applyCard(id, draft).catch(() => undefined);
       setDraft({
@@ -218,7 +225,7 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
           vertical: draft.vertical,
           workSetting: draft.work,
           joinUrl: r.locations[0]?.joinUrl ?? null,
-          brandColor: draft.accepted?.brandColor ?? r.merchant.brandColor ?? null,
+          brandColor: draft.accepted?.brandColor ?? pickedColor ?? r.merchant.brandColor ?? null,
           logo: draft.accepted?.logoPreview ?? draft.accepted?.logoUrl ?? r.merchant.logoUrl ?? null,
         },
       });
@@ -237,14 +244,14 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
   if (!draft || !step) return <div className="min-h-dvh bg-bg" aria-busy="true" />;
 
   // The colour flows through as soon as it is known: the site's colour right after the read, then the owner's pick.
-  const brandColor = draft.accepted ? (draft.accepted.brandColor ?? null) : draft.link === "read" ? (draft.imported?.fields.brandColor?.value ?? null) : null;
+  const brandColor = draft.accepted ? (draft.accepted.brandColor ?? null) : draft.link === "read" ? (draft.imported?.fields.brandColor?.value ?? null) : draft.color;
   const colors = shopColorProps(draft.vertical || brandColor ? { vertical: draft.vertical || null, brandColor } : null);
   const card = step === "card" || step === "account" ? cardFor(draft.vertical, draft.card) : null;
   const aside =
     step === "live" ? null : (
       <div className="flex w-full max-w-[380px] flex-col gap-4">
         <p className="text-meta font-[550] text-fg">{t("sf.preview.label")}</p>
-        <CardPreview name={draft.name} vertical={draft.vertical} brandColor={brandColor} logo={draft.accepted?.logoPreview ?? null} card={card} />
+        <CardPreview name={draft.name} vertical={draft.vertical} brandColor={brandColor} logo={draft.accepted?.logoPreview ?? null} card={card} tilt stack />
         <p className="text-meta text-fg-muted">{t("sf.preview.caption")}</p>
       </div>
     );
@@ -269,7 +276,7 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
       {step === "kind" ? <KindStep {...props} /> : null}
       {step === "where" ? <WhereStep {...props} /> : null}
       {step === "card" ? <LoyaltyStep {...props} /> : null}
-      {step === "account" ? <AccountStep draft={draft} update={update} registered={registered} busy={busy} banner={banner} errors={errors} onCreate={create} terms={terms} /> : null}
+      {step === "account" ? <AccountStep draft={draft} update={update} registered={registered} busy={busy} banner={banner} errors={errors} onCreate={create} terms={terms} brandColor={brandColor} /> : null}
       {step === "live" && created ? (
         <LiveStep
           draft={draft}

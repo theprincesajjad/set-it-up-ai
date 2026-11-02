@@ -5,6 +5,7 @@
  * Target: under 30 seconds on a 3-year-old phone. One page, state kept in memory.
  */
 import { ShopWalletCard } from "./ShopWalletCard";
+import { Reveal } from "./Reveal";
 import { BrandMark, BrandPassCard, MiniStamps } from "./ShopBrand";
 import { BRAND, placeKindLabel, t as translate } from "@ll/shared";
 import Link from "next/link";
@@ -13,6 +14,9 @@ import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { alsoEarningT, joinHeadlineT, joinIntroT, stampsToGoT, unitText } from "@/lib/joinCopy";
 import { placeKind } from "@/lib/place";
 import { ArrowUpRight } from "lucide-react";
+import dynamic from "next/dynamic";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { Celebration } from "@/components/ui/Celebrate";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { authApi, customerApi, networkApi, walletApi } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
@@ -21,7 +25,7 @@ import { rememberLocale, saveProfileLocale, useLocaleOrEnglish } from "@/lib/i18
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
-import { firstName, formatNumber, formatPoints, withArticle } from "@/lib/format";
+import { firstName, formatNumber, formatPoints, unitFor, withArticle } from "@/lib/format";
 import { unitCaption } from "@/lib/units";
 import { formatE164, toE164, validateNanp } from "@/lib/phone";
 import { howYouEarn } from "@/lib/program";
@@ -30,6 +34,7 @@ import { Button } from "@/components/ui/Button";
 import { ConsentCheckbox } from "@/components/ui/Checkbox";
 import { MemberQr } from "@/components/ui/MemberQr";
 import { OtpField } from "@/components/ui/OtpField";
+import { StepProgress } from "@/components/ui/StepProgress";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { ShopTile } from "@/components/ui/ShopTile";
 import { StampCard } from "@/components/ui/StampCard";
@@ -64,6 +69,9 @@ export const defaultJoinDeps: JoinDeps = {
   shopWallet: (merchantId) => browserApi.me.shopWallet(merchantId),
   nearby: (q) => browserApi.network.shops(q),
 };
+
+// Only the join success screen shows it: its own chunk, fetched after the join.
+const CardCarousel = dynamic(() => import("@/components/ui/CardCarousel").then((m) => m.CardCarousel), { ssr: false });
 
 export type JoinStep = "phone" | "code" | "details" | "joining" | "joined";
 
@@ -307,6 +315,8 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
             </div>
             {signedIn ? null : <p className="shrink-0 text-caption text-fg-muted tabular-nums" data-testid="join-step">{t("cust.join.step", { n: stepNo, total: 3 })}</p>}
           </header>
+          {/* wave-q: the kit StepProgress in the shop's colour under the shop row (phone done, this step half way). */}
+          {signedIn ? null : <StepProgress step={stepNo} total={3} label={t("cust.join.step", { n: stepNo, total: 3 })} className="-mt-3" />}
         </>
       ) : null}
 
@@ -345,7 +355,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
               {t("auth.otp.change")}
             </button>
           </p>
-          <OtpField value={code} onChange={(v) => { setCode(v); if (error) setError(null); }} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
+          <OtpField tone="trade" value={code} onChange={(v) => { setCode(v); if (error) setError(null); }} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
           {/* l10n-ok: development builds only (the API sends a devCode only outside production) */}
           {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
           <Button type="submit" variant="shop" size="lg" fullWidth loading={busy}>
@@ -435,6 +445,8 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
 
   return (
     <div className="flex flex-col gap-6 pt-2">
+      {/* wave-q: joining is the moment: one burst in the shop's colours from the card (nothing under reduced motion). */}
+      <Celebration origin={{ x: 0.5, y: 0.22 }} tokens={["--trade", "--trade-soft", "--points", "--success"]} delay={350} />
       <div className="flex flex-col gap-3">
         {/* The pass, in the shop's colour (brand colour, else its trade): the moment they join is the card they now carry. */}
         <BrandPassCard
@@ -445,7 +457,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
           aside={
             stamps ? (
               <span dir="ltr" className="text-[17px] font-semibold tabular-nums [unicode-bidi:isolate]">
-                {formatNumber(onCard)} / {formatNumber(g)}
+                <AnimatedNumber value={onCard} suffix={` / ${formatNumber(g)}`} />
               </span>
             ) : null
           }
@@ -463,7 +475,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
             </>
           ) : (
             <div className="flex flex-col gap-2">
-              <p className="text-[24px] font-semibold leading-8 tabular-nums">{locale === "en" ? formatPoints(m.balance, m.terminology, false) : unitText(t, program, m.balance)}</p>
+              <p className="text-[24px] font-semibold leading-8 tabular-nums">{locale === "en" ? <><AnimatedNumber value={m.balance} /> {unitFor(m.terminology, m.balance, false)}</> : unitText(t, program, m.balance)}</p>
               {goal > 0 ? (
                 <div role="progressbar" aria-label={t("pass.hero.next")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2.5 w-full overflow-hidden rounded-full bg-trade-pass-text/25">
                   <div className="h-full rounded-full bg-trade-pass-text" style={{ width: `${pct}%` }} />
@@ -478,12 +490,15 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
 
       {/* On a phone the wallet button comes right under the card, above the fold: it is the one thing to do here. A computer keeps it
           under the member QR, since it brings its own "open on your phone" QR. */}
-      {os !== "other" ? wallet : null}
+      {os !== "other" ? <Reveal delay={0.15}>{wallet}</Reveal> : null}
 
-      <section aria-label={t("auth.joined.cardLabel")} className="flex flex-col items-center gap-3 rounded-card border border-line px-4 py-6">
-        <p className="text-body-strong text-fg">{t("auth.joined.showStaff")}</p>
-        {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={220} caption={t("auth.joined.brightness")} /> : <div className="skeleton aspect-square w-[240px] rounded-card" aria-busy="true" />}
-      </section>
+      {/* wave-q: the rest rises in under the card, one after the other (kit BlurFade; shown as is under reduced motion). */}
+      <Reveal delay={0.25}>
+        <section aria-label={t("auth.joined.cardLabel")} className="flex flex-col items-center gap-3 rounded-card border border-line bg-card px-4 py-6 shadow-card clear:card-clear clear:border-0">
+          <p className="text-body-strong text-fg">{t("auth.joined.showStaff")}</p>
+          {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={220} caption={t("auth.joined.brightness")} /> : <div className="skeleton aspect-square w-[240px] rounded-card" aria-busy="true" />}
+        </section>
+      </Reveal>
 
       <div className="flex flex-col gap-2">
         {os === "other" ? wallet : null}
@@ -513,18 +528,21 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
       ) : null}
 
       {nearby.length ? (
-        <section aria-labelledby="also-on" className="flex flex-col gap-3">
+        <Reveal delay={0.35}>
+        <div className="flex flex-col gap-3">
           <h2 id="also-on" className="text-headline text-fg">
             {t("auth.joined.nearby")}
           </h2>
-          <ul className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1">
-            {nearby.map((s) => (
-              <li key={s.merchant.id} className="flex w-60 shrink-0 snap-start">
-                <ShopTile className="h-full w-full" variant="compact" href={`/shops/${s.merchant.slug}`} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
-              </li>
+          {/* wave-q: the kit's CardCarousel (embla, loaded with this screen): swipe on a phone, arrows and dots on a computer. */}
+          <CardCarousel
+            label={t("auth.joined.nearby")}
+            basis="basis-[72%] sm:basis-1/2"
+            items={nearby.map((s) => (
+              <ShopTile key={s.merchant.id} className="h-full w-full" variant="compact" href={`/shops/${s.merchant.slug}`} shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} />
             ))}
-          </ul>
-        </section>
+          />
+        </div>
+        </Reveal>
       ) : null}
     </div>
   );

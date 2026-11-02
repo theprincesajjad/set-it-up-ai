@@ -36,10 +36,13 @@ export default async function NeighbourhoodsPage() {
         ) : items.length === 0 ? (
           <EmptyState headingLevel={2} icon={MapPin} title={copy.empty.noNeighbourhood.title} description={copy.empty.noNeighbourhood.body} action={<Button variant="secondary" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>{copy.empty.noNeighbourhood.action}</Button>} />
         ) : (
-          <ul className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+          // Wave Q: separate cards (was a hairline grid that left an empty grey cell when there were fewer than three streets).
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((n) => (
-              <li key={n.id} className="bg-background">
-                <Link href={`/neighbourhoods/${n.slug}`} className="flex h-full min-h-56 flex-col gap-2 p-6 transition-colors hover:bg-muted focus-visible:focus-ring md:p-8">
+              <li key={n.id}>
+                <Link href={`/neighbourhoods/${n.slug}`} className="card-clear mkt-lift group relative flex h-full min-h-56 flex-col gap-2 overflow-hidden rounded-sheet p-6 focus-visible:focus-ring md:p-8">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icons3d/pin_area@2x.png" alt="" aria-hidden width={64} height={64} className="mb-2 size-16 drop-shadow-md" />
                   <div className="flex items-center justify-between gap-2 text-meta text-muted-foreground">
                     <span>
                       {n.city}, {n.province}

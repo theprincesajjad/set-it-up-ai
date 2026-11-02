@@ -170,7 +170,8 @@ test.describe("founder's console (desktop)", () => {
 
     await page.goto("/admin/audit");
     await page.getByLabel("Area").selectOption("support.");
-    const row = page.getByRole("row", { name: /support.session_started/ }).first();
+    // Wave Q: the audit log is a day-grouped timeline (one list item per entry) instead of a table.
+    const row = page.getByRole("listitem").filter({ hasText: "support.session_started" }).first();
     await expect(row).toBeVisible();
     await row.getByRole("button", { name: "Details" }).click();
     await expect(page.getByText(reason).first()).toBeVisible();

@@ -69,7 +69,7 @@ export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, 
         <ProgressBar className="mt-3" tone="accent" value={reward.pointsCost} max={reward.pointsCost} showValue={false} valueText={t("sh.rc.progress", { have: reward.pointsCost, need: reward.pointsCost, unit: locale === "en" ? terminology : unitCaption(locale, 2, terminology) })} />
       ) : null}
       {state === "locked" ? (
-        <ProgressBar className="mt-3" value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} showValue={false} valueText={t("sh.rc.progress", { have: balance, need: reward.pointsCost, unit: locale === "en" ? terminology : unitCaption(locale, 2, terminology) })} />
+        <ProgressBar className="mt-3" tone="trade" value={Math.min(balance, reward.pointsCost)} max={reward.pointsCost} showValue={false} valueText={t("sh.rc.progress", { have: balance, need: reward.pointsCost, unit: locale === "en" ? terminology : unitCaption(locale, 2, terminology) })} />
       ) : null}
       {reward.description || reward.terms ? <p className="mt-2 text-meta text-fg-muted">{reward.terms ?? reward.description}</p> : null}
       {state === "redeeming" ? <div className="mt-3">{children}</div> : null}

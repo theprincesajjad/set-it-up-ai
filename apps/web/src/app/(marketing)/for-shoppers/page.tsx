@@ -97,7 +97,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
         </div>
       </section>
 
-      <MSection tone="peach">
+      <MSection tone="peach" reveal>
         <MHeading eyebrow={t("sh.fs.how")} title={t("sh.fs.stepsTitle")} />
         <ol className="grid gap-4 md:grid-cols-3">
           {STEPS.map(([title, body], i) => (
@@ -111,7 +111,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
       </MSection>
 
       {hoods.length || campaign ? (
-        <MSection>
+        <MSection reveal>
           <MHeading eyebrow={t("sh.fs.liveNow")} title={t("sh.fs.whereTitle")} className="mb-8!" />
           {hoods.length ? (
             <ul className="flex flex-wrap gap-2">
@@ -143,7 +143,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
         </MSection>
       ) : null}
 
-      <MSection tone="mint">
+      <MSection tone="mint" reveal>
         <MHeading eyebrow={t("sh.fs.dataEyebrow")} title={t("sh.fs.dataTitle")} />
         <div className="grid gap-4 md:grid-cols-3">
           {DATA.map(([title, body]) => (
@@ -155,7 +155,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
         </div>
       </MSection>
 
-      <MSection>
+      <MSection reveal>
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
           <h2 className="display text-mkt-md md:text-mkt-lg">{t("sh.fs.faqTitle")}</h2>
           <Faq items={FAQ.map(([q, a]) => ({ q: t(q), a: t(a, { brand: BRAND.name }) }))} />

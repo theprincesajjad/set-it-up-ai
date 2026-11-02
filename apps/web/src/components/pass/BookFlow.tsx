@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, CircleCheck, CreditCard } from "lucide-react
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appointmentsApi as apptApi, serviceFitsSize, type appointmentsApi, type petApi } from "@ll/shared";
 import { ShopWalletCard } from "./ShopWalletCard";
+import { Reveal } from "./Reveal";
 import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PaymentBox } from "@/components/pass/PaymentBox";
 import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
@@ -17,13 +18,15 @@ import { BigNumber, Heading, ShopHead, useFmt } from "@/components/restaurant/ui
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StepProgress } from "@/components/ui/StepProgress";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { buildIcs, dayPart, DAY_PARTS, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn, totalText } from "@/lib/booking";
 import { cn } from "@/lib/cn";
 import { addOnPriceTime } from "@/lib/dashboard/add-ons"; // phase-pro: P5
-import { dayDate, todayIso } from "@/lib/restaurant/util";
+import { addDays, dayDate, todayIso } from "@/lib/restaurant/util";
+import { DateStrip } from "./DateStrip";
 
 type Data = appointmentsApi.PublicServicesResponse;
 type Slot = { startsAt: string; staffId: string };
@@ -118,7 +121,9 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const needsCard = takesCards && (deposit > 0 || fee > 0);
   const categories = useMemo(() => [...new Set(data.services.map((s) => s.categoryName).filter((c): c is string => !!c))], [data.services]);
   const visible = useMemo(() => data.services.filter((s) => (category === "all" || s.categoryName === category) && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand)), [data.services, category, staffId, pickedPet?.sizeBand]);
-  const days = useMemo(() => nextDays(todayIso(), DAYS), []);
+  // wave-q: the strip shows two weeks from today; "More dates" (DateStrip's calendar) moves the window to a later day.
+  const [fromDay, setFromDay] = useState<string>(() => todayIso());
+  const days = useMemo(() => nextDays(fromDay, DAYS), [fromDay]);
 
   const servicesKey = data.services.map((s) => s.id).join(",");
   // Drop chosen services the newly picked stylist doesn't do.
@@ -239,6 +244,14 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     </p>
   );
   const head = <ShopHead shop={shop} href={`/shops/${encodeURIComponent(shop.slug)}`} />;
+  // wave-q: where you are in the booking, in the shop's colour (services, add-ons when offered, time, check and book).
+  const totalSteps = offeredAddOns.length ? 4 : 3;
+  const progress = (n: number) => (
+    <div className="flex items-center gap-3">
+      <StepProgress step={n} total={totalSteps} label={t("cust.join.step", { n, total: totalSteps })} className="min-w-0 flex-1" />
+      <span aria-hidden className="shrink-0 text-caption tabular-nums text-fg-muted">{t("cust.join.step", { n, total: totalSteps })}</span>
+    </div>
+  );
   const back = (to: "services" | "addons" | "time" | "details", label = t("bk.back")) => (
     <button type="button" onClick={() => { setStep(to); setBanner(null); }} aria-label={label} className="inline-flex size-11 items-center justify-center rounded-full border border-line text-fg hover:bg-bg-subtle focus-visible:focus-ring">
       <ChevronLeft aria-hidden className="size-5 rtl:rotate-180" strokeWidth={1.75} />
@@ -272,7 +285,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         {head}
         {/* The confirmation in the shop's colour (lib/shopColor.ts): text on it is the computed --trade-pass-text. */}
         <section data-testid="booked-card" data-brand-card="" className="flex flex-col gap-3 rounded-[28px] bg-trade p-5 text-trade-pass-text shadow-card clear:rounded-r8 [&_h2]:!text-current" aria-label={t("bk.done.title")}>
-          <span aria-hidden className="flex size-11 items-center justify-center rounded-full bg-trade-pass-text text-trade-pass-from">
+          <span aria-hidden className="flex size-11 items-center justify-center rounded-full bg-trade-pass-text text-trade-pass-from motion-safe:animate-stamp-pop">
             <CircleCheck className="size-6" strokeWidth={2} />
           </span>
           <Heading level={2}>{t("bk.done.title")}</Heading>
@@ -287,9 +300,10 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             </p>
           ) : null}
         </section>
-        {!pharmacy ? <NextVisitCard appt={finished} showManage={false} /> : null}
+        {/* wave-q: what follows rises in under the confirmation, one card after the other (kit BlurFade, lazy; static under reduced motion). */}
+        {!pharmacy ? <Reveal delay={0.1}><NextVisitCard appt={finished} showManage={false} /></Reveal> : null}
         {/* The shop's wallet card, with this visit on it (pharmacies keep visits off the card). */}
-        <ShopWalletCard merchantId={finished.merchant.id} shopName={shop.name} slug={shop.slug} terminology={shop.terminology} className="rounded-sheet bg-trade-soft p-5" />
+        <Reveal delay={0.2}><ShopWalletCard merchantId={finished.merchant.id} shopName={shop.name} slug={shop.slug} terminology={shop.terminology} className="rounded-sheet bg-trade-soft p-5" /></Reveal>
         <ReminderCard text={finished.reminderText} />
         {/* phase-solo D: the free reminder channel for a client who booked on the web. */}
         <NotifyPrompt />
@@ -330,6 +344,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     return (
       <div className="flex flex-col gap-5 pb-28">
         {head}
+        {progress(2)}
         <div className="flex flex-col gap-3">
           {back("services")}
           <Heading>{t("addon.book.title")}</Heading>
@@ -377,30 +392,29 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     return (
       <div className="flex flex-col gap-5 pb-28">
         {head}
+        {progress(offeredAddOns.length ? 3 : 2)}
         <div className="flex flex-col gap-3">
           {back(offeredAddOns.length ? "addons" : "services") /* phase-pro: P5 */}
           <Heading>{t("bk.time.title")}</Heading>
           <p className="text-body text-fg-muted">{t("bk.time.sub", { services: servicesText, staff: staffName || t("bk.anyone").toLowerCase(), duration: dur(av?.blockMin ?? sel.durationMin) })}</p>
         </div>
-        <div role="group" aria-label={t("bk.time.title")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          {days.map((d) => {
-            const n = timesOn(av, d).length;
-            const on = d === day;
-            const full = !!av && n === 0 && !!workDays?.has(d); // phase-pro: p2: a full working day stays tappable (it opens the waitlist)
-            return (
-              <button key={d} type="button" aria-pressed={on} disabled={avLoading || (!!av && n === 0 && !full)} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-card border focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-card text-fg hover:bg-bg-subtle", !on && av && n === 0 && "text-fg-subtle")}>
-                <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
-                <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
-                {full ? <span className="text-caption leading-none">{t("wl.full")}</span> : null}
-              </button>
-            );
-          })}
-        </div>
+        <DateStrip
+          days={days}
+          day={day}
+          label={t("bk.time.title")}
+          onSelect={(d) => { setDay(d); setSlot(null); }}
+          // phase-pro: p2: a full working day stays tappable (it opens the waitlist)
+          state={(d) => { const n = timesOn(av, d).length; const full = !!av && n === 0 && !!workDays?.has(d); return { count: av ? n : null, full, disabled: avLoading || (!!av && n === 0 && !full) }; }}
+          onPickLater={(d) => { const inWindow = d >= todayIso() && d <= addDays(todayIso(), DAYS - 1); setFromDay(inWindow ? todayIso() : d); setWorkDays(null); setDay(d); setSlot(null); }}
+        />
         {banner ? <Banner tone={banner.tone}>{banner.text}</Banner> : null}
         {avError ? <Banner tone="danger" action={<Button size="sm" variant="secondary" onClick={() => void loadTimes()}>{t("rc.tryAgain")}</Button>}>{t("rc.error.body")}</Banner> : null}
         {avLoading && !av ? (
-          <div className="flex flex-wrap gap-2" aria-busy>
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-11 w-24 rounded-input" />)}
+          <div className="flex flex-col gap-3" aria-busy>
+            <Skeleton className="h-4 w-40" />
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-11 rounded-input" />)}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-4" aria-live="polite" aria-busy={avLoading}>
@@ -410,7 +424,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
                 <p className="text-caption uppercase tracking-[0.06em] text-fg-muted">{t(`cust.bk.part.${part}`)}</p>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {items.map((x) => (
-                    <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} disabled={avLoading} onClick={() => setSlot(x)} className={cn("h-11 whitespace-nowrap rounded-input border px-1 text-body tabular-nums focus-visible:focus-ring", slot?.startsAt === x.startsAt ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+                    <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} disabled={avLoading} onClick={() => setSlot(x)} className={cn("h-11 whitespace-nowrap rounded-input border px-1 text-body tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 focus-visible:focus-ring motion-safe:active:scale-95", slot?.startsAt === x.startsAt ? "border-trade bg-trade font-semibold text-trade-foreground shadow-card" : "border-line bg-card text-fg hover:border-trade/50 hover:bg-trade-soft")}>
                       {time(x.startsAt)}
                     </button>
                   ))}
@@ -453,6 +467,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     return (
       <div className="flex flex-col gap-5 pb-28">
         {head}
+        {progress(totalSteps)}
         <div className="flex flex-col gap-3">
           {back("time")}
           <Heading>{t("cust.bk.details.title")}</Heading>
@@ -509,7 +524,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         {banner ? <Banner tone={banner.tone}>{banner.text}</Banner> : null}
         {signingIn ? (
           <div ref={signInRef} className="scroll-mt-4 rounded-card border border-line bg-card p-4">
-            <PhoneSignIn heading="h2" devAutofill={devAutofill} title={t("cust.bk.signIn.title")} intro={t("cust.bk.signIn.intro", { shop: shop.name })} />
+            <PhoneSignIn heading="h2" tone="trade" devAutofill={devAutofill} title={t("cust.bk.signIn.title")} intro={t("cust.bk.signIn.intro", { shop: shop.name })} />
           </div>
         ) : (
           <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
@@ -525,6 +540,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   return (
     <div className="flex flex-col gap-5 pb-28">
       {head}
+      {progress(1)}
       <div className="flex flex-col gap-2">
         <Heading>{t(pharmacy ? "rx.book.title" : "bk.title")}</Heading>
         <p className="text-body text-fg-muted">{data.shop.addressVisibility && data.shop.addressVisibility !== "exact" ? t("bk.introPrivate", { shop: shop.name }) : t("bk.intro", { shop: [shop.name, data.shop.address].filter(Boolean).join(", ") })}</p>

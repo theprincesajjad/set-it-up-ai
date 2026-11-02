@@ -13,7 +13,9 @@ import { errorMessage, isApiError } from "@/lib/api/errors";
 import { buildIcs, dayPart, DAY_PARTS, durationText, nextDays, timesOn } from "@/lib/booking";
 import { shopColorProps } from "@/lib/shopColor";
 import { cn } from "@/lib/cn";
-import { dayDate, todayIso } from "@/lib/restaurant/util";
+import { addDays, todayIso } from "@/lib/restaurant/util";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { DateStrip } from "./DateStrip";
 
 type Appt = appointmentsApi.MyAppointmentDto;
 
@@ -33,7 +35,9 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
   const feeCents = Math.max(0, appt.policy.noShowFeeCents - (appt.depositPaidAt ? appt.depositCents : 0));
   const when = (iso: string) => `${date(iso, { weekday: "long", month: "long", day: "numeric" })}, ${time(iso)}`;
   const serviceIds = appt.items.map((i) => i.serviceId).filter((s): s is string => !!s);
-  const days = nextDays(todayIso(), 14);
+  // wave-q: two weeks from today, or from a later day picked in the strip's calendar.
+  const [fromDay, setFromDay] = useState(todayIso());
+  const days = nextDays(fromDay, 14);
 
   useEffect(() => {
     if (mode !== "move" || !serviceIds.length) return;
@@ -44,15 +48,15 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
         if (cancelled) return;
         setAv(r);
         const first = r.days.find((d) => d.times.length);
-        if (first) setDay(first.date);
+        if (first) setDay((cur) => (r.days.find((d) => d.date === cur)?.times.length ? cur : first.date));
       })
       .catch(() => !cancelled && setNote({ tone: "danger", text: t("rc.error.body") }));
     return () => {
       cancelled = true;
     };
-    // days and serviceIds derive from the appointment; reload only when entering the mode
+    // days and serviceIds derive from the appointment; reload when entering the mode or moving the two-week window
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, fromDay]);
 
   async function cancel() {
     setBusy(true);
@@ -175,19 +179,22 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
             <button type="button" onClick={() => setMode("view")} aria-label={t("bk.back")} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-line focus-visible:focus-ring"><ChevronLeft aria-hidden className="size-5 rtl:rotate-180" /></button>
             <h2 className="text-headline text-fg">{t("cust.manage.pickNew")}</h2>
           </div>
-          <div role="group" aria-label={t("bk.time.title")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            {days.map((d) => {
-              const n = timesOn(av, d).length;
-              return (
-                <button key={d} type="button" aria-pressed={d === day} disabled={!av || n === 0} onClick={() => { setDay(d); setSlot(null); }} className={cn("flex h-[72px] w-[62px] shrink-0 flex-col items-center justify-center rounded-card border focus-visible:focus-ring", d === day ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-card text-fg", av && n === 0 && "text-fg-subtle")}>
-                  <span className="text-caption">{date(dayDate(d), { weekday: "short" }, "UTC")}</span>
-                  <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
-                </button>
-              );
-            })}
-          </div>
+          <DateStrip
+            days={days}
+            day={day}
+            label={t("bk.time.title")}
+            onSelect={(d) => { setDay(d); setSlot(null); }}
+            state={(d) => { const n = timesOn(av, d).length; return { count: av ? n : null, disabled: !av || n === 0 }; }}
+            onPickLater={(d) => { const inWindow = d >= todayIso() && d <= addDays(todayIso(), 13); const next = inWindow ? todayIso() : d; if (next !== fromDay) { setAv(null); setFromDay(next); } setDay(d); setSlot(null); }}
+          />
           <div className="flex flex-col gap-4" aria-live="polite">
-            {!av ? <p className="text-meta text-fg-muted">{t("bk.time.loading")}</p> : null}
+            {!av ? (
+              <div className="flex flex-col gap-3" aria-busy>
+                <span className="sr-only">{t("bk.time.loading")}</span>
+                <Skeleton className="h-4 w-32" />
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-11 rounded-input" />)}</div>
+              </div>
+            ) : null}
             {DAY_PARTS.map((part) => {
               const items = timesOn(av, day).filter((x) => dayPart(x.startsAt) === part);
               return items.length ? (
@@ -195,7 +202,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
                   <p className="text-caption uppercase tracking-[0.06em] text-fg-muted">{t(`cust.bk.part.${part}`)}</p>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {items.map((x) => (
-                      <button key={x.startsAt} type="button" aria-pressed={slot === x.startsAt} onClick={() => setSlot(x.startsAt)} className={cn("h-11 whitespace-nowrap rounded-input border px-1 tabular-nums focus-visible:focus-ring", slot === x.startsAt ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg")}>{time(x.startsAt)}</button>
+                      <button key={x.startsAt} type="button" aria-pressed={slot === x.startsAt} onClick={() => setSlot(x.startsAt)} className={cn("h-11 whitespace-nowrap rounded-input border px-1 tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 focus-visible:focus-ring motion-safe:active:scale-95", slot === x.startsAt ? "border-trade bg-trade font-semibold text-trade-foreground shadow-card" : "border-line bg-card text-fg hover:border-trade/50 hover:bg-trade-soft")}>{time(x.startsAt)}</button>
                     ))}
                   </div>
                 </div>

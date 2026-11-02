@@ -114,6 +114,7 @@ test("/me: other cards under the pass, a real offers switch, and trade-only aler
   const more = page.getByTestId("more-alerts");
   await expect(more).toBeVisible();
   await expect(page.getByRole("switch", { name: "Hall bookings" })).toBeHidden();
-  await more.locator("summary").click();
+  // wave-q: "More alerts" is the kit Accordion now (a button in a heading, not a <summary>).
+  await more.getByRole("button", { name: /More alerts/ }).click();
   await expect(page.getByRole("switch", { name: "Hall bookings" })).toBeVisible();
 });

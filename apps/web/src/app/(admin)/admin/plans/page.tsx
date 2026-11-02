@@ -7,7 +7,9 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { adminCockpitApi } from "@ll/shared";
-import { Dot, PageHeader, Panel, QuietLink, Row, RowList, Segmented, StatBlock, StatusPill } from "@/components/dashboard/kit";
+import { CircleCheck, CircleDollarSign } from "lucide-react";
+import { PageHeader, Panel, QuietLink, Row, RowList, Segmented } from "@/components/dashboard/kit";
+import { HealthPill, KpiGrid, PanelEmpty, RowSkeletons, moneyNum } from "@/components/dashboard/admin/AdminKit";
 import { HBarList } from "@/components/dashboard/Charts";
 import { FLAG_LABEL, planLabel, pct } from "@/components/dashboard/admin/cockpit";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -55,7 +57,7 @@ export default function PlansAndPaymentsPage() {
         </span>
       ),
     },
-    { key: "plan", header: "Plan", mobile: "subtitle", cell: (r) => (r.flags.includes("payment_failed") ? <span className="flex items-center gap-2">{planLabel(r.plan)} <StatusPill tone="negative">Payment failed</StatusPill></span> : planLabel(r.plan)) },
+    { key: "plan", header: "Plan", mobile: "subtitle", cell: (r) => (r.flags.includes("payment_failed") ? <span className="flex items-center gap-2">{planLabel(r.plan)} <HealthPill size="sm" tone="down">Payment failed</HealthPill></span> : planLabel(r.plan)) },
     { key: "mrr", header: "MRR", align: "end", mobile: "trailing", cell: (r) => (r.mrrCents ? formatMoney(r.mrrCents) : "–") },
     { key: "gmv", header: "Processed, 30 d", align: "end", mobile: "hidden", cell: (r) => formatMoney(r.gmv30dCents) },
     { key: "signed", header: "Signed up", mobile: "hidden", cell: (r) => formatDate(r.signedUpAt) },
@@ -66,14 +68,14 @@ export default function PlansAndPaymentsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Plans and payments" description="What shops pay, who is in a trial, and whose payment needs a call." actions={<QuietLink href="/admin/rollout">Plan features</QuietLink>} />
-      <StatBlock
+      <KpiGrid
         loading={!c}
         label="Money"
         items={[
-          { label: "MRR", value: c ? formatMoney(c.money.mrrCents) : "–", caption: c ? `ARR $${formatNumber(Math.round(c.money.arrCents / 100))}` : undefined },
-          { label: "Paying shops", value: c ? formatNumber(c.shops.paying) : "–", caption: c ? `${formatNumber(c.shops.total)} shops open` : undefined },
-          { label: "In trial", value: c ? formatNumber(c.shops.trialing) : "–", caption: c ? `${pct(c.money.trialToPaid.rate)} of ended trials paid` : undefined },
-          { label: "Payment failed", value: formatNumber(failed), caption: failed ? "Call them today" : "None", dot: failed ? "negative" : undefined },
+          { label: "MRR", value: c ? formatMoney(c.money.mrrCents) : "–", ...(c ? moneyNum(c.money.mrrCents) : {}), caption: c ? `ARR $${formatNumber(Math.round(c.money.arrCents / 100))}` : undefined },
+          { label: "Paying shops", value: c ? formatNumber(c.shops.paying) : "–", num: c?.shops.paying, caption: c ? `${formatNumber(c.shops.total)} shops open` : undefined, href: "/admin/businesses?status=paying" },
+          { label: "In trial", value: c ? formatNumber(c.shops.trialing) : "–", num: c?.shops.trialing, caption: c ? `${pct(c.money.trialToPaid.rate)} of ended trials paid` : undefined, href: "/admin/businesses?status=trial" },
+          { label: "Payment failed", value: formatNumber(failed), num: health.data ? failed : undefined, caption: failed ? "Call them today" : "None", alert: failed ? "negative" : undefined, href: "/admin/health?flag=payment_failed" },
         ]}
       />
 
@@ -88,7 +90,7 @@ export default function PlansAndPaymentsPage() {
                     <Row
                       key={r.merchantId}
                       href={`/admin/businesses/${r.merchantId}`}
-                      leading={<span aria-hidden className={`size-2 rounded-full ${r.flags[i] === "payment_failed" ? "bg-negative" : "bg-points"}`} />}
+                      leading={<span aria-hidden className={`inline-flex size-2 rounded-full ring-4 ${r.flags[i] === "payment_failed" ? "bg-destructive ring-destructive-soft" : "bg-warning ring-warning-soft"}`} />}
                       title={r.name}
                       meta={`${FLAG_LABEL[r.flags[i]!]}. ${r.reasons[i] ?? ""}`}
                       trailing={r.mrrCents ? <span className="text-meta text-fg-muted">{formatMoney(r.mrrCents)}/mo</span> : null}
@@ -97,17 +99,17 @@ export default function PlansAndPaymentsPage() {
                 })}
               </RowList>
             ) : (
-              <p className="text-meta text-fg-muted">No failed payments and no trial about to lapse.</p>
+              <PanelEmpty icon={CircleCheck} tone="good" title="Nobody to call about money" description="No failed payments and no trial about to lapse." />
             )
           ) : (
-            <div className="h-32 skeleton rounded-sm" aria-hidden />
+            <RowSkeletons rows={3} label="Checking payments" />
           )}
         </Panel>
         <Panel title="MRR by plan" description={paying.data ? `${formatNumber(paying.data.total)} paying shops` : "Loading…"}>
           {byPlan.length ? (
             <HBarList format={(n) => formatMoney(n)} rows={byPlan.map((p) => ({ key: p.key, label: planLabel(p.key), value: p.cents, hint: `${p.n} ${p.n === 1 ? "shop" : "shops"}` }))} />
           ) : (
-            <p className="text-meta text-fg-muted">{paying.data ? "No shop pays yet." : ""}</p>
+            paying.data ? <PanelEmpty icon={CircleDollarSign} title="No shop pays yet" description="Paying shops show here by plan." /> : <RowSkeletons rows={3} label="Loading plans" />
           )}
         </Panel>
       </div>
@@ -142,7 +144,7 @@ export default function PlansAndPaymentsPage() {
         error={list.error}
         onRetry={list.reload}
         onRowClick={(r) => router.push(`/admin/businesses/${r.id}`)}
-        empty={tab === "paying" ? "No shop pays yet." : "No shop is in a trial."}
+        empty={<PanelEmpty icon={CircleDollarSign} title={tab === "paying" ? "No shop pays yet" : "No shop is in a trial"} />}
         toolbar={
           <Segmented
             label="Show"
@@ -162,7 +164,7 @@ export default function PlansAndPaymentsPage() {
             <div key={p.id} className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-body font-medium text-fg">{planLabel(p.id)}</span>
-                <Dot tone={p.available ? "positive" : "neutral"}>{p.available ? "On sale" : "Not yet"}</Dot>
+                <HealthPill size="sm" tone={p.available ? "ok" : "neutral"}>{p.available ? "On sale" : "Not yet"}</HealthPill>
               </div>
               <span className="text-meta text-fg-muted">{p.id === "free" ? "Always available" : `${p.priceCents ? `${formatMoney(p.priceCents)} a month · ` : ""}${p.features.filter((x) => x.stage !== "hidden").length} of ${p.features.length} features out`}</span>
             </div>

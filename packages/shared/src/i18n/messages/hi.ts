@@ -4744,6 +4744,23 @@ export const hi: Messages = {
   "cust.shop.onCard": "यह आपके कार्ड पर है। काउंटर पर दिखाएँ।",
   "cust.bk.who": "आप किससे करवाना चाहेंगे?",
   // ---- end wave-p: customer ----
+  // ---- wave-q: onboard ----
+  "sf.steps.link": "लिंक",
+  "sf.steps.shop": "नाम",
+  "sf.steps.kind": "प्रकार",
+  "sf.steps.where": "जगह",
+  "sf.steps.card": "कार्ड",
+  "sf.steps.account": "खाता",
+  "sf.shop.otherColour": "कोई और रंग चुनें",
+  "sf.shop.logoNone": "कोई लोगो नहीं मिला। जब तक आप सेटिंग्स में लोगो नहीं जोड़ते, कार्ड पर आपके नाम का पहला अक्षर दिखेगा।",
+  "sf.card.colourHint": "अपनी दुकान का रंग चुनें, या अपनी तरह की दुकान के लिए हमारा रंग रखें।",
+  "sf.card.colourReset": "हमारा रंग रखें",
+  "sf.acct.making": "आप बना रहे हैं",
+  "sf.acct.pwOk": "कम से कम 8 अक्षर",
+  "sf.live.nextHint": "और देखने के लिए स्वाइप करें। यह सब आपके डैशबोर्ड में भी है।",
+  "sf.live.nStep": "कदम {n}",
+  "sf.live.start": "शुरू करें",
+  // ---- end wave-q: onboard ----
   // ---- wave-q: kit ----
   "kit.decrease": "घटाएँ",
   "kit.increase": "बढ़ाएँ",
@@ -4770,4 +4787,15 @@ export const hi: Messages = {
   "kit.rating": "{max} में से {n} सितारे",
   "kit.meter": "{max} में से {used} इस्तेमाल हुए",
   // ---- end wave-q: kit ----
+  // ---- wave-q: customer ----
+  "cust.bk.moreDates": "और तारीखें",
+  "cust.bk.pickDate": "तारीख चुनें",
+  "cust.bk.pickDateSub": "हम उस दिन से समय दिखाते हैं।",
+  "cust.set.offersOff": "ऑफ़र बंद",
+  "cust.set.muted": "म्यूट",
+  // ---- end wave-q: customer ----
+  // ---- wave-q: owner ----
+  "ownq.set.look": "आपका लुक",
+  "ownq.set.links": "लोगो और कवर फ़ोटो के लिंक",
+  // ---- end wave-q: owner ----
 };

@@ -32,9 +32,12 @@ export interface NumberStepperProps {
   /** Intl options for the number (currency, percent). */
   format?: Intl.NumberFormatOptions;
   className?: string;
+  /** Names for the minus and plus buttons when "Decrease" / "Increase" is not the right word ("Fewer" stamps). */
+  decreaseLabel?: string;
+  increaseLabel?: string;
 }
 
-export function NumberStepper({ label, value, onChange, min, max, step = 1, hint, error, size = "md", name, id, disabled, format, className }: NumberStepperProps) {
+export function NumberStepper({ label, value, onChange, min, max, step = 1, hint, error, size = "md", name, id, disabled, format, className, decreaseLabel, increaseLabel }: NumberStepperProps) {
   const { t, info } = useLocaleOrEnglish();
   const auto = useId();
   const fieldId = id ?? `ns-${auto}`;
@@ -64,7 +67,7 @@ export function NumberStepper({ label, value, onChange, min, max, step = 1, hint
         className="w-auto"
       >
         <NumberFieldGroup className={cn("h-auto w-auto items-center gap-3 rounded-none border-0 bg-transparent focus-within:ring-0 dark:bg-transparent")}>
-          <NumberFieldDecrement aria-label={t("kit.decrease")} className={cn(btn, "rounded-full border-e")}>
+          <NumberFieldDecrement aria-label={decreaseLabel ?? t("kit.decrease")} className={cn(btn, "rounded-full border-e")}>
             <Minus aria-hidden strokeWidth={2} />
           </NumberFieldDecrement>
           <NumberFieldInput
@@ -76,7 +79,7 @@ export function NumberStepper({ label, value, onChange, min, max, step = 1, hint
               big ? "h-14 w-28 text-large-title" : "h-12 w-24 text-title",
             )}
           />
-          <NumberFieldIncrement aria-label={t("kit.increase")} className={cn(btn, "rounded-full border-s")}>
+          <NumberFieldIncrement aria-label={increaseLabel ?? t("kit.increase")} className={cn(btn, "rounded-full border-s")}>
             <Plus aria-hidden strokeWidth={2} />
           </NumberFieldIncrement>
         </NumberFieldGroup>

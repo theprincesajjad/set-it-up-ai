@@ -16,7 +16,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
  * Sets the httpOnly session, then navigates to `next` (carrying `lang`) or, with no `next`, refreshes in place so an
  * inline sign-in on a shop page just reveals the signed-in view.
  */
-export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro }: { next?: string; devAutofill?: boolean; /** Already-localized title; defaults to "Sign in with your phone". */ title?: string; heading?: "h1" | "h2" | "h3"; /** One sentence under the title (replaces the "6-digit code" line). */ intro?: string }) {
+export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro, tone = "ink" }: { next?: string; devAutofill?: boolean; /** Already-localized title; defaults to "Sign in with your phone". */ title?: string; heading?: "h1" | "h2" | "h3"; /** One sentence under the title (replaces the "6-digit code" line). */ intro?: string; /** wave-q: "trade" uses the shop's colour for the buttons and the code boxes (inside a shop's booking flow). */ tone?: "ink" | "trade" }) {
   const H = heading;
   const { t, locale } = useLocaleOrEnglish();
   const router = useRouter();
@@ -75,7 +75,7 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro }:
       {step === "phone" ? (
         <form onSubmit={send} noValidate className="flex flex-col gap-4">
           <PhoneField autoFocus value={digits} onChangeDigits={setDigits} error={error} />
-          <Button type="submit" size="lg" fullWidth loading={busy}>
+          <Button type="submit" size="lg" fullWidth loading={busy} variant={tone === "trade" ? "shop" : undefined}>
             {t("auth.phone.sendCode")}
           </Button>
           {intro ? null : <p className="text-meta text-fg-muted">{t("auth.phone.hint")}</p>}
@@ -89,10 +89,10 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro }:
           noValidate
           className="flex flex-col gap-4"
         >
-          <OtpField value={code} onChange={setCode} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
+          <OtpField tone={tone} value={code} onChange={setCode} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
           {/* l10n-ok: development builds only (the API sends a devCode only outside production) */}
           {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
-          <Button type="submit" size="lg" fullWidth loading={busy}>
+          <Button type="submit" size="lg" fullWidth loading={busy} variant={tone === "trade" ? "shop" : undefined}>
             {t("auth.otp.signIn")}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => send()} className="-ms-3 self-start">

@@ -76,7 +76,7 @@ function FeatureLine({ k }: { k: FeatureKey }) {
 function PlainLine({ children }: { children: string }) {
   return (
     <li className="flex gap-2.5 py-1.5 text-meta">
-      <span aria-hidden className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-tile-mint text-tile-mint-foreground"><Check className="size-3" strokeWidth={3} /></span>
+      <span aria-hidden className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-success-soft text-success-text"><Check className="size-3" strokeWidth={3} /></span>
       <span className="text-foreground">{children}</span>
     </li>
   );
@@ -107,34 +107,41 @@ export const soloVars = {
 };
 export const pv = (s: string) => fill(s, soloVars);
 
+/** The plan name row: the name and, when it has one, its pill ("Every shop" on Free, "Most popular" on Pro, inverted). */
+function PlanHead({ name, badge, invert }: { name: string; badge?: string | null; invert?: boolean }) {
+  return (
+    <div className="flex min-h-7 items-center justify-between gap-2">
+      <h2 className="text-headline font-[650] text-foreground">{name}</h2>
+      {badge ? (
+        <span className={cn("inline-flex h-7 items-center rounded-full px-3 text-meta-strong", invert ? "bg-foreground text-background" : "bg-success-soft text-success-text")}>{badge}</span>
+      ) : null}
+    </div>
+  );
+}
+
+const CARD = "flex flex-col rounded-sheet border-0 p-6 md:p-8";
+
 /** Free (solo-pro-launch.md §3.2): one bookable calendar, deposits, reminders and the loyalty program. */
 export function FreeCard() {
   return (
-    <Card padding="none" className="mkt-lift flex flex-col overflow-hidden rounded-sheet border-0 p-0 shadow-card ring-2 ring-forest" data-plan="free">
-      <div className="bg-tile-mint px-6 py-4 text-tile-mint-foreground md:px-8">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="display text-title">{PLANS.free.name}</h2>
-          <span className="inline-flex items-center rounded-full bg-forest px-3 py-1 text-meta-strong text-forest-foreground">{P.freeBadge}</span>
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col p-6 pt-5 md:p-8 md:pt-6">
-        <p className="mt-5 flex items-baseline gap-2">
-          <span className="display text-mkt-lg tabular-nums text-forest">$0</span>
-          <span className="text-body text-muted-foreground">{S.free.per}</span>
-        </p>
-        <p className="mt-3 text-body text-foreground">{S.free.lead}</p>
-        <p className="mt-2 text-meta text-muted-foreground">Online orders on Free carry a {Number((FEES.orderBpsFree / 100).toFixed(2))}% fee; paid plans and restaurant plans carry none.</p>
-        <Button href="/signup" fullWidth size="lg" className="mt-6">
-          {S.free.cta}
-        </Button>
-        <div className="mt-8">
-          <h3 className="text-meta-strong text-muted-foreground">Included</h3>
-          <ul className="mt-1">
-            {S.free.lines.map((l) => (
-              <PlainLine key={l}>{l}</PlainLine>
-            ))}
-          </ul>
-        </div>
+    <Card padding="none" className={cn(CARD, "card-clear mkt-lift")} data-plan="free">
+      <PlanHead name={PLANS.free.name} badge={P.freeBadge} />
+      <p className="mt-6 flex items-baseline gap-2">
+        <span className="display text-mkt-lg tabular-nums text-foreground">$0</span>
+        <span className="text-body text-muted-foreground">{S.free.per}</span>
+      </p>
+      <p className="mt-3 text-body text-foreground">{S.free.lead}</p>
+      <p className="mt-2 text-meta text-muted-foreground">Online orders on Free carry a {Number((FEES.orderBpsFree / 100).toFixed(2))}% fee; paid plans and restaurant plans carry none.</p>
+      <Button href="/signup" variant="secondary" fullWidth size="lg" className="mt-6">
+        {S.free.cta}
+      </Button>
+      <div className="mt-8 border-t border-border pt-5">
+        <h3 className="text-meta-strong text-muted-foreground">Included</h3>
+        <ul className="mt-1">
+          {S.free.lines.map((l) => (
+            <PlainLine key={l}>{l}</PlainLine>
+          ))}
+        </ul>
       </div>
     </Card>
   );
@@ -146,58 +153,56 @@ export function YearlyLine({ id, firstYear }: { id: "plus" | "studio"; firstYear
   const card = marketingPlans("solo").find((c) => c.key === (id === "plus" ? "monthly" : "studio"));
   if (id === "plus" && firstYear?.shown && firstYear.priceCents < firstYear.listPriceCents && card?.yearly) {
     return (
-      <p className="text-meta text-muted-foreground" data-testid="first-year-price">
+      <p className="mt-2 inline-flex w-fit flex-wrap items-baseline gap-x-1 rounded-full bg-success-soft px-3 py-1 text-meta text-success-text" data-testid="first-year-price">
         {card.yearly.or ?? "or"}{" "}
         <span className="sr-only">regular price </span>
         <s className="tabular-nums">{moneyShort(firstYear.listPriceCents)}</s>
-        <span className="sr-only">, now</span> <span className="text-meta-strong tabular-nums text-foreground">{moneyShort(firstYear.priceCents)}</span> {card.yearly.label}
+        <span className="sr-only">, now</span> <span className="text-meta-strong tabular-nums">{moneyShort(firstYear.priceCents)}</span> {card.yearly.label}
       </p>
     );
   }
-  return <p className="text-meta text-muted-foreground">{card?.yearly?.line ?? `or ${moneyShort(plan.annualPriceCents)} a year`}</p>;
+  return <p className="mt-2 text-meta text-muted-foreground">{card?.yearly?.line ?? `or ${moneyShort(plan.annualPriceCents)} a year`}</p>;
 }
 
 /**
  * Pro (id "plus") and Studio (id "studio"): the words from the marketing plan copy (lib/marketing/plan-copy.ts), the numbers from
- * PLANS. Pro carries the trial line and the first-year price.
+ * PLANS. Pro carries the trial line and the first-year price, and is the highlighted card (wave Q: a dark ring, the deeper shadow, the
+ * inverted "Most popular" pill, and on wide screens it stands a little taller than its neighbours).
  */
 export function PaidCard({ id, firstYear }: { id: "plus" | "studio"; firstYear: billingApi.FirstYearPriceDto | null }) {
   const plan = PLANS[id];
   const card = marketingPlans("solo").find((c) => c.key === (id === "plus" ? "monthly" : "studio"))!;
   const pro = id === "plus";
   return (
-    <Card padding="none" className={cn("mkt-lift flex flex-col overflow-hidden rounded-sheet border-0 p-0 shadow-card", pro && "ring-2 ring-primary")} data-plan={id}>
-      <div className={cn("px-6 py-4 md:px-8", pro ? "bg-tile-peach text-tile-peach-foreground" : "bg-tile-lilac text-tile-lilac-foreground")}>
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="display text-title">{plan.name}</h2>
-          {pro && card.badge ? <span className="inline-flex items-center rounded-full bg-card px-3 py-1 text-meta-strong text-foreground">{card.badge}</span> : null}
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col p-6 pt-5 md:p-8 md:pt-6">
-        <p className="mt-5 flex items-baseline gap-2">
-          <span className="display text-mkt-lg tabular-nums text-primary-text">{price(id)}</span>
-          <span className="text-body text-muted-foreground">{S.monthly.per}</span>
+    <Card
+      padding="none"
+      className={cn(CARD, pro ? "relative z-10 bg-card shadow-[0_0_0_2px_var(--foreground),var(--lg-shadow-lg)] lg:-my-4 lg:py-12" : "card-clear mkt-lift")}
+      data-plan={id}
+    >
+      <PlanHead name={plan.name} badge={pro ? card.badge : null} invert />
+      <p className="mt-6 flex items-baseline gap-2">
+        <span className="display text-mkt-lg tabular-nums text-primary-text">{price(id)}</span>
+        <span className="text-body text-muted-foreground">{S.monthly.per}</span>
+      </p>
+      <YearlyLine id={id} firstYear={firstYear} />
+      <p className="mt-2 text-meta text-muted-foreground">{pv(pro ? PP.proCalendars : PP.studioCalendars)}</p>
+      <p className="mt-3 text-body text-foreground">{card.tagline}</p>
+      {/* Pro starts as the 14-day trial (no card: it begins when the booking link goes live); Studio opens its checkout after signup. */}
+      <Button href={pro ? "/signup" : `/signup?plan=${id}`} variant={pro ? "primary" : "secondary"} fullWidth size="lg" className="mt-6">
+        {pro ? planLine("trialCta") : pv(PP.studioCta)}
+      </Button>
+      {pro ? (
+        <p className="mt-2 text-center text-meta-strong text-foreground" data-testid="trial-line">
+          {pv(PP.trialLine)}
         </p>
-        <YearlyLine id={id} firstYear={firstYear} />
-        <p className="mt-1 text-meta text-muted-foreground">{pv(pro ? PP.proCalendars : PP.studioCalendars)}</p>
-        <p className="mt-3 text-body text-foreground">{card.tagline}</p>
-        {/* Pro starts as the 14-day trial (no card: it begins when the booking link goes live); Studio opens its checkout after signup. */}
-        <Button href={pro ? "/signup" : `/signup?plan=${id}`} fullWidth size="lg" className="mt-6">
-          {pro ? planLine("trialCta") : pv(PP.studioCta)}
-        </Button>
-        {pro ? (
-          <p className="mt-2 text-center text-meta-strong text-foreground" data-testid="trial-line">
-            {pv(PP.trialLine)}
-          </p>
-        ) : null}
-        <div className="mt-8">
-          <h3 className="text-meta-strong text-muted-foreground">{pv(pro ? PP.proHeading : PP.studioHeading)}</h3>
-          <ul className="mt-1">
-            {card.features.filter((l) => !(!pro && l.startsWith("Everything in"))).map((l) => (
-              <PlainLine key={l}>{l}</PlainLine>
-            ))}
-          </ul>
-        </div>
+      ) : null}
+      <div className="mt-8 border-t border-border pt-5">
+        <h3 className="text-meta-strong text-muted-foreground">{pv(pro ? PP.proHeading : PP.studioHeading)}</h3>
+        <ul className="mt-1">
+          {card.features.filter((l) => !(!pro && l.startsWith("Everything in"))).map((l) => (
+            <PlainLine key={l}>{l}</PlainLine>
+          ))}
+        </ul>
       </div>
     </Card>
   );

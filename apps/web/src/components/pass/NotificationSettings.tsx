@@ -8,7 +8,7 @@
  */
 import { customerApi, inboxApi, LOCALE_LIST, t as translate, type MessageKey } from "@ll/shared";
 import { NotifyPrompt } from "@/components/pass/NotifyPrompt";
-import { ChevronDown } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/primitives/accordion";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ListGroup } from "@/components/ui/Card";
@@ -280,16 +280,20 @@ export function NotificationSettings() {
         </ListGroup>
       ))}
       {more.length ? (
-        <details className="group rounded-card border border-line bg-card" data-testid="more-alerts">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
-            <span className="min-w-0">
-              <span className="block text-body-strong text-fg">{t("cust.set.moreTitle")}</span>
-              <span className="block text-meta text-fg-muted">{t("cust.set.moreBody")}</span>
-            </span>
-            <ChevronDown aria-hidden className="size-5 shrink-0 text-fg-muted transition-transform group-open:rotate-180" strokeWidth={1.75} />
-          </summary>
-          <ul className="flex flex-col divide-y divide-line border-t border-line px-4">{more.map(row)}</ul>
-        </details>
+        // wave-q: the kit Accordion (Base UI) in place of <details>: animated, keyboard and screen-reader friendly, content kept mounted.
+        <Accordion className="rounded-card border border-line bg-card clear:card-clear clear:border-0" data-testid="more-alerts">
+          <AccordionItem value="more" className="border-0">
+            <AccordionTrigger className="min-h-14 items-center gap-3 rounded-card px-4 py-3 hover:no-underline focus-visible:focus-ring [&_[data-slot=accordion-trigger-icon]]:size-5">
+              <span className="min-w-0">
+                <span className="block text-body-strong text-fg">{t("cust.set.moreTitle")}</span>
+                <span className="block text-meta font-normal text-fg-muted">{t("cust.set.moreBody")}</span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent keepMounted className="pb-0 [&_p:not(:last-child)]:mb-0">
+              <ul className="flex flex-col divide-y divide-line border-t border-line px-4">{more.map(row)}</ul>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       ) : null}
     </div>
   );

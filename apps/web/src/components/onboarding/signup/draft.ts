@@ -14,6 +14,16 @@ export const isFlowStep = (s: string | null | undefined): s is FlowStep => !!s &
 
 export type Work = "home" | "shop" | "mobile";
 
+/** "studioverde.ca" from whatever the owner pasted (with or without https://, www.). */
+export const hostOf = (u: string) => {
+  try {
+    return new URL(/^https?:\/\//i.test(u) ? u : `https://${u}`).hostname.replace(/^www\./, "");
+  } catch {
+    return u;
+  }
+};
+export const isInstagram = (u: string) => /^@|instagram\.com/i.test(u.trim());
+
 export interface CreatedShop {
   id: string;
   name: string;
@@ -42,6 +52,8 @@ export interface SignupDraft {
   postal: string;
   /** null = the trade's own defaults. */
   card: { goal: number; reward: string } | null;
+  /** The card colour picked on "Your loyalty card" when nothing was imported ("#RRGGBB"); null = the trade's colour. */
+  color: string | null;
   phone: string;
   email: string;
   created: CreatedShop | null;
@@ -52,7 +64,7 @@ export interface SignupDraft {
 export const STORAGE_KEY = "ll_signup_v1";
 
 export function emptyDraft(): SignupDraft {
-  return { v: 1, link: "ask", imported: null, accepted: null, name: "", vertical: "", verticalGuess: false, sells: "", work: "shop", workTouched: false, address: "", postal: "", card: null, phone: "", email: "", created: null, prefillKey: "" };
+  return { v: 1, link: "ask", imported: null, accepted: null, name: "", vertical: "", verticalGuess: false, sells: "", work: "shop", workTouched: false, address: "", postal: "", card: null, color: null, phone: "", email: "", created: null, prefillKey: "" };
 }
 
 export interface Prefill {
@@ -99,6 +111,7 @@ export function readDraft(raw: string | null): SignupDraft | null {
     d.address = str(o.address, 300);
     d.postal = str(o.postal, 7);
     d.card = o.card && Number.isInteger(o.card.goal) && typeof o.card.reward === "string" ? { goal: o.card.goal, reward: o.card.reward.slice(0, 120) } : null;
+    d.color = typeof o.color === "string" && /^#[0-9A-Fa-f]{6}$/.test(o.color) ? o.color.toUpperCase() : null;
     d.phone = str(o.phone, 40).replace(/\D/g, "").slice(0, 10);
     d.email = str(o.email, 254);
     d.created = o.created && typeof o.created.id === "string" ? o.created : null;

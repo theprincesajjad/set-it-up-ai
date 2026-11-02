@@ -11,6 +11,7 @@ import { useTable, type ColumnDef, type SortingState } from "@tanstack/react-tab
 import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { merchantApi } from "@ll/shared";
+import { Badge } from "@/components/reui/badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { DataGrid, dataGridFeatures, type DataGridFeatures } from "@/components/reui/data-grid/data-grid";
 import { DataGridTableVirtual } from "@/components/reui/data-grid/data-grid-table-virtual";
@@ -101,7 +102,17 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
         meta: { cellClassName: "text-end" },
         cell: ({ row }) => {
           const c = row.original;
-          return <bdi dir="ltr" className={cn("tabular text-body-strong", c.rewardAvailable ? "text-points-text" : "text-fg")}>{goal ? stampProgress(c.balance, goal) : `${formatNumber(c.balance)} ${term === "points" ? "pts" : term}`}</bdi>;
+          const text = <bdi dir="ltr" className={cn("tabular text-body-strong", c.rewardAvailable ? "text-points-text" : "text-fg")}>{goal ? stampProgress(c.balance, goal) : `${formatNumber(c.balance)} ${term === "points" ? "pts" : term}`}</bdi>;
+          if (!goal) return text;
+          // Wave Q: a small bar under the count (the card at a glance), the points colour once the reward is ready.
+          return (
+            <div className="ms-auto flex w-16 flex-col items-end gap-1">
+              {text}
+              <span aria-hidden className="block h-1 w-full overflow-hidden rounded-full bg-muted">
+                <span className={cn("block h-full rounded-full", c.rewardAvailable ? "bg-points" : "bg-trade")} style={{ width: `${Math.min(100, Math.round((Math.min(c.balance, goal) / goal) * 100))}%` }} />
+              </span>
+            </div>
+          );
         },
       },
       {
@@ -135,7 +146,11 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
         size: 120,
         cell: ({ row }) => {
           const c = row.original;
-          return <span className={c.marketingConsent && c.phone ? "text-positive-text" : "text-fg-muted"}>{c.marketingConsent && c.phone ? "Can text" : c.muted ? "Muted" : "Hasn't opted in"}</span>;
+          return c.marketingConsent && c.phone ? (
+            <Badge variant="success-light" radius="full">Can text</Badge>
+          ) : (
+            <span className="text-fg-muted">{c.muted ? "Muted" : "Hasn't opted in"}</span>
+          );
         },
       },
     ],

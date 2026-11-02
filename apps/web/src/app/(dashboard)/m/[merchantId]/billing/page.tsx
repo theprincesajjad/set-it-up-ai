@@ -1,13 +1,16 @@
 "use client";
-import { Check, ChevronDown, CreditCard } from "lucide-react";
+import { Check, CreditCard } from "lucide-react";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { APPOINTMENT_VERTICALS, FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PAID_PLAN_IDS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type PaidPlanId, type PlanId, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/primitives/accordion";
+import { Meter, MeterIndicator, MeterTrack } from "@/components/primitives/meter";
 import { Dot, PageHeader, Panel, Section, Segmented, SkeletonRows } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async, NoAccess } from "@/components/dashboard/PageStates";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
@@ -24,32 +27,57 @@ const isPaid = (v: string | null): v is PaidPlanId => !!v && (PAID_PLAN_IDS as r
 /** phase-solo A: calendars, texts, promos and the website against the plan (solo-pro-launch.md §3.2). */
 function UsagePanel({ usage }: { usage: billingApi.PlanUsageDto }) {
   const period = usage.promos.period === "year" ? B.periodYear : B.periodMonth;
-  const rows: { label: string; value: string; note?: string }[] = [
+  // Wave Q: a quota with a limit is a Base UI Meter (the bar turns the points colour at 80% and red when it is used up); the words stay.
+  const rows: { label: string; value: string; note?: string; used?: number; limit?: number }[] = [
     {
       label: B.calendars,
       value: usage.calendars.limit == null ? fill(B.calendarsUnlimited, { used: usage.calendars.used }) : fill(B.calendarsValue, { used: usage.calendars.used, limit: usage.calendars.limit }),
+      ...(usage.calendars.limit != null ? { used: usage.calendars.used, limit: usage.calendars.limit } : {}),
     },
     {
       label: B.texts,
       value: fill(B.textsValue, { used: Math.min(usage.texts.used, usage.texts.includedPerMonth), included: usage.texts.includedPerMonth }),
       note: usage.texts.overageTexts > 0 ? fill(B.textsOver, { n: usage.texts.overageTexts, amount: formatMoney(usage.texts.overageCents) }) : usage.plan === "free" ? fill(B.textsFree, { included: usage.texts.includedPerMonth }) : undefined,
+      used: Math.min(usage.texts.used, usage.texts.includedPerMonth),
+      limit: usage.texts.includedPerMonth,
     },
-    { label: B.promos, value: usage.promos.limit > 0 ? fill(B.promosValue, { used: usage.promos.used, limit: usage.promos.limit, period }) : B.promosNone },
+    {
+      label: B.promos,
+      value: usage.promos.limit > 0 ? fill(B.promosValue, { used: usage.promos.used, limit: usage.promos.limit, period }) : B.promosNone,
+      ...(usage.promos.limit > 0 ? { used: usage.promos.used, limit: usage.promos.limit } : {}),
+    },
     { label: B.site, value: usage.annualSiteEntitled ? B.siteOn : B.siteOff },
   ];
   return (
     <Panel title={B.usageTitle}>
-      <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2" data-testid="plan-usage">
+      <dl className="grid gap-x-8 gap-y-5 sm:grid-cols-2" data-testid="plan-usage">
         {rows.map((r) => (
-          <div key={r.label} className="flex flex-col gap-0.5">
+          <div key={r.label} className="flex flex-col gap-1">
             <dt className="text-meta text-fg-muted">{r.label}</dt>
             {/* dir="auto": English values with numbers stay readable inside an RTL page until the copy is translated. */}
-            <dd dir="auto" className="text-start text-body tabular-nums text-fg">{r.value}</dd>
+            <dd dir="auto" className="text-start text-body font-medium tabular-nums text-fg">{r.value}</dd>
+            {r.limit ? (
+              <dd>
+                <UsageMeter used={r.used ?? 0} limit={r.limit} label={`${r.label}: ${r.value}`} />
+              </dd>
+            ) : null}
             {r.note ? <dd dir="auto" className="text-start text-meta text-fg-muted">{r.note}</dd> : null}
           </div>
         ))}
       </dl>
     </Panel>
+  );
+}
+
+/** One quota bar: ink while there is room, the points colour from 80%, destructive when it is used up. */
+function UsageMeter({ used, limit, label }: { used: number; limit: number; label: string }) {
+  const share = limit > 0 ? used / limit : 0;
+  return (
+    <Meter value={Math.min(used, limit)} max={limit} aria-label={label}>
+      <MeterTrack className="h-1.5 rounded-full bg-muted">
+        <MeterIndicator className={share >= 1 ? "rounded-full bg-destructive" : share >= 0.8 ? "rounded-full bg-points" : "rounded-full bg-foreground"} />
+      </MeterTrack>
+    </Meter>
   );
 }
 
@@ -223,7 +251,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
                       <span className="sr-only">, now </span>
                     </>
                   ) : null}
-                  {p.id === "free" ? "$0" : formatMoney(fy ? fy.priceCents : price).replace(".00", "")}
+                  {p.id === "free" ? "$0" : <AnimatedNumber value={(fy ? fy.priceCents : price) / 100} format={{ style: "currency", currency: "CAD", currencyDisplay: "narrowSymbol", minimumFractionDigits: (fy ? fy.priceCents : price) % 100 ? 2 : 0, maximumFractionDigits: (fy ? fy.priceCents : price) % 100 ? 2 : 0 }} countUp={false} />}
                   <span className="text-meta font-normal tracking-normal text-fg-muted">{p.id === "free" ? " forever" : fy ? ` ${PB.firstYear}, CAD` : period === "year" ? "/year, CAD" : "/month, CAD"}</span>
                 </p>
                 <p className="text-meta text-fg">{p.blurb}</p>
@@ -254,16 +282,18 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       {/* A nail tech, a barber or a groomer never needs the restaurant ladder: it is only noise between their plans and the FAQ. */}
       {/* Wave P: for a café or a shop that only might sell food online, the restaurant ladder folds away behind one line. */}
       {restaurantFirst || APPOINTMENT_VERTICALS.includes(detail.merchant.vertical) ? null : (
-        <details className="group rounded-card bg-card shadow-card" open={!!subscribe?.startsWith("restaurant-") || undefined} data-testid="restaurant-plans">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
-            <span>
-              <span className="block text-body-strong text-fg">{t("own.bill.foodTitle")}</span>
-              <span className="block text-meta text-fg-muted">{t("own.bill.foodBody")}</span>
-            </span>
-            <ChevronDown aria-hidden className="size-5 shrink-0 text-fg-muted transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="border-t border-line p-5">{restaurant}</div>
-        </details>
+        // Wave Q: the Base UI Accordion (animated height, aria-expanded, Enter/Space) instead of a bare <details>.
+        <Accordion className="rounded-card bg-card shadow-card" defaultValue={subscribe?.startsWith("restaurant-") ? ["food"] : []} data-testid="restaurant-plans">
+          <AccordionItem value="food">
+            <AccordionTrigger className="min-h-14 items-center gap-3 px-5 py-3 hover:no-underline">
+              <span>
+                <span className="block text-body-strong text-fg">{t("own.bill.foodTitle")}</span>
+                <span className="block text-meta font-normal text-fg-muted">{t("own.bill.foodBody")}</span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="border-t border-line p-5 text-body">{restaurant}</AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
 
       {enabled("payments.in_app") ? (
@@ -273,17 +303,14 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       ) : null}
 
       <Section title="Questions">
-        <div className="flex flex-col divide-y divide-line border-y border-line">
+        <Accordion className="rounded-card bg-card px-5 shadow-card">
           {FAQ.map(([q, a]) => (
-            <details key={q} className="group">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between py-2 text-meta-strong text-fg">
-                {q}
-                <span aria-hidden className="text-fg-muted transition-transform group-open:rotate-45">+</span>
-              </summary>
-              <p className="pb-3 text-meta text-fg-muted">{a}</p>
-            </details>
+            <AccordionItem key={q} value={q} className="border-line">
+              <AccordionTrigger className="min-h-13 items-center py-3 text-body font-[600] text-fg hover:no-underline">{q}</AccordionTrigger>
+              <AccordionContent className="text-body text-fg-muted">{a}</AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       </Section>
       <ConfirmDialog open={cancel} onClose={() => setCancel(false)} title="Cancel your plan?" body="Your loyalty program keeps running on Free. Paid tools turn off at the end of this period; your data is kept." confirmLabel="Cancel plan" danger onConfirm={async () => {
         await api.billing.cancel();

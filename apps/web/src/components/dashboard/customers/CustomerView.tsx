@@ -10,6 +10,7 @@ import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { DefList, Dot, Section, Tag } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { Timeline, TimelineDate, TimelineHeader, TimelineIndicator, TimelineItem, TimelineSeparator } from "@/components/primitives/timeline";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
@@ -219,35 +220,45 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
   const ledger = (
     <Section title={layout === "panel" ? "Recent" : "Activity"} description={layout === "panel" ? undefined : "Every change to this balance, newest first."}>
       {d.transactions.length ? (
-        <ul aria-label="Balance history" className="divide-y divide-line border-y border-line">
-          {d.transactions.slice(0, layout === "panel" ? 5 : undefined).map((t) => (
-            <li key={t.id} className="flex min-h-12 items-center gap-3 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-meta text-fg">
-                  <span className="capitalize">{t.type.replace(/_/g, " ")}</span>
-                  {t.description && t.description.toLowerCase() !== t.type.replace(/_/g, " ").toLowerCase() ? <span className="text-fg-muted"> · {t.description}</span> : null}
-                </p>
-                <p className="truncate text-caption font-normal text-fg-muted">
-                  {formatDateTime(t.createdAt)} · {sourceLabel(t.source)}
-                  {t.amountCents != null ? ` · ${formatMoney(t.amountCents)}` : ""}
-                  {t.reversedAt ? " · Reversed" : ""}
-                </p>
-              </div>
-              <span className={cn("shrink-0 text-meta tabular", t.reversedAt ? "text-fg-subtle line-through" : "text-fg")}>
-                {formatSigned(t.points)}
-              </span>
-              {manager && !t.reversedAt && t.type !== "reversal" && new Date(t.createdAt).getTime() > recentCutoff ? (
-                <button type="button" aria-label={`Reverse ${t.type.replace(/_/g, " ")} of ${t.points}`} title="Reverse" onClick={() => setReverseTx(t)} className="relative inline-flex size-8 shrink-0 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-1.5 after:content-[''] hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
-                  <Undo2 aria-hidden className="size-4" strokeWidth={1.75} />
-                </button>
-              ) : (
-                <span className="size-8 shrink-0" />
-              )}
-            </li>
+        // Wave Q: the ReUI Timeline: one dot per change on a hairline rail (earned in the shop colour, spent in the points colour).
+        <Timeline value={0} render={<ul aria-label="Balance history" />} className="ms-1">
+          {d.transactions.slice(0, layout === "panel" ? 5 : undefined).map((t, i) => (
+            <TimelineItem key={t.id} step={i + 1} render={<li />} className="min-h-12 group-data-[orientation=vertical]/timeline:ms-6 group-data-[orientation=vertical]/timeline:not-last:pb-3">
+              <TimelineHeader className="flex items-center gap-3">
+                <TimelineSeparator className="bg-line group-data-[orientation=vertical]/timeline:-start-[1.125rem] group-data-[orientation=vertical]/timeline:h-[calc(100%-0.5rem)] group-data-[orientation=vertical]/timeline:translate-y-4" />
+                <TimelineIndicator
+                  className={cn(
+                    "top-1.5 size-2.5 border-0 group-data-[orientation=vertical]/timeline:-start-[1.125rem]",
+                    t.reversedAt ? "bg-line-strong" : t.points > 0 ? "bg-trade" : t.points < 0 ? "bg-points" : "bg-fg-subtle",
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-meta text-fg">
+                    <span className="capitalize">{t.type.replace(/_/g, " ")}</span>
+                    {t.description && t.description.toLowerCase() !== t.type.replace(/_/g, " ").toLowerCase() ? <span className="text-fg-muted"> · {t.description}</span> : null}
+                  </p>
+                  <TimelineDate dateTime={t.createdAt} className="mb-0 truncate text-caption font-normal text-fg-muted">
+                    {formatDateTime(t.createdAt)} · {sourceLabel(t.source)}
+                    {t.amountCents != null ? ` · ${formatMoney(t.amountCents)}` : ""}
+                    {t.reversedAt ? " · Reversed" : ""}
+                  </TimelineDate>
+                </div>
+                <span className={cn("shrink-0 text-meta font-medium tabular", t.reversedAt ? "text-fg-subtle line-through" : t.points > 0 ? "text-positive-text" : "text-fg")}>
+                  {formatSigned(t.points)}
+                </span>
+                {manager && !t.reversedAt && t.type !== "reversal" && new Date(t.createdAt).getTime() > recentCutoff ? (
+                  <button type="button" aria-label={`Reverse ${t.type.replace(/_/g, " ")} of ${t.points}`} title="Reverse" onClick={() => setReverseTx(t)} className="relative inline-flex size-8 shrink-0 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-1.5 after:content-[''] hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
+                    <Undo2 aria-hidden className="size-4" strokeWidth={1.75} />
+                  </button>
+                ) : (
+                  <span className="size-8 shrink-0" />
+                )}
+              </TimelineHeader>
+            </TimelineItem>
           ))}
-        </ul>
+        </Timeline>
       ) : (
-        <p className="border-y border-line py-6 text-meta text-fg-muted">No activity yet.</p>
+        <p className="rounded-input border border-dashed border-line-strong px-4 py-6 text-center text-meta text-fg-muted">No activity yet.</p>
       )}
     </Section>
   );

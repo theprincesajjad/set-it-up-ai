@@ -1,6 +1,7 @@
 "use client";
-import { Meter, PageHeader, Panel, EmptyState, Tag } from "@/components/dashboard/kit";
-import { Footprints, Navigation, PlusCircle } from "lucide-react";
+import { PageHeader, Panel, EmptyState, Tag } from "@/components/dashboard/kit";
+import { CircleCheck, Footprints, Inbox, Navigation, PlusCircle } from "lucide-react";
+import { KpiGrid, PanelEmpty, UsageMeter } from "@/components/dashboard/admin/AdminKit";
 import Link from "next/link";
 import { useState } from "react";
 import type { repApi } from "@ll/shared";
@@ -37,16 +38,23 @@ export default function RepToday() {
               <section aria-label="Street day" className="rounded-card bg-card shadow-card p-4">
                 <p className="text-label text-fg-muted">{t.streetDay.isToday ? "STREET DAY · TODAY" : `STREET DAY · ${t.streetDay.streetDayOn ? formatDate(`${t.streetDay.streetDayOn}T12:00:00`, true).toUpperCase() : "NEXT"}`}</p>
                 <h2 className="mt-1 font-display text-[24px] font-semibold leading-8 text-fg">{t.streetDay.areaName}</h2>
-                <div className="mt-3 flex items-center gap-3">
-                  <Meter value={t.streetDay.visited} max={Math.max(t.streetDay.total, 1)} label="Shops visited" className="flex-1" />
-                  <span className="shrink-0 text-meta text-fg-muted tabular">{t.streetDay.visited} of {t.streetDay.total} visited</span>
-                </div>
+                <UsageMeter className="mt-3" levels={false} label="Shops visited" value={t.streetDay.visited} max={Math.max(t.streetDay.total, 1)} valueText={`${t.streetDay.visited} of ${t.streetDay.total} visited`} />
                 <Button className="mt-3" fullWidth size="lg" iconStart={Footprints} href="/rep/day">{t.streetDay.visited ? "Continue the route" : "Start the route"}</Button>
               </section>
             ) : (
               <EmptyState title="No street day planned" description="Your next street day shows here once an admin assigns one in Areas." action={<Button variant="secondary" href="/rep/leads">Open leads</Button>} />
             )}
 
+            <KpiGrid
+              label="Today's numbers"
+              size="sm"
+              cols={3}
+              items={[
+                { label: "Calls due", value: String(t.checkInsDue.length), num: t.checkInsDue.length, caption: "Day 7 and day 30" },
+                { label: "Setups today", value: String(t.setupSessions.length), num: t.setupSessions.length, caption: "Remote, by phone or video" },
+                { label: "Website leads", value: String(t.websiteLeads.length), num: t.websiteLeads.length, caption: "Waiting for a call", href: "/rep/leads", alert: t.websiteLeads.length ? "warning" : undefined },
+              ]}
+            />
             <Panel title="Calls and setups due" description="Day 7 and day 30 follow-ups, and remote setup sessions" padded={false}>
               {t.checkInsDue.length || t.setupSessions.length ? (
                 <ul className="divide-y divide-line">
@@ -71,7 +79,7 @@ export default function RepToday() {
                   ))}
                 </ul>
               ) : (
-                <p className="px-4 py-4 text-meta text-fg-muted">All caught up. No calls or setup sessions are due.</p>
+                <PanelEmpty icon={CircleCheck} tone="good" title="All caught up" description="No calls or setup sessions are due." />
               )}
               {t.checkInsDue.length > 8 && !showAll ? <div className="border-t border-line px-4 py-2"><Button size="sm" variant="ghost" onClick={() => setShowAll(true)}>Show all {t.checkInsDue.length} calls</Button></div> : null}
             </Panel>
@@ -91,7 +99,7 @@ export default function RepToday() {
                   ))}
                 </ul>
               ) : (
-                <p className="px-4 py-4 text-meta text-fg-muted">Nothing waiting.</p>
+                <PanelEmpty icon={Inbox} title="Nothing waiting" description="New requests from the website land here first." />
               )}
             </Panel>
 

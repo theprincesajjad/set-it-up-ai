@@ -1,0 +1,14 @@
+/* BlurFadeStatic (blur-fade-static.tsx): Magic UI's blur-fade on a scroll timeline. Only with motion allowed and where supported. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .blur-fade-static {
+      animation: blur-fade-static linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    @keyframes blur-fade-static {
+      from { opacity: 0; filter: blur(6px); transform: translateY(24px); }
+      to { opacity: 1; filter: none; transform: none; }
+    }
+  }
+}

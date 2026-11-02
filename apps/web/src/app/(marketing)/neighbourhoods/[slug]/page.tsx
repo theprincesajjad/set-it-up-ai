@@ -68,9 +68,9 @@ export default async function NeighbourhoodPage({ params }: Props) {
 
       {detail.liveCampaigns.length || detail.perks.length || detail.livePromoCount ? (
         <section className="mx-auto max-w-[1200px] px-4 pb-12 md:px-8">
-          <div className="grid gap-px overflow-hidden rounded-sheet border border-border bg-border md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3">
             {detail.liveCampaigns.map((c: networkApi.CampaignBriefDto) => (
-              <Link key={c.id} href={`/c/${c.id}`} className="flex flex-col gap-2 bg-background p-6 transition-colors hover:bg-muted focus-visible:focus-ring">
+              <Link key={c.id} href={`/c/${c.id}`} className="card-clear mkt-lift flex flex-col gap-2 rounded-sheet p-6 focus-visible:focus-ring">
                 <span className="flex items-center gap-2 text-meta text-muted-foreground">
                   <span aria-hidden className="size-1.5 rounded-full bg-points" /> On now
                 </span>
@@ -81,14 +81,14 @@ export default async function NeighbourhoodPage({ params }: Props) {
               </Link>
             ))}
             {detail.perks.map((p) => (
-              <div key={p.id} className="flex flex-col gap-2 bg-background p-6">
+              <div key={p.id} className="card-clear flex flex-col gap-2 rounded-sheet p-6">
                 <span className="text-meta text-muted-foreground">Neighbourhood perk</span>
                 <span className="text-headline text-foreground">{p.name}</span>
                 {p.description ? <span className="text-meta text-muted-foreground">{p.description}</span> : null}
               </div>
             ))}
             {detail.livePromoCount ? (
-              <div className="flex flex-col gap-2 bg-background p-6">
+              <div className="card-clear flex flex-col gap-2 rounded-sheet p-6">
                 <span className="text-meta text-muted-foreground">Offers</span>
                 <span className="text-headline text-foreground">{detail.livePromoCount} live offers</span>
               </div>

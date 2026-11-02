@@ -4744,6 +4744,23 @@ export const ur: Messages = {
   "cust.shop.onCard": "یہ آپ کے کارڈ پر ہے۔ کاؤنٹر پر دکھائیں۔",
   "cust.bk.who": "آپ کس سے کروانا چاہیں گے؟",
   // ---- end wave-p: customer ----
+  // ---- wave-q: onboard ----
+  "sf.steps.link": "لنک",
+  "sf.steps.shop": "نام",
+  "sf.steps.kind": "قسم",
+  "sf.steps.where": "جگہ",
+  "sf.steps.card": "کارڈ",
+  "sf.steps.account": "اکاؤنٹ",
+  "sf.shop.otherColour": "کوئی اور رنگ چنیں",
+  "sf.shop.logoNone": "کوئی لوگو نہیں ملا۔ جب تک آپ سیٹنگز میں لوگو شامل نہیں کرتے، کارڈ پر آپ کے نام کا پہلا حرف دکھے گا۔",
+  "sf.card.colourHint": "اپنی دکان کا رنگ چنیں، یا اپنی قسم کی دکان کے لیے ہمارا رنگ رکھیں۔",
+  "sf.card.colourReset": "ہمارا رنگ رکھیں",
+  "sf.acct.making": "آپ بنا رہے ہیں",
+  "sf.acct.pwOk": "کم از کم 8 حروف",
+  "sf.live.nextHint": "مزید کے لیے سوائپ کریں۔ یہ سب آپ کے ڈیش بورڈ میں بھی ہے۔",
+  "sf.live.nStep": "قدم {n}",
+  "sf.live.start": "شروع کریں",
+  // ---- end wave-q: onboard ----
   // ---- wave-q: kit ----
   "kit.decrease": "کم کریں",
   "kit.increase": "بڑھائیں",
@@ -4770,4 +4787,15 @@ export const ur: Messages = {
   "kit.rating": "{max} میں سے {n} ستارے",
   "kit.meter": "{max} میں سے {used} استعمال ہوئے",
   // ---- end wave-q: kit ----
+  // ---- wave-q: customer ----
+  "cust.bk.moreDates": "مزید تاریخیں",
+  "cust.bk.pickDate": "تاریخ چنیں",
+  "cust.bk.pickDateSub": "ہم اس دن سے وقت دکھاتے ہیں۔",
+  "cust.set.offersOff": "آفرز بند",
+  "cust.set.muted": "خاموش",
+  // ---- end wave-q: customer ----
+  // ---- wave-q: owner ----
+  "ownq.set.look": "آپ کی پہچان",
+  "ownq.set.links": "لوگو اور کور فوٹو کے لنک",
+  // ---- end wave-q: owner ----
 };

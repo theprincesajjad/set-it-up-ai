@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
-import { PageHeader, Panel, Segmented, StatBlock, Table, TableWrap, Td, Th, Tr } from "@/components/dashboard/kit";
+import { PhoneCall } from "lucide-react";
+import { PageHeader, Panel, Segmented, Table, TableWrap, Td, Th, Tr } from "@/components/dashboard/kit";
+import { FunnelChart, KpiGrid, PanelEmpty, UsageMeter } from "@/components/dashboard/admin/AdminKit";
 import { ListAsync } from "@/components/dashboard/ListStates";
 import { verticalLabel } from "@/components/ui/VerticalIcon";
 import { browserApi } from "@/lib/api/browser";
@@ -24,14 +26,16 @@ export default function OnboardingFunnelPage() {
       <ListAsync state={f} errorTitle="Couldn't load the onboarding list.">
         {(d) => (
           <>
-            <StatBlock
+            <KpiGrid
+              label="Activation"
               items={[
-                { label: "Activated in 30 days", value: d.activatedIn30dPct === null ? "–" : `${d.activatedIn30dPct}%`, caption: d.activatedIn30dPct === null ? "No shop is 30 days old yet" : "Of shops 30+ days old · goal 60%" },
+                { label: "Activated in 30 days", value: d.activatedIn30dPct === null ? "–" : `${d.activatedIn30dPct}%`, ...(d.activatedIn30dPct === null ? {} : { num: d.activatedIn30dPct, suffix: "%" }), caption: d.activatedIn30dPct === null ? "No shop is 30 days old yet" : "Of shops 30+ days old · goal 60%", alert: d.activatedIn30dPct !== null && d.activatedIn30dPct < 60 ? "warning" : undefined },
                 { label: "Median to first stamp", value: fmtMinutes(d.medianMinutesToFirstStamp), caption: "From signup to the first stamp" },
-                { label: "Stuck", value: formatNumber(d.stuckNoStamp), caption: "No first stamp after 48 hours" },
-                { label: "Behind at day 14", value: formatNumber(d.behindAtDay14), caption: "Fewer than 12 members" },
+                { label: "Stuck", value: formatNumber(d.stuckNoStamp), num: d.stuckNoStamp, caption: "No first stamp after 48 hours", alert: d.stuckNoStamp ? "negative" : undefined },
+                { label: "Behind at day 14", value: formatNumber(d.behindAtDay14), num: d.behindAtDay14, caption: "Fewer than 12 members", alert: d.behindAtDay14 ? "warning" : undefined },
               ]}
             />
+            {d.activatedIn30dPct !== null ? <UsageMeter levels={false} label="Activated in 30 days, against the 60% goal" value={d.activatedIn30dPct} max={60} valueText={`${d.activatedIn30dPct}% of a 60% goal`} /> : null}
             <Panel title="Call these first" description="No first stamp after 48 hours, then shops behind pace at day 14" padded={false}>
               {d.callList.length ? (
                 <TableWrap>
@@ -64,23 +68,11 @@ export default function OnboardingFunnelPage() {
                   </Table>
                 </TableWrap>
               ) : (
-                <p className="px-5 py-6 text-meta text-fg-muted">Nobody is stuck. Every shop has given a first stamp.</p>
+                <PanelEmpty icon={PhoneCall} tone="good" title="Nobody to call" description="Every shop has given a first stamp and is on pace." />
               )}
             </Panel>
             <Panel title="Activation funnel" description={`${formatNumber(d.signedUp)} shops signed in this period`}>
-              <ul className="flex flex-col gap-3" aria-label="Funnel">
-                {d.steps.map((s) => (
-                  <li key={s.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 text-body text-fg sm:grid-cols-[150px_minmax(0,1fr)_110px]">
-                    <span>{s.label}</span>
-                    <span className="order-last col-span-2 h-5 rounded-md bg-bg-subtle sm:order-none sm:col-span-1">
-                      <span className={`block h-5 rounded-md ${s.key === "activated" ? "bg-points" : "bg-trade"}`} style={{ width: `${Math.max(1, s.pct)}%` }} />
-                    </span>
-                    <span className="tabular text-meta text-fg-muted sm:text-left text-right">
-                      {formatNumber(s.count)} · {s.pct}%
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <FunnelChart label="Funnel" steps={d.steps.map((st) => ({ key: st.key, label: st.label, value: st.count }))} />
             </Panel>
             <Panel title="By type" description="Shops signed and shops active" padded={false}>
               <TableWrap>

@@ -4744,6 +4744,23 @@ export const pa: Messages = {
   "cust.shop.onCard": "ਇਹ ਤੁਹਾਡੇ ਕਾਰਡ 'ਤੇ ਹੈ। ਕਾਊਂਟਰ 'ਤੇ ਵਿਖਾਓ।",
   "cust.bk.who": "ਤੁਸੀਂ ਕਿਸ ਤੋਂ ਕਰਵਾਉਣਾ ਚਾਹੋਗੇ?",
   // ---- end wave-p: customer ----
+  // ---- wave-q: onboard ----
+  "sf.steps.link": "ਲਿੰਕ",
+  "sf.steps.shop": "ਨਾਮ",
+  "sf.steps.kind": "ਕਿਸਮ",
+  "sf.steps.where": "ਥਾਂ",
+  "sf.steps.card": "ਕਾਰਡ",
+  "sf.steps.account": "ਖਾਤਾ",
+  "sf.shop.otherColour": "ਕੋਈ ਹੋਰ ਰੰਗ ਚੁਣੋ",
+  "sf.shop.logoNone": "ਕੋਈ ਲੋਗੋ ਨਹੀਂ ਮਿਲਿਆ। ਜਦੋਂ ਤੱਕ ਤੁਸੀਂ ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਲੋਗੋ ਨਹੀਂ ਜੋੜਦੇ, ਕਾਰਡ 'ਤੇ ਤੁਹਾਡੇ ਨਾਮ ਦਾ ਪਹਿਲਾ ਅੱਖਰ ਦਿਖੇਗਾ।",
+  "sf.card.colourHint": "ਆਪਣੀ ਦੁਕਾਨ ਦਾ ਰੰਗ ਚੁਣੋ, ਜਾਂ ਆਪਣੀ ਕਿਸਮ ਦੀ ਦੁਕਾਨ ਲਈ ਸਾਡਾ ਰੰਗ ਰੱਖੋ।",
+  "sf.card.colourReset": "ਸਾਡਾ ਰੰਗ ਰੱਖੋ",
+  "sf.acct.making": "ਤੁਸੀਂ ਬਣਾ ਰਹੇ ਹੋ",
+  "sf.acct.pwOk": "ਘੱਟੋ-ਘੱਟ 8 ਅੱਖਰ",
+  "sf.live.nextHint": "ਹੋਰ ਲਈ ਸਵਾਈਪ ਕਰੋ। ਇਹ ਸਭ ਤੁਹਾਡੇ ਡੈਸ਼ਬੋਰਡ ਵਿੱਚ ਵੀ ਹੈ।",
+  "sf.live.nStep": "ਕਦਮ {n}",
+  "sf.live.start": "ਸ਼ੁਰੂ ਕਰੋ",
+  // ---- end wave-q: onboard ----
   // ---- wave-q: kit ----
   "kit.decrease": "ਘਟਾਓ",
   "kit.increase": "ਵਧਾਓ",
@@ -4770,4 +4787,15 @@ export const pa: Messages = {
   "kit.rating": "{max} ਵਿੱਚੋਂ {n} ਤਾਰੇ",
   "kit.meter": "{max} ਵਿੱਚੋਂ {used} ਵਰਤੇ ਗਏ",
   // ---- end wave-q: kit ----
+  // ---- wave-q: customer ----
+  "cust.bk.moreDates": "ਹੋਰ ਤਾਰੀਖਾਂ",
+  "cust.bk.pickDate": "ਤਾਰੀਖ ਚੁਣੋ",
+  "cust.bk.pickDateSub": "ਅਸੀਂ ਉਸ ਦਿਨ ਤੋਂ ਸਮੇਂ ਦਿਖਾਉਂਦੇ ਹਾਂ।",
+  "cust.set.offersOff": "ਆਫ਼ਰ ਬੰਦ",
+  "cust.set.muted": "ਮਿਊਟ",
+  // ---- end wave-q: customer ----
+  // ---- wave-q: owner ----
+  "ownq.set.look": "ਤੁਹਾਡੀ ਦਿੱਖ",
+  "ownq.set.links": "ਲੋਗੋ ਅਤੇ ਕਵਰ ਫ਼ੋਟੋ ਦੇ ਲਿੰਕ",
+  // ---- end wave-q: owner ----
 };

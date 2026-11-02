@@ -164,6 +164,32 @@ export const copy = {
       trust: ["No app for customers", "Set up in 5 minutes", "No contract"],
       stageLabel: "The dashboard a shop owner sees, and the stamp card on a customer's iPhone",
       caption: "Sample data. Your own numbers fill in as you go.",
+      /** The two glass notes floating over the hero product (wave Q, wide screens only; sample data like the screens). */
+      floats: [
+        { icon: "stamp_card", b: "Stamp added for Maya", s: "9 of 10, one to go" },
+        { icon: "megaphone", b: "Double stamps at 2 p.m.", s: "Sent to 412 customers who opted in" },
+      ],
+      /** Sample visuals inside the two wide where-do-you-fit cards (decorative, aria-hidden). */
+      bento: { stamps: "9 of 10 stamps", passport: "Passport week", shops: "3 of 5 shops visited" },
+    },
+    /** Wave Q: the slow row of trades under the hero (a Marquee; listed once for screen readers). Icons from public/icons3d. */
+    trades: {
+      label: "Made for the shops on your street",
+      items: [
+        { icon: "cafe", label: "Cafés" },
+        { icon: "bakery", label: "Bakeries" },
+        { icon: "salon", label: "Hair salons" },
+        { icon: "barber", label: "Barbers" },
+        { icon: "nails", label: "Nail techs" },
+        { icon: "brows_lashes", label: "Brow and lash studios" },
+        { icon: "makeup", label: "Makeup artists" },
+        { icon: "groomer", label: "Pet groomers" },
+        { icon: "pet_shop", label: "Pet shops" },
+        { icon: "eat", label: "Restaurants" },
+        { icon: "butcher", label: "Grocers and butchers" },
+        { icon: "repair", label: "Repair shops" },
+        { icon: "shops", label: "Gift shops and retail" },
+      ],
     },
     facts: {
       label: "Key facts",

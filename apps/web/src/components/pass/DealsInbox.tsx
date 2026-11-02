@@ -11,6 +11,7 @@ import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { DealCard } from "./DealCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Switch } from "@/components/ui/Switch";
 
 export function DealsInbox() {
@@ -83,7 +84,15 @@ function Inbox() {
     }
   }
 
-  if (items === null) return null;
+  // wave-q: a skeleton of the inbox while the deals load (it used to pop in from nothing and push the page down).
+  if (items === null)
+    return (
+      <div aria-busy className="flex flex-col gap-3">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-4 w-56" />
+        <Skeleton className="h-28 w-full rounded-card" />
+      </div>
+    );
   return (
     <section aria-labelledby="deals-h" className="flex flex-col gap-3" data-testid="deals-inbox">
       <div>

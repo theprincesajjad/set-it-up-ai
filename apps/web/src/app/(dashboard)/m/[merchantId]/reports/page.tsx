@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { HBarList } from "@/components/dashboard/Charts";
 import { Heatmap } from "@/components/dashboard/reports/Heatmap";
+import { Meter, MeterIndicator, MeterTrack } from "@/components/primitives/meter";
 import { Banner } from "@/components/ui/Banner";
 import { Empty, PageHeader, PageTabs, Panel, QuietButton, Section, Segmented, SkeletonRows, StatBlock, type StatItem } from "@/components/dashboard/kit";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -106,14 +107,15 @@ export default function ReportsPage() {
             label={`Key numbers, ${dayRange.toLowerCase()}`}
             loading={!c}
             items={[
-              { label: "Visits", value: c ? formatNumber(c.visits) : "–", delta: d(c?.visits, p?.visits) },
-              { label: "New customers", value: c ? formatNumber(c.newMembers) : "–", delta: d(c?.newMembers, p?.newMembers) },
+              { label: "Visits", value: c ? formatNumber(c.visits) : "–", num: c?.visits, delta: d(c?.visits, p?.visits) },
+              { label: "New customers", value: c ? formatNumber(c.newMembers) : "–", num: c?.newMembers, delta: d(c?.newMembers, p?.newMembers) },
               back && back.pct != null
-                ? { label: "Came back within 14 days", value: `${back.pct}%`, caption: back.caption }
-                : { label: "Came back", value: c ? pct(c.repeatRate) : "–", caption: "Customers with 2 or more visits" },
+                ? { label: "Came back within 14 days", value: `${back.pct}%`, num: back.pct / 100, numFormat: { style: "percent" }, caption: back.caption }
+                : { label: "Came back", value: c ? pct(c.repeatRate) : "–", num: c ? Math.round(c.repeatRate * 100) / 100 : undefined, numFormat: { style: "percent" }, caption: "Customers with 2 or more visits" },
               {
                 label: `${noun[0]!.toUpperCase()}${noun.slice(1)}s given`,
                 value: c ? formatNumber(c.redemptions) : "–",
+                num: c?.redemptions,
                 caption: c && cost?.rewardCostCents != null ? `about ${formatMoney(c.redemptions * cost.rewardCostCents).replace(/\.00$/, "")} at cost (estimate)` : "Set your cost in Rewards for an estimate",
               },
             ]}
@@ -123,7 +125,7 @@ export default function ReportsPage() {
               label="Spend by customers"
               cols={2}
               items={[
-                { label: "Spend by customers", value: c ? formatMoney(c.revenueFromMembersCents) : "–", caption: c ? `${formatMoney(c.avgSpendPerVisitCents)} per visit, from your POS` : undefined },
+                { label: "Spend by customers", value: c ? formatMoney(c.revenueFromMembersCents) : "–", num: c ? c.revenueFromMembersCents / 100 : undefined, numFormat: { style: "currency", currency: "CAD" }, caption: c ? `${formatMoney(c.avgSpendPerVisitCents)} per visit, from your POS` : undefined },
                 { label: "Redemption rate", value: c ? pct(c.redemptionRate) : "–", caption: "Customers who redeemed a reward" },
               ]}
             />
@@ -142,11 +144,19 @@ export default function ReportsPage() {
               {joiners && joiners.joined > 0 ? (
                 <section aria-label="Joiners who came back" className="rounded-card bg-card shadow-card p-6">
                   <p className="text-[13px] text-fg-muted">{joinersTitle(joiners)}</p>
-                  <ul className="mt-3">
+                  {/* Wave Q: each window is a Base UI Meter (the share that came back), the count stays as text beside it. */}
+                  <ul className="mt-4 flex flex-col gap-4">
                     {joiners.windows.map((w) => (
-                      <li key={w.days} className="flex items-center justify-between border-t border-line py-2.5 text-[14px] first:border-t">
-                        <span className="text-fg">Within {w.days} days</span>
-                        <span className="tabular font-medium text-fg">{w.cameBack} of {joiners.joined}</span>
+                      <li key={w.days}>
+                        <Meter value={w.cameBack} max={Math.max(1, joiners.joined)} aria-label={`Within ${w.days} days: ${w.cameBack} of ${joiners.joined}`} className="gap-1.5">
+                          <div className="flex items-baseline justify-between text-[14px]">
+                            <span className="text-fg">Within {w.days} days</span>
+                            <span className="tabular font-medium text-fg">{w.cameBack} of {joiners.joined}</span>
+                          </div>
+                          <MeterTrack className="h-2 rounded-full bg-muted">
+                            <MeterIndicator className="rounded-full bg-trade" />
+                          </MeterTrack>
+                        </Meter>
                       </li>
                     ))}
                   </ul>

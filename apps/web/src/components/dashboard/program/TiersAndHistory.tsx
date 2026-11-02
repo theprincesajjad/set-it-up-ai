@@ -7,6 +7,8 @@
 import { History, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { merchantApi } from "@ll/shared";
+import { SkeletonRows } from "@/components/dashboard/kit";
+import { Timeline, TimelineContent, TimelineDate, TimelineHeader, TimelineIndicator, TimelineItem, TimelineSeparator, TimelineTitle } from "@/components/primitives/timeline";
 import { Button, IconButton } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { formatMoney } from "@/lib/format";
@@ -75,19 +77,32 @@ const ACTION: Record<string, string> = {
 
 export function ChangeHistory({ items, loading }: { items: merchantApi.ProgramChange[] | null; loading?: boolean }) {
   const [all, setAll] = useState(false);
-  if (loading && !items) return <p className="text-sm text-fg-muted">Loading changes…</p>;
-  if (!items?.length) return <p className="text-sm text-fg-muted">No changes yet. Every change to your rules and rewards shows here, with who made it.</p>;
+  if (loading && !items) return <SkeletonRows rows={3} />;
+  if (!items?.length)
+    return (
+      <div className="flex items-start gap-3 rounded-input border border-dashed border-line-strong p-4">
+        <span aria-hidden className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-trade-soft text-trade-deep">
+          <History className="size-4.5" />
+        </span>
+        <p className="text-sm text-fg-muted">No changes yet. Every change to your rules and rewards shows here, with who made it.</p>
+      </div>
+    );
   const shown = all ? items : items.slice(0, 5);
+  // Wave Q: the ReUI Timeline (a dot per change on a hairline rail, newest first) instead of a ruled list.
   return (
     <div className="flex flex-col gap-3">
-      <ol className="flex flex-col">
-        {shown.map((c) => (
-          <li key={c.id} className="flex gap-3 border-t border-line py-3 first:border-t-0">
-            <History aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-fg">
-                {ACTION[c.action] ?? c.action} <span className="font-normal text-fg-muted">· {c.actor.name ?? "Someone on your team"} · {new Date(c.at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })}</span>
-              </p>
+      <Timeline value={0} render={<ol aria-label="Change history" />} className="ms-1">
+        {shown.map((c, i) => (
+          <TimelineItem key={c.id} step={i + 1} render={<li />} className="group-data-[orientation=vertical]/timeline:ms-7">
+            <TimelineHeader>
+              <TimelineSeparator className="bg-line group-data-[orientation=vertical]/timeline:-start-5 group-data-[orientation=vertical]/timeline:h-[calc(100%-0.75rem-0.25rem)] group-data-[orientation=vertical]/timeline:translate-y-4" />
+              <TimelineDate dateTime={c.at} className="mb-0.5 text-meta font-normal text-fg-muted">
+                {new Date(c.at).toLocaleString("en-CA", { dateStyle: "medium", timeStyle: "short" })} · {c.actor.name ?? "Someone on your team"}
+              </TimelineDate>
+              <TimelineTitle render={<p />} className="text-sm font-medium text-fg">{ACTION[c.action] ?? c.action}</TimelineTitle>
+              <TimelineIndicator className={i === 0 ? "group-data-[orientation=vertical]/timeline:-start-5 top-1 size-3 border-0 bg-trade" : "group-data-[orientation=vertical]/timeline:-start-5 top-1 size-3 border-2 border-line-strong bg-card"} />
+            </TimelineHeader>
+            <TimelineContent>
               {c.changes.length ? (
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {c.changes.map((x) => (
@@ -98,10 +113,10 @@ export function ChangeHistory({ items, loading }: { items: merchantApi.ProgramCh
                 </ul>
               ) : null}
               {c.note ? <p className="mt-1 text-meta text-fg">{c.note}</p> : null}
-            </div>
-          </li>
+            </TimelineContent>
+          </TimelineItem>
         ))}
-      </ol>
+      </Timeline>
       {items.length > 5 ? (
         <Button variant="secondary" size="md" className="self-start" onClick={() => setAll((v) => !v)}>
           {all ? "Show fewer" : `Show all ${items.length}`}

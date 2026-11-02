@@ -1,12 +1,12 @@
 import { ArrowRight, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import { FEES, PLANS, RESTAURANT_PLANS, PLAN_IDS, TRIAL_DAYS, campaignsApi, firstYearPriceConfig, firstYearPriceShown, isPlanAvailable, type PlanId, type billingApi } from "@ll/shared";
-import { ArtTiles } from "@/components/marketing/HeroArt";
 import { ChipLink } from "@/components/marketing/ChipLink";
 import { CompetitorTableSolo } from "@/components/marketing/CompetitorTableSolo";
 import { Faq } from "@/components/marketing/Faq";
 import { ScrollTo } from "@/components/marketing/ScrollTo";
 import { MSection } from "@/components/marketing/Section";
+import { BlurFadeStatic } from "@/components/primitives/blur-fade-static";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
 import { publicServerApi } from "@/lib/api/server";
@@ -91,12 +91,13 @@ export default async function PricingPage({ searchParams }: Props) {
   const bia = campaignsApi.CAMPAIGN_PACKAGES;
   return (
     <>
-      <section className="mx-auto grid max-w-300 items-center gap-10 px-4 pt-10 pb-10 md:grid-cols-[1.4fr_1fr] md:gap-14 md:px-8 md:pt-16 md:pb-14">
-        <div>
+      {/* Wave Q: a centred head (Stripe/Linear pricing pages): the promise, one line, and the audience chips. The decorative tile art is gone. */}
+      <section className="mx-auto max-w-300 px-4 pt-10 pb-8 text-center md:px-8 md:pt-16 md:pb-12">
+        <div className="flex flex-col items-center">
           <p className="text-meta-strong text-primary-text">{P.eyebrow}</p>
-          <h1 className="display mkt-rise mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
-          <p className="[--i:1] mkt-rise mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{P.sub}</p>
-          <nav aria-label="Pricing for" className="mt-8 flex flex-wrap gap-2">
+          <h1 className="display mkt-rise mt-4 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{P.title}</h1>
+          <p className="[--i:1] mkt-rise mt-5 max-w-2xl text-[18px] leading-[1.55] text-pretty text-muted-foreground">{P.sub}</p>
+          <nav aria-label="Pricing for" className="mt-7 flex flex-wrap justify-center gap-2">
             {P.chips.map((c) => (
               <ChipLink key={c.id} href={c.href} current={audience === c.id}>
                 {c.label}
@@ -105,14 +106,13 @@ export default async function PricingPage({ searchParams }: Props) {
           </nav>
           {audience !== "shop" ? <ScrollTo id={audience === "restaurant" ? "restaurants" : "bias"} /> : null}
         </div>
-        <ArtTiles className="max-md:hidden" />
       </section>
 
       {audience === "shop" ? (
       <>
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
-        <p className="mx-auto mb-4 max-w-300 px-4 text-meta-strong text-muted-foreground md:px-8">{copy.proPricing.pricesNote}</p>
-        <div className="mx-auto grid max-w-300 items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3">
+        <p className="mx-auto mb-4 max-w-300 px-4 text-center text-meta-strong text-muted-foreground md:px-8">{copy.proPricing.pricesNote}</p>
+        <div className="mx-auto grid max-w-300 items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3 lg:gap-5 lg:py-4">
           <FreeCard />
           <PaidCard id="plus" firstYear={firstYear} />
           <PaidCard id="studio" firstYear={firstYear} />
@@ -145,9 +145,13 @@ export default async function PricingPage({ searchParams }: Props) {
       </section>
 
       {/* The full comparison with the booking apps, moved here from the solo landing pages (their price block links to it). */}
-      <CompetitorTableSolo c={{ ...copy.solo.compare, brand: "Local Loyalty" }} chairs id="booking-apps" />
+      <BlurFadeStatic>
+        <CompetitorTableSolo c={{ ...copy.solo.compare, brand: "Local Loyalty" }} chairs id="booking-apps" />
+      </BlurFadeStatic>
 
-      <TradeRows />
+      <BlurFadeStatic>
+        <TradeRows />
+      </BlurFadeStatic>
       </>
       ) : null}
 
@@ -189,9 +193,9 @@ export default async function PricingPage({ searchParams }: Props) {
             <p className="text-meta-strong text-primary-text">{P.faqEyebrow}</p>
             <h2 className="display mt-3 text-mkt-md md:text-mkt-lg">{P.faqTitle}</h2>
           </div>
-          <Faq
-            items={copy.proPricing.faq.map((f) => ({ q: pv(f.q), a: fill(pv(f.a), { cut: pct(FEES.depositInvoiceBps), target: PLUS_TARGET }) }))}
-          />
+          <BlurFadeStatic>
+            <Faq items={copy.proPricing.faq.map((f) => ({ q: pv(f.q), a: fill(pv(f.a), { cut: pct(FEES.depositInvoiceBps), target: PLUS_TARGET }) }))} />
+          </BlurFadeStatic>
         </div>
       </MSection>
     </>

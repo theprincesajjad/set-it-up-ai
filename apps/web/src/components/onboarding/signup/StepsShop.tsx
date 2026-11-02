@@ -4,12 +4,14 @@
  * address only for a storefront and a postal code for a home studio), and the loyalty card (the trade's defaults, editable, with a
  * live preview in the shop's colour).
  */
-import { Minus, Plus } from "lucide-react";
+import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import { VERTICALS, VERTICAL_TEMPLATES, merchantApi, normalizePostal, unitWord, type Locale, type MessageKey } from "@ll/shared";
 import type { Icon3dName } from "@ll/design-tokens";
 import { cn } from "@/lib/cn";
-import { useLocaleOrEnglish } from "@/lib/i18n";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { ColorField } from "@/components/ui/ColorField";
+import { NumberStepper } from "@/components/ui/NumberStepper";
 import { Icon3d } from "@/components/ui/Icon3d";
 import { TextField } from "@/components/ui/TextField";
 import { ChoiceGroup, ChoiceTile } from "../ChoiceTile";
@@ -95,6 +97,8 @@ export function KindStep({ draft, update, next }: StepProps) {
 }
 
 function TradeTile({ value, label, checked, onPick, badge }: { value: string; label: string; checked: boolean; onPick: (v: string) => void; badge: string | null }) {
+  // Wave Q: a raised tile. The 3D object sits on a soft disc in its own trade colour; picked, the tile takes that colour's soft fill and
+  // ring with a check in the corner, and the object lifts a little. Hover lifts the tile (not under reduced motion).
   return (
     <button
       type="button"
@@ -102,16 +106,24 @@ function TradeTile({ value, label, checked, onPick, badge }: { value: string; la
       aria-checked={checked}
       data-value={value}
       data-vertical={value}
+      data-trade={value}
       tabIndex={checked ? 0 : -1}
       onClick={() => onPick(value)}
       className={cn(
-        "relative flex min-h-24 flex-col items-start justify-between gap-2 rounded-r4 border bg-card p-3.5 text-start transition-[box-shadow,transform] duration-150 focus-visible:focus-ring active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
-        checked ? "border-fg shadow-[0_0_0_1px_var(--foreground)]" : "border-border hover:bg-bg-subtle",
+        "group relative flex min-h-28 flex-col items-start justify-between gap-3 rounded-r4 border bg-card p-3.5 text-start shadow-sm transition-[box-shadow,transform,background-color,border-color] duration-200 ease-out focus-visible:focus-ring active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+        checked ? "border-trade bg-trade-soft shadow-[0_0_0_1px_var(--trade)]" : "border-border hover:-translate-y-0.5 hover:border-border-strong hover:shadow-float motion-reduce:hover:translate-y-0",
       )}
     >
-      <Icon3d name={iconFor(value)} size={40} trade={value} />
-      <span className="text-sm font-[550] leading-5 text-fg">{label}</span>
-      {badge ? <span className="absolute end-2 top-2 rounded-full bg-trade-soft px-2 py-0.5 text-caption font-[550] text-trade-deep">{badge}</span> : null}
+      <span className={cn("grid size-13 place-items-center rounded-full transition-[transform,background-color] duration-200 motion-reduce:transition-none", checked ? "scale-105 bg-card" : "bg-bg-subtle group-hover:scale-105")}>
+        <Icon3d name={iconFor(value)} size={40} trade={value} />
+      </span>
+      <span className="flex flex-col gap-1">
+        <span className="text-sm font-[600] leading-5 text-fg">{label}</span>
+        {badge ? <span className="self-start rounded-full bg-card px-2 py-0.5 text-caption font-[550] text-trade-deep ring-1 ring-trade/20">{badge}</span> : null}
+      </span>
+      <span aria-hidden className={cn("absolute end-2.5 top-2.5 grid size-6 place-items-center rounded-full bg-trade text-trade-foreground transition-[opacity,transform] duration-200 motion-reduce:transition-none", checked ? "scale-100 opacity-100" : "scale-50 opacity-0")}>
+        <Check className="size-3.5" strokeWidth={3} />
+      </span>
     </button>
   );
 }
@@ -159,17 +171,11 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
   const { t, locale } = useLocaleOrEnglish();
   const card = cardFor(draft.vertical, draft.card);
   const [errors, setErrors] = useState<{ goal?: string; reward?: string }>({});
-  const [goalText, setGoalText] = useState(String(card.goal));
   const unit = unitWord(locale as Locale, card.terminology);
   const set = (patch: Partial<{ goal: number; reward: string }>) => update({ card: { goal: card.goal, reward: card.reward, ...patch } });
-  const setGoal = (n: number) => {
-    const c = Math.min(card.max, Math.max(card.min, n));
-    setGoalText(String(c));
-    set({ goal: c });
-  };
   const go = () => {
     const e: typeof errors = {};
-    const n = Number(goalText);
+    const n = card.goal;
     if (!Number.isInteger(n) || n < card.min || n > card.max) e.goal = card.earnType === "stamps" ? t("sf.err.goal", { min: merchantApi.STAMP_GOAL_MIN, max: merchantApi.STAMP_GOAL_MAX }) : t("sf.err.points");
     if (!card.reward.trim()) e.reward = t("sf.err.reward");
     setErrors(e);
@@ -177,62 +183,55 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
   };
   const earn = card.earnType === "stamps" ? t("sf.card.earnStamp") : card.earnType === "per_visit" ? t("sf.card.earnVisit", { n: card.rate, unit }) : t("sf.card.earnDollar", { n: card.rate, unit });
   const changed = card.goal !== card.defaults.goal || card.reward !== card.defaults.reward;
+  // The colour: what "Is this you?" kept from the website, else the owner's pick here (wave Q, ColorField), else the trade's.
+  const imported = draft.link === "read" && !!draft.accepted;
+  const brandColor = imported ? (draft.accepted?.brandColor ?? null) : draft.color;
   return (
     <StepFrame id="card" title={t("sf.card.title")} body={t("sf.card.body")} onSubmit={go} primary={t("sf.continue")}>
       <div className="lg:hidden">
-        <CardPreview name={draft.name} vertical={draft.vertical} brandColor={draft.accepted?.brandColor} logo={draft.accepted?.logoPreview ?? null} card={card} />
+        <CardPreview name={draft.name} vertical={draft.vertical} brandColor={brandColor} logo={draft.accepted?.logoPreview ?? null} card={card} />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="sf-goal" className="text-body font-[550] text-fg">
-          {card.earnType === "stamps" ? t("sf.card.goalStamps") : t("sf.card.goalPoints", { unit })}
-        </label>
-        <div className="flex items-center gap-3">
-          <button type="button" aria-label={t("sf.card.less")} onClick={() => setGoal(card.goal - card.step)} disabled={card.goal <= card.min} className="grid size-12 place-items-center rounded-full border border-border bg-card text-fg hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-40">
-            <Minus aria-hidden className="size-5" />
-          </button>
-          <input
-            id="sf-goal"
-            name="goal"
-            inputMode="numeric"
-            dir="ltr"
-            value={goalText}
-            aria-invalid={errors.goal ? true : undefined}
-            aria-describedby={errors.goal ? "sf-goal-error" : "sf-goal-hint"}
-            onChange={(e) => {
-              const s = e.target.value.replace(/\D/g, "").slice(0, 6);
-              setGoalText(s);
-              const n = Number(s);
-              if (s && n >= card.min && n <= card.max) set({ goal: n });
-            }}
-            onBlur={() => goalText && setGoal(Number(goalText))}
-            className="h-12 w-24 rounded-r3 border border-border bg-card text-center text-title font-[650] tabular-nums text-fg outline-none focus:border-fg focus:ring-1 focus:ring-fg aria-[invalid=true]:border-negative"
-          />
-          <button type="button" aria-label={t("sf.card.more")} onClick={() => setGoal(card.goal + card.step)} disabled={card.goal >= card.max} className="grid size-12 place-items-center rounded-full border border-border bg-card text-fg hover:bg-bg-subtle focus-visible:focus-ring disabled:opacity-40">
-            <Plus aria-hidden className="size-5" />
-          </button>
-        </div>
-        {errors.goal ? (
-          <p id="sf-goal-error" className="text-meta font-medium text-negative">
-            {errors.goal}
-          </p>
-        ) : (
-          <p id="sf-goal-hint" className="text-meta text-fg-muted">
-            {earn}
-          </p>
-        )}
-      </div>
+      {/* Kit (wave Q): NumberStepper (Base UI NumberField: arrow keys, Page Up/Down, hold to repeat, clamped to the trade's range). */}
+      <NumberStepper
+        name="goal"
+        label={card.earnType === "stamps" ? t("sf.card.goalStamps") : t("sf.card.goalPoints", { unit })}
+        value={card.goal}
+        onChange={(n) => {
+          setErrors((e) => ({ ...e, goal: undefined }));
+          set({ goal: n });
+        }}
+        min={card.min}
+        max={card.max}
+        step={card.step}
+        hint={earn}
+        error={errors.goal}
+        decreaseLabel={t("sf.card.less")}
+        increaseLabel={t("sf.card.more")}
+      />
       <div className="flex flex-col gap-2">
         <TextField name="reward" label={t("sf.card.reward")} hint={t("sf.card.rewardHint")} value={card.reward} maxLength={120} onChange={(e) => set({ reward: e.target.value })} error={errors.reward} />
         {card.suggestions.length > 1 || changed ? (
           <div className="flex flex-wrap gap-2">
             {[...new Set([card.defaults.reward, ...card.suggestions])].filter(Boolean).map((s) => (
-              <button key={s} type="button" onClick={() => set({ reward: s })} aria-pressed={card.reward === s} className={cn("h-11 rounded-full border px-4 text-meta font-[550] focus-visible:focus-ring", card.reward === s ? "border-fg bg-fg text-bg" : "border-border bg-card text-fg hover:bg-bg-subtle")}>
+              <button key={s} type="button" onClick={() => set({ reward: s })} aria-pressed={card.reward === s} className={cn("inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-meta font-[550] transition-colors duration-150 focus-visible:focus-ring motion-reduce:transition-none", card.reward === s ? "border-fg bg-fg text-bg" : "border-border bg-card text-fg hover:bg-bg-subtle")}>
+                {card.reward === s ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : null}
                 {s}
               </button>
             ))}
           </div>
         ) : null}
       </div>
+      {!imported ? (
+        <div className="flex flex-col gap-2" data-card-colour>
+          <ColorField label={t("sf.shop.colour")} value={draft.color} onChange={(c) => update({ color: c })} vertical={draft.vertical || null} />
+          <p className="text-meta text-fg-muted">{t("sf.card.colourHint")}</p>
+          {draft.color ? (
+            <button type="button" onClick={() => update({ color: null })} className="inline-flex h-11 items-center self-start rounded-full px-1 text-body font-[550] text-link hover:underline focus-visible:focus-ring" data-card-colour-reset>
+              {t("sf.card.colourReset")}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {draft.vertical === "pharmacy" ? <p className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg">{t("sf.card.pharmacy")}</p> : null}
       <p className="text-meta text-fg-muted">{t("sf.card.later")}</p>
     </StepFrame>

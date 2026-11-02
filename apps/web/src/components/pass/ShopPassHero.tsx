@@ -7,7 +7,9 @@
  * 30% toward the second colour, so it keeps contrast in every trade (light and dark).
  */
 import { placeKindLabel, type customerApi } from "@ll/shared";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { celebrate } from "@/components/ui/Celebrate";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { StampCard } from "@/components/ui/StampCard";
 import { stampCardNumbers } from "@/lib/stamps";
@@ -32,6 +34,33 @@ export function heroMembership(items: customerApi.MembershipDto[]): customerApi.
     .filter((m) => m.nextReward && m.nextReward.pointsNeeded > 0)
     .sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct || a.nextReward!.pointsNeeded - b.nextReward!.pointsNeeded)[0];
   return closest ?? items[0] ?? null;
+}
+
+/**
+ * wave-q: confetti in the shop's colours the first time this phone sees a reward ready on this card (per membership and reward, kept in
+ * localStorage, so it is a moment and not something that fires on every visit). Nothing under reduced motion (celebrate() skips it).
+ */
+export function useRewardCelebration(m: Pick<customerApi.MembershipDto, "id" | "rewardsAvailableCount" | "readyReward">, from: RefObject<Element | null>) {
+  const ready = m.rewardsAvailableCount > 0;
+  const mark = `${m.rewardsAvailableCount}:${m.readyReward?.name ?? ""}`;
+  useEffect(() => {
+    if (!ready) return;
+    const key = `ll:reward-seen:${m.id}`;
+    try {
+      if (window.localStorage.getItem(key) === mark) return;
+    } catch {
+      return; // storage blocked: skip rather than fire on every visit
+    }
+    const id = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(key, mark);
+      } catch {
+        /* fire once anyway */
+      }
+      void celebrate({ origin: from.current, tokens: ["--trade", "--trade-soft", "--points", "--points-soft"] });
+    }, 450);
+    return () => window.clearTimeout(id);
+  }, [ready, mark, m.id, from]);
 }
 
 /** The shop's square white tile on the gradient: its logo, else its initials in the trade colour. */
@@ -97,6 +126,8 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setJustStamped(!ready && shown > 0 && Number.isFinite(at) && Date.now() - at < 15 * 60_000);
   }, [m.lastVisitAt, ready, shown]);
+  const unlockedRef = useRef<HTMLDivElement>(null);
+  useRewardCelebration(m, unlockedRef);
   const badge = ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : justStamped ? t("ui.stampAdded") : goal > 0 ? t("ui.stampToGo", { n: formatNumber(toGo) }) : null;
   return (
     <>
@@ -137,7 +168,7 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
           </div>
         ) : null}
         {ready ? (
-          <div role="status" data-testid="reward-unlocked" className="mb-4 flex items-center gap-3 rounded-r5 bg-trade-soft p-3">
+          <div ref={unlockedRef} role="status" data-testid="reward-unlocked" className="mb-4 flex items-center gap-3 rounded-r5 bg-trade-soft p-3">
             <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-full bg-trade text-trade-foreground">
               <Gift className="size-5" strokeWidth={1.9} />
             </span>
@@ -153,8 +184,8 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
             <dt className="text-[11px] font-semibold uppercase leading-4 tracking-[0.04em] text-muted-foreground">{unit}</dt>
             <dd dir="ltr" className="text-start text-[24px] font-semibold leading-8 tracking-[-0.02em] tabular-nums [unicode-bidi:isolate] rtl:text-end">
               {/* Stamps read "8 / 10"; a points balance is the number alone (the bar above shows the way to the reward). */}
-              {formatNumber(stamps ? shown : m.balance)}
-              {stamps && goal > 0 ? ` / ${formatNumber(goal)}` : null}
+              {/* wave-q: the count rolls in (NumberFlow; a plain number under reduced motion, the sr-only copy for readers). */}
+              <AnimatedNumber value={stamps ? shown : m.balance} suffix={stamps && goal > 0 ? ` / ${formatNumber(goal)}` : undefined} />
             </dd>
           </div>
           <div className="min-w-0">
@@ -176,6 +207,8 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
 
 function WarmPassHero({ m, line, footer }: { m: customerApi.MembershipDto; line: string | null; footer?: React.ReactNode }) {
   const { t, locale } = useLocaleOrEnglish();
+  const heroRef = useRef<HTMLElement>(null);
+  useRewardCelebration(m, heroRef);
   const next = m.nextReward;
   const ready = m.rewardsAvailableCount > 0;
   const card = m.program?.earnType === "stamps" ? stampCardNumbers(m.balance, m.program.stampGoal, next?.pointsCost) : null;
@@ -190,6 +223,7 @@ function WarmPassHero({ m, line, footer }: { m: customerApi.MembershipDto; line:
   const pct = goal > 0 ? Math.round((shown / goal) * 100) : 0;
   return (
     <section
+      ref={heroRef}
       aria-label={m.merchant.name}
       {...shopColorProps(m.merchant)}
       className="overflow-hidden rounded-sheet bg-[linear-gradient(100deg,var(--trade-pass-from)_60%,var(--trade-pass-to)_100%)] text-trade-pass-text shadow-card">
@@ -224,7 +258,7 @@ function WarmPassHero({ m, line, footer }: { m: customerApi.MembershipDto; line:
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className={`font-display ${numeral} font-bold leading-none tracking-tight tabular-nums`}>
-              {formatNumber(shown)}
+              <AnimatedNumber value={shown} />
               {goal > 0 ? <span className="mx-1.5 font-normal opacity-90">/</span> : null}
               {goal > 0 ? formatNumber(goal) : null}
             </p>

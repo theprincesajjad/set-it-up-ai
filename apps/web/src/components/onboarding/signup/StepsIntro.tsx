@@ -3,8 +3,9 @@
  * Steps 1 and 2: "Do you have a website or Instagram?" (with the animated read), then "Is this you?" (the imported name, logo and
  * colour, editable, with everything else we found as opt-out ticks) or a plain name field when the owner skipped.
  */
-import { Check, ChevronDown, Globe, Info, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Check, Info, Palette } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { type MessageKey, type merchantApi, type siteImportApi } from "@ll/shared";
 import { BFF_BASE, browserClient } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
@@ -12,13 +13,19 @@ import { cn } from "@/lib/cn";
 import { LanguageSwitcher, useLocaleOrEnglish } from "@/lib/i18n";
 import { formatNanp } from "@/lib/phone";
 import { shopColorProps } from "@/lib/shopColor";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/primitives/accordion";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { ColorField } from "@/components/ui/ColorField";
 import { Icon3d } from "@/components/ui/Icon3d";
 import { TextField } from "@/components/ui/TextField";
 import type { SiteImportAccepted } from "../SiteImport";
 import { CardPreview } from "./CardPreview";
-import type { SignupDraft } from "./draft";
+import { hostOf, type SignupDraft } from "./draft";
 import { StepFrame } from "./Shell";
+
+// The read animation (motion) loads on demand; LinkStep warms it up as soon as the first step is on screen.
+const loadReading = () => import("./Reading").then((m) => m.Reading);
+const Reading = dynamic(loadReading, { ssr: false, loading: () => <div className="min-h-[70dvh]" aria-busy="true" /> });
 
 type Result = siteImportApi.SiteImportResult;
 export type Importer = (url: string) => Promise<Result>;
@@ -30,15 +37,8 @@ export interface StepProps {
   next: () => void;
 }
 
-export const hostOf = (u: string) => {
-  try {
-    return new URL(/^https?:\/\//i.test(u) ? u : `https://${u}`).hostname.replace(/^www\./, "");
-  } catch {
-    return u;
-  }
-};
+export { hostOf };
 export const fromLabel = (r: Result) => (r.kind === "instagram" ? `@${r.fields.instagram?.value ?? ""}` : hostOf(r.url));
-const isInstagram = (u: string) => /^@|instagram\.com/i.test(u.trim());
 
 // ---------------------------------------------------------------------------
 // 1. Website or Instagram
@@ -49,6 +49,9 @@ export function LinkStep({ draft, update, next, importer = defaultImporter }: St
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  useEffect(() => {
+    void loadReading();
+  }, []);
 
   async function read() {
     const u = url.trim();
@@ -95,59 +98,6 @@ export function LinkStep({ draft, update, next, importer = defaultImporter }: St
   );
 }
 
-/** "Reading yourshop.ca…": a browser bar with the host and a checklist whose ticks land one by one. */
-function Reading({ target, done }: { target: string; done: boolean }) {
-  const { t } = useLocaleOrEnglish();
-  const insta = isInstagram(target);
-  const items = insta ? [t("sf.read.handle"), t("sf.read.s4")] : [t("sf.read.s1"), t("sf.read.s2"), t("sf.read.s3"), t("sf.read.s4")];
-  const [at, setAt] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setAt((n) => Math.min(n + 1, items.length - 1)), 700);
-    return () => clearInterval(id);
-  }, [items.length]);
-  const ticked = done ? items.length : at;
-  const host = insta ? `@${target.replace(/^@/, "").replace(/^.*instagram\.com\//i, "").replace(/\/.*$/, "")}` : hostOf(target);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => headingRef.current?.focus({ preventScroll: true }), []);
-  return (
-    <div className="mx-auto flex w-full max-w-[560px] flex-col px-4 pb-16 pt-8 md:px-6 md:pt-14" data-import-progress>
-      <div className="animate-in fade-in-0 duration-300 motion-reduce:animate-none">
-        <Icon3d name="site" size={64} trade="inherit" surface="canvas" />
-        <h1 ref={headingRef} tabIndex={-1} className="mt-4 text-[28px] font-[700] leading-8.5 tracking-[-0.02em] text-fg outline-none md:text-[34px] md:leading-10">
-          {t("sf.read.title", { site: host })}
-        </h1>
-        <p className="mt-3 text-[15px] leading-5.5 text-fg-muted">{t("sf.read.body")}</p>
-        <div className="mt-8 overflow-hidden rounded-r4 border border-border bg-card shadow-card">
-          <div className="flex items-center gap-2 border-b border-border bg-bg-subtle px-4 py-2.5">
-            <Globe aria-hidden className="size-4 text-fg-muted" strokeWidth={1.75} />
-            <span dir="ltr" className="min-w-0 truncate text-meta text-fg-muted">
-              <bdi>{host}</bdi>
-            </span>
-          </div>
-          <div aria-hidden className="relative h-1 overflow-hidden bg-lg-seg-track">
-            <div className="absolute inset-y-0 start-0 rounded-e-full bg-trade transition-[width] duration-700 ease-out motion-reduce:transition-none" style={{ width: `${Math.max(8, (ticked / items.length) * 100)}%` }} />
-          </div>
-          <ol role="status" aria-live="polite" className="flex flex-col gap-3.5 p-5">
-            {items.map((s, i) => {
-              const ok = i < ticked;
-              const now = i === ticked;
-              return (
-                <li key={s} className={cn("flex items-center gap-3 text-body transition-colors duration-300", ok || now ? "text-fg" : "text-fg-subtle")} data-read-item={ok ? "done" : now ? "now" : "todo"}>
-                  <span aria-hidden className={cn("grid size-6 shrink-0 place-items-center rounded-full transition-all duration-300 motion-reduce:transition-none", ok ? "scale-100 bg-trade text-trade-foreground" : "scale-90 border border-border-strong")}>
-                    {ok ? <Check className="size-3.5 animate-in zoom-in-50 duration-200 motion-reduce:animate-none" strokeWidth={3} /> : now ? <Loader2 className="size-3.5 animate-spin text-fg-muted motion-reduce:animate-none" /> : null}
-                  </span>
-                  {s}
-                  <span className="sr-only">{ok ? t("onboarding.kit.done") : ""}</span>
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // 2. Is this you? / What's your shop called?
 // ---------------------------------------------------------------------------
@@ -168,6 +118,7 @@ export function ShopStep({ draft, update, next, onRelink, logoBase = BFF_BASE }:
   const found = f?.brandColor?.value ?? null;
   const accent = f?.accentColor?.value ?? null;
   const [colour, setColour] = useState<string | null>(prev ? (prev.brandColor ?? null) : found);
+  const [otherColour, setOtherColour] = useState(() => !!prev?.brandColor && prev.brandColor !== found && prev.brandColor !== accent);
   const [keep, setKeep] = useState<Record<Extra, boolean>>(() => Object.fromEntries(EXTRAS.map((k) => [k, prev ? prevHas(prev, k) : !!f?.[k]])) as Record<Extra, boolean>);
   const [picked, setPicked] = useState<Set<number>>(() => new Set(f?.services && prev?.services ? f.services.value.flatMap((s, i) => (prev.services!.some((p) => p.name === s.name) ? [i] : [])) : []));
   const extrasFound = f ? EXTRAS.filter((k) => !!f[k]) : [];
@@ -229,7 +180,7 @@ export function ShopStep({ draft, update, next, onRelink, logoBase = BFF_BASE }:
           <TextField name="shopName" label={t("su.shopName")} hint={f.name ? t("imp.review.from", { source: t(`imp.src.${f.name.source}` as MessageKey) }) : t("su.shopNameHint")} value={name} onChange={(e) => setName(e.target.value)} error={error} maxLength={120} autoComplete="organization" />
         </div>
         {f.logo ? (
-          <div className="flex items-center gap-4 rounded-r4 border border-border bg-card p-3" data-import-row="logo">
+          <div className="flex items-center gap-4 rounded-r4 border border-border bg-card p-3 shadow-sm" data-import-row="logo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={logoSrc!} alt={t("imp.review.logoAlt")} width={56} height={56} className="size-14 shrink-0 rounded-r2 border border-border bg-card object-contain" />
             <div className="min-w-0 flex-1">
@@ -238,7 +189,12 @@ export function ShopStep({ draft, update, next, onRelink, logoBase = BFF_BASE }:
           </div>
         ) : r.kind === "instagram" ? (
           <TextField label={t("imp.review.logoLink")} optionalLabel hint={t("imp.review.logoLinkHint")} type="url" dir="ltr" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} error={logoUrlOk ? null : t("imp.review.logoLinkError")} />
-        ) : null}
+        ) : (
+          <p className="flex items-start gap-2 rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg" data-import-row="logo-none">
+            <Info aria-hidden className="mt-0.5 size-3.5 shrink-0 text-fg-muted" strokeWidth={1.75} />
+            {t("sf.shop.logoNone")}
+          </p>
+        )}
         <fieldset className="flex flex-col gap-2" data-import-row="brandColor">
           <legend className="mb-2 text-body font-[550] text-fg">{t("sf.shop.colour")}</legend>
           <div role="radiogroup" aria-label={t("sf.shop.colour")} className="flex flex-wrap gap-3">
@@ -248,47 +204,64 @@ export function ShopStep({ draft, update, next, onRelink, logoBase = BFF_BASE }:
             <Swatch checked={colour === null} onPick={() => setColour(null)} label={t("sf.shop.colourTrade")} colors={shopColorProps({ vertical: draft.vertical || "other" })} />
           </div>
           {f.brandColor?.adjusted && colour === found ? <p className="text-meta text-fg-muted">{t("imp.review.colorAdjusted")}</p> : null}
+          {/* Wave Q: none of these? The kit's ColorField (the trade palette, the system picker and a hex box, contrast-checked). */}
+          {otherColour ? (
+            <div className="mt-2 rounded-r4 border border-border bg-card p-4 animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none" data-import-other-colour>
+              <ColorField label={t("sf.shop.otherColour")} value={colour && !colourOptions.includes(colour) ? colour : null} onChange={(c) => setColour(c)} vertical={draft.vertical || null} />
+            </div>
+          ) : (
+            <button type="button" onClick={() => setOtherColour(true)} className="inline-flex h-11 items-center gap-2 self-start rounded-full px-1 text-body font-[550] text-link hover:underline focus-visible:focus-ring" data-import-other-colour-open>
+              <Palette aria-hidden className="size-4.5" strokeWidth={1.8} />
+              {t("sf.shop.otherColour")}
+            </button>
+          )}
         </fieldset>
         {extrasFound.length || f.services ? (
-          <details className="group rounded-r4 border border-border bg-card" open>
-            <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-body font-[550] text-fg focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
-              {t("sf.shop.more")}
-              <ChevronDown aria-hidden className="size-5 text-fg-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" strokeWidth={1.75} />
-            </summary>
-            <div className="border-t border-border px-4 pb-2">
-              <p className="pt-3 text-meta text-fg-muted">{t("sf.shop.moreHint")}</p>
-              <ul className="flex flex-col divide-y divide-border">
-                {extrasFound.map((k) => (
-                  <li key={k} className="py-3" data-import-row={k}>
-                    <Checkbox
-                      checked={keep[k]}
-                      onChange={(on) => setKeep((s) => ({ ...s, [k]: on }))}
-                      label={
-                        <span className="flex flex-col">
-                          <span className="text-meta-strong text-fg">{t(`imp.f.${k}` as MessageKey)}</span>
-                          <span className={cn("text-body text-fg", !keep[k] && "text-fg-muted line-through")}>{extraValue(k, f, t)}</span>
-                        </span>
-                      }
-                    />
-                  </li>
-                ))}
-                {f.services ? (
-                  <li className="flex flex-col gap-1 py-3" data-import-row="services">
-                    <span className="text-meta-strong text-fg">{t("imp.f.services")}</span>
-                    <span className="text-meta text-fg-muted">{t("imp.review.servicesHint")}</span>
-                    {f.services.value.map((s, i) => (
+          <Accordion defaultValue={["more"]} className="rounded-r4 border border-border bg-card px-4 shadow-sm">
+            <AccordionItem value="more">
+              <AccordionTrigger className="min-h-12 items-center text-body font-[550] text-fg hover:no-underline">
+                <span className="flex items-center gap-2">
+                  {t("sf.shop.more")}
+                  <span className="rounded-full bg-trade-soft px-2 py-0.5 text-caption font-[600] tabular-nums text-trade-deep">{extrasFound.length + (f.services ? 1 : 0)}</span>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent keepMounted className="pb-0">
+                <div className="border-t border-border pb-1">
+                <p className="pt-3 text-meta text-fg-muted">{t("sf.shop.moreHint")}</p>
+                <ul className="flex flex-col divide-y divide-border">
+                  {extrasFound.map((k) => (
+                    <li key={k} className="py-3" data-import-row={k}>
                       <Checkbox
-                        key={`${s.name}-${i}`}
-                        checked={picked.has(i)}
-                        onChange={(on) => setPicked((p) => { const n = new Set(p); if (on) n.add(i); else n.delete(i); return n; })}
-                        label={<ServiceLabel name={s.name} cents={s.priceCents} />}
+                        checked={keep[k]}
+                        onChange={(on) => setKeep((s) => ({ ...s, [k]: on }))}
+                        label={
+                          <span className="flex flex-col">
+                            <span className="text-meta-strong text-fg">{t(`imp.f.${k}` as MessageKey)}</span>
+                            <span className={cn("text-body text-fg", !keep[k] && "text-fg-muted line-through")}>{extraValue(k, f, t)}</span>
+                          </span>
+                        }
                       />
-                    ))}
-                  </li>
-                ) : null}
-              </ul>
-            </div>
-          </details>
+                    </li>
+                  ))}
+                  {f.services ? (
+                    <li className="flex flex-col gap-1 py-3" data-import-row="services">
+                      <span className="text-meta-strong text-fg">{t("imp.f.services")}</span>
+                      <span className="text-meta text-fg-muted">{t("imp.review.servicesHint")}</span>
+                      {f.services.value.map((s, i) => (
+                        <Checkbox
+                          key={`${s.name}-${i}`}
+                          checked={picked.has(i)}
+                          onChange={(on) => setPicked((p) => { const n = new Set(p); if (on) n.add(i); else n.delete(i); return n; })}
+                          label={<ServiceLabel name={s.name} cents={s.priceCents} />}
+                        />
+                      ))}
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         ) : null}
       </div>
     </StepFrame>

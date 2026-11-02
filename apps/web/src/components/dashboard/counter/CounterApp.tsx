@@ -60,7 +60,8 @@ import {
   type ProgramForCounter,
   type QueuedAward,
 } from "@/lib/dashboard/counter";
-import { CountUp } from "@/components/ui/CountUp";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { Celebration } from "@/components/ui/Celebrate";
 import { GroceryExtras, notCountedCents, type GroceryCounter } from "./GroceryExtras";
 import { formatMoney, formatSigned, firstName } from "@/lib/format";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
@@ -1535,6 +1536,8 @@ function Stamped({
   const left = Math.max(0, (res.member.nextReward?.pointsCost ?? goal) - n);
   return (
     <section role="status" aria-labelledby="ok-title" className={cn(s.state, "flex flex-col gap-5")}>
+      {/* A reward unlocked by this very stamp: one burst in the reward colours (nothing under reduced motion). */}
+      <Celebration when={!!ready && !res.duplicate && from < ready.pointsCost} tokens={["--points", "--points-soft", "--trade"]} />
       <CustomerHeader
         name={res.duplicate ? t("counter.alreadyAdded") : res.member.name}
         titleId="ok-title"
@@ -1543,11 +1546,8 @@ function Stamped({
       <p className={cn(s.bigNumber, "font-display text-9xl font-extrabold leading-none tracking-tighter tabular-nums lining-nums", stamps ? "text-trade-deep" : "text-points-text")}>
         {/* The fraction reads "8 / 10" left to right in every language. */}
         <bdi dir={stamps ? "ltr" : undefined}>
-          {stamps ? (
-            <CountUp value={Math.min(n, goal)} from={Math.min(from, goal)} className="tabular-nums" />
-          ) : (
-            <CountUp value={n} from={from} className="tabular-nums" />
-          )}
+          {/* Wave Q: the balance rolls digit by digit from what they had (NumberFlow); reduced motion shows the new number at once. */}
+          {stamps ? <AnimatedNumber value={Math.min(n, goal)} from={Math.min(from, goal)} /> : <AnimatedNumber value={n} from={from} />}
           <span className="ms-2 text-title font-bold tracking-normal text-muted-foreground">
             {stamps ? `/ ${goal}` : pointsText(n, program.terminology, ct).replace(/^[\d,]+ /, "")}
           </span>

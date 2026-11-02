@@ -11,7 +11,10 @@ import { LanguageChip, PassPanel } from "./PassChrome";
 import { NearbyOnStreet } from "./NearbyOnStreet";
 import { PassActions } from "./PassActions";
 import { heroMembership, ShopPassHero } from "./ShopPassHero";
-import { CardFan } from "./ShopBrand";
+import { BrandMark, CardFan, MiniStamps } from "./ShopBrand";
+import dynamic from "next/dynamic";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
+import { MAX_DRAWN_STAMPS } from "@/lib/stamps";
 import { Activity, ChevronRight, Download, Gift, LogOut, Search, Settings, Store, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -31,6 +34,7 @@ import { formatDate, rewardInSentence, withArticle } from "@/lib/format";
 import { hideQuickUndos, walletHeadline } from "@/lib/walletSummary";
 import { formatE164 } from "@/lib/phone";
 import { StatusDot } from "@/components/ui/Badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/primitives/accordion";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { IconTile } from "@/components/ui/IconTile";
@@ -48,6 +52,12 @@ import { StampCard } from "@/components/ui/StampCard";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+
+// wave-q: the wallet row of other cards (embla) loads with its own chunk.
+const CardCarousel = dynamic(() => import("@/components/ui/CardCarousel").then((m) => m.CardCarousel), { loading: () => <div className="flex gap-3 overflow-hidden"><SkeletonBlock /><SkeletonBlock /></div> });
+function SkeletonBlock() {
+  return <Skeleton className="h-41 w-[82%] shrink-0 rounded-r6" />;
+}
 
 type Tab = "card" | "shops" | "rewards" | "activity" | "settings";
 const TABS: readonly Tab[] = ["card", "shops", "rewards", "activity", "settings"];
@@ -253,37 +263,79 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
 }
 
 /**
- * wave-p: the customer's other cards, right under the featured one (like a wallet's stack): rewards ready first, three at most,
- * then "See all". Before this, a seven-card customer saw one card and a line of grey text.
+ * wave-p: the customer's other cards, right under the featured one, rewards ready first. wave-q: a swipeable wallet of small cards, each in
+ * its shop's own colour (the kit's CardCarousel, embla), with the stamps or the bar and the balance rolling in; "See all" opens the list.
  */
 function OtherCards({ items, onOpen }: { items: customerApi.MembershipDto[]; onOpen: (id?: string) => void }) {
-  const { t, locale } = useLocaleOrEnglish();
+  const { t } = useLocaleOrEnglish();
   const sorted = [...items].sort((a, b) => b.rewardsAvailableCount - a.rewardsAvailableCount);
-  const shown = sorted.slice(0, 3);
+  const shown = sorted.slice(0, 8);
+  const title = t("cust.me.otherCards", { n: items.length });
   return (
-    <PassPanel title={t("cust.me.otherCards", { n: items.length })}>
-      {shown.map((m) => {
-        const ready = m.rewardsAvailableCount > 0;
-        return (
-          <li key={m.id} {...shopColorProps(m.merchant)} className="-mx-4">
-            <button type="button" onClick={() => onOpen(m.id)} className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-start transition-colors hover:bg-hover focus-visible:focus-ring">
-              <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={40} tone="trade" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-body-strong text-foreground"><bdi>{m.merchant.name}</bdi></span>
-                <span className={cn("block truncate text-meta", ready ? "text-points-text" : "text-muted-foreground")}>{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
-              </span>
-              <span className="shrink-0 text-body-strong tabular-nums text-foreground">{unitsText(locale, m.balance, m.terminology)}</span>
-              <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground rtl:rotate-180" strokeWidth={1.75} />
-            </button>
-          </li>
-        );
-      })}
-      {items.length > shown.length ? (
-        <li className="-mx-4">
-          <button type="button" onClick={() => onOpen()} className="flex min-h-12 w-full items-center px-4 text-start text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring">{t("cust.me.seeAllCards", { n: items.length + 1 })}</button>
-        </li>
-      ) : null}
-    </PassPanel>
+    <div className="flex flex-col gap-2.5">
+      <div className="flex min-h-11 items-center justify-between gap-3 px-1">
+        <h2 className="font-display text-[20px] font-bold leading-7 text-foreground clear:text-[11px] clear:font-semibold clear:uppercase clear:leading-4 clear:tracking-[0.04em] clear:text-muted-foreground">{title}</h2>
+        {items.length > 1 ? (
+          <button type="button" onClick={() => onOpen()} className="inline-flex min-h-11 items-center gap-0.5 rounded-full px-2 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring">
+            {t("cust.me.seeAllCards", { n: items.length + 1 })}
+            <ChevronRight aria-hidden className="size-4 rtl:rotate-180" strokeWidth={1.75} />
+          </button>
+        ) : null}
+      </div>
+      {shown.length === 1 ? (
+        <section aria-label={title}><MiniPass m={shown[0]!} onOpen={onOpen} /></section>
+      ) : (
+        <CardCarousel label={title} basis="basis-[82%] sm:basis-1/2" items={shown.map((m) => <MiniPass key={m.id} m={m} onOpen={onOpen} />)} />
+      )}
+    </div>
+  );
+}
+
+/** One small card in the wallet row: the shop's colour, its mark, how far to the reward (stamps or a bar) and the balance. */
+function MiniPass({ m, onOpen }: { m: customerApi.MembershipDto; onOpen: (id?: string) => void }) {
+  const { t, locale } = useLocaleOrEnglish();
+  const ready = m.rewardsAvailableCount > 0;
+  const stamps = m.program?.earnType === "stamps";
+  const goal = stamps ? (m.program?.stampGoal ?? 0) : (m.nextReward?.pointsCost ?? 0);
+  const pct = m.nextReward && m.nextReward.pointsCost > 0 ? Math.max(0, Math.min(100, ((m.nextReward.pointsCost - m.nextReward.pointsNeeded) / m.nextReward.pointsCost) * 100)) : ready ? 100 : 0;
+  return (
+    <button
+      type="button"
+      {...shopColorProps(m.merchant)}
+      onClick={() => onOpen(m.id)}
+      aria-label={`${m.merchant.name}, ${unitsText(locale, m.balance, m.terminology)}${ready ? `, ${t("sh.wallet.rewardReady")}` : ""}`}
+      className="group relative flex h-41 w-full flex-col justify-between overflow-hidden rounded-r6 bg-trade p-4 text-start text-trade-pass-text shadow-card transition-transform duration-200 focus-visible:focus-ring motion-safe:hover:-translate-y-0.5"
+    >
+      {/* A soft sheen across the top, like a card in a wallet app (decorative, from the text colour on the shop's fill). */}
+      <span aria-hidden className="pointer-events-none absolute -inset-x-6 -top-16 h-28 rotate-[-6deg] bg-trade-pass-text/10 blur-2xl" />
+      <span className="relative flex items-center gap-3">
+        <BrandMark shop={m.merchant} size={40} onColor />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-semibold leading-5"><bdi>{m.merchant.name}</bdi></span>
+          <span className="block truncate text-meta opacity-90">{ready ? (m.rewardsAvailableCount > 1 ? t("sh.wallet.rewardsReadyN", { n: m.rewardsAvailableCount }) : t("sh.wallet.rewardReady")) : progressLine(m, t, locale)}</span>
+        </span>
+        {ready ? (
+          <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-trade-pass-text text-trade-pass-from">
+            <Gift className="size-4" strokeWidth={2} />
+          </span>
+        ) : null}
+      </span>
+      <span className="relative flex items-end justify-between gap-3">
+        <span className="min-w-0 flex-1">
+          {stamps && goal > 0 && goal <= Math.min(12, MAX_DRAWN_STAMPS) ? (
+            <MiniStamps goal={goal} filled={Math.min(m.balance, goal)} className="gap-1 [&>span]:size-3.5" />
+          ) : goal > 0 ? (
+            <span aria-hidden className="block h-1.5 w-full max-w-36 overflow-hidden rounded-full bg-trade-pass-text/25">
+              <span className="block h-full rounded-full bg-trade-pass-text" style={{ width: `${pct}%` }} />
+            </span>
+          ) : null}
+        </span>
+        <span className="shrink-0 text-end">
+          <span className="block text-[26px] font-bold leading-7 tracking-[-0.02em]"><AnimatedNumber value={m.balance} /></span>
+          <span className="block text-caption opacity-85">{unitCaption(locale, m.balance, m.terminology)}</span>
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -729,19 +781,32 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
   return (
     <div id="settings" className="flex flex-col gap-7">
       <NotificationSettings />
-      <Group title={t("sh.priv.shopsTitle")} footer={t("sh.priv.shopsFoot")}>
-        {wallet.items.map((m) => (
-          <li key={m.id} className="flex flex-col py-3">
-            <p className="flex items-center gap-2.5 py-1 text-body-strong text-fg">
-              <ShopLogo shop={m.merchant} size={24} />
-              <span className="min-w-0 flex-1 truncate"><bdi>{m.merchant.name}</bdi></span>
-              {m.marketingConsent.granted ? <StatusDot tone="positive" className="text-meta font-normal text-fg-muted">{t("sh.priv.offersOn")}</StatusDot> : null}
-            </p>
-            <Switch label={t("sh.priv.offersBy")} ariaLabel={t("sh.priv.offersFrom", { shop: m.merchant.name })} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? t("sh.priv.since", { date: locale === "en" ? formatDate(m.marketingConsent.grantedAt) : date(m.marketingConsent.grantedAt, { month: "short", day: "numeric" }) }) : t("sh.priv.byHint")} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
-            <Switch label={t("sh.priv.mute")} ariaLabel={t("sh.priv.muteShop", { shop: m.merchant.name })} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
-          </li>
-        ))}
-      </Group>
+      {/* wave-q: one row per shop (the kit Accordion): its name and what is on, the two switches inside. Seven shops were fourteen switches
+          in one column; the first shop opens by default and every panel stays mounted. */}
+      <div className="flex flex-col gap-2">
+        <h2 className="px-1 font-display text-[20px] font-bold leading-7 text-foreground clear:px-0 clear:text-[11px] clear:font-semibold clear:uppercase clear:leading-4 clear:tracking-[0.04em] clear:text-muted-foreground">{t("sh.priv.shopsTitle")}</h2>
+        <Accordion defaultValue={wallet.items[0] ? [wallet.items[0].id] : []} className="overflow-hidden rounded-card border border-line bg-card shadow-card clear:card-clear clear:border-0 clear:shadow-none">
+          {wallet.items.map((m) => (
+            <AccordionItem key={m.id} value={m.id} {...shopColorProps(m.merchant)} className="border-line">
+              <AccordionTrigger className="min-h-14 items-center gap-3 rounded-none px-4 py-2.5 hover:bg-hover hover:no-underline focus-visible:focus-ring [&_[data-slot=accordion-trigger-icon]]:size-5">
+                <ShopLogo shop={m.merchant} size={32} tone="trade" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-body-strong text-fg"><bdi>{m.merchant.name}</bdi></span>
+                  <span className="flex items-center gap-1.5 text-meta font-normal text-fg-muted">
+                    {m.marketingConsent.granted ? <StatusDot tone="positive">{t("sh.priv.offersOn")}</StatusDot> : <span>{t("cust.set.offersOff")}</span>}
+                    {m.muted ? <span>· {t("cust.set.muted")}</span> : null}
+                  </span>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent keepMounted className="px-4 pb-2 [&_p:not(:last-child)]:mb-0">
+                <Switch label={t("sh.priv.offersBy")} ariaLabel={t("sh.priv.offersFrom", { shop: m.merchant.name })} description={m.marketingConsent.granted && m.marketingConsent.grantedAt ? t("sh.priv.since", { date: locale === "en" ? formatDate(m.marketingConsent.grantedAt) : date(m.marketingConsent.grantedAt, { month: "short", day: "numeric" }) }) : t("sh.priv.byHint")} checked={m.marketingConsent.granted} onChange={(v) => void setConsent(m, v)} />
+                <Switch label={t("sh.priv.mute")} ariaLabel={t("sh.priv.muteShop", { shop: m.merchant.name })} checked={m.muted} onChange={(v) => void setMuted(m, v)} />
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+        <p className="px-1 text-meta text-muted-foreground">{t("sh.priv.shopsFoot")}</p>
+      </div>
 
       <Group title={t("sh.priv.details")} as="div" footer={<span className="tabular-nums">{t("sh.priv.phoneMember", { phone: formatE164(profile.phone), code: profile.memberCode })}</span>}>
         <div className="flex flex-col gap-4 py-4">

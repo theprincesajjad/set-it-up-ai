@@ -143,8 +143,8 @@ export function ClientsList({ openId, onOpen }: { openId: string | null; onOpen:
                       </span>
                     </span>
                   </td>
-                  <td className="truncate px-4 py-3 text-meta text-fg max-md:p-0 max-md:ps-11"><span className="md:hidden text-fg-muted">{t("people.col.lastVisit")}: </span>{visit(r.lastVisit)}</td>
-                  <td className="truncate px-4 py-3 text-meta text-fg max-md:p-0 max-md:ps-11"><span className="md:hidden text-fg-muted">{t("people.col.nextVisit")}: </span>{visit(r.nextVisit)}</td>
+                  <td className={cn("truncate px-4 py-3 text-meta text-fg max-md:p-0 max-md:ps-11", !r.lastVisit && "max-md:hidden")}><span className="md:hidden text-fg-muted">{t("people.col.lastVisit")}: </span>{visit(r.lastVisit)}</td>
+                  <td className={cn("truncate px-4 py-3 text-meta text-fg max-md:p-0 max-md:ps-11", !r.nextVisit && "max-md:hidden")}><span className="md:hidden text-fg-muted">{t("people.col.nextVisit")}: </span>{visit(r.nextVisit)}</td>
                   <td className="px-4 py-3 text-end text-meta tabular text-fg max-md:hidden">{formatNumber(r.visits12m)}</td>
                   <td className="px-4 py-3 text-end text-meta tabular text-fg max-md:hidden">{formatNumber(r.balance)}</td>
                 </tr>

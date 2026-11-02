@@ -3,10 +3,14 @@
  * /admin/ai (wave N, promo team): the platform's Claude key and the AI limits. The key is pasted once, checked with a cheap call,
  * stored encrypted (AES-256-GCM under APP_ENCRYPTION_KEY) and only ever shown masked. Every change is in the audit log.
  * Also: the model (from the configured list), the global monthly spend cap, per-shop quotas, the Free taste, and usage by shop.
+ * Wave Q (kit): the key state is a status pill, spend against the cap and each shop's drafts against its quota are meters (Base UI Meter,
+ * warning from 80%), the month's numbers roll in, and the usage table has a real empty state.
  */
 import { useState } from "react";
 import type { promosApi } from "@ll/shared";
-import { PageHeader, Panel, StatBlock, StatusPill } from "@/components/dashboard/kit";
+import { Bot, KeyRound } from "lucide-react";
+import { PageHeader, Panel } from "@/components/dashboard/kit";
+import { HealthPill, KpiGrid, PanelEmpty, UsageMeter, moneyNum } from "@/components/dashboard/admin/AdminKit";
 import { ListAsync } from "@/components/dashboard/ListStates";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -61,10 +65,27 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
     }
   }
 
+  const quotaOf = (plan: string) => (plan === "free" ? d.freeGenerationsPerMonth : d.shopGenerationsPerMonth);
+  const capPct = d.monthlySpendCapCents ? Math.round((d.month.spendCents / d.monthlySpendCapCents) * 100) : 0;
   const cols: Column<promosApi.AiAdminSettings["topShops"][number]>[] = [
     { key: "name", header: "Shop", mobile: "title", sortValue: (r) => r.name, cell: (r) => <span className="font-medium">{r.name}</span> },
     { key: "plan", header: "Plan", mobile: "subtitle", cell: (r) => PLAN_NAME[r.plan] ?? r.plan },
-    { key: "gens", header: "Promo drafts", align: "end", mobile: "hidden", sortValue: (r) => r.generations, cell: (r) => formatNumber(r.generations) },
+    {
+      key: "gens",
+      header: "Drafts of quota",
+      mobile: "hidden",
+      sortValue: (r) => r.generations,
+      cell: (r) => {
+        const q = quotaOf(r.plan);
+        return q > 0 ? (
+          <span className="flex w-44 flex-col gap-1">
+            <UsageMeter size="sm" label={`${r.name}: promo drafts this month`} value={r.generations} max={q} valueText={`${formatNumber(r.generations)} of ${formatNumber(q)}`} />
+          </span>
+        ) : (
+          <span className="text-fg-muted">{formatNumber(r.generations)} · no quota</span>
+        );
+      },
+    },
     { key: "tokens", header: "Tokens", align: "end", mobile: "hidden", sortValue: (r) => r.tokens, cell: (r) => formatNumber(r.tokens) },
     { key: "spend", header: "Spend", align: "end", mobile: "trailing", sortValue: (r) => r.spendCents, cell: (r) => formatMoney(r.spendCents) },
   ];
@@ -74,13 +95,18 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
       <Panel
         title="Claude API key"
         description="Every AI feature uses this one key. It is checked with a quick call, stored encrypted and never shown again."
-        action={<StatusPill tone={d.key.source === "none" ? "neutral" : "positive"}>{d.key.source === "admin" ? "Connected" : d.key.source === "env" ? "Server key" : "Not connected"}</StatusPill>}
+        action={
+          <HealthPill tone={d.key.source === "admin" ? "ok" : d.key.source === "env" ? "info" : "neutral"} live={d.key.source === "admin"}>
+            {d.key.source === "admin" ? "Connected" : d.key.source === "env" ? "Server key" : "Not connected"}
+          </HealthPill>
+        }
       >
         <div className="flex flex-col gap-4" data-testid="ai-key">
-          <p className="text-body text-fg">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body text-fg">
+            <KeyRound aria-hidden className="size-4 shrink-0 text-fg-muted" />
             {d.key.source === "admin" ? (
               <>
-                In use: <span className="font-mono">{d.key.masked}</span>
+                In use: <span className="rounded-r2 bg-muted px-1.5 py-0.5 font-mono text-meta">{d.key.masked}</span>
                 {d.key.setAt ? <span className="text-fg-muted"> · saved {new Date(d.key.setAt).toLocaleDateString("en-CA")}</span> : null}
               </>
             ) : d.key.source === "env" ? (
@@ -125,16 +151,33 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
         </div>
       </Panel>
 
-      <StatBlock
-        label="This month"
-        items={[
-          { label: "Spent this month", value: formatMoney(d.month.spendCents), caption: `of a ${formatMoney(d.monthlySpendCapCents)} cap · ${d.monthlySpendCapCents ? Math.round((d.month.spendCents / d.monthlySpendCapCents) * 100) : 0}% used`, dot: d.monthlySpendCapCents && d.month.spendCents >= d.monthlySpendCapCents * 0.8 ? "accent" : undefined },
-          { label: "Calls", value: formatNumber(d.month.calls) },
-          { label: "Tokens in", value: formatNumber(d.month.inputTokens) },
-          { label: "Tokens out", value: formatNumber(d.month.outputTokens) },
-        ]}
-      />
-
+      <Panel
+        title="This month"
+        description={d.monthlySpendCapCents ? `AI pauses for every shop when spend reaches the cap, until the 1st.` : "No spend cap is set: AI never pauses for cost."}
+        action={d.monthlySpendCapCents ? <HealthPill tone={capPct >= 100 ? "down" : capPct >= 80 ? "warn" : "ok"}>{capPct >= 100 ? "Paused: cap reached" : `${capPct}% of the cap`}</HealthPill> : null}
+      >
+        <div className="flex flex-col gap-5">
+          {d.monthlySpendCapCents ? (
+            <UsageMeter
+              label="Spent against the monthly cap"
+              value={d.month.spendCents}
+              max={d.monthlySpendCapCents}
+              valueText={`${formatMoney(d.month.spendCents)} of ${formatMoney(d.monthlySpendCapCents)}`}
+              caption={capPct >= 80 && capPct < 100 ? "Close to the cap. Raise it below, or AI pauses for every shop when it is reached." : undefined}
+            />
+          ) : null}
+          <KpiGrid
+            label="This month"
+            size="sm"
+            items={[
+              { label: "Spent this month", value: formatMoney(d.month.spendCents), ...moneyNum(d.month.spendCents), caption: d.monthlySpendCapCents ? `of a ${formatMoney(d.monthlySpendCapCents)} cap · ${capPct}% used` : "No cap", alert: d.monthlySpendCapCents && d.month.spendCents >= d.monthlySpendCapCents * 0.8 ? "warning" : undefined },
+              { label: "Calls", value: formatNumber(d.month.calls), num: d.month.calls },
+              { label: "Tokens in", value: formatNumber(d.month.inputTokens), num: d.month.inputTokens },
+              { label: "Tokens out", value: formatNumber(d.month.outputTokens), num: d.month.outputTokens },
+            ]}
+          />
+        </div>
+      </Panel>
 
       <Panel title="Limits" description="Shops on Pro, Studio and the trial get the monthly quota; Free shops get the small taste. When the global cap is reached, AI pauses for everyone until the 1st.">
         <form
@@ -170,7 +213,7 @@ function Body({ d, onChange }: { d: promosApi.AiAdminSettings; onChange: (n: pro
       </Panel>
 
       <Panel padded={false} title="Top shops this month" description="Each shop's AI calls only ever use that shop's own details.">
-        <DataTable caption="AI usage by shop" columns={cols} rows={d.topShops} rowKey={(r) => r.merchantId} empty={<p className="px-4 py-6 text-meta text-fg-muted">No AI use yet this month.</p>} />
+        <DataTable caption="AI usage by shop" columns={cols} rows={d.topShops} rowKey={(r) => r.merchantId} empty={<PanelEmpty icon={Bot} title="No AI use yet this month" description={d.key.source === "none" ? "Add the Claude key above to turn on the promo writer, website copy and the sales agent." : "Shops show here once they draft a promo or website copy."} />} />
       </Panel>
     </>
   );
