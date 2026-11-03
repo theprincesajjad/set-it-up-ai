@@ -27,7 +27,11 @@ function useDayPickerLocale() {
     dir,
     formatters: {
       formatCaption: (d: Date) => new Intl.DateTimeFormat(tag, { month: "long", year: "numeric" }).format(d),
-      formatWeekdayName: (d: Date) => new Intl.DateTimeFormat(tag, { weekday: "narrow" }).format(d),
+      // ICU has no narrow weekday names for Urdu and falls back to Latin "S M T": use the short names when that happens.
+      formatWeekdayName: (d: Date) => {
+        const narrow = new Intl.DateTimeFormat(tag, { weekday: "narrow" }).format(d);
+        return info.script !== "Latn" && /^[A-Za-z]+$/.test(narrow) ? new Intl.DateTimeFormat(tag, { weekday: "short" }).format(d) : narrow;
+      },
       formatDay: (d: Date) => new Intl.NumberFormat(tag).format(d.getDate()),
       formatMonthDropdown: (d: Date) => new Intl.DateTimeFormat(tag, { month: "short" }).format(d),
     },
