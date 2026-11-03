@@ -3,18 +3,30 @@ import { contrastRatio } from "../src/contrast.js";
 import { buildThemeCss, buildTokensCss } from "../src/css.js";
 import { MARKETING_VARS, marketingColors as M } from "../src/marketing.js";
 
-describe("marketing landing tokens (wave R)", () => {
-  it("text roles and the accent reach AA on paper, the stock and the hero wall", () => {
-    for (const bg of [M.paper, M.raised, M.stock]) {
+describe("marketing landing tokens (wave S)", () => {
+  it("text roles reach AA on white and on the soft tints", () => {
+    for (const bg of [M.paper, M.soft, M.violetSoft, M.sunSoft, M.mintSoft, M.coralSoft]) {
       expect(contrastRatio(M.ink, bg)).toBeGreaterThanOrEqual(7);
       expect(contrastRatio(M.text2, bg)).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(M.muted, bg)).toBeGreaterThanOrEqual(4.5);
-      expect(contrastRatio(M.vermilion, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(M.violet, bg)).toBeGreaterThanOrEqual(4.5);
     }
-    expect(contrastRatio(M.ink, M.wall)).toBeGreaterThanOrEqual(7);
-    expect(contrastRatio(M.text2, M.wall)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(M.coralInk, M.paper)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(M.coralInk, M.soft)).toBeGreaterThanOrEqual(4.5);
+  });
+  it("dark ink on the bright blocks, white on violet and ink", () => {
+    for (const bg of [M.sun, M.mint, M.coral]) {
+      expect(contrastRatio(M.ink, bg)).toBeGreaterThanOrEqual(7);
+      expect(contrastRatio(M.text2, bg)).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrastRatio(M.onViolet, M.violet)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(M.onViolet, M.violetHover)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(M.onInk, M.ink)).toBeGreaterThanOrEqual(7);
     expect(contrastRatio(M.onInk, M.inkHover)).toBeGreaterThanOrEqual(7);
+    // The yellow button on the violet block and the closing band: ink text on sun.
+    expect(contrastRatio(M.ink, M.sun)).toBeGreaterThanOrEqual(7);
+    // The sun-yellow first-year price on the violet Pro card.
+    expect(contrastRatio(M.sun, M.violet)).toBeGreaterThanOrEqual(4.5);
   });
   it("is scoped to .mkt and mapped for Tailwind", () => {
     const css = buildTokensCss();
@@ -23,6 +35,7 @@ describe("marketing landing tokens (wave R)", () => {
     // Nowhere outside the .mkt block.
     expect(css.slice(0, css.indexOf(".mkt {"))).not.toContain("--mkt-");
     expect(buildThemeCss()).toContain("--color-mkt-paper: var(--mkt-paper);");
-    expect(buildThemeCss()).toContain("--font-mkt-serif: var(--mkt-face-serif);");
+    expect(buildThemeCss()).toContain("--color-mkt-violet: var(--mkt-violet);");
+    expect(buildThemeCss()).toContain("--font-mkt-display: var(--mkt-face-display);");
   });
 });

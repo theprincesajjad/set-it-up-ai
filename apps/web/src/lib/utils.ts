@@ -35,9 +35,10 @@ const colors = [
     "link", "primary-hover", "success-soft", "warning-soft", "destructive-text", "destructive-soft", "row-sel", "tile",
     "chart-muted", "chart-hi", "scrim", "toast-bg", "toast-fg", "trade-tint", "trade-nav", "lg-fill", "lg-fill-side",
     "lg-fill-strong", "lg-lift", "lg-edge", "lg-seg-track",
-    // Marketing landing (wave R, .mkt scope; @ll/design-tokens marketing.ts)
-    "mkt-paper", "mkt-raised", "mkt-stock", "mkt-wall", "mkt-ink", "mkt-ink-hover", "mkt-on-ink", "mkt-text2", "mkt-muted",
-    "mkt-vermilion", "mkt-line", "mkt-line-strong",
+    // Marketing landing (wave S, .mkt scope; @ll/design-tokens marketing.ts)
+    "mkt-paper", "mkt-soft", "mkt-stock", "mkt-ink", "mkt-ink-hover", "mkt-on-ink", "mkt-text2", "mkt-muted", "mkt-violet",
+    "mkt-violet-hover", "mkt-on-violet", "mkt-violet-soft", "mkt-sun", "mkt-sun-soft", "mkt-mint", "mkt-mint-soft", "mkt-coral",
+    "mkt-coral-soft", "mkt-coral-ink", "mkt-line", "mkt-line-strong",
 ] as const;
 
 const textSizes = [

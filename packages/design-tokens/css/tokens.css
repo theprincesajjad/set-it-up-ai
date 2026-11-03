@@ -2940,28 +2940,38 @@
   --trade-pass-text: #1A1208;
 }
 
-/* Marketing landing (wave R): warm paper, ink, vermilion, Instrument Sans and Serif. Scoped to .mkt (the marketing layout); nothing else reads these. */
+/* Marketing landing (wave S): white, sun, mint, coral and violet blocks, Bricolage Grotesque headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */
 .mkt {
-  --mkt-paper: #F7F4EE;
-  --mkt-raised: #EFE9DF;
-  --mkt-stock: #FDFBF7;
-  --mkt-wall: #EED5BD;
-  --mkt-ink: #1C1A17;
-  --mkt-ink-hover: #36312B;
+  --mkt-paper: #FFFFFF;
+  --mkt-soft: #F6F4FF;
+  --mkt-stock: #FFFFFF;
+  --mkt-ink: #17142E;
+  --mkt-ink-hover: #2B2650;
   --mkt-on-ink: #FFFFFF;
-  --mkt-text2: #57534E;
-  --mkt-muted: #6B635A;
-  --mkt-vermilion: #B23A0B;
-  --mkt-line: rgb(28 26 23 / 0.10);
-  --mkt-line-strong: rgb(28 26 23 / 0.18);
-  --mkt-shadow-sm: 0 1px 2px rgb(28 26 23 / 0.05);
-  --mkt-shadow-object: 0 1px 2px rgb(40 24 10 / 0.10), -12px 18px 32px rgb(40 24 10 / 0.18), -2px 4px 8px rgb(40 24 10 / 0.10);
-  --mkt-shadow-float: 0 8px 24px rgb(28 26 23 / 0.08);
-  --mkt-radius-control: 8px;
-  --mkt-radius-card: 12px;
-  --mkt-radius-panel: 16px;
-  --mkt-radius-stamp-card: 18px;
+  --mkt-text2: #47425C;
+  --mkt-muted: #5B556F;
+  --mkt-violet: #5A3BDB;
+  --mkt-violet-hover: #4729C2;
+  --mkt-on-violet: #FFFFFF;
+  --mkt-violet-soft: #ECE7FF;
+  --mkt-sun: #FFD23F;
+  --mkt-sun-soft: #FFF4CC;
+  --mkt-mint: #5DDB97;
+  --mkt-mint-soft: #DDF8E9;
+  --mkt-coral: #FFA190;
+  --mkt-coral-soft: #FFE5DF;
+  --mkt-coral-ink: #B4301F;
+  --mkt-line: rgb(23 20 46 / 0.10);
+  --mkt-line-strong: rgb(23 20 46 / 0.20);
+  --mkt-shadow-sm: 0 1px 2px rgb(23 20 46 / 0.06);
+  --mkt-shadow-card: 0 1px 2px rgb(23 20 46 / 0.06), 0 10px 28px rgb(23 20 46 / 0.08);
+  --mkt-shadow-pop: 0 2px 6px rgb(23 20 46 / 0.10), 0 28px 56px rgb(23 20 46 / 0.18);
+  --mkt-shadow-float: 0 12px 32px rgb(23 20 46 / 0.12);
+  --mkt-radius-control: 12px;
+  --mkt-radius-card: 24px;
+  --mkt-radius-panel: 32px;
+  --mkt-radius-pill: 999px;
   --mkt-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --mkt-face-sans: var(--font-instrument-sans, "Instrument Sans"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mkt-face-serif: var(--font-instrument-serif, "Instrument Serif"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), "Iowan Old Style", Georgia, serif;
+  --mkt-face-sans: var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mkt-face-display: var(--font-mkt-display, "Bricolage Grotesque"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, sans-serif;
 }

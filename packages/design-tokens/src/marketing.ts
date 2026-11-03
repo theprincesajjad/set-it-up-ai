@@ -1,45 +1,61 @@
 /**
- * Marketing landing tokens (wave R, the landing page only): a warm paper ramp, ink actions and the stamp-ink vermilion, scoped to the
- * `.mkt` class the marketing layout sets, so no app, dashboard or customer screen changes. tokens.css emits them under `.mkt`;
- * theme.css maps them to Tailwind names (bg-mkt-paper, text-mkt-ink, border-mkt-line, font-mkt-serif ...) that resolve only inside it.
- * Contrast (WCAG, computed in test/marketing.test.ts): ink 15.8:1, text-2 6.9:1, muted 5.4:1 and vermilion 5.5:1 on paper; white on ink 17.4:1.
+ * Marketing landing tokens (wave S, the landing page and the marketing header and footer): a white base with bright, saturated colour
+ * blocks (sun yellow, fresh green, coral, deep violet) and a violet primary, scoped to the `.mkt` class the marketing layout sets, so no
+ * app, dashboard or customer screen changes. tokens.css emits them under `.mkt`; theme.css maps them to Tailwind names (bg-mkt-paper,
+ * text-mkt-ink, bg-mkt-violet, font-mkt-display ...) that resolve only inside it.
+ * Contrast (WCAG, computed in test/marketing.test.ts): ink on every block 9:1 or more; text-2 and muted 4.5:1 or more on white and the
+ * soft tints; white on violet 6:1 or more; ink on sun 13:1. Dark ink text sits on the light blocks, white text only on violet and ink.
  * Light only: the marketing site follows Clear, which is light only (docs/design/v3.2-clear-build.md).
  */
 export const marketingColors = {
-  /** The page: warm paper. */
-  paper: "#F7F4EE",
-  /** One surface step up from the page (the Pro column, the visit form, hover). */
-  raised: "#EFE9DF",
-  /** Card stock: the stamp card body and input fields. */
-  stock: "#FDFBF7",
-  /** The plaster wall in the hero scene (counter-*.avif): the phone hero and the closing band sit on it so the photo blends in. */
-  wall: "#EED5BD",
-  /** Primary text and the primary button fill. */
-  ink: "#1C1A17",
-  inkHover: "#36312B",
+  /** The page: plain white. */
+  paper: "#FFFFFF",
+  /** The quiet surface: a lilac-tinted white (the pricing band, the footer, input wells). */
+  soft: "#F6F4FF",
+  /** Cards on a colour block. */
+  stock: "#FFFFFF",
+  /** Primary text, outlines in the illustrations, the dark button. */
+  ink: "#17142E",
+  inkHover: "#2B2650",
   onInk: "#FFFFFF",
   /** Secondary text. */
-  text2: "#57534E",
+  text2: "#47425C",
   /** Muted text: captions and meta only. */
-  muted: "#6B635A",
-  /** Stamp-ink vermilion, used rarely: the logo stamp and the one key figure. 5.5:1 on paper. */
-  vermilion: "#B23A0B",
+  muted: "#5B556F",
+  /** The primary action and the one dark colour block. White text on it. */
+  violet: "#5A3BDB",
+  violetHover: "#4729C2",
+  onViolet: "#FFFFFF",
+  violetSoft: "#ECE7FF",
+  /** Sun yellow: the hero block and highlights. Ink text on it. */
+  sun: "#FFD23F",
+  sunSoft: "#FFF4CC",
+  /** Fresh green. Ink text on it. */
+  mint: "#5DDB97",
+  mintSoft: "#DDF8E9",
+  /** Coral. Ink text on it. */
+  coral: "#FFA190",
+  coralSoft: "#FFE5DF",
+  /** Small accent text on white (the first-year price, the step numbers): a deep coral that reads at 4.5:1. */
+  coralInk: "#B4301F",
 } as const;
 
-/** Hairlines and shadows: ink at low alpha, so they stay neutral on paper. */
+/** Hairlines and shadows: ink at low alpha, so they stay neutral on white and on the blocks. */
 export const marketingEffects = {
-  line: "rgb(28 26 23 / 0.10)",
-  lineStrong: "rgb(28 26 23 / 0.18)",
-  /** Small things (buttons on hover, inputs). */
-  shadowSm: "0 1px 2px rgb(28 26 23 / 0.05)",
-  /** The stamp card object, lit from the right like the scene: a contact shadow plus a long soft one falling left. */
-  shadowObject: "0 1px 2px rgb(40 24 10 / 0.10), -12px 18px 32px rgb(40 24 10 / 0.18), -2px 4px 8px rgb(40 24 10 / 0.10)",
+  line: "rgb(23 20 46 / 0.10)",
+  lineStrong: "rgb(23 20 46 / 0.20)",
+  /** Small things (chips, inputs). */
+  shadowSm: "0 1px 2px rgb(23 20 46 / 0.06)",
+  /** Cards resting on a colour block. */
+  shadowCard: "0 1px 2px rgb(23 20 46 / 0.06), 0 10px 28px rgb(23 20 46 / 0.08)",
+  /** Product mockups (the phone, the counter tablet): a soft lift. */
+  shadowPop: "0 2px 6px rgb(23 20 46 / 0.10), 0 28px 56px rgb(23 20 46 / 0.18)",
   /** Floating panels (menus). */
-  shadowFloat: "0 8px 24px rgb(28 26 23 / 0.08)",
-  radiusControl: "8px",
-  radiusCard: "12px",
-  radiusPanel: "16px",
-  radiusStampCard: "18px",
+  shadowFloat: "0 12px 32px rgb(23 20 46 / 0.12)",
+  radiusControl: "12px",
+  radiusCard: "24px",
+  radiusPanel: "32px",
+  radiusPill: "999px",
   ease: "cubic-bezier(0.22, 1, 0.36, 1)",
 } as const;
 
@@ -48,17 +64,16 @@ const kebab = (s: string) => s.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
 /** CSS variable names, in emit order: --mkt-paper ... --mkt-ease. */
 export const MARKETING_VARS = [...Object.keys(marketingColors), ...Object.keys(marketingEffects)].map((k) => `--mkt-${kebab(k)}`);
 
-/** The `.mkt` block for tokens.css. `scriptFonts` is the hi/ur/pa Noto list, so those scripts keep their faces under Instrument. */
+/** The `.mkt` block for tokens.css. `scriptFonts` is the hi/ur/pa Noto list, so those scripts keep their faces. */
 export function marketingCss(scriptFonts: string): string[] {
   return [
-    `/* Marketing landing (wave R): warm paper, ink, vermilion, Instrument Sans and Serif. Scoped to .mkt (the marketing layout); nothing else reads these. */`,
+    `/* Marketing landing (wave S): white, sun, mint, coral and violet blocks, Bricolage Grotesque headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */`,
     `.mkt {`,
     ...Object.entries(marketingColors).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
     ...Object.entries(marketingEffects).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
-    // Inter second: the app already loads it (root layout), so until Instrument Sans arrives the page draws in a face that is ready, with no
-    // walk through system fallbacks on first layout (measured: ~200 ms of layout on a throttled phone).
-    `  --mkt-face-sans: var(--font-instrument-sans, "Instrument Sans"), var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;`,
-    `  --mkt-face-serif: var(--font-instrument-serif, "Instrument Serif"), ${scriptFonts}, "Iowan Old Style", Georgia, serif;`,
+    // Inter is the app's face, preloaded by the root layout, so body text never waits on a marketing download.
+    `  --mkt-face-sans: var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;`,
+    `  --mkt-face-display: var(--font-mkt-display, "Bricolage Grotesque"), var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, sans-serif;`,
     `}`,
     ``,
   ];
@@ -68,12 +83,13 @@ export function marketingCss(scriptFonts: string): string[] {
 export function marketingThemeLines(): string[] {
   const colors = [...Object.keys(marketingColors).map((k) => [kebab(k), kebab(k)]), ["line", "line"], ["line-strong", "line-strong"]];
   return [
-    `  /* Marketing landing (wave R, .mkt scope only): bg-mkt-paper, text-mkt-ink, border-mkt-line, shadow-mkt-object, font-mkt-serif ... */`,
+    `  /* Marketing landing (wave S, .mkt scope only): bg-mkt-paper, text-mkt-ink, bg-mkt-violet, border-mkt-line, shadow-mkt-card, font-mkt-display ... */`,
     ...colors.map(([n, v]) => `  --color-mkt-${n}: var(--mkt-${v});`),
     `  --shadow-mkt-sm: var(--mkt-shadow-sm);`,
-    `  --shadow-mkt-object: var(--mkt-shadow-object);`,
+    `  --shadow-mkt-card: var(--mkt-shadow-card);`,
+    `  --shadow-mkt-pop: var(--mkt-shadow-pop);`,
     `  --shadow-mkt-float: var(--mkt-shadow-float);`,
     `  --font-mkt-sans: var(--mkt-face-sans);`,
-    `  --font-mkt-serif: var(--mkt-face-serif);`,
+    `  --font-mkt-display: var(--mkt-face-display);`,
   ];
 }

@@ -155,22 +155,20 @@ export const copy = {
       description: "A free loyalty program for local businesses: a digital stamp card in Apple Wallet and Google Wallet, promos that bring customers back, and weekly reports. Set up in about 5 minutes.",
     },
     hero: {
-      /** Wave R: one line of what, for whom; the serif headline on the counter scene. */
+      /** One line of what, for whom: the headline on the hero's sun block (wave S). */
       title: "A free stamp card for the shops on your street",
       sub: "Customers keep your card in Apple Wallet or Google Wallet. You stamp it from any phone at the counter and see who keeps coming back.",
       /** The last words of the lede (data-testid hero-price): the price in the first screen, without a paragraph under the buttons. */
       free: "Loyalty is free forever.",
-      /** The hero scene (public/marketing/counter-*.avif, generated, no text in it). */
-      sceneAlt: "A café counter in late afternoon light: a cup of coffee, a wooden rubber stamp, an ink tin and a stack of blank cards",
       primary: "Start free",
       secondary: "See how it works",
-      /** Sample notes; wave R: the home hero has none, the sign-in stage (AuthLayout) still uses the first. */
+      /** Sample notes: the two floating notes on the home hero (wave S), and the sign-in stage (AuthLayout) uses the first. */
       floats: [
         { icon: "stamp_card", b: "Stamp added for Maya", s: "9 of 10, one to go" },
         { icon: "megaphone", b: "Double stamps at 2 p.m.", s: "Sent to 412 customers who opted in" },
       ],
     },
-    /** Wave R: the stamp card object in the hero (sample shop and person, like the mocks). */
+    /** The stamp card on the hero phone (sample shop and person, like the mocks). */
     card: {
       label: "Sample stamp card for Pinecone Coffee Co.: 9 of 10 stamps, the next one is a free drink",
       street: "Roncesvalles",

@@ -228,24 +228,34 @@
   --radius-r8: 30px;
   --radius-r9: 32px;
 
-  /* Marketing landing (wave R, .mkt scope only): bg-mkt-paper, text-mkt-ink, border-mkt-line, shadow-mkt-object, font-mkt-serif ... */
+  /* Marketing landing (wave S, .mkt scope only): bg-mkt-paper, text-mkt-ink, bg-mkt-violet, border-mkt-line, shadow-mkt-card, font-mkt-display ... */
   --color-mkt-paper: var(--mkt-paper);
-  --color-mkt-raised: var(--mkt-raised);
+  --color-mkt-soft: var(--mkt-soft);
   --color-mkt-stock: var(--mkt-stock);
-  --color-mkt-wall: var(--mkt-wall);
   --color-mkt-ink: var(--mkt-ink);
   --color-mkt-ink-hover: var(--mkt-ink-hover);
   --color-mkt-on-ink: var(--mkt-on-ink);
   --color-mkt-text2: var(--mkt-text2);
   --color-mkt-muted: var(--mkt-muted);
-  --color-mkt-vermilion: var(--mkt-vermilion);
+  --color-mkt-violet: var(--mkt-violet);
+  --color-mkt-violet-hover: var(--mkt-violet-hover);
+  --color-mkt-on-violet: var(--mkt-on-violet);
+  --color-mkt-violet-soft: var(--mkt-violet-soft);
+  --color-mkt-sun: var(--mkt-sun);
+  --color-mkt-sun-soft: var(--mkt-sun-soft);
+  --color-mkt-mint: var(--mkt-mint);
+  --color-mkt-mint-soft: var(--mkt-mint-soft);
+  --color-mkt-coral: var(--mkt-coral);
+  --color-mkt-coral-soft: var(--mkt-coral-soft);
+  --color-mkt-coral-ink: var(--mkt-coral-ink);
   --color-mkt-line: var(--mkt-line);
   --color-mkt-line-strong: var(--mkt-line-strong);
   --shadow-mkt-sm: var(--mkt-shadow-sm);
-  --shadow-mkt-object: var(--mkt-shadow-object);
+  --shadow-mkt-card: var(--mkt-shadow-card);
+  --shadow-mkt-pop: var(--mkt-shadow-pop);
   --shadow-mkt-float: var(--mkt-shadow-float);
   --font-mkt-sans: var(--mkt-face-sans);
-  --font-mkt-serif: var(--mkt-face-serif);
+  --font-mkt-display: var(--mkt-face-display);
 }
 
 @theme {

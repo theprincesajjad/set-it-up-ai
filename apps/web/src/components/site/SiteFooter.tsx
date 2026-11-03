@@ -36,7 +36,7 @@ const COLS = [
   },
 ];
 
-const LINK = "inline-flex min-h-11 items-center text-body text-mkt-text2 transition-colors hover:text-mkt-ink focus-visible:focus-ring md:min-h-8";
+const LINK = "inline-flex min-h-11 items-center rounded-md text-body text-mkt-text2 transition-colors hover:text-mkt-violet focus-visible:focus-ring md:min-h-9";
 /**
  * The A/B landing pages get a plain anchor, like every other link into them (PoweredBy, the solo nav): their beacon counts only a full
  * document load (ab-spec §4.1), and a <Link> prefetch runs the proxy's assignment, which wrote that page's `ll_v` over the one the
@@ -45,34 +45,36 @@ const LINK = "inline-flex min-h-11 items-center text-body text-mkt-text2 transit
 const LANDING_AB = /^\/for-(nail-techs|barbers|groomers)(\?|$)/;
 
 /**
- * Marketing footer (wave R): warm paper below a hairline, the wordmark with the one line it stands for and the one ask, then shop,
- * neighbourhood, company and legal links in quiet columns, and a bottom bar. No card, no pills. "For shoppers" lives here, not in the
+ * Marketing footer (wave S): a lilac-tinted band, a white card holding the wordmark, the one line it stands for and the one ask (a violet
+ * pill), then shop, neighbourhood, company and legal links in columns, and a bottom bar. "For shoppers" lives here, not in the
  * top nav. Links are 44px tall on phones, and every trade page and sign-in are one tap away. Its own `.mkt` scope (it also closes the
  * A/B landing pages, which have no marketing wrapper). Server-rendered, no script.
  */
 export function SiteFooter() {
   return (
-    <footer className={`mkt ${marketingFontVars} border-t border-mkt-line bg-mkt-paper font-mkt-sans text-mkt-ink`}>
-      <div className="mx-auto flex max-w-316 flex-col gap-6 px-4 pt-12 md:flex-row md:items-end md:justify-between md:px-8 md:pt-16">
+    <footer className={`mkt ${marketingFontVars} bg-mkt-soft font-mkt-sans text-mkt-ink`}>
+      <div className="mx-auto max-w-316 px-4 pt-10 md:px-8 md:pt-14">
+      <div className="flex flex-col gap-6 rounded-r9 bg-mkt-stock p-6 shadow-mkt-card md:flex-row md:items-center md:justify-between md:p-8">
         <div className="flex flex-col gap-2">
-          <MarketingWordmark id="lp-ink-foot" />
+          <MarketingWordmark />
           <p className="max-w-md text-body text-mkt-text2">
             {BRAND.tagline} Loyalty is free forever; {PLANS.plus.name} has {TRIAL_DAYS} days free, no card.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Link href="/signup" prefetch={false} className="inline-flex min-h-12 items-center rounded-md bg-mkt-ink px-5 text-body font-medium text-mkt-on-ink transition-colors hover:bg-mkt-ink-hover focus-visible:focus-ring">
+          <Link href="/signup" prefetch={false} className="inline-flex min-h-12 items-center rounded-full bg-mkt-violet px-6 text-body font-semibold text-mkt-on-violet transition-colors hover:bg-mkt-violet-hover focus-visible:focus-ring">
             Start free
           </Link>
-          <a href={`mailto:${BRAND.supportEmail}`} className="inline-flex min-h-11 items-center text-body text-mkt-ink underline decoration-mkt-line-strong underline-offset-4 hover:decoration-mkt-ink focus-visible:focus-ring">
+          <a href={`mailto:${BRAND.supportEmail}`} className="inline-flex min-h-11 items-center text-body text-mkt-ink font-medium underline decoration-mkt-violet decoration-2 underline-offset-4 hover:text-mkt-violet focus-visible:focus-ring">
             {BRAND.supportEmail}
           </a>
         </div>
       </div>
+      </div>
       <nav aria-label="Footer" className="mx-auto grid max-w-316 grid-cols-2 gap-x-6 gap-y-8 px-4 py-12 md:grid-cols-4 md:gap-10 md:px-8">
         {COLS.map((c) => (
           <div key={c.title}>
-            <h2 className="font-mkt-sans text-body font-medium tracking-normal text-mkt-ink">{c.title}</h2>
+            <h2 className="font-mkt-display text-lg tracking-normal text-mkt-ink">{c.title}</h2>
             <ul className="mt-2 flex flex-col md:mt-3 md:gap-1">
               {c.links.map((l) => (
                 <li key={l.href + l.label}>
