@@ -3,7 +3,7 @@ import { copy } from "@/copy/en-CA";
 const T = copy.landing.trades;
 
 /**
- * The trades the product is set up for (wave S: colour chips under the live counts; a looping Marquee in wave Q, a plain line in wave R). Read once,
+ * The trades the product is set up for (wave T: one plain dotted line under the live counts; a looping Marquee in wave Q, colour chips in wave S). Read once,
  * nothing moves. The label names the region for screen readers.
  */
 export function TradeMarquee() {

@@ -1,13 +1,32 @@
 /**
- * Marketing landing tokens (wave S, the landing page and the marketing header and footer): a white base with bright, saturated colour
- * blocks (sun yellow, fresh green, coral, deep violet) and a violet primary, scoped to the `.mkt` class the marketing layout sets, so no
- * app, dashboard or customer screen changes. tokens.css emits them under `.mkt`; theme.css maps them to Tailwind names (bg-mkt-paper,
- * text-mkt-ink, bg-mkt-violet, font-mkt-display ...) that resolve only inside it.
- * Contrast (WCAG, computed in test/marketing.test.ts): ink on every block 9:1 or more; text-2 and muted 4.5:1 or more on white and the
- * soft tints; white on violet 6:1 or more; ink on sun 13:1. Dark ink text sits on the light blocks, white text only on violet and ink.
+ * Marketing tokens, scoped to the `.mkt` class the marketing layout sets, so no app, dashboard or customer screen changes. tokens.css
+ * emits them under `.mkt`; theme.css maps them to Tailwind names (bg-mkt-black, text-mkt-body, bg-mkt-grey, font-mkt-display ...) that
+ * resolve only inside it.
+ * Wave T (the landing page, header and footer, after squareup.com): confident black and white. A white page, near-black text and
+ * primary buttons, full-bleed black bands, #F2F2F2 grey bands and card bottoms, and one restrained accent (a deep green for checks and
+ * "free"). Colour comes from the photography and the product screenshots, not from UI tints.
+ * The wave S colours below (sun, mint, coral, violet ...) are kept because the other marketing pages (/pricing, /for-restaurants,
+ * /for-bias ...) still read them; the landing page does not.
+ * Contrast (WCAG, computed in test/marketing.test.ts): black, body and quiet text 4.5:1 or more on white and grey; white and the
+ * on-black muted grey 4.5:1 or more on black; the accent 4.5:1 or more on white and grey.
  * Light only: the marketing site follows Clear, which is light only (docs/design/v3.2-clear-build.md).
  */
 export const marketingColors = {
+  /** Wave T (the landing page, header and footer). Near-black: headlines, text, the primary button and the dark bands. */
+  black: "#0B0B0B",
+  blackHover: "#2E2E2E",
+  onBlack: "#FFFFFF",
+  /** Secondary text on black. */
+  onBlackMuted: "#A6A6A6",
+  /** The grey band and card bottoms (Square's #F2F2F2), and the hover of white controls. */
+  grey: "#F2F2F2",
+  greyHover: "#E6E6E6",
+  /** Body copy on white and grey. */
+  body: "#3D3D3D",
+  /** Captions, meta and the grey lead-in of a headline. */
+  quiet: "#616161",
+  /** The one accent: checks, "free", a positive change. */
+  accent: "#0B6E33",
   /** The page: plain white. */
   paper: "#FFFFFF",
   /** The quiet surface: a lilac-tinted white (the pricing band, the footer, input wells). */
@@ -57,6 +76,13 @@ export const marketingEffects = {
   radiusPanel: "32px",
   radiusPill: "999px",
   ease: "cubic-bezier(0.22, 1, 0.36, 1)",
+  /** Wave T: hairlines on white and grey, and on black. */
+  rule: "rgb(0 0 0 / 0.12)",
+  ruleOnBlack: "rgb(255 255 255 / 0.18)",
+  /** Product screenshots laid over or beside a photo. */
+  shadowShot: "0 1px 2px rgb(0 0 0 / 0.10), 0 24px 56px rgb(0 0 0 / 0.22)",
+  /** Photos and product panels. */
+  radiusPhoto: "20px",
 } as const;
 
 const kebab = (s: string) => s.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
@@ -67,13 +93,13 @@ export const MARKETING_VARS = [...Object.keys(marketingColors), ...Object.keys(m
 /** The `.mkt` block for tokens.css. `scriptFonts` is the hi/ur/pa Noto list, so those scripts keep their faces. */
 export function marketingCss(scriptFonts: string): string[] {
   return [
-    `/* Marketing landing (wave S): white, sun, mint, coral and violet blocks, Figtree headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */`,
+    `/* Marketing (wave T): black and white with grey bands, Inter Tight headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */`,
     `.mkt {`,
     ...Object.entries(marketingColors).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
     ...Object.entries(marketingEffects).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
     // Inter is the app's face, preloaded by the root layout, so body text never waits on a marketing download.
     `  --mkt-face-sans: var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;`,
-    `  --mkt-face-display: var(--font-mkt-display, "Figtree"), var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, sans-serif;`,
+    `  --mkt-face-display: var(--font-mkt-display, "Inter Tight"), var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, sans-serif;`,
     `}`,
     ``,
   ];
@@ -81,14 +107,15 @@ export function marketingCss(scriptFonts: string): string[] {
 
 /** The Tailwind names for theme.css (@theme inline). */
 export function marketingThemeLines(): string[] {
-  const colors = [...Object.keys(marketingColors).map((k) => [kebab(k), kebab(k)]), ["line", "line"], ["line-strong", "line-strong"]];
+  const colors = [...Object.keys(marketingColors).map((k) => [kebab(k), kebab(k)]), ["line", "line"], ["line-strong", "line-strong"], ["rule", "rule"], ["rule-on-black", "rule-on-black"]];
   return [
-    `  /* Marketing landing (wave S, .mkt scope only): bg-mkt-paper, text-mkt-ink, bg-mkt-violet, border-mkt-line, shadow-mkt-card, font-mkt-display ... */`,
+    `  /* Marketing (.mkt scope only): bg-mkt-black, text-mkt-body, bg-mkt-grey, border-mkt-rule, shadow-mkt-shot, font-mkt-display; the wave S names stay for the other marketing pages. */`,
     ...colors.map(([n, v]) => `  --color-mkt-${n}: var(--mkt-${v});`),
     `  --shadow-mkt-sm: var(--mkt-shadow-sm);`,
     `  --shadow-mkt-card: var(--mkt-shadow-card);`,
     `  --shadow-mkt-pop: var(--mkt-shadow-pop);`,
     `  --shadow-mkt-float: var(--mkt-shadow-float);`,
+    `  --shadow-mkt-shot: var(--mkt-shadow-shot);`,
     `  --font-mkt-sans: var(--mkt-face-sans);`,
     `  --font-mkt-display: var(--mkt-face-display);`,
   ];

@@ -228,7 +228,16 @@
   --radius-r8: 30px;
   --radius-r9: 32px;
 
-  /* Marketing landing (wave S, .mkt scope only): bg-mkt-paper, text-mkt-ink, bg-mkt-violet, border-mkt-line, shadow-mkt-card, font-mkt-display ... */
+  /* Marketing (.mkt scope only): bg-mkt-black, text-mkt-body, bg-mkt-grey, border-mkt-rule, shadow-mkt-shot, font-mkt-display; the wave S names stay for the other marketing pages. */
+  --color-mkt-black: var(--mkt-black);
+  --color-mkt-black-hover: var(--mkt-black-hover);
+  --color-mkt-on-black: var(--mkt-on-black);
+  --color-mkt-on-black-muted: var(--mkt-on-black-muted);
+  --color-mkt-grey: var(--mkt-grey);
+  --color-mkt-grey-hover: var(--mkt-grey-hover);
+  --color-mkt-body: var(--mkt-body);
+  --color-mkt-quiet: var(--mkt-quiet);
+  --color-mkt-accent: var(--mkt-accent);
   --color-mkt-paper: var(--mkt-paper);
   --color-mkt-soft: var(--mkt-soft);
   --color-mkt-stock: var(--mkt-stock);
@@ -250,10 +259,13 @@
   --color-mkt-coral-ink: var(--mkt-coral-ink);
   --color-mkt-line: var(--mkt-line);
   --color-mkt-line-strong: var(--mkt-line-strong);
+  --color-mkt-rule: var(--mkt-rule);
+  --color-mkt-rule-on-black: var(--mkt-rule-on-black);
   --shadow-mkt-sm: var(--mkt-shadow-sm);
   --shadow-mkt-card: var(--mkt-shadow-card);
   --shadow-mkt-pop: var(--mkt-shadow-pop);
   --shadow-mkt-float: var(--mkt-shadow-float);
+  --shadow-mkt-shot: var(--mkt-shadow-shot);
   --font-mkt-sans: var(--mkt-face-sans);
   --font-mkt-display: var(--mkt-face-display);
 }

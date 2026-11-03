@@ -2940,8 +2940,17 @@
   --trade-pass-text: #1A1208;
 }
 
-/* Marketing landing (wave S): white, sun, mint, coral and violet blocks, Figtree headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */
+/* Marketing (wave T): black and white with grey bands, Inter Tight headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */
 .mkt {
+  --mkt-black: #0B0B0B;
+  --mkt-black-hover: #2E2E2E;
+  --mkt-on-black: #FFFFFF;
+  --mkt-on-black-muted: #A6A6A6;
+  --mkt-grey: #F2F2F2;
+  --mkt-grey-hover: #E6E6E6;
+  --mkt-body: #3D3D3D;
+  --mkt-quiet: #616161;
+  --mkt-accent: #0B6E33;
   --mkt-paper: #FFFFFF;
   --mkt-soft: #F6F4FF;
   --mkt-stock: #FFFFFF;
@@ -2972,6 +2981,10 @@
   --mkt-radius-panel: 32px;
   --mkt-radius-pill: 999px;
   --mkt-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --mkt-rule: rgb(0 0 0 / 0.12);
+  --mkt-rule-on-black: rgb(255 255 255 / 0.18);
+  --mkt-shadow-shot: 0 1px 2px rgb(0 0 0 / 0.10), 0 24px 56px rgb(0 0 0 / 0.22);
+  --mkt-radius-photo: 20px;
   --mkt-face-sans: var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mkt-face-display: var(--font-mkt-display, "Figtree"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, sans-serif;
+  --mkt-face-display: var(--font-mkt-display, "Inter Tight"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, sans-serif;
 }

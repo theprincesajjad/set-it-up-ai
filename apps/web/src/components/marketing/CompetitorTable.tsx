@@ -8,8 +8,7 @@ export { COMPETITORS } from "@/lib/marketing/sources";
  * "How we compare" on the home page: us against named, dated competitors, each cell read from the vendor's public pricing page. The
  * plans themselves are the home page's price columns (lib/marketing/plan-copy.ts). Every row of COMPETITORS carries `asOf` and
  * `sourceUrl`; a unit test fails when one is older than 90 days.
- * Wave S: the table sits in a white rounded card with our column on a mint tint; phones get one small card per row. Styles are the
- * home page's (landing.css).
+ * Wave T: a hairline table with our column on grey; phones get one small grey card per row. Styles are the home page's (landing.css).
  */
 export function CompetitorTable() {
   const c = copy.landing.compare;
@@ -19,7 +18,7 @@ export function CompetitorTable() {
   return (
     <section className="lp-sec" aria-labelledby="lp-compare">
       <div className="lp-wrap">
-        <div className="lp-head lp-head-c">
+        <div className="lp-head">
           <h2 className="lp-h2" id="lp-compare">
             {c.title}
           </h2>

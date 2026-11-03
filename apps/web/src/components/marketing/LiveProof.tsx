@@ -19,7 +19,7 @@ export function liveProofStats(n: { activeMerchants: number; liveStreets: number
  * Live counts from GET /v1/public/plans, right under the home hero. Real numbers only: it renders nothing while the network has fewer
  * than 10 shops, and nothing when the API is unreachable. The page is statically rendered and re-generated every 5 minutes (`revalidate`
  * on the page and on the API call), so the counts can trail by that long; the data-* attributes carry the values this render was made from.
- * Wave S: three colour tiles under the hero (no pinging dot); the styles are the home page's (landing.css).
+ * Wave T: three big numbers between hairlines under the hero; the styles are the home page's (landing.css).
  */
 export async function LiveProof() {
   let network: Awaited<ReturnType<ReturnType<typeof publicServerApi>["public"]["plans"]>>["network"] | null = null;

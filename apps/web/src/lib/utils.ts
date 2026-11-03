@@ -39,6 +39,9 @@ const colors = [
     "mkt-paper", "mkt-soft", "mkt-stock", "mkt-ink", "mkt-ink-hover", "mkt-on-ink", "mkt-text2", "mkt-muted", "mkt-violet",
     "mkt-violet-hover", "mkt-on-violet", "mkt-violet-soft", "mkt-sun", "mkt-sun-soft", "mkt-mint", "mkt-mint-soft", "mkt-coral",
     "mkt-coral-soft", "mkt-coral-ink", "mkt-line", "mkt-line-strong",
+    // Wave T (the landing page, header and footer): black, white and grey
+    "mkt-black", "mkt-black-hover", "mkt-on-black", "mkt-on-black-muted", "mkt-grey", "mkt-grey-hover", "mkt-body", "mkt-quiet",
+    "mkt-accent", "mkt-rule", "mkt-rule-on-black",
 ] as const;
 
 const textSizes = [

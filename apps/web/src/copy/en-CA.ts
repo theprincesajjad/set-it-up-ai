@@ -157,35 +157,40 @@ export const copy = {
     hero: {
       /** One line of what, for whom: the headline on the hero's sun block (wave S). */
       title: "A free stamp card for the shops on your street",
-      sub: "Customers keep your card in Apple Wallet or Google Wallet. You stamp it from any phone at the counter and see who keeps coming back.",
+      sub: "Customers keep your card in Apple Wallet or Google Wallet. You stamp it from any phone at the counter.",
       /** The last words of the lede (data-testid hero-price): the price in the first screen, without a paragraph under the buttons. */
       free: "Loyalty is free forever.",
       primary: "Start free",
       secondary: "See how it works",
-      /** Sample notes: the two floating notes on the home hero (wave S), and the sign-in stage (AuthLayout) uses the first. */
+      /** Sample notes: the sign-in stage (AuthLayout) uses the first. */
       floats: [
         { icon: "stamp_card", b: "Stamp added for Maya", s: "9 of 10, one to go" },
         { icon: "megaphone", b: "Double stamps at 2 p.m.", s: "Sent to 412 customers who opted in" },
       ],
     },
     /**
-     * The stamp card on the hero phone (wave S2: a phone repair shop, so the first card a visitor sees is not a café's). Sample shop from
-     * mock.wallet.shops; sample person like the mocks. The note beside it matches the card.
+     * Wave T: the photos (Unsplash, credits in public/marketing/photos/CREDITS.md) and the product screenshots (our own app, demo data).
+     * `alt` describes the picture; `tag` is the short trade label on the black pill over it. The shops in the photos are real places,
+     * so no sample shop name is ever put on a photo.
      */
-    card: {
-      label: "Sample stamp card for Fix-It Phone Lab: 4 of 5 repairs stamped, the 5th earns a free screen protector",
-      shop: "Fix-It Phone Lab",
-      street: "Danforth Ave",
-      total: 5,
-      earned: 4,
-      rewardLabel: "5th repair",
-      reward: "Free screen protector",
-      holderLabel: "Card holder",
-      holder: "Maya R.",
-      note: { b: "Stamp added for Maya", s: "4 of 5, one to go" },
+    photos: {
+      cafe: { alt: "A barista laughing with a customer at a café counter, a tablet register beside her", tag: "Cafés" },
+      repair: { alt: "Hands taking apart a smartphone at a repair bench", tag: "Phone repair" },
+      barber: { alt: "A barber finishing a client's cut", tag: "Barbers" },
+      cafePour: { alt: "A barista pouring milk into two cups", tag: "Coffee shops" },
+      cornerStore: { alt: "A convenience store on a Toronto street corner after a snowfall", tag: "Corner stores" },
+      retail: { alt: "A shop owner holding up the keys in his store", tag: "Retail" },
+      nails: { alt: "A nail tech giving a client a manicure", tag: "Nail salons" },
+      bakery: { alt: "Behind a bakery counter stacked with bread and pastries", tag: "Bakeries" },
+      street: { alt: "A nail salon storefront on a main street", tag: "Main streets" },
+      counterHelp: { alt: "Two people at a shop counter, setting up on a tablet", tag: "Free setup visit" },
     },
-    /** The sample shop on the promo note in "Promos that bring people in" (mock.wallet.shops). */
-    promoShop: "Bloom Hair Studio",
+    shots: {
+      pass: "A customer's wallet in the app: her points card at Fix-It Phone Lab and her stamp card at Pinecone Coffee Co., 4 of 10 (sample data)",
+      counter: "The counter at Fix-It Phone Lab: hold up a card or type the last four digits of a phone, and the recent stamps (sample data)",
+      today: "The owner's Today screen at Pinecone Coffee Co.: the week's sales, visits, stamps, rewards, what needs you and visits by hour (sample data)",
+      note: "Real screens from the app, with sample data.",
+    },
     /** Wave R: the counter preview in how-it-works (sample data; the caption says so). */
     counterCaption: "Sample data. Your own customers fill in as you go.",
     /** The trades under the hero, as chips (wave S2: shops and services interleaved, so repair and retail sit beside cafés and salons). */

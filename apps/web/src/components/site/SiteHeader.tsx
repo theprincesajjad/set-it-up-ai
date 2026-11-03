@@ -49,8 +49,8 @@ const subscribeNever = () => () => undefined;
 const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
 /**
- * Marketing top nav (wave S): white, a hairline, the violet wordmark, text links that get a soft pill on hover, "Log in" as a text link
- * and one violet pill button. Its own `.mkt` scope, so the tokens resolve on every marketing page. Mobile menu uses <details> (no JS). The language menu and
+ * Marketing top nav (wave T, after squareup.com): white, a hairline, the black wordmark, plain text links that get a grey pill on hover
+ * (the current page keeps it), "Log in" as a text link and one black pill button. Its own `.mkt` scope, so the tokens resolve on every marketing page. Mobile menu uses <details> (no JS). The language menu and
  * translated labels appear only on /for-restaurants and /for-shoppers, the pages that have translated content (docs/research/landing-and-network.md 7.3).
  * On /for-bias the sign-in link and the black button become "BIA log in" and "Plan a campaign".
  */
@@ -73,12 +73,12 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
 
   const switcher = translated ? (
     <details className="group relative">
-      <summary className="flex h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-body text-mkt-text2 hover:bg-mkt-soft hover:text-mkt-ink focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
+      <summary className="flex h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-body text-mkt-body hover:bg-mkt-grey hover:text-mkt-black focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
         <span className="sr-only">{labels[locale].language}: </span>
         <span lang={info.bcp47}>{info.name}</span>
         <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" strokeWidth={1.5} />
       </summary>
-      <ul className="absolute end-0 top-12 z-sticky w-44 rounded-r5 border border-mkt-line bg-mkt-stock p-1.5 shadow-mkt-float">
+      <ul className="absolute end-0 top-12 z-sticky w-44 rounded-r5 border border-mkt-rule bg-mkt-paper p-1.5 shadow-mkt-float">
         {LOCALE_LIST.map((l) => (
           <li key={l.code}>
             <Link
@@ -90,7 +90,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                 setChosen(l.code);
               }}
               aria-current={l.code === locale ? "true" : undefined}
-              className={cn("flex min-h-11 items-center rounded-r4 px-3 text-body hover:bg-mkt-soft", l.code === locale ? "font-semibold text-mkt-ink" : "text-mkt-text2")}
+              className={cn("flex min-h-11 items-center rounded-r4 px-3 text-body hover:bg-mkt-grey", l.code === locale ? "font-semibold text-mkt-black" : "text-mkt-body")}
             >
               {l.name}
             </Link>
@@ -101,8 +101,8 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
   ) : null;
 
   return (
-    <header className={`mkt ${marketingFontVars} sticky top-0 z-sticky border-b border-mkt-line bg-mkt-paper font-mkt-sans text-mkt-ink`} lang={translated ? info.bcp47 : undefined} dir={translated ? info.dir : undefined}>
-      <div className="mx-auto flex h-16 max-w-316 items-center justify-between gap-4 px-4 md:px-8">
+    <header className={`mkt ${marketingFontVars} sticky top-0 z-sticky border-b border-mkt-rule bg-mkt-paper font-mkt-sans text-mkt-black`} lang={translated ? info.bcp47 : undefined} dir={translated ? info.dir : undefined}>
+      <div className="mx-auto flex h-18 max-w-360 items-center justify-between gap-4 px-5 md:px-10 xl:px-15">
         <MarketingWordmark />
         <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
           {nav.map((n) => (
@@ -110,7 +110,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
               key={n.href}
               href={n.href}
               aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
-              className={cn("inline-flex h-11 items-center rounded-full px-4 text-body font-medium transition-colors hover:bg-mkt-soft hover:text-mkt-ink focus-visible:focus-ring", isCurrent(pathname, n.href) ? "bg-mkt-violet-soft text-mkt-ink" : "text-mkt-text2")}
+              className={cn("inline-flex h-11 items-center rounded-full px-4 text-base font-medium transition-colors hover:bg-mkt-grey hover:text-mkt-black focus-visible:focus-ring", isCurrent(pathname, n.href) ? "bg-mkt-grey text-mkt-black" : "text-mkt-black")}
             >
               {n.label}
             </Link>
@@ -118,21 +118,21 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
         </nav>
         <div className="hidden items-center gap-2 lg:flex">
           {switcher}
-          <Link href={login.href} className="inline-flex h-11 items-center rounded-full px-4 text-body font-medium text-mkt-ink hover:bg-mkt-soft focus-visible:focus-ring">
+          <Link href={login.href} className="inline-flex h-11 items-center rounded-full px-4 text-body font-medium text-mkt-black hover:bg-mkt-grey focus-visible:focus-ring">
             {login.label}
           </Link>
-          <Link href={cta.href} className="inline-flex h-11 items-center rounded-full bg-mkt-violet px-5 text-body font-semibold text-mkt-on-violet transition-colors hover:bg-mkt-violet-hover focus-visible:focus-ring">
+          <Link href={cta.href} className="inline-flex h-11 items-center rounded-full bg-mkt-black px-6 text-base font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
             {cta.label}
           </Link>
         </div>
         <details className="group relative lg:hidden">
-          <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full bg-mkt-soft hover:bg-mkt-violet-soft focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
+          <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full bg-mkt-grey hover:bg-mkt-grey focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
             <Menu aria-hidden className="size-5" strokeWidth={1.5} />
           </summary>
-          <div className="absolute end-0 top-14 w-[min(88vw,320px)] rounded-r7 border border-mkt-line bg-mkt-stock p-2 shadow-mkt-float">
+          <div className="absolute end-0 top-14 w-[min(88vw,320px)] rounded-r7 border border-mkt-rule bg-mkt-paper p-2 shadow-mkt-float">
             <nav aria-label="Main" className="flex flex-col">
               {nav.map((n) => (
-                <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="flex min-h-11 items-center rounded-r4 px-3 text-body font-medium text-mkt-ink hover:bg-mkt-soft">
+                <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="flex min-h-11 items-center rounded-r4 px-3 text-body font-medium text-mkt-black hover:bg-mkt-grey">
                   {n.label}
                 </Link>
               ))}
@@ -148,17 +148,17 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                         setChosen(l.code);
                       }}
                       aria-current={l.code === locale ? "true" : undefined}
-                      className={cn("inline-flex min-h-11 items-center rounded-full border px-3 text-body", l.code === locale ? "border-mkt-violet bg-mkt-violet text-mkt-on-violet" : "border-mkt-line-strong text-mkt-ink")}
+                      className={cn("inline-flex min-h-11 items-center rounded-full border px-3 text-body", l.code === locale ? "border-mkt-black bg-mkt-black text-mkt-on-black" : "border-mkt-rule text-mkt-black")}
                     >
                       {l.name}
                     </Link>
                   ))}
                 </div>
               ) : null}
-              <Link href={login.href} className="flex min-h-11 items-center rounded-r4 px-3 text-body font-medium text-mkt-ink hover:bg-mkt-soft">
+              <Link href={login.href} className="flex min-h-11 items-center rounded-r4 px-3 text-body font-medium text-mkt-black hover:bg-mkt-grey">
                 {login.label}
               </Link>
-              <Link href={cta.href} className="mt-2 flex min-h-12 items-center justify-center rounded-full bg-mkt-violet px-4 text-body font-semibold text-mkt-on-violet hover:bg-mkt-violet-hover">
+              <Link href={cta.href} className="mt-2 flex min-h-12 items-center justify-center rounded-full bg-mkt-black px-4 text-body font-semibold text-mkt-on-black hover:bg-mkt-black-hover">
                 {cta.label}
               </Link>
             </nav>

@@ -28,6 +28,16 @@ describe("marketing landing tokens (wave S)", () => {
     // The sun-yellow first-year price on the violet Pro card.
     expect(contrastRatio(M.sun, M.violet)).toBeGreaterThanOrEqual(4.5);
   });
+  it("wave T: black, body, quiet and the accent read on white and grey; white and the muted grey on black", () => {
+    for (const bg of [M.paper, M.grey, M.greyHover]) {
+      expect(contrastRatio(M.black, bg)).toBeGreaterThanOrEqual(7);
+      expect(contrastRatio(M.body, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(M.quiet, bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(M.accent, bg)).toBeGreaterThanOrEqual(4.5);
+    }
+    for (const bg of [M.black, M.blackHover]) expect(contrastRatio(M.onBlack, bg)).toBeGreaterThanOrEqual(7);
+    expect(contrastRatio(M.onBlackMuted, M.black)).toBeGreaterThanOrEqual(4.5);
+  });
   it("is scoped to .mkt and mapped for Tailwind", () => {
     const css = buildTokensCss();
     const block = css.slice(css.indexOf(".mkt {"));
@@ -37,5 +47,7 @@ describe("marketing landing tokens (wave S)", () => {
     expect(buildThemeCss()).toContain("--color-mkt-paper: var(--mkt-paper);");
     expect(buildThemeCss()).toContain("--color-mkt-violet: var(--mkt-violet);");
     expect(buildThemeCss()).toContain("--font-mkt-display: var(--mkt-face-display);");
+    expect(buildThemeCss()).toContain("--color-mkt-black: var(--mkt-black);");
+    expect(buildThemeCss()).toContain("--color-mkt-rule: var(--mkt-rule);");
   });
 });
