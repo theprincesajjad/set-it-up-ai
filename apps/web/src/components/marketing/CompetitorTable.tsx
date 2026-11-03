@@ -1,5 +1,6 @@
 import { BRAND } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
+import { Emph } from "@/lib/marketing/emphasis";
 import { COMPETITORS, formatAsOf } from "@/lib/marketing/sources";
 
 export { COMPETITORS } from "@/lib/marketing/sources";
@@ -8,7 +9,8 @@ export { COMPETITORS } from "@/lib/marketing/sources";
  * "How we compare" on the home page: us against named, dated competitors, each cell read from the vendor's public pricing page. The
  * plans themselves are the home page's price columns (lib/marketing/plan-copy.ts). Every row of COMPETITORS carries `asOf` and
  * `sourceUrl`; a unit test fails when one is older than 90 days.
- * Wave T: a hairline table with our column on grey; phones get one small grey card per row. Styles are the home page's (landing.css).
+ * Wave T: a hairline table with our column on grey; phones get one small grey card per row. Styles are the home page's (landing.css);
+ * the title's *word* is the serif italic (lib/marketing/emphasis.tsx, wave V).
  */
 export function CompetitorTable() {
   const c = copy.landing.compare;
@@ -20,7 +22,7 @@ export function CompetitorTable() {
       <div className="lp-wrap">
         <div className="lp-head">
           <h2 className="lp-h2" id="lp-compare">
-            {c.title}
+            <Emph text={c.title} />
           </h2>
           <p className="lp-lede">{c.sub}</p>
         </div>

@@ -2940,7 +2940,7 @@
   --trade-pass-text: #1A1208;
 }
 
-/* Marketing (wave T): black and white with grey bands, Inter Tight headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */
+/* Marketing (wave V): black and white with grey bands, Newsreader headlines on Schibsted Grotesk. Scoped to .mkt (the marketing layout); nothing else reads these. */
 .mkt {
   --mkt-black: #0B0B0B;
   --mkt-black-hover: #2E2E2E;
@@ -2985,6 +2985,7 @@
   --mkt-rule-on-black: rgb(255 255 255 / 0.18);
   --mkt-shadow-shot: 0 1px 2px rgb(0 0 0 / 0.10), 0 24px 56px rgb(0 0 0 / 0.22);
   --mkt-radius-photo: 20px;
-  --mkt-face-sans: var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mkt-face-display: var(--font-mkt-display, "Inter Tight"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, sans-serif;
+  --mkt-face-sans: var(--font-mkt-sans, var(--font-inter, "Inter")), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mkt-face-display: var(--font-mkt-sans, var(--font-inter, "Inter")), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, sans-serif;
+  --mkt-face-serif: var(--font-mkt-serif, "Newsreader"), Georgia, "Times New Roman", var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), serif;
 }

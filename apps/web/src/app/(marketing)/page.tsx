@@ -6,20 +6,23 @@ import { CompetitorTable } from "@/components/marketing/CompetitorTable";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { Faq } from "@/components/marketing/Faq";
 import { LiveProof } from "@/components/marketing/LiveProof";
-import { TradeMarquee } from "@/components/marketing/TradeMarquee";
 import { PHOTOS, Photo, type PhotoSet } from "@/components/marketing/landing/Photo";
+import { PASSES, Phone, StampAdded, WalletPass, WalletScreen, WeeklyCard, WinBack } from "@/components/marketing/landing/Product";
+import { TrySection } from "@/components/marketing/landing/TrySection";
 import "@/components/marketing/landing/landing.css";
 import { LandingMeasure } from "@/components/marketing/landing-ab/LandingMeasure";
+import { QrCode } from "@/components/ui/QrCode";
 import { copy } from "@/copy/en-CA";
+import { Emph } from "@/lib/marketing/emphasis";
 import { marketingFontVars } from "@/lib/marketing/fonts";
-import { marketingPlans, planLine, planNote, planVars } from "@/lib/marketing/plan-copy";
+import { marketingPlans, planNote, planVars } from "@/lib/marketing/plan-copy";
+import { marketingSerifVar } from "@/lib/marketing/serif";
 import { fill } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
 
 export const revalidate = 300;
 
 const L = copy.landing;
-const PH = L.photos;
 
 export const metadata: Metadata = {
   title: { absolute: `${BRAND.name}: ${L.meta.title}` },
@@ -31,76 +34,75 @@ export const metadata: Metadata = {
 const VARS = { ...planVars(), orderFee: Number((FEES.orderBpsFree / 100).toFixed(2)) };
 const f = (s: string) => fill(s, VARS);
 
+/** The sample bakery on the hero's phone and in how it works (sample shop data, like every name on the drawn product moments). */
+const P = PASSES.bakery;
+
 /**
- * Every ask on the page goes to the sign-up entry and carries its data-cta (the funnel counts them). Black pill by default; `outline`
- * is the white pill with a black hairline; `white` is the white pill used on the black bands.
+ * Every sign-up ask on the page goes to /signup and carries its data-cta (the funnel counts them; e2e/marketing-bia.spec.ts allows 8 in
+ * <main>). Black pill by default, white on the black bands, outlined as the quiet one. The arrow nudges on hover (landing.css).
  */
 function Primary({ cta, children, tone = "black" }: { cta: string; children: React.ReactNode; tone?: "black" | "outline" | "white" }) {
   return (
     <Link href="/signup" prefetch={false} className={`lp-btn lp-btn-${tone}`} data-cta={cta}>
       {children}
+      <ArrowRight aria-hidden strokeWidth={2} />
     </Link>
   );
 }
 
-/** A photo in a rounded frame with its trade on a black pill (Square's caption pill). The frame sets the aspect; the photo covers it. */
-function Framed({ set, mobile, alt, tag, sizes, priority, className }: { set: PhotoSet; mobile?: PhotoSet; alt: string; tag?: string; sizes: string; priority?: boolean; className?: string }) {
-  return (
-    <figure className={`lp-frame ${className ?? ""}`}>
-      <Photo set={set} mobile={mobile} alt={alt} sizes={sizes} priority={priority} />
-      {tag ? (
-        <figcaption className="lp-tag" aria-hidden>
-          {tag}
-        </figcaption>
-      ) : null}
-    </figure>
-  );
-}
+/** The shop tiles' photos, in copy order (public/marketing/photos/CREDITS.md). */
+const TILE_PHOTO: Record<(typeof L.shops.tiles)[number]["key"], PhotoSet> = {
+  cafe: PHOTOS.tCafe,
+  repair: PHOTOS.tRepair,
+  barber: PHOTOS.tBarber,
+  nails: PHOTOS.tNails,
+  corner: PHOTOS.tCorner,
+  florist: PHOTOS.tFlorist,
+};
 
-/** The outcome rows' photos (week, promos, map) and the four doors' photos, in copy order. */
-const OUTCOME_PHOTO = { week: ["barber", PH.barber], promos: ["cafePour", PH.cafePour], map: ["cornerStore", PH.cornerStore] } as const;
-const DOOR_PHOTO = [
-  ["retail", PH.retail],
-  ["nails", PH.nails],
-  ["bakery", PH.bakery],
-  ["street", PH.street],
-] as const;
+/** Each tile's trade on the try-it picker (lib/marketing/try-card.ts TRY_TRADES keys). */
+const TILE_TRADE = { cafe: "cafe", repair: "repair", barber: "barber", nails: "nails", corner: "corner", florist: "florist" } as const;
 
 /**
- * The home page, wave T: in the manner of squareup.com, after the founder turned down four homemade looks (template SaaS, beige paper,
- * pastel blocks, a hand-drawn main street). Black and white, Inter Tight headlines, real photos of neighbourhood businesses (Unsplash,
- * credits in public/marketing/photos/CREDITS.md) in rounded frames, and real screenshots of the app (a customer's wallet, the counter,
- * the owner's Today screen; sample data) laid over or beside them. No illustrations, no tints, almost no motion.
- * Order (e2e/marketing-bia.spec.ts): the promise beside a café with a customer's wallet over it, live counts and trades, how it works
- * beside a repair bench with the counter over it, what it does on the black band (Today, then three outcomes with photos), where you
- * fit as four photo cards, the plans on the grey band, the dated comparison, questions, a visit, the closing black band.
- * Static (re-generated every 5 minutes for the live counts); no client script of its own beyond the visit form and the questions.
+ * Stamps fill in once as a pass scrolls into view: a few lines of plain script, no React. A pass already on screen fills at once; one
+ * below waits ("wait") and fills when 40% of it shows ("in"). Nothing happens without IntersectionObserver or with reduced motion, and
+ * the server markup is the filled card, so the stamps are never missing.
+ */
+const FILL_SCRIPT = `(()=>{try{if(!("IntersectionObserver"in window)||matchMedia("(prefers-reduced-motion: reduce)").matches)return;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.setAttribute("data-fill","in");io.unobserve(e.target)}})},{threshold:.4});document.querySelectorAll("[data-fill]").forEach(function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)el.setAttribute("data-fill","in");else{el.setAttribute("data-fill","wait");io.observe(el)}})}catch(e){}})()`;
+
+/**
+ * The home page, wave V: direction B, the look the founder picked from three (dev/landing-b): Newsreader headlines with one italic
+ * phrase each, Schibsted Grotesk text, black and white with grey bands, real photos (Unsplash, public/marketing/photos/CREDITS.md) and
+ * the wallet pass drawn in code in a phone. Value first: the payoff in the hero, then a card maker the owner can try without signing up
+ * (TrySection, the page's one client island beyond the visit form and the questions), then how it works, what they get, the shop
+ * types (each tile presets the card maker), the plans, the dated comparison, questions, a visit, and the closing band.
+ * Static, re-generated every 5 minutes for the live counts.
  */
 export default function Home() {
   const waUrl = whatsappUrl(L.book.whatsappText);
   const plans = marketingPlans("shop");
-  const rows = L.outcomes.rows.filter((r) => r.id !== "pass");
+  const O = L.outcomes;
   return (
     // data-solo-trade="home": the landing beacon's page marker (LandingMeasure below); "/" is counted for the admin funnel (wave N).
-    <div className={`mkt ${marketingFontVars} lp`} data-solo-trade="home">
-      {/* 1. The promise: headline and the two asks; a café counter with a customer's real wallet over it */}
+    <div className={`mkt ${marketingFontVars} ${marketingSerifVar} lp`} data-solo-trade="home">
+      {/* 1. The payoff: the headline, the mechanism, the price, two asks; a bakery counter with the bakery's card on a phone */}
       <section className="lp-hero" aria-labelledby="lp-title">
         <div className="lp-wrap lp-hero-grid">
           <div className="lp-hero-copy">
             <h1 className="lp-h1" id="lp-title">
-              {L.hero.title}
+              <Emph text={L.hero.title} />
             </h1>
             <p className="lp-lede">
-              {L.hero.sub} <b data-testid="hero-price">{L.hero.free}</b>
+              <Emph text={L.hero.sub} /> <b className="lp-free" data-testid="hero-price">{L.hero.free}</b>
             </p>
             <div className="lp-actions">
               <Primary cta="hero">{L.hero.primary}</Primary>
-              <a className="lp-btn lp-btn-outline" href="#how" data-cta="how">
+              <a className="lp-btn lp-btn-outline" href="#try" data-cta="how">
                 {L.hero.secondary}
               </a>
             </div>
             <ul className="lp-trust">
-              {L.heroTrust.split(" · ").map((t) => (
+              {L.hero.points.map((t) => (
                 <li key={t}>
                   <Check aria-hidden strokeWidth={2.5} />
                   {t}
@@ -109,141 +111,172 @@ export default function Home() {
             </ul>
           </div>
           <div className="lp-hero-art">
-            <Framed set={PHOTOS.cafe} mobile={PHOTOS.cafeMobile} alt={PH.cafe.alt} tag={PH.cafe.tag} sizes="(min-width: 1024px) 58vw, 100vw" priority className="lp-hero-photo" />
-            <figure className="lp-shot lp-hero-pass">
-              <Photo set={PHOTOS.pass} alt={L.shots.pass} sizes="(min-width: 1024px) 280px, 46vw" />
+            <figure className="lp-photo lp-hero-photo">
+              <Photo set={PHOTOS.heroBakery} mobile={PHOTOS.heroBakeryM} alt={L.hero.photoAlt} sizes="(min-width: 1440px) 560px, (min-width: 1024px) 40vw, 78vw" priority preloadMobile={false} />
             </figure>
+            <div className="lp-hero-phone" role="img" aria-label={L.hero.phoneLabel}>
+              <Phone tone="wallet">
+                <WalletScreen data={P} fill />
+              </Phone>
+            </div>
           </div>
         </div>
-      </section>
-
-      {/* 2. Live proof (real counts, hidden until the network passes 10 businesses) and the trades it is set up for */}
-      <div className="lp-band">
         <div className="lp-wrap">
-          <LiveProof />
-          <TradeMarquee />
-        </div>
-      </div>
-
-      {/* 3. How it works: three steps beside a repair bench, with the real counter screen over it */}
-      <section className="lp-sec" id="how" aria-labelledby="lp-how">
-        <div className="lp-wrap lp-split">
-          <div className="lp-split-copy">
-            <h2 className="lp-h2" id="lp-how">
-              {L.how.title}
-            </h2>
-            <p className="lp-lede">{L.how.sub}</p>
-            <ol className="lp-steps">
-              {L.how.steps.map((s, i) => (
-                <li key={s.t}>
-                  <span className="lp-step-n" aria-hidden>
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <h3 className="lp-h3">{s.t}</h3>
-                  <p className="lp-body">{s.b}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-          <div className="lp-split-art lp-how-art">
-            <Framed set={PHOTOS.repair} alt={PH.repair.alt} tag={PH.repair.tag} sizes="(min-width: 1024px) 46vw, 100vw" className="lp-how-photo" />
-            <figure className="lp-shot lp-how-counter">
-              <Photo set={PHOTOS.counter} alt={L.shots.counter} sizes="(min-width: 1024px) 40vw, 92vw" />
-            </figure>
-            <p className="lp-caption">{L.counterCaption}</p>
+          <div className="lp-proof">
+            <LiveProof />
           </div>
         </div>
       </section>
 
-      {/* 4. What it does after the first stamp, on the black band: the real Today screen, then three outcomes with their photos */}
+      {/* 2. Try it now: the owner's own card, no sign-up (the client island) */}
+      <TrySection />
+
+      {/* 3. How it works: three panels, each with the thing itself */}
+      <section className="lp-sec" id="how" aria-labelledby="lp-how">
+        <div className="lp-wrap">
+          <div className="lp-head lp-head-c">
+            <h2 className="lp-h2" id="lp-how">
+              <Emph text={L.how.title} />
+            </h2>
+            <p className="lp-lede">
+              <Emph text={L.how.sub} />
+            </p>
+          </div>
+          <ol className="lp-steps">
+            <li>
+              <div className="lp-panel lp-panel-pass" aria-hidden>
+                <div className="lp-panel-pass-in">
+                  <WalletPass data={P} fill />
+                </div>
+              </div>
+              <span className="lp-step-n">1</span>
+              <h3 className="lp-h3">{L.how.steps[0]!.t}</h3>
+              <p className="lp-body">{L.how.steps[0]!.b}</p>
+            </li>
+            <li>
+              <div className="lp-panel" aria-hidden>
+                <div className="lp-tent">
+                  <span className="lp-tent-logo">{P.mono}</span>
+                  <span className="lp-tent-t">{fill(L.how.tent, { name: P.name })}</span>
+                  <span className="lp-tent-qr">
+                    <QrCode value="https://localloyalty.ca/j/little-oven" size={140} ecc="L" label={L.how.tentScan} />
+                  </span>
+                  <span className="lp-tent-s">{L.how.tentScan}</span>
+                </div>
+              </div>
+              <span className="lp-step-n">2</span>
+              <h3 className="lp-h3">{L.how.steps[1]!.t}</h3>
+              <p className="lp-body">{L.how.steps[1]!.b}</p>
+            </li>
+            <li>
+              <div className="lp-panel" aria-hidden>
+                <StampAdded data={P} className="lp-panel-stamp" />
+              </div>
+              <span className="lp-step-n">3</span>
+              <h3 className="lp-h3">{L.how.steps[2]!.t}</h3>
+              <p className="lp-body">{L.how.steps[2]!.b}</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      {/* 4. What you get, on the black band: four outcomes, each with its product moment (sample data, captioned) */}
       <section className="lp-sec lp-dark" id="product" aria-labelledby="lp-product">
         <div className="lp-wrap">
           <div className="lp-head">
             <h2 className="lp-h2" id="lp-product">
-              {L.outcomes.title}
+              <Emph text={O.title} />
             </h2>
-            <p className="lp-lede">{L.outcomes.sub}</p>
+            <p className="lp-lede">{f(O.sub)}</p>
           </div>
-          <figure className="lp-shot lp-today">
-            <Photo set={PHOTOS.today} mobile={PHOTOS.todayMobile} alt={L.shots.today} sizes="(min-width: 1360px) 1280px, 94vw" />
-          </figure>
-          <p className="lp-caption">{L.shots.note}</p>
-          <ul className="lp-outcomes">
-            {rows.map((r) => {
-              const [key, ph] = OUTCOME_PHOTO[r.id as keyof typeof OUTCOME_PHOTO];
-              return (
-                <li key={r.id} id={`outcome-${r.id}`} className="lp-outcome">
-                  <Framed set={PHOTOS[key]} alt={ph.alt} tag={ph.tag} sizes="(min-width: 1024px) 30vw, (min-width: 640px) 50vw, 100vw" />
-                  <h3 className="lp-h3">{r.title}</h3>
-                  <p className="lp-body">{r.body}</p>
-                  <ul className="lp-points">
-                    {(r.id === "promos" ? [...r.points, planLine("promoAllowance")] : r.points).map((p) => (
-                      <li key={p}>
-                        <Check aria-hidden strokeWidth={2.5} />
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              );
-            })}
+          <ul className="lp-gets">
+            {O.rows.map((r) => (
+              <li key={r.id} id={`outcome-${r.id}`} className="lp-get">
+                <div className={`lp-get-art lp-get-${r.id}`} aria-hidden>
+                  {"tag" in r && r.tag ? <span className="lp-tag-pro">{f(r.tag)}</span> : null}
+                  {r.id === "pass" ? <WalletPass data={PASSES.cafe} fill /> : null}
+                  {r.id === "stamp" ? <StampAdded data={PASSES.barber} /> : null}
+                  {r.id === "winback" ? <WinBack /> : null}
+                  {r.id === "week" ? <WeeklyCard shop={O.week.shop} /> : null}
+                </div>
+                <h3 className="lp-h3">
+                  {r.title}
+                  {"tag" in r && r.tag ? <span className="sr-only"> ({f(r.tag)})</span> : null}
+                </h3>
+                <p className="lp-body">{r.body}</p>
+              </li>
+            ))}
           </ul>
-          <div className="lp-actions">
+          <p className="lp-caption">{O.caption}</p>
+          <div className="lp-actions lp-gets-end">
             <Primary cta="outcomes" tone="white">
-              {L.outcomes.cta}
+              {O.cta}
             </Primary>
             <a className="lp-link" href="#pricing" data-cta="seepricing">
-              {L.outcomes.pricing}
+              {O.pricing}
               <ArrowRight aria-hidden strokeWidth={2} />
             </a>
           </div>
         </div>
       </section>
 
-      {/* 5. Where do you fit? Four photo cards, each one link (the whole card is the target), then the booking trades */}
-      <section className="lp-sec" aria-label={L.router.label}>
+      {/* 5. The shop types: each tile is one link that presets the card maker to its trade */}
+      <section className="lp-sec" id="shops" aria-labelledby="lp-shops">
         <div className="lp-wrap">
-          <div className="lp-head">
-            <h2 className="lp-h2">{L.router.title}</h2>
-            <p className="lp-lede">{L.router.sub}</p>
+          <div className="lp-head lp-head-c">
+            <h2 className="lp-h2" id="lp-shops">
+              <Emph text={L.shops.title} />
+            </h2>
+            <p className="lp-lede">{L.shops.sub}</p>
           </div>
-          <ul className="lp-doors">
-            {L.router.items.map((d, i) => {
-              const [key, ph] = DOOR_PHOTO[i]!;
-              return (
-                <li key={d.href} className="lp-door">
-                  <Framed set={PHOTOS[key]} alt={ph.alt} tag={ph.tag} sizes="(min-width: 1100px) 23vw, (min-width: 640px) 46vw, 100vw" />
-                  <div className="lp-door-body">
-                    <span className="lp-door-k">{d.eyebrow}</span>
-                    <span className="lp-door-t">{d.title}</span>
-                    <span className="lp-body">{d.body}</span>
-                    <Link href={d.href} prefetch={false} className="lp-row-go">
-                      {d.cta}
-                      <ArrowRight aria-hidden strokeWidth={2} />
-                    </Link>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          <nav aria-label={copy.solo.chipsLabel} className="lp-booking">
-            <span>{copy.solo.chipsLabel}</span>
-            {copy.solo.chips.map((c) => (
-              <Link key={c.href} href={c.href} prefetch={false}>
-                {c.label}
-                <ArrowRight aria-hidden strokeWidth={2} />
-              </Link>
+          <ul className="lp-tiles">
+            {L.shops.tiles.map((t) => (
+              <li key={t.key} className="lp-tile">
+                <figure className="lp-tile-photo">
+                  <Photo set={TILE_PHOTO[t.key]} alt={t.alt} sizes="(min-width: 1024px) 420px, (min-width: 640px) 46vw, 80vw" />
+                </figure>
+                <span className="lp-tile-k">{t.label}</span>
+                <h3 className="lp-tile-t">{t.title}</h3>
+                <p className="lp-tile-line">{t.line}</p>
+                <a className="lp-tile-go" href="#try" data-try-trade={TILE_TRADE[t.key]}>
+                  {t.link}
+                  <ArrowRight aria-hidden strokeWidth={2} />
+                </a>
+              </li>
             ))}
-          </nav>
+          </ul>
+          <div className="lp-also">
+            {/* Plain anchors: the A/B landing pages count only a full page load (SiteFooter's LANDING_AB note). */}
+            <nav aria-label={copy.solo.chipsLabel} className="lp-also-row">
+              <span>{copy.solo.chipsLabel}</span>
+              {copy.solo.chips
+                .filter((c) => !c.href.includes("?"))
+                .map((c) => (
+                  <a key={c.href} href={c.href}>
+                    {c.label}
+                    <ArrowRight aria-hidden strokeWidth={2} />
+                  </a>
+                ))}
+            </nav>
+            <nav aria-label={L.shops.also} className="lp-also-row">
+              <span>{L.shops.also}</span>
+              {L.shops.more.map((m) => (
+                <Link key={m.href} href={m.href} prefetch={false}>
+                  <b>{m.label}</b> {m.line}
+                  <ArrowRight aria-hidden strokeWidth={2} />
+                </Link>
+              ))}
+            </nav>
+          </div>
         </div>
       </section>
 
       {/* 6. Pricing on the grey band: every word from lib/marketing/plan-copy.ts, every number from PLANS; Pro is the black card */}
       <section className="lp-sec lp-grey" id="pricing" aria-labelledby="lp-pricing">
         <div className="lp-wrap">
-          <div className="lp-head">
+          <div className="lp-head lp-head-c">
             <h2 className="lp-h2" id="lp-pricing">
-              {L.pricing.title}
+              <Emph text={L.pricing.title} />
             </h2>
             <p className="lp-lede">{f(L.pricing.sub)}</p>
           </div>
@@ -306,7 +339,7 @@ export default function Home() {
       <section className="lp-sec lp-sec-top0" aria-labelledby="lp-faq">
         <div className="lp-wrap lp-faq">
           <h2 className="lp-h2" id="lp-faq">
-            {L.faqTitle}
+            <Emph text={L.faqTitle} />
           </h2>
           <Faq className="lp-faq-list" items={L.faq.map((q) => ({ q: q.q, a: f(q.a) }))} />
         </div>
@@ -317,15 +350,19 @@ export default function Home() {
         <div className="lp-wrap lp-book">
           <div className="lp-book-copy">
             <h2 className="lp-h2" id="lp-book">
-              {L.book.title}
+              <Emph text={L.book.title} />
             </h2>
-            <p className="lp-lede">{L.book.sub}</p>
+            <p className="lp-lede">
+              <Emph text={L.book.sub} />
+            </p>
             {waUrl ? (
               <a className="lp-btn lp-btn-outline" href={waUrl}>
                 {L.book.whatsapp}
               </a>
             ) : null}
-            <Framed set={PHOTOS.counterHelp} alt={PH.counterHelp.alt} tag={PH.counterHelp.tag} sizes="(min-width: 1024px) 40vw, 100vw" className="lp-book-photo" />
+            <figure className="lp-photo lp-book-photo">
+              <Photo set={PHOTOS.counterHelp} alt={L.book.photoAlt} sizes="(min-width: 1024px) 40vw, 100vw" />
+            </figure>
           </div>
           <div className="lp-book-form">
             <ContactForm kind="visit" />
@@ -337,9 +374,11 @@ export default function Home() {
       <section className="lp-final lp-dark" aria-labelledby="lp-final">
         <div className="lp-wrap lp-final-in">
           <h2 className="lp-h2 lp-h2-xl" id="lp-final">
-            {L.final.title}
+            <Emph text={L.final.title} />
           </h2>
-          <p className="lp-lede">{L.final.sub}</p>
+          <p className="lp-lede">
+            <Emph text={L.final.sub} />
+          </p>
           <Primary cta="final" tone="white">
             {L.final.cta}
           </Primary>
@@ -350,6 +389,7 @@ export default function Home() {
       <div className="lp-sticky">
         <Primary cta="sticky">{L.sticky}</Primary>
       </div>
+      <script dangerouslySetInnerHTML={{ __html: FILL_SCRIPT }} />
       <LandingMeasure path="/" />
     </div>
   );

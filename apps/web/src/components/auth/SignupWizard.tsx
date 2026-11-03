@@ -89,7 +89,7 @@ function beaconSignupStart(): void {
 export interface SignupWizardProps {
   signedInName?: string | null;
   /** From the sales assistant's link or a landing page (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
-  prefill?: { shop?: string; vertical?: string; phone?: string; email?: string; plan?: string; src?: string; interval?: "year"; v?: { experimentId: string | null; variant: string } };
+  prefill?: { shop?: string; vertical?: string; phone?: string; email?: string; color?: string; plan?: string; src?: string; interval?: "year"; v?: { experimentId: string | null; variant: string } };
   /** Tests inject a fake website reader. */
   importer?: Importer;
 }

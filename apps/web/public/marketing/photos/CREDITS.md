@@ -1,29 +1,21 @@
-# Landing page photos (wave T)
+# Landing page photos
 
 All photos are from Unsplash, used under the Unsplash License (free for commercial use, no permission needed:
 https://unsplash.com/license). Cropped and re-encoded to AVIF and WebP for the home page. None are AI-generated.
 
-| File | What | Photographer | Unsplash page |
-|---|---|---|---|
-| cafe-*.avif/webp, cafe-m-* | Barista at a café counter with a tablet register | Brooke Cagle | https://unsplash.com/photos/woman-holding-portafilter-in-coffee-shop-8jp-6SjVibM |
-| repair-* | Hands repairing a smartphone at a bench | Clint Bustrillos | https://unsplash.com/photos/man-repairing-android-smartphone-K7OUs6y_cm8 |
-| barber-* | A barber finishing a client's cut | delfina pan | https://unsplash.com/photos/wJoB8D3hnzc |
-| cafe-pour-* | Barista pouring milk into cups | Eilis Garvey | https://unsplash.com/photos/barista-pouring-milk-into-coffee-cups-at-cafe-OF0xOem-oIs |
-| corner-store-* | A convenience store on a Toronto street corner in winter | Ilya Yakubovich | https://unsplash.com/photos/a-street-corner-with-a-store-on-a-snowy-day-wgIpkmUMfg8 |
-| retail-* | A shop owner holding the keys in his store | Beatriz Cattel | https://unsplash.com/photos/man-holding-keys-in-a-retail-store-BXd2yLUj_e4 |
-| nails-* | A manicure at a nail salon | Giorgio Trovato | https://unsplash.com/photos/a-woman-getting-her-nails-done-at-a-nail-salon-gb6gtiTZKB8 |
-| bakery-* | Behind a bakery counter with bread and pastries | Ekaterina Tyapkina | https://unsplash.com/photos/woman-on-counter-near-breads-b5kN9ClBRNU |
-| street-* | A nail salon storefront on a main street | Kelvin Taylor | https://unsplash.com/photos/nail-salon-with-neon-sign-and-eye-art-in-window-T1EJj-G9l5w |
-| counter-help-* | Two people at a shop counter with a tablet | Blake Wisz | https://unsplash.com/photos/two-women-near-tables-GFrBMipOd_E |
+| File | Where | What | Photographer | Unsplash page |
+|---|---|---|---|---|
+| u-bakery-* | Home hero | A baker behind her counter of bread and pastries | Ekaterina Tyapkina | https://unsplash.com/photos/woman-on-counter-near-breads-b5kN9ClBRNU |
+| u-t-cafe-* | Shop tile: cafés | A barista laughing at a café counter | Brooke Cagle | https://unsplash.com/photos/woman-holding-portafilter-in-coffee-shop-8jp-6SjVibM |
+| u-t-repair-* | Shop tile: repair shops | Hands repairing a smartphone at a bench | Clint Bustrillos | https://unsplash.com/photos/man-repairing-android-smartphone-K7OUs6y_cm8 |
+| v-t-barber-* | Shop tile: barbers (wave V) | A barber trimming a client's hair with scissors and a comb | Nate Johnston | https://unsplash.com/photos/a-man-cutting-another-mans-hair-with-a-pair-of-scissors-tgPrIYnW3g4 |
+| v-t-nails-* | Shop tile: nail studios (wave V) | A nail tech painting a client's nails | Stefan Lehner | https://unsplash.com/photos/a-persons-hands-with-painted-nails-IYa5Dnj9qWE |
+| v-t-corner-* | Shop tile: corner stores (wave V) | A smiling clerk at the counter of a corner store | Zeki Okur | https://unsplash.com/photos/a-store-clerk-smiles-while-working-at-the-counter-DEO41nuN3rM |
+| v-t-florist-* | Shop tile: florists (wave V) | A florist tying a bouquet at her workbench | Viktoriia Yatsentiuk | https://unsplash.com/photos/a-woman-arranging-flowers-in-a-flower-shop-3DyfEiITFz4 |
+| counter-help-* | Home: the free setup visit | Two people at a shop counter with a tablet | Blake Wisz | https://unsplash.com/photos/two-women-near-tables-GFrBMipOd_E |
+| u-t-bakery-* | /dev/landing-b only | Behind a bakery counter (another crop of u-bakery) | Ekaterina Tyapkina | as u-bakery |
 
-The product images in ../product/ (today, counter, pass) are screenshots of our own app (the owner's Today screen at Pinecone Coffee
-Co., the counter at Fix-It Phone Lab, and a customer's pass at /me), taken from the seeded demo stack. All names and numbers in them
-are demo data.
-
-## Wave U crops (/dev/landing-a, -b, -c only)
-
-The `u-*` files are new crops of the same Unsplash photos above, re-encoded from the originals at larger sizes for the three dev
-directions. Same photographers and licence: u-pour and u-pour-m (Eilis Garvey, cafe-pour), u-bakery and u-t-bakery (Ekaterina
-Tyapkina, bakery), u-repair and u-t-repair (Clint Bustrillos, repair), u-barber and u-t-barber (delfina pan, barber), u-counter
-(Blake Wisz, counter-help), u-t-cafe (Brooke Cagle, cafe), u-t-nails (Giorgio Trovato, nails), u-t-corner (Ilya Yakubovich,
-corner-store).
+Wave V replaced the snowy corner-store street (Ilya Yakubovich), the tight manicure close-up with the white machine (Giorgio Trovato)
+and the barber in a mask (delfina pan), and removed the photos and app screenshots the old home page used and the new one does not.
+The wallet pass, the counter's "Stamp added", the win-back nudge and the weekly card on the page are drawn in code
+(components/marketing/landing/Product.tsx) with sample shops and people; the page captions them as sample data.

@@ -2,7 +2,7 @@
  * Marketing tokens, scoped to the `.mkt` class the marketing layout sets, so no app, dashboard or customer screen changes. tokens.css
  * emits them under `.mkt`; theme.css maps them to Tailwind names (bg-mkt-black, text-mkt-body, bg-mkt-grey, font-mkt-display ...) that
  * resolve only inside it.
- * Wave T (the landing page, header and footer, after squareup.com): confident black and white. A white page, near-black text and
+ * Wave T (the landing page, header and footer, after squareup.com), kept in wave V (direction B: Newsreader and Schibsted Grotesk): confident black and white. A white page, near-black text and
  * primary buttons, full-bleed black bands, #F2F2F2 grey bands and card bottoms, and one restrained accent (a deep green for checks and
  * "free"). Colour comes from the photography and the product screenshots, not from UI tints.
  * The wave S colours below (sun, mint, coral, violet ...) are kept because the other marketing pages (/pricing, /for-restaurants,
@@ -93,13 +93,15 @@ export const MARKETING_VARS = [...Object.keys(marketingColors), ...Object.keys(m
 /** The `.mkt` block for tokens.css. `scriptFonts` is the hi/ur/pa Noto list, so those scripts keep their faces. */
 export function marketingCss(scriptFonts: string): string[] {
   return [
-    `/* Marketing (wave T): black and white with grey bands, Inter Tight headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */`,
+    `/* Marketing (wave V): black and white with grey bands, Newsreader headlines on Schibsted Grotesk. Scoped to .mkt (the marketing layout); nothing else reads these. */`,
     `.mkt {`,
     ...Object.entries(marketingColors).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
     ...Object.entries(marketingEffects).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
-    // Inter is the app's face, preloaded by the root layout, so body text never waits on a marketing download.
-    `  --mkt-face-sans: var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;`,
-    `  --mkt-face-display: var(--font-mkt-display, "Inter Tight"), var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, sans-serif;`,
+    // Wave V: Schibsted Grotesk for text and the wordmark (lib/marketing/fonts.ts), Newsreader for the landing headlines (lib/marketing/serif.ts,
+    // loaded by the home page only). Inter, which the root layout preloads, is the fallback, so text never waits on a marketing download.
+    `  --mkt-face-sans: var(--font-mkt-sans, var(--font-inter, "Inter")), ${scriptFonts}, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;`,
+    `  --mkt-face-display: var(--font-mkt-sans, var(--font-inter, "Inter")), ${scriptFonts}, ui-sans-serif, system-ui, sans-serif;`,
+    `  --mkt-face-serif: var(--font-mkt-serif, "Newsreader"), Georgia, "Times New Roman", ${scriptFonts}, serif;`,
     `}`,
     ``,
   ];
@@ -118,5 +120,6 @@ export function marketingThemeLines(): string[] {
     `  --shadow-mkt-shot: var(--mkt-shadow-shot);`,
     `  --font-mkt-sans: var(--mkt-face-sans);`,
     `  --font-mkt-display: var(--mkt-face-display);`,
+    `  --font-mkt-serif: var(--mkt-face-serif);`,
   ];
 }

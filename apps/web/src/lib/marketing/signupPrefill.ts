@@ -1,5 +1,6 @@
 /**
- * The sign-up link the sales assistant sends is pre-filled from the chat (?shop=&vertical=&phone=&ref=assistant). Query text is
+ * The sign-up link the sales assistant sends is pre-filled from the chat (?shop=&vertical=&phone=&ref=assistant); the home page's card
+ * maker sends ?shop=&vertical=&color=&src=home-try (lib/marketing/try-href.ts). Query text is
  * untrusted: it is only ever put into form fields the person can change, trimmed, length-capped and checked against known values.
  */
 import { VERTICALS, isVariantId, parseVariantCookie } from "@ll/shared";
@@ -8,6 +9,8 @@ export interface SignupPrefill {
   shop?: string;
   vertical?: string;
   phone?: string;
+  /** The card colour from the home page's card maker (?color=RRGGBB, with or without "#"), as "#RRGGBB" for the card step. */
+  color?: string;
   /** From the landing page's short form ("Email or mobile" holding an email). */
   email?: string;
   /** The plan button on /pricing the owner came from (?plan=plus, restaurant-growth ...): the checkout opens after signup. */
@@ -36,6 +39,8 @@ export function signupPrefill(params: Params): SignupPrefill {
   const trade = one(params.trade)?.trim() ?? "";
   const vertical = one(params.vertical)?.trim() || (Object.hasOwn(TRADE_VERTICAL, trade) ? TRADE_VERTICAL[trade] : undefined);
   if (vertical && (VERTICALS as readonly string[]).includes(vertical)) out.vertical = vertical;
+  const color = one(params.color)?.trim().replace(/^#/, "") ?? "";
+  if (/^[0-9A-Fa-f]{6}$/.test(color)) out.color = `#${color.toUpperCase()}`;
   const plan = one(params.plan)?.trim();
   if (plan && (SIGNUP_PLANS as readonly string[]).includes(plan)) out.plan = plan;
   if (one(params.interval)?.trim() === "year") out.interval = "year";

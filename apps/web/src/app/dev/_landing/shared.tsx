@@ -5,7 +5,7 @@ import { MarketingWordmark } from "@/components/marketing/landing/Wordmark";
 import type { PhotoSet } from "@/components/marketing/landing/Photo";
 
 /**
- * Wave U: three landing directions for the founder to choose from, at /dev/landing-a, -b and -c. Dev only, gated exactly like /dev/kit:
+ * Wave U: the landing direction the founder chose, at /dev/landing-b (A and C were removed in wave V). Dev only, gated exactly like /dev/kit:
  * open in development, with KIT_SHOWCASE=1, or for a platform admin; a 404 for everyone else in production. Never indexed (the page
  * metadata, plus next.config's X-Robots-Tag on /dev). The live home page (app/(marketing)/page.tsx) is not touched.
  */
@@ -18,20 +18,15 @@ export async function devOnly() {
 
 const photo = (name: string, widths: readonly number[], width: number, height: number): PhotoSet => ({ src: `/marketing/photos/${name}`, widths, width, height });
 
-/** Wave U crops of the wave T Unsplash photos (public/marketing/photos/CREDITS.md). */
+/** Direction B's photos (public/marketing/photos/CREDITS.md). Since wave V the barber, nail and corner store tiles share the live page's new photos. */
 export const UPHOTOS = {
-  pour: photo("u-pour", [1400, 2200], 2200, 963),
-  pourMobile: photo("u-pour-m", [800], 800, 1000),
   bakery: photo("u-bakery", [900, 1280], 1280, 1600),
-  repair: photo("u-repair", [900, 1400], 1400, 1750),
-  barber: photo("u-barber", [900, 1400], 1400, 1750),
-  counter: photo("u-counter", [900, 1280], 1280, 1600),
   tCafe: photo("u-t-cafe", [480, 720], 720, 900),
   tRepair: photo("u-t-repair", [480, 720], 720, 900),
-  tBarber: photo("u-t-barber", [480, 720], 720, 900),
-  tNails: photo("u-t-nails", [480, 720], 720, 900),
+  tBarber: photo("v-t-barber", [480, 720], 720, 900),
+  tNails: photo("v-t-nails", [480, 720], 720, 900),
   tBakery: photo("u-t-bakery", [480, 720], 720, 900),
-  tCorner: photo("u-t-corner", [480, 720], 720, 900),
+  tCorner: photo("v-t-corner", [480, 720], 720, 900),
 } as const;
 
 export const TILE_PHOTO = { cafe: UPHOTOS.tCafe, repair: UPHOTOS.tRepair, barber: UPHOTOS.tBarber, nails: UPHOTOS.tNails, bakery: UPHOTOS.tBakery, corner: UPHOTOS.tCorner } as const;

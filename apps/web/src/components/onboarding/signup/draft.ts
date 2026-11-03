@@ -72,12 +72,16 @@ export interface Prefill {
   vertical?: string;
   phone?: string;
   email?: string;
+  /** "#RRGGBB" from the home page's card maker: the card step's colour (signupPrefill checks it). */
+  color?: string;
 }
 
 /** A new link's values win over a stored draft, once (`prefillKey`); a sales-assistant link (`?shop=`) skips the website question. */
 export function withPrefill(d: SignupDraft, p: Prefill | undefined): SignupDraft {
   if (!p) return d;
-  const key = JSON.stringify([p.shop ?? "", p.vertical ?? "", p.phone ?? "", p.email ?? ""]);
+  const color = p.color && /^#[0-9A-Fa-f]{6}$/.test(p.color) ? p.color.toUpperCase() : "";
+  // The colour joins the key only when a link carries one, so links from before it keep their keys.
+  const key = JSON.stringify([p.shop ?? "", p.vertical ?? "", p.phone ?? "", p.email ?? "", ...(color ? [color] : [])]);
   if (key === '["","","",""]' || key === d.prefillKey) return d;
   // A link that names a shop (the sales assistant, a landing form) is a new shop: a new start. So is any link after a shop was made.
   const out = { ...(d.created || p.shop ? emptyDraft() : d), prefillKey: key };
@@ -85,6 +89,7 @@ export function withPrefill(d: SignupDraft, p: Prefill | undefined): SignupDraft
   if (p.vertical) Object.assign(out, { vertical: p.vertical, verticalGuess: false, work: workFor(p.vertical), workTouched: false });
   if (p.phone) out.phone = p.phone;
   if (p.email) out.email = p.email;
+  if (color) out.color = color;
   return out;
 }
 

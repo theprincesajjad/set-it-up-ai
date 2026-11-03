@@ -151,48 +151,80 @@ export const copy = {
     /** Also the sign-in page's promise row (AuthLayout). */
     heroTrust: "Free forever · No fee on loyalty · No contract · Unlimited locations and staff",
     meta: {
-      title: "free loyalty program for local businesses",
-      description: "A free loyalty program for local businesses: a digital stamp card in Apple Wallet and Google Wallet, promos that bring customers back, and weekly reports. Set up in about 5 minutes.",
+      title: "a free loyalty card for local shops",
+      description: "A free digital stamp card for your shop, kept in your customers’ Apple Wallet or Google Wallet and stamped from any phone. Try yours on the page, then set it up in about 5 minutes.",
     },
+    /**
+     * Wave V (direction B, the founder's pick): warm and neighbourly, value first. Every line either has the owner picture a regular
+     * coming back or removes a doubt (cost, hardware, setup time, an app). Headlines mark their one emphasised phrase with *asterisks*
+     * (set in the Newsreader italic, lib/marketing/emphasis.tsx); body lines mark a key phrase with **double asterisks** (medium weight).
+     * No exclamation marks, no invented numbers, no testimonials, never "founding".
+     */
     hero: {
-      /** One line of what, for whom: the headline on the hero's sun block (wave S). */
-      title: "A free stamp card for the shops on your street",
-      sub: "Customers keep your card in Apple Wallet or Google Wallet. You stamp it from any phone at the counter.",
-      /** The last words of the lede (data-testid hero-price): the price in the first screen, without a paragraph under the buttons. */
+      title: "Your regulars, *on repeat.*",
+      sub: "A free stamp card that brings customers back more often. It lives in their Apple Wallet or Google Wallet, you stamp it from any phone at the counter, and it’s ready in **about five minutes**.",
+      /** The last words of the lede (data-testid hero-price): the price in the first screen. */
       free: "Loyalty is free forever.",
-      primary: "Start free",
-      secondary: "See how it works",
+      primary: "Make your card free",
+      secondary: "Try it with your name",
+      points: ["Nothing for customers to download", "Any phone or tablet", "No credit card"],
       /** Sample notes: the sign-in stage (AuthLayout) uses the first. */
       floats: [
         { icon: "stamp_card", b: "Stamp added for Maya", s: "9 of 10, one to go" },
         { icon: "megaphone", b: "Double stamps at 2 p.m.", s: "Sent to 412 customers who opted in" },
       ],
+      photoAlt: "A baker behind her counter of bread, croissants and meringues",
+      phoneLabel: "Little Oven’s stamp card in a phone’s wallet, 5 of 8 stamps (a sample shop)",
     },
-    /**
-     * Wave T: the photos (Unsplash, credits in public/marketing/photos/CREDITS.md) and the product screenshots (our own app, demo data).
-     * `alt` describes the picture; `tag` is the short trade label on the black pill over it. The shops in the photos are real places,
-     * so no sample shop name is ever put on a photo.
-     */
-    photos: {
-      cafe: { alt: "A barista laughing with a customer at a café counter, a tablet register beside her", tag: "Cafés" },
-      repair: { alt: "Hands taking apart a smartphone at a repair bench", tag: "Phone repair" },
-      barber: { alt: "A barber finishing a client's cut", tag: "Barbers" },
-      cafePour: { alt: "A barista pouring milk into two cups", tag: "Coffee shops" },
-      cornerStore: { alt: "A convenience store on a Toronto street corner after a snowfall", tag: "Corner stores" },
-      retail: { alt: "A shop owner holding up the keys in his store", tag: "Retail" },
-      nails: { alt: "A nail tech giving a client a manicure", tag: "Nail salons" },
-      bakery: { alt: "Behind a bakery counter stacked with bread and pastries", tag: "Bakeries" },
-      street: { alt: "A nail salon storefront on a main street", tag: "Main streets" },
-      counterHelp: { alt: "Two people at a shop counter, setting up on a tablet", tag: "Free setup visit" },
+    /** The card maker under the hero (components/marketing/landing/TryCard.tsx): no sign-up, nothing saved until "Keep this card". */
+    tryIt: {
+      eyebrow: "Try it now. No sign-up.",
+      title: "Make your card *right here*.",
+      sub: "Type your shop’s name and pick your kind of business. This is the card your customers will carry, with the reward shops like yours usually start with.",
+      name: "Your shop’s name",
+      namePlaceholder: "e.g. Morning Glory Café",
+      /** On the pass while the name field is empty. */
+      nameEmpty: "Your shop",
+      trade: "Your kind of business",
+      trades: { cafe: "Café", bakery: "Bakery", barber: "Barber", nails: "Nail studio", repair: "Repair shop", corner: "Corner store", florist: "Florist", pet: "Pet groomer" },
+      colour: "Card colour",
+      colourOwn: "Your trade’s colour",
+      colours: ["Blue", "Green", "Plum", "Terracotta", "Teal", "Oxblood"],
+      reward: "Their reward",
+      stamps: "{reward} after {goal} stamps",
+      points: "{reward} at {goal} points, 1 point a dollar",
+      rewardNote: "You can change the reward, the goal and the colour any time.",
+      cta: "Keep this card, start free",
+      note: "Free forever. No credit card. About 5 minutes to finish.",
+      pass: { stamps: "Stamps", points: "Points", reward: "Reward", member: "Member", memberName: "Maya Chen", code: "4471 2208" },
+      /** Read out after each change (aria-live). */
+      updated: "Card updated: {name}, {trade}, {reward}.",
+      passLabel: "Your stamp card in a phone’s wallet: {name}, {reward}",
+      phoneNote: "A preview. Your real card adds your logo.",
+      /** The phone's notification under the pass, as a customer sees it after a visit. */
+      notice: { now: "now", stamps: "Stamp added", points: "{n} points added", left: "{left} more to go · {reward}" },
     },
-    shots: {
-      pass: "A customer's wallet in the app: her points card at Fix-It Phone Lab and her stamp card at Pinecone Coffee Co., 4 of 10 (sample data)",
-      counter: "The counter at Fix-It Phone Lab: hold up a card or type the last four digits of a phone, and the recent stamps (sample data)",
-      today: "The owner's Today screen at Pinecone Coffee Co.: the week's sales, visits, stamps, rewards, what needs you and visits by hour (sample data)",
-      note: "Real screens from the app, with sample data.",
+    /** The words inside the drawn product moments (components/marketing/landing/Product.tsx): the phone, the pass, the counter, the week. */
+    product: {
+      time: "9:41",
+      done: "Done",
+      stamps: "Stamps",
+      reward: "Reward",
+      member: "Member",
+      memberCode: "Member code",
+      counter: "Counter",
+      stampAdded: "Stamp added",
+      next: "Next customer",
+      left: "{n} more to a {reward}",
+      toastLine: "{who} · {n} of {of}",
+      thisWeek: "This week",
+      cameBack: "regulars came back",
+      days: ["M", "T", "W", "T", "F", "S", "S"],
+      passLabel: "{name} stamp card in a phone wallet, {n} of {of} stamps",
+      stampLabel: "Stamp added for {who}: {n} of {of}",
+      toastLabel: "Stamp added for {who}",
+      weekLabel: "This week {total} regulars came back, {change} more than last week",
     },
-    /** Wave R: the counter preview in how-it-works (sample data; the caption says so). */
-    counterCaption: "Sample data. Your own customers fill in as you go.",
     /** The trades under the hero, as chips (wave S2: shops and services interleaved, so repair and retail sit beside cafés and salons). */
     trades: {
       label: "Set up for",
@@ -212,16 +244,6 @@ export const copy = {
         { icon: "makeup", label: "Makeup artists" },
       ],
     },
-    facts: {
-      label: "Key facts",
-      items: [
-        { value: "{free}", line: "for loyalty, forever" },
-        { value: "5 min", line: "to your first stamp" },
-        { value: "0%", line: "fee on loyalty" },
-        { value: "No limit", line: "on staff, locations or customers" },
-      ],
-      cta: "Start free",
-    },
     router: {
       label: "Where do you fit?",
       title: "Made for local businesses",
@@ -240,58 +262,54 @@ export const copy = {
       note: "Counted live from the network, refreshed every few minutes",
     },
     how: {
-      title: "Live at your counter today",
-      sub: "No hardware to buy, no app to install, no training day.",
+      title: "Ready before the *morning rush*.",
+      sub: "Three small steps, **about five minutes**, and no new hardware.",
       steps: [
-        { t: "Create your program", b: "Choose stamps or points and a reward. Your card, QR stand and map listing are ready in minutes." },
-        { t: "Customers join in seconds", b: "They scan the QR at your counter and add your card to Apple Wallet or Google Wallet." },
-        { t: "Stamp every visit", b: "Scan their card or type the last four digits of their phone, on any tablet or phone." },
+        { t: "Make it look like you", b: "Your name, your colour and a reward for the last stamp. Change any of it later." },
+        { t: "Leave the code by the till", b: "Customers scan it once and the card lands in their phone’s wallet. No app to download." },
+        { t: "Stamp, and say hello", b: "One tap from any phone or tablet. Their card fills up visit by visit, and they come back to finish it." },
       ],
+      tent: "Collect stamps at {name}",
+      tentScan: "Point your camera here",
       label: "The counter screen on a tablet: a keypad to find a customer and the recent stamps",
     },
+    /** What you get (the black band): four outcomes, each with its product moment. Sample shop and people; the caption says so. */
     outcomes: {
-      title: "Built to bring customers back",
-      sub: "See what is working, reward loyalty and fill quiet hours, from one dashboard.",
+      title: "What you get from *the first stamp*.",
+      sub: "All of it is in the free plan unless it says {pro}, and every new shop gets {trial} days of {pro} to try.",
       rows: [
-        {
-          id: "week",
-          title: "Know how your week went",
-          body: "Visits, new customers and rewards, compared with the same day last week.",
-          points: ["A comparison on every number", "Your busiest hours at a glance", "A short list of what needs you today"],
-          label: "The Today screen: visits, stamps, rewards and new customers, with what needs attention",
-          floats: [{ icon: "calendar_week", b: "+26 visits", s: "against last Wednesday" }, { icon: "regulars", b: "6 rewards waiting", s: "Tell the counter before the rush" }],
-        },
-        {
-          id: "pass",
-          title: "A card that lives on their phone",
-          body: "Customers add your card to Apple Wallet or Google Wallet. Nothing to download, nothing to lose.",
-          points: ["Your colours and your reward", "Updates the moment a stamp is given", "Works on any phone"],
-          label: "A customer's stamp card on an iPhone: 9 of 10 stamps, one to go for a free drink",
-          floats: [{ icon: "stamp_card", b: "Stamp added", s: "9 of 10, one to go" }, { icon: "pass", b: "In Apple Wallet", s: "No app to download" }],
-        },
-        {
-          id: "promos",
-          title: "Promos that bring people in",
-          body: "Double stamps on a slow afternoon, a birthday treat or a new menu item, sent to customers who opted in.",
-          points: ["Ready-made templates", "Only to customers who opted in"],
-          label: "Composing a promo: a template, the customers it goes to, and when it runs",
-          floats: [],
-        },
-        {
-          id: "map",
-          title: "Found by people nearby",
-          body: "Your business shows up on the local map, next to the other independents on your street.",
-          points: ["A free listing on the map", "People find businesses near them", "You only see your own customers"],
-          label: "The customer map on an iPhone: nearby businesses as pins, and a list below",
-          floats: [{ icon: "pin_area", b: "On the local map", s: "Shown to people nearby" }, { icon: "shops", b: "Your street, together", s: "Independents side by side" }],
-        },
+        { id: "pass", title: "Your card in their pocket", body: "It sits in Apple Wallet or Google Wallet next to their boarding passes, so it never gets left at home." },
+        { id: "stamp", title: "A stamp in one tap", body: "Scan their card or type the last four digits of their phone. The card on their phone updates on the spot." },
+        { id: "winback", title: "A nudge before they drift", body: "See who hasn’t been in for a while and send them a reason to come back.", tag: "{pro}" },
+        { id: "week", title: "Your regulars, counted", body: "A weekly note on who came back, who’s new and who’s close to a reward." },
       ],
-      cta: "Start free",
+      winback: { who: "Maya Chen", line: "Hasn’t been in for 3 weeks", last: "Last visit: oat flat white", action: "Send her a nudge", offer: "Double stamps this week" },
+      week: { label: "regulars came back", shop: "Little Oven" },
+      caption: "Sample data. Your own customers fill in as you go.",
+      cta: "Make your card free",
       pricing: "See pricing",
     },
+    /** The shop types: a photo, a short headline on what the card does, and the reward it starts with (VERTICAL_TEMPLATES). */
+    shops: {
+      title: "Made for the *main street*.",
+      sub: "Pick your kind of business and the card sets itself up with a reward that suits it.",
+      tiles: [
+        { key: "cafe", label: "Cafés", title: "Make the morning coffee a habit", line: "Every 10th drink free, stamped from your phone.", link: "Make a café card", alt: "A barista laughing with a customer at a café counter" },
+        { key: "repair", label: "Repair shops", title: "Be their first call next time", line: "Points on each repair toward a free screen protector.", link: "Make a repair shop card", alt: "Hands taking apart a smartphone at a repair bench" },
+        { key: "barber", label: "Barbers", title: "Keep them in your chair", line: "Every 8th cut free, right in their phone’s wallet.", link: "Make a barber card", alt: "A barber trimming a client's hair with scissors and a comb" },
+        { key: "nails", label: "Nail studios", title: "Keep the standing appointment", line: "$10 off every 6th visit, counted for you.", link: "Make a nail studio card", alt: "A nail tech painting a client's nails" },
+        { key: "corner", label: "Corner stores", title: "Turn quick stops into regulars", line: "Points on every purchase add up to $5 off.", link: "Make a corner store card", alt: "A smiling clerk at the counter of a corner store" },
+        { key: "florist", label: "Florists", title: "Be the shop for every birthday", line: "Points on every bouquet toward a free stem.", link: "Make a florist card", alt: "A florist tying a bouquet at her workbench" },
+      ],
+      also: "Also on Local Loyalty",
+      more: [
+        { href: "/for-restaurants", label: "Restaurants", line: "Commission-free ordering" },
+        { href: "/for-bias", label: "BIAs", line: "Street campaigns" },
+      ],
+    },
     pricing: {
-      title: "Simple pricing",
-      sub: "Your loyalty program is free forever. Add {pro} when you want more.",
+      title: "Free for loyalty, *forever*.",
+      sub: "Start free with no credit card. Add {pro} when you want win-back, promos and more.",
       all: "Compare all plans",
       restaurants: "Restaurants have their own plans.",
       restaurantsLink: "See restaurant pricing",
@@ -324,7 +342,7 @@ export const copy = {
     },
     compare: {
       eyebrow: "Free means free",
-      title: "How we compare",
+      title: "How we *compare*.",
       sub: "Loyalty programs for independent businesses, from each company's public pricing page.",
       rows: ["Monthly fee", "Locations", "Fee on sales through the program"],
       us: ["$0", "Unlimited", "0%"],
@@ -343,8 +361,9 @@ export const copy = {
       sub: "Passport weeks and points weekends, with a one-page board report.",
       cta: "See the BIA page",
     },
-    faqTitle: "Frequently asked questions",
+    faqTitle: "Questions, *answered*.",
     faq: [
+      { q: "Do my customers need an app?", a: "No. They scan your code once and add the card to Apple Wallet or Google Wallet, which is already on their phone. Nothing to download." },
       { q: "Is the loyalty program really free?", a: "Yes. Stamps and points, rewards, the wallet card, your customer list, reports and your map listing are free forever, for unlimited locations and staff. There is no subscription and no fee on loyalty. Online orders on the Free plan carry a {orderFee}% fee." },
       { q: "How do you make money?", a: "From optional paid plans. {pro} is {monthly} a month for businesses that want more; restaurant plans and BIA street campaigns are priced separately. Your loyalty program never moves to a paid plan." },
       { q: "Do I need a POS system?", a: "No. Staff add stamps in the free counter app on any phone or tablet. They scan the customer's card or type the last four digits of their phone number." },
@@ -353,19 +372,19 @@ export const copy = {
       { q: "Is there a contract?", a: "No. There's no contract and no setup fee. Leave any time." },
     ],
     book: {
-      title: "Prefer a hand getting set up?",
-      sub: "We can set up your program and train your staff in a free 20-minute visit.",
+      title: "Rather we *set it up* for you?",
+      sub: "We’ll come by, set up your card and show your staff how to stamp, in a **free 20-minute visit**.",
       whatsapp: "Message us on WhatsApp",
       whatsappText: "Hi, I run a local business. Could I book a free 20-minute setup visit?",
+      photoAlt: "Two people at a shop counter, setting up on a tablet",
     },
     final: {
-      title: "Start bringing customers back",
-      sub: "Free forever for loyalty. Set up in about 5 minutes, from your phone.",
-      cta: "Start free",
+      title: "Your regulars are *already here*.",
+      sub: "Give them a reason to come back. **Free forever** for loyalty, and ready in about five minutes.",
+      cta: "Make your card free",
       pricing: "See pricing",
     },
-    sticky: "Start free",
-    /** The product mocks. Sample shop, sample people, sample numbers: the captions say so. Mirrors the Clear Today, counter, pass and map screens. */
+    sticky: "Make your card free",
     mock: {
       shop: "Pinecone Coffee Co.",
       shopShort: "PC",

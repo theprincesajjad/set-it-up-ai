@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Newsreader, Schibsted_Grotesk } from "next/font/google";
 import Link from "next/link";
 import { Photo } from "@/components/marketing/landing/Photo";
 import { QrCode } from "@/components/ui/QrCode";
 import { COPY_B as C } from "../_landing/copy";
-import { PASSES, Phone, StampAdded, WalletPass, WalletScreen } from "../_landing/Product";
+import { PASSES, Phone, StampAdded, WalletPass, WalletScreen } from "@/components/marketing/landing/Product";
 import { TILE_PHOTO, TopBar, UPHOTOS, devOnly } from "../_landing/shared";
+import { marketingFontVars } from "@/lib/marketing/fonts";
+import { marketingSerifVar } from "@/lib/marketing/serif";
 import "./b.css";
 
 export const metadata: Metadata = { title: "Landing B: warm", robots: { index: false, follow: false } };
@@ -15,15 +16,13 @@ export const metadata: Metadata = { title: "Landing B: warm", robots: { index: f
  * (Schibsted / Bakken & Bæck, SIL OFL 1.1) for text. White and black with grey bands; a bakery counter with Little Oven's rust-red
  * pass on a phone. How it works as three product panels on grey; the shop types as photos with "For the..." lines. Dev only.
  */
-const serif = Newsreader({ subsets: ["latin"], axes: ["opsz"], style: ["normal", "italic"], variable: "--font-wb-serif", display: "swap" });
-const sans = Schibsted_Grotesk({ subsets: ["latin"], variable: "--font-wb-sans", display: "swap" });
 
 const P = PASSES.bakery;
 
 export default async function LandingB() {
   await devOnly();
   return (
-    <div className={`mkt ${serif.variable} ${sans.variable} wb`}>
+    <div className={`mkt ${marketingFontVars} ${marketingSerifVar} wb`}>
       <TopBar cta={C.nav} prefix="wb" />
       <main id="main">
         {/* Hero: the serif promise beside a bakery counter, with the bakery's card on a phone */}

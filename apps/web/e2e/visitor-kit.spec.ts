@@ -1,32 +1,53 @@
 /**
- * Wave Q, visitor: the marketing site on the component kit (the home page was rebuilt in wave R: a plain trades line and hairline
- * where-do-you-fit rows replace the Marquee and the BentoGrid); the questions are on the kit Accordion with every answer in the HTML; /pricing
+ * Wave Q, visitor: the marketing site on the component kit (the home page was rebuilt in wave V: the card maker under the hero, and
+ * photo tiles for the shop types that preset it); the questions are on the kit Accordion with every answer in the HTML; /pricing
  * highlights Pro with the struck first-year price; the footer keeps plain anchors into the A/B pages; legal pages have a contents rail;
  * the neighbourhood cards and the 404 keep their ways on.
  */
 import { expect, test } from "@playwright/test";
 
 test.describe("home on the kit", () => {
-  // Wave R (unslop): the trades are a plain line, nothing loops; where-do-you-fit is four hairline rows, each row one link.
-  test("trades: one plain list under the live counts, nothing moving", async ({ page }) => {
+  // Wave V: the trades list became the card maker's trade picker; nothing on the page loops.
+  test("the card maker: type a name, pick a trade and a colour, and the card and the sign-up link follow", async ({ page }) => {
     await page.goto("/");
-    const trades = page.getByRole("region", { name: "Set up for" });
-    await expect(trades.getByRole("listitem")).toHaveCount(13);
-    await expect(trades.getByRole("listitem").first()).toHaveText("Cafés");
     const moving = await page.evaluate(() => [...document.querySelectorAll(".lp *")].filter((e) => getComputedStyle(e).animationIterationCount === "infinite").length);
     expect(moving).toBe(0);
+    const tryIt = page.locator("#try");
+    const pass = tryIt.locator(".lp-try-pass");
+    const cta = tryIt.locator("[data-cta=tryit]");
+    // Before typing: the café card with its own reward, and a plain sign-up link for a café.
+    await expect(tryIt.getByRole("radio", { name: "Café" })).toBeChecked();
+    await expect(tryIt.getByText("Free drink after 10 stamps", { exact: true })).toBeVisible();
+    await expect(cta).toHaveAttribute("href", "/signup?vertical=cafe&src=home-try");
+    await tryIt.getByLabel("Your shop’s name").fill("Fix-It Phone Lab");
+    // The radios are visually hidden inside their labels (the chips and swatches): click what a person clicks.
+    await tryIt.locator(".lp-chip", { hasText: "Repair shop" }).click();
+    await tryIt.locator(".lp-swatch", { has: page.getByRole("radio", { name: "Blue" }) }).click();
+    await expect(tryIt.getByRole("radio", { name: "Repair shop" })).toBeChecked();
+    await expect(pass.locator(".wu-pass-name")).toHaveText("Fix-It Phone Lab");
+    await expect(pass.locator(".wu-pass-logo")).toHaveText("F");
+    await expect(pass).toContainText("Free screen protector");
+    await expect(tryIt.getByText("Free screen protector at 150 points, 1 point a dollar", { exact: true })).toBeVisible();
+    await expect(cta).toHaveAttribute("href", "/signup?shop=Fix-It+Phone+Lab&vertical=repair_electronics&color=2F55D4&src=home-try");
+    // A shop tile further down presets the trade and brings the card maker into view.
+    await page.locator("#shops").getByRole("link", { name: /Make a barber card/ }).click();
+    await expect(tryIt.getByRole("radio", { name: "Barber" })).toBeChecked();
+    await expect(page).toHaveURL(/#try$/);
+    // Keep this card: the sign-up flow starts at the name, already filled in, with the trade picked.
+    await cta.click();
+    await expect(page).toHaveURL(/\/signup\?.*shop=Fix-It/);
+    await expect(page.getByRole("textbox").first()).toHaveValue("Fix-It Phone Lab");
   });
 
-  test("where do you fit: four rows, each row one link, 44px or taller", async ({ page }) => {
+  test("shop tiles: six, each one link with a 44px target that covers the tile", async ({ page }) => {
     await page.goto("/");
-    const router = page.getByRole("region", { name: "Where do you fit?" });
-    await expect(router.locator(".lp-door")).toHaveCount(4);
-    const link = router.getByRole("link", { name: /See booking/ });
-    await expect(link).toHaveAttribute("href", "/for-nail-techs");
-    // The link's hit area is the whole row (::after inset 0), so clicking the row's title follows it.
-    const h = await link.evaluate((e) => e.closest(".lp-door")!.getBoundingClientRect().height);
-    expect(h).toBeGreaterThanOrEqual(44);
+    const tiles = page.locator("#shops .lp-tile");
+    await expect(tiles).toHaveCount(6);
+    const link = page.locator("#shops").getByRole("link", { name: /Make a corner store card/ });
     expect(await link.evaluate((e) => e.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+    // The link's hit area is the whole tile (::after inset 0).
+    const after = await link.evaluate((e) => getComputedStyle(e, "::after").position);
+    expect(after).toBe("absolute");
   });
 
   test("questions: the kit accordion, answers in the HTML, opens and closes", async ({ page }) => {

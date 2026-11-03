@@ -49,8 +49,8 @@ const subscribeNever = () => () => undefined;
 const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
 /**
- * Marketing top nav (wave T, after squareup.com): white, a hairline, the black wordmark, plain text links that get a grey pill on hover
- * (the current page keeps it), "Log in" as a text link and one black pill button. Its own `.mkt` scope, so the tokens resolve on every marketing page. Mobile menu uses <details> (no JS). The language menu and
+ * Marketing top nav (wave T; wave V restyled it to direction B): white, a hairline, the black wordmark in Schibsted Grotesk, plain
+ * text links that underline on hover (the current page keeps the line), "Log in" as a text link and one black pill button. Its own `.mkt` scope, so the tokens resolve on every marketing page. Mobile menu uses <details> (no JS). The language menu and
  * translated labels appear only on /for-restaurants and /for-shoppers, the pages that have translated content (docs/research/landing-and-network.md 7.3).
  * On /for-bias the sign-in link and the black button become "BIA log in" and "Plan a campaign".
  */
@@ -110,7 +110,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
               key={n.href}
               href={n.href}
               aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
-              className={cn("inline-flex h-11 items-center rounded-full px-4 text-base font-medium transition-colors hover:bg-mkt-grey hover:text-mkt-black focus-visible:focus-ring", isCurrent(pathname, n.href) ? "bg-mkt-grey text-mkt-black" : "text-mkt-black")}
+              className={cn("inline-flex h-11 items-center rounded-md px-3.5 text-base font-medium text-mkt-black underline decoration-1 underline-offset-8 transition-colors hover:decoration-mkt-black focus-visible:focus-ring", isCurrent(pathname, n.href) ? "decoration-mkt-black" : "decoration-transparent")}
             >
               {n.label}
             </Link>
@@ -118,10 +118,10 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
         </nav>
         <div className="hidden items-center gap-2 lg:flex">
           {switcher}
-          <Link href={login.href} className="inline-flex h-11 items-center rounded-full px-4 text-body font-medium text-mkt-black hover:bg-mkt-grey focus-visible:focus-ring">
+          <Link href={login.href} className="inline-flex h-11 items-center rounded-md px-3.5 text-base font-medium text-mkt-black underline decoration-transparent decoration-1 underline-offset-8 transition-colors hover:decoration-mkt-black focus-visible:focus-ring">
             {login.label}
           </Link>
-          <Link href={cta.href} className="inline-flex h-11 items-center rounded-full bg-mkt-black px-6 text-base font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
+          <Link href={cta.href} className="ms-1 inline-flex h-11 items-center rounded-full bg-mkt-black px-5.5 text-base font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
             {cta.label}
           </Link>
         </div>

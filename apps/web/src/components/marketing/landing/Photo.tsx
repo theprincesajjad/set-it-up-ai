@@ -20,9 +20,10 @@ const srcset = (s: PhotoSet, ext: "avif" | "webp") => s.widths.map((w) => `${s.s
 const PHONE = "(max-width: 767.98px)";
 const WIDE = "(min-width: 768px)";
 
-export function Photo({ set, mobile, alt, sizes, priority = false, className }: { set: PhotoSet; mobile?: PhotoSet; alt: string; sizes: string; priority?: boolean; className?: string }) {
+export function Photo({ set, mobile, alt, sizes, priority = false, preloadMobile = true, className }: { set: PhotoSet; mobile?: PhotoSet; alt: string; sizes: string; priority?: boolean; preloadMobile?: boolean; className?: string }) {
+  // `preloadMobile={false}`: on phones the photo sits below the first screen, so it should not take bandwidth from the text and CSS.
   if (priority) {
-    if (mobile) preload(`${mobile.src}-${mobile.widths[0]}.avif`, { as: "image", type: "image/avif", imageSrcSet: srcset(mobile, "avif"), imageSizes: "100vw", media: PHONE, fetchPriority: "high" });
+    if (mobile && preloadMobile) preload(`${mobile.src}-${mobile.widths[0]}.avif`, { as: "image", type: "image/avif", imageSrcSet: srcset(mobile, "avif"), imageSizes: "100vw", media: PHONE, fetchPriority: "high" });
     preload(`${set.src}-${set.widths[0]}.avif`, { as: "image", type: "image/avif", imageSrcSet: srcset(set, "avif"), imageSizes: sizes, media: mobile ? WIDE : undefined, fetchPriority: "high" });
   }
   const small = Math.min(...set.widths);
@@ -38,23 +39,20 @@ export function Photo({ set, mobile, alt, sizes, priority = false, className }: 
 }
 
 const photo = (name: string, widths: readonly number[], width: number, height: number): PhotoSet => ({ src: `/marketing/photos/${name}`, widths, width, height });
-const shot = (name: string, widths: readonly number[], width: number, height: number): PhotoSet => ({ src: `/marketing/product/${name}`, widths, width, height });
 
-/** Every image on the home page, by role. Sizes match tools/process.py output (the encoded widths). */
+/** Every image on the home page, by role (Unsplash, public/marketing/photos/CREDITS.md). Sizes match the encoded widths. */
 export const PHOTOS = {
-  cafe: photo("cafe", [960, 1600], 1600, 1067),
-  cafeMobile: photo("cafe-m", [800], 800, 600),
-  repair: photo("repair", [720, 1200], 1200, 1500),
-  barber: photo("barber", [640, 1000], 1000, 750),
-  cafePour: photo("cafe-pour", [640, 1000], 1000, 750),
-  cornerStore: photo("corner-store", [640, 1000], 1000, 750),
-  retail: photo("retail", [480, 800], 800, 1000),
-  nails: photo("nails", [480, 800], 800, 1000),
-  bakery: photo("bakery", [480, 800], 800, 1000),
-  street: photo("street", [480, 800], 800, 1000),
+  /** The hero: a baker behind her counter (4:5). */
+  heroBakery: photo("u-bakery", [640, 900, 1280], 1280, 1600),
+  /** Phones: the same crop without the 1280 width (a 3x phone would pick it for a 300px frame). */
+  heroBakeryM: photo("u-bakery", [640, 900], 900, 1125),
+  /** The visit: two people setting up at a shop counter (4:3). */
   counterHelp: photo("counter-help", [640, 1000], 1000, 750),
-  today: shot("today", [960, 1600], 1600, 1000),
-  todayMobile: shot("today-m", [780], 780, 1387),
-  counter: shot("counter", [800, 1400], 1400, 973),
-  pass: shot("pass", [560, 860], 860, 1327),
+  /** The shop tiles (4:5). */
+  tCafe: photo("u-t-cafe", [480, 720], 720, 900),
+  tRepair: photo("u-t-repair", [480, 720], 720, 900),
+  tBarber: photo("v-t-barber", [480, 720], 720, 900),
+  tNails: photo("v-t-nails", [480, 720], 720, 900),
+  tCorner: photo("v-t-corner", [480, 720], 720, 900),
+  tFlorist: photo("v-t-florist", [480, 720], 720, 900),
 } as const;

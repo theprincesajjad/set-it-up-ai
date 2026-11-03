@@ -55,32 +55,37 @@ test.beforeAll(async () => {
 });
 
 test.describe("landing", () => {
-  test("sections in order, router links, one form, no POS logos or counter speed, no invented numbers", async ({ page }) => {
+  test("sections in order, shop tiles into the card maker, one form, no POS logos or counter speed, no invented numbers", async ({ page }) => {
     await page.goto("/");
     const y = async (loc: ReturnType<Page["locator"]>) => (await loc.first().boundingBox())!.y;
+    // Wave V (direction B): the card maker right under the hero, then how it works, what you get, the shop types, the plans.
     const order = [
       page.getByRole("heading", { level: 1 }),
       page.getByRole("region", { name: "Live counts" }),
-      page.getByRole("heading", { name: "Live at your counter today" }),
-      page.getByRole("heading", { name: "Built to bring customers back" }),
-      page.getByRole("region", { name: "Where do you fit?" }),
-      page.getByRole("heading", { name: "Simple pricing" }),
-      page.getByRole("heading", { name: "How we compare" }),
-      page.getByRole("heading", { name: "Frequently asked questions" }),
-      page.getByRole("heading", { name: "Prefer a hand getting set up?" }),
-      page.getByRole("heading", { name: "Start bringing customers back" }),
+      page.getByRole("heading", { name: "Make your card right here." }),
+      page.getByRole("heading", { name: "Ready before the morning rush." }),
+      page.getByRole("heading", { name: "What you get from the first stamp." }),
+      page.getByRole("heading", { name: "Made for the main street." }),
+      page.getByRole("heading", { name: "Free for loyalty, forever." }),
+      page.getByRole("heading", { name: "How we compare." }),
+      page.getByRole("heading", { name: "Questions, answered." }),
+      page.getByRole("heading", { name: "Rather we set it up for you?" }),
+      page.getByRole("heading", { name: "Your regulars are already here." }),
     ];
     const ys: number[] = [];
     for (const l of order) ys.push(await y(l));
     expect(ys, "sections appear in the specified order").toEqual([...ys].sort((a, b) => a - b));
 
-    const router = page.getByRole("region", { name: "Where do you fit?" });
-    await expect(router.getByRole("link", { name: /Start free/ })).toHaveAttribute("href", "/signup");
-    await expect(router.getByRole("link", { name: /See booking/ })).toHaveAttribute("href", "/for-nail-techs");
-    await expect(router.getByRole("link", { name: /See restaurant plans/ })).toHaveAttribute("href", "/for-restaurants");
-    await expect(router.getByRole("link", { name: /See the BIA page/ })).toHaveAttribute("href", "/for-bias");
+    // The shop tiles: each one link into the card maker, preset to its trade; the other audiences one tap away.
+    const shops = page.locator("#shops");
+    await expect(shops.locator(".lp-tile")).toHaveCount(6);
+    await expect(shops.getByRole("link", { name: /Make a repair shop card/ })).toHaveAttribute("href", "#try");
+    await expect(shops.getByRole("link", { name: /Make a repair shop card/ })).toHaveAttribute("data-try-trade", "repair");
+    await expect(shops.getByRole("navigation", { name: "Booking for" }).getByRole("link", { name: /Nail techs/ })).toHaveAttribute("href", "/for-nail-techs");
+    await expect(shops.getByRole("link", { name: /Restaurants/ })).toHaveAttribute("href", "/for-restaurants");
+    await expect(shops.getByRole("link", { name: /BIAs/ })).toHaveAttribute("href", "/for-bias");
     // Calls to action down the page (landing v4): every one carries data-cta.
-    for (const c of ["hero", "how", "outcomes", "pricing", "final", "sticky", "seepricing"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
+    for (const c of ["hero", "how", "tryit", "outcomes", "pricing", "final", "sticky", "seepricing"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
     // Wave P: the page was cut down (facts strip, pass row and the separate Pro block are gone), so it has fewer asks.
     for (const gone of ["afterhero", "promos", "pro"]) await expect(page.locator(`[data-cta=${gone}]`)).toHaveCount(0);
     expect(await page.locator('main a[href^="/signup"]').count()).toBeLessThanOrEqual(8);
@@ -95,6 +100,9 @@ test.describe("landing", () => {
     await expect(page.locator("main")).not.toContainText(/founding/i);
 
     await expect(page.locator("form")).toHaveCount(1);
+    // Wave V: sections below the first screen skip rendering (content-visibility: auto), and innerText leaves them out; render them all
+    // so the checks below read the whole page.
+    await page.evaluate(() => document.querySelectorAll<HTMLElement>(".lp-sec, .lp-try, .lp-final").forEach((e) => (e.style.contentVisibility = "visible")));
     const text = await visibleText(page);
     for (const gone of ["Works with your counter", "no POS? no problem", "At the counter", "phone number, tap, done", "get your shop on the street’s card"]) expect(text).not.toContain(gone);
     expect(text).not.toMatch(/Trusted by/i);

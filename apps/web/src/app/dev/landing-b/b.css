@@ -3,6 +3,9 @@
  * and black with one grey band; the bakery's rust pass is the only colour outside the photos. Tokens only (--mkt-*).
  */
 .wb {
+  /* Since wave V the dev page shares the live page's fonts (lib/marketing/fonts.ts, serif.ts). */
+  --font-wb-serif: var(--font-mkt-serif);
+  --font-wb-sans: var(--font-mkt-sans);
   --font-mkt-display: var(--font-wb-sans);
   --wu-face-display: var(--font-wb-serif);
   --wu-face-ui: var(--font-wb-sans);

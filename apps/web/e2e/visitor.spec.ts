@@ -14,15 +14,18 @@ test.describe("home", () => {
     expect(await fold(page.getByRole("heading", { level: 1 }))).toBe(true);
     // Wave R: what and who in the headline and lede, the price as the lede's last words (no price paragraph under the buttons);
     // Pro's price with the struck first-year price sits in the plans.
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("stamp card");
+    // Wave V: the payoff in the headline ("Your regulars, on repeat."), what it is in the lede.
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your regulars, on repeat.");
+    await expect(page.locator(".lp-hero-copy .lp-lede")).toContainText("stamp card");
     await expect(page.locator(".lp-hero-copy .lp-lede")).toContainText(/Apple Wallet or Google Wallet/);
     expect(await fold(page.getByTestId("hero-price"))).toBe(true);
     await expect(page.getByTestId("hero-price")).toContainText("Loyalty is free forever.");
     expect(await fold(page.locator("[data-cta=hero]"))).toBe(true);
     await expect(page.locator("#pricing [data-plan=yearly] s")).toHaveText("$290");
     await expect(page.locator("[data-cta=hero]")).toHaveAttribute("href", "/signup");
-    // The page is a story, not a wall: well under the 15,600 px it was.
-    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(13_000);
+    // The page is a story, not a wall: under the 15,600 px it was before wave P. Wave V added the card maker under the hero (about
+    // 1,900 px at 390), so the bar moved from 13,000 to 15,000.
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(15_000);
   });
 
   test("every start button on the marketing pages goes to the sign-up entry", async ({ page }) => {
