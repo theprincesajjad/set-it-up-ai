@@ -155,26 +155,35 @@ export const copy = {
       description: "A free loyalty program for local businesses: a digital stamp card in Apple Wallet and Google Wallet, promos that bring customers back, and weekly reports. Set up in about 5 minutes.",
     },
     hero: {
-      title: ["Turn first visits", "into regulars."],
-      sub: "A free loyalty program for cafés, salons, shops and studios: a digital stamp card, promos and weekly reports.",
-      /** The price under the buttons (wave P): loyalty free, Pro's price and its first-year price, the trial. Filled from PLANS. */
-      price: { free: "Loyalty is free forever.", pro: "{pro} is {monthly} a month, or", first: "first year.", trial: "{trial} days of {pro} free, no credit card." },
+      /** Wave R: one line of what, for whom; the serif headline on the counter scene. */
+      title: "A free stamp card for the shops on your street",
+      sub: "Customers keep your card in Apple Wallet or Google Wallet. You stamp it from any phone at the counter and see who keeps coming back.",
+      /** The last words of the lede (data-testid hero-price): the price in the first screen, without a paragraph under the buttons. */
+      free: "Loyalty is free forever.",
+      /** The hero scene (public/marketing/counter-*.avif, generated, no text in it). */
+      sceneAlt: "A café counter in late afternoon light: a cup of coffee, a wooden rubber stamp, an ink tin and a stack of blank cards",
       primary: "Start free",
       secondary: "See how it works",
-      trust: ["No app for customers", "Set up in 5 minutes", "No contract"],
-      stageLabel: "The dashboard a shop owner sees, and the stamp card on a customer's iPhone",
-      caption: "Sample data. Your own numbers fill in as you go.",
-      /** The two glass notes floating over the hero product (wave Q, wide screens only; sample data like the screens). */
+      /** Sample notes; wave R: the home hero has none, the sign-in stage (AuthLayout) still uses the first. */
       floats: [
         { icon: "stamp_card", b: "Stamp added for Maya", s: "9 of 10, one to go" },
         { icon: "megaphone", b: "Double stamps at 2 p.m.", s: "Sent to 412 customers who opted in" },
       ],
-      /** Sample visuals inside the two wide where-do-you-fit cards (decorative, aria-hidden). */
-      bento: { stamps: "9 of 10 stamps", passport: "Passport week", shops: "3 of 5 shops visited" },
     },
-    /** Wave Q: the slow row of trades under the hero (a Marquee; listed once for screen readers). Icons from public/icons3d. */
+    /** Wave R: the stamp card object in the hero (sample shop and person, like the mocks). */
+    card: {
+      label: "Sample stamp card for Pinecone Coffee Co.: 9 of 10 stamps, the next one is a free drink",
+      street: "Roncesvalles",
+      rewardLabel: "Next reward",
+      reward: "Free drink",
+      holderLabel: "Card holder",
+      holder: "Maya R.",
+    },
+    /** Wave R: the counter preview in how-it-works (sample data; the caption says so). */
+    counterCaption: "Sample data. Your own customers fill in as you go.",
+    /** The trades under the hero (wave R: a plain line, was a Marquee) (a Marquee; listed once for screen readers). Icons from public/icons3d. */
     trades: {
-      label: "Made for the shops on your street",
+      label: "Set up for",
       items: [
         { icon: "cafe", label: "Cafés" },
         { icon: "bakery", label: "Bakeries" },
@@ -203,7 +212,7 @@ export const copy = {
     },
     router: {
       label: "Where do you fit?",
-      title: "Made for local businesses.",
+      title: "Made for local businesses",
       sub: "Pick your type of business and the program sets itself up.",
       items: [
         { eyebrow: "Cafés, bakeries, retail, salons and studios", title: "Free loyalty program", body: "Stamps or points, a wallet card and weekly reports.", cta: "Start free", href: "/signup" },
@@ -216,10 +225,10 @@ export const copy = {
       shops: "local businesses signed up, counted live",
       streets: "streets where the card works today",
       multi: "of customers collect at 2 or more businesses",
-      note: "Live counts, refreshed every few minutes.",
+      note: "Counted live from the network, refreshed every few minutes",
     },
     how: {
-      title: "Live at your counter today.",
+      title: "Live at your counter today",
       sub: "No hardware to buy, no app to install, no training day.",
       steps: [
         { t: "Create your program", b: "Choose stamps or points and a reward. Your card, QR stand and map listing are ready in minutes." },
@@ -229,12 +238,12 @@ export const copy = {
       label: "The counter screen on a tablet: a keypad to find a customer and the recent stamps",
     },
     outcomes: {
-      title: "Built to bring customers back.",
+      title: "Built to bring customers back",
       sub: "See what is working, reward loyalty and fill quiet hours, from one dashboard.",
       rows: [
         {
           id: "week",
-          title: "Know how your week went.",
+          title: "Know how your week went",
           body: "Visits, new customers and rewards, compared with the same day last week.",
           points: ["A comparison on every number", "Your busiest hours at a glance", "A short list of what needs you today"],
           label: "The Today screen: visits, stamps, rewards and new customers, with what needs attention",
@@ -242,7 +251,7 @@ export const copy = {
         },
         {
           id: "pass",
-          title: "A card that lives on their phone.",
+          title: "A card that lives on their phone",
           body: "Customers add your card to Apple Wallet or Google Wallet. Nothing to download, nothing to lose.",
           points: ["Your colours and your reward", "Updates the moment a stamp is given", "Works on any phone"],
           label: "A customer's stamp card on an iPhone: 9 of 10 stamps, one to go for a free drink",
@@ -250,7 +259,7 @@ export const copy = {
         },
         {
           id: "promos",
-          title: "Promos that bring people in.",
+          title: "Promos that bring people in",
           body: "Double stamps on a slow afternoon, a birthday treat or a new menu item, sent to customers who opted in.",
           points: ["Ready-made templates", "Only to customers who opted in"],
           label: "Composing a promo: a template, the customers it goes to, and when it runs",
@@ -258,7 +267,7 @@ export const copy = {
         },
         {
           id: "map",
-          title: "Found by people nearby.",
+          title: "Found by people nearby",
           body: "Your business shows up on the local map, next to the other independents on your street.",
           points: ["A free listing on the map", "People find businesses near them", "You only see your own customers"],
           label: "The customer map on an iPhone: nearby businesses as pins, and a list below",
@@ -269,7 +278,7 @@ export const copy = {
       pricing: "See pricing",
     },
     pricing: {
-      title: "Simple pricing.",
+      title: "Simple pricing",
       sub: "Your loyalty program is free forever. Add {pro} when you want more.",
       all: "Compare all plans",
       restaurants: "Restaurants have their own plans.",
@@ -303,7 +312,7 @@ export const copy = {
     },
     compare: {
       eyebrow: "Free means free",
-      title: "How we compare.",
+      title: "How we compare",
       sub: "Loyalty programs for independent businesses, from each company's public pricing page.",
       rows: ["Monthly fee", "Locations", "Fee on sales through the program"],
       us: ["$0", "Unlimited", "0%"],
@@ -338,7 +347,7 @@ export const copy = {
       whatsappText: "Hi, I run a local business. Could I book a free 20-minute setup visit?",
     },
     final: {
-      title: "Start bringing customers back.",
+      title: "Start bringing customers back",
       sub: "Free forever for loyalty. Set up in about 5 minutes, from your phone.",
       cta: "Start free",
       pricing: "See pricing",

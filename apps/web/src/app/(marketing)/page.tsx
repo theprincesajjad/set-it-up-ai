@@ -1,21 +1,19 @@
-import { ArrowRight, CalendarCheck, Check, Landmark, Stamp, UtensilsCrossed } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { MapCategoryId } from "@ll/design-tokens";
+import { preload } from "react-dom";
 import { BRAND, FEES } from "@ll/shared";
 import { CompetitorTable } from "@/components/marketing/CompetitorTable";
-import { Faq } from "@/components/marketing/Faq";
-import { TradeMarquee } from "@/components/marketing/TradeMarquee";
 import { ContactForm } from "@/components/marketing/ContactForm";
+import { Faq } from "@/components/marketing/Faq";
 import { LiveProof } from "@/components/marketing/LiveProof";
+import { TradeMarquee } from "@/components/marketing/TradeMarquee";
+import { CounterPreview } from "@/components/marketing/landing/CounterPreview";
+import { StampCard } from "@/components/marketing/landing/StampCard";
+import "@/components/marketing/landing/landing.css";
 import { LandingMeasure } from "@/components/marketing/landing-ab/LandingMeasure";
-import { IPhone } from "@/components/marketing/device/IPhone";
-import { CounterPhone, CounterTablet, MapPhone, PassPhone, PromoMock, TodayDesktop, TodayPhone } from "@/components/marketing/home/mocks";
-import "@/components/marketing/home/home.css";
-import { BentoCard, BentoGrid } from "@/components/primitives/bento-grid";
-import { BlurFadeStatic } from "@/components/primitives/blur-fade-static";
-import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { copy } from "@/copy/en-CA";
+import { marketingFontVars } from "@/lib/marketing/fonts";
 import { marketingPlans, planLine, planNote, planVars } from "@/lib/marketing/plan-copy";
 import { fill } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
@@ -34,275 +32,167 @@ export const metadata: Metadata = {
 const VARS = { ...planVars(), orderFee: Number((FEES.orderBpsFree / 100).toFixed(2)) };
 const f = (s: string) => fill(s, VARS);
 
-/** Where-do-you-fit as a bento (wave Q): the art, the trade colour, the icon and the span of each door, in L.router.items order. */
-const ROUTER: { art: MapCategoryId; trade?: string; Icon: typeof Stamp; span: string }[] = [
-  { art: "coffee", trade: "cafe", Icon: Stamp, span: "md:col-span-2" },
-  { art: "beauty", trade: "nails", Icon: CalendarCheck, span: "md:col-span-1" },
-  { art: "eat", trade: "restaurant", Icon: UtensilsCrossed, span: "md:col-span-1" },
-  { art: "all", Icon: Landmark, span: "md:col-span-2" },
-];
-
-function Primary({ href = "/signup", cta, children, className }: { href?: string; cta: string; children: React.ReactNode; className?: string }) {
+/** The one ink button. Every ask on the page goes to the sign-up entry and carries its data-cta (the funnel counts them). */
+function Primary({ cta, children, quiet }: { cta: string; children: React.ReactNode; quiet?: boolean }) {
   return (
-    <Link href={href} prefetch={false} className={className ? `hm-btn ${className}` : "hm-btn"} data-cta={cta}>
+    <Link href="/signup" prefetch={false} className={quiet ? "lp-btn2" : "lp-btn"} data-cta={cta}>
       {children}
-      <ArrowRight aria-hidden strokeWidth={2.4} />
     </Link>
   );
 }
 
-/** Under the hero buttons: what it costs, in one glance (loyalty free, Pro's monthly price and its first-year price, the trial). */
-function HeroPrice() {
-  const pro = marketingPlans("shop").find((p) => p.key === "monthly")!;
-  const P = L.hero.price;
-  return (
-    <p className="hm-trial" data-testid="hero-price">
-      <b>{P.free}</b> {f(P.pro)}{" "}
-      {pro.yearly?.was ? (
-        <>
-          <s>{pro.yearly.was}</s> <b>{pro.yearly.now}</b> {P.first}
-        </>
-      ) : (
-        `${pro.yearly?.line ?? ""}.`
-      )}{" "}
-      {f(P.trial)}
-    </p>
-  );
-}
+/** A 1 x 1 transparent GIF: phones fetch nothing for the scene (it is hidden there, see below). */
+const NO_IMAGE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
-/** A small sample inside the two wide bento cards: the stamp card and a street passport (decorative; the hero caption says sample data). */
-function BentoDemo({ i }: { i: number }) {
-  const B = L.hero.bento;
-  if (i === 0)
-    return (
-      <div className="hm-bento-demo" aria-hidden>
-        <b>{B.stamps}</b>
-        <span className="hm-bento-stamps">
-          {Array.from({ length: 10 }, (_, k) => (
-            <i key={k} />
-          ))}
-        </span>
-      </div>
-    );
-  if (i === 3)
-    return (
-      <div className="hm-bento-demo" aria-hidden>
-        <b>{B.passport}</b>
-        <span className="hm-bento-bar">
-          <i />
-        </span>
-        <small>{B.shops}</small>
-      </div>
-    );
-  return null;
-}
+/**
+ * The counter scene (generated, no text in it) behind the hero from 1024 px, in AVIF with a WebP fallback, sized by width. Phones show
+ * the stamp card on the wall colour without the photo: measured on a throttled phone, the photo became the largest paint and cost about
+ * 100 ms of LCP, and the card is the moment there anyway.
+ */
+const SCENE_AVIF = "/marketing/counter-960.avif 960w, /marketing/counter-1280.avif 1280w, /marketing/counter-1600.avif 1568w";
+const SCENE_WEBP = "/marketing/counter-960.webp 960w, /marketing/counter-1280.webp 1280w, /marketing/counter-1600.webp 1568w";
 
-/** One outcome row: the words on one side, the product on the other (sides alternate from md). */
-function Outcome({ id, i, children }: { id: (typeof L.outcomes.rows)[number]["id"]; i: number; children: React.ReactNode }) {
-  const r = L.outcomes.rows.find((x) => x.id === id)!;
-  const points = r.id === "promos" ? [...r.points, planLine("promoAllowance")] : r.points;
+function Scene() {
+  // The browser's preload scanner skips a <picture> whose <img> has no real src, so the wide screens get the scene through a preload.
+  preload("/marketing/counter-1600.avif", { as: "image", type: "image/avif", imageSrcSet: SCENE_AVIF, imageSizes: "100vw", media: "(min-width: 1024px)", fetchPriority: "high" });
   return (
-    <BlurFadeStatic className={i % 2 ? "hm-row hm-row-flip" : "hm-row"} id={`outcome-${r.id}`}>
-      <div className="hm-row-copy">
-        <h3 className="hm-h3">{r.title}</h3>
-        <p className="hm-body">{r.body}</p>
-        <ul className="hm-checks">
-          {points.map((p) => (
-            <li key={p}>
-              <Check aria-hidden strokeWidth={2.6} />
-              {p}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <figure className="hm-row-art" role="img" aria-label={r.label}>
-        {children}
-        {r.floats.map((x, k) => (
-          <span key={x.b} className={`hm-float glass-sheet ${k ? "hm-float-b" : "hm-float-a"}`} aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/icons3d/${x.icon}@2x.png`} alt="" width={32} height={32} loading="lazy" decoding="async" />
-            <span>
-              <b>{x.b}</b>
-              <small>{x.s}</small>
-            </span>
-          </span>
-        ))}
-      </figure>
-    </BlurFadeStatic>
+    <picture className="lp-scene">
+      <source media="(min-width: 1024px)" type="image/avif" srcSet={SCENE_AVIF} sizes="100vw" />
+      <source media="(min-width: 1024px)" type="image/webp" srcSet={SCENE_WEBP} sizes="100vw" />
+      <img src={NO_IMAGE} alt={L.hero.sceneAlt} width={1568} height={882} fetchPriority="high" />
+    </picture>
   );
 }
 
 /**
- * The home page (landing v4, cut down in wave P so it reads like a product site, not a wall): the promise, the price and the product
- * (the Today screen and the customer's pass), live network counts, how it works beside the counter, three outcome rows with real-screen
- * mocks, where-do-you-fit, the three plans (lib/marketing/plan-copy.ts), the dated comparison, questions, a visit, and the closing ask;
- * on phones a sticky bar keeps the button in reach. Gone in wave P: the facts strip (it repeated the hero), the pass row (the hero shows
- * the pass) and the separate "why Pro" block (the Pro card says the same). Static (re-generated every 5 minutes for the live counts),
- * CSS-only motion, no client script of its own beyond the visit form and the questions.
- * Wave Q (kit): a stacked window and glass notes give the hero depth, a Marquee of trades sits under it, where-do-you-fit is a
- * BentoGrid, the questions are the kit Accordion, and sections below the fold rise in with BlurFadeStatic (CSS scroll timeline, no JS).
+ * The home page, wave R (unslop pass). One moment: the stamp card, a real crafted card object lying on a main-street counter in window
+ * light. One signature: the ink stamp (the card's stamps and the logo). The chrome around it is quiet: warm paper, ink buttons, hairlines.
+ * Order: the promise on the scene, live counts and trades, how it works beside the counter screen, what it does, where you fit, the
+ * plans, the dated comparison, questions, a visit, the closing ask. Gone in wave R: the device collage and its floating notes, the
+ * trades marquee, the bento, the outcome device mocks, the price paragraph and check row under the hero buttons, every scroll fade.
+ * Static (re-generated every 5 minutes for the live counts); no client script of its own beyond the visit form and the questions.
  */
 export default function Home() {
   const waUrl = whatsappUrl(L.book.whatsappText);
   const plans = marketingPlans("shop");
   return (
     // data-solo-trade="home": the landing beacon's page marker (LandingMeasure below); "/" is counted for the admin funnel (wave N).
-    <div className="hm" data-solo-trade="home">
-      {/* 1. Hero */}
-      <section className="hm-hero" aria-labelledby="hm-title">
-        <div className="hm-wrap hm-hero-copy">
-          <h1 className="hm-h1" id="hm-title">
-            <span>{L.hero.title[0]}</span> <span>{L.hero.title[1]}</span>
-          </h1>
-          <p className="hm-lede">{L.hero.sub}</p>
-          <div className="hm-ctas">
-            <Primary cta="hero">{L.hero.primary}</Primary>
-            <a className="hm-btn2" href="#how" data-cta="how">
-              {L.hero.secondary}
-            </a>
-          </div>
-          <HeroPrice />
-          <ul className="hm-trust">
-            {L.hero.trust.map((t) => (
-              <li key={t}>
-                <Check aria-hidden strokeWidth={2.6} />
-                {t}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="hm-wrap">
-          <div className="hm-stage" role="img" aria-label={L.hero.stageLabel}>
-            {/* Wave Q depth: a second window stacked behind the Today screen, and two glass notes floating over the edges (wide screens). */}
-            <div className="hm-window-back" aria-hidden />
-            <div className="hm-window">
-              <TodayDesktop />
+    <div className={`mkt ${marketingFontVars} lp`} data-solo-trade="home">
+      {/* 1. The promise, on the counter */}
+      <section className="lp-hero" aria-labelledby="lp-title">
+        <Scene />
+        <div className="lp-wrap lp-hero-in">
+          <div className="lp-hero-copy">
+            <h1 className="lp-h1" id="lp-title">
+              {L.hero.title}
+            </h1>
+            <p className="lp-lede">
+              {L.hero.sub} <b data-testid="hero-price">{L.hero.free}</b>
+            </p>
+            <div className="lp-actions">
+              <Primary cta="hero">{L.hero.primary}</Primary>
+              <a className="lp-btn2" href="#how" data-cta="how">
+                {L.hero.secondary}
+              </a>
             </div>
-            <IPhone className="hm-hero-phone" status="light">
-              <PassPhone />
-            </IPhone>
-            {L.hero.floats.map((x, k) => (
-              <span key={x.b} className={`hm-float glass-sheet hm-stage-float ${k ? "hm-stage-float-b" : "hm-stage-float-a"}`} aria-hidden>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/icons3d/${x.icon}@2x.png`} alt="" width={32} height={32} loading="lazy" decoding="async" />
-                <span>
-                  <b>{x.b}</b>
-                  <small>{x.s}</small>
-                </span>
-              </span>
-            ))}
           </div>
-          <p className="hm-caption">{L.hero.caption}</p>
+          <div className="lp-hero-card">
+            <StampCard />
+          </div>
         </div>
       </section>
 
-      {/* 2. The trades it is set up for, a slow row (kit Marquee, CSS only). */}
-      <TradeMarquee />
+      {/* 2. Live proof (real counts, hidden until the network passes 10 businesses) and the trades it is set up for */}
+      <div className="lp-band">
+        <div className="lp-wrap">
+          <LiveProof />
+          <TradeMarquee />
+        </div>
+      </div>
 
-      {/* 3. Live proof: real counts, hidden until the network passes 10 businesses. */}
-      <LiveProof />
-
-      {/* 4. How it works, beside the counter */}
-      <section className="hm-sec hm-white" id="how" aria-labelledby="hm-how">
-        <BlurFadeStatic className="hm-wrap hm-how">
+      {/* 3. How it works, beside the counter screen */}
+      <section className="lp-sec" id="how" aria-labelledby="lp-how">
+        <div className="lp-wrap lp-how">
           <div>
-            <h2 className="hm-h2" id="hm-how">
-              {L.how.title}
-            </h2>
-            <p className="hm-lede">{L.how.sub}</p>
-            <ol className="hm-steps">
+            <div className="lp-head lp-head-tight">
+              <h2 className="lp-h2" id="lp-how">
+                {L.how.title}
+              </h2>
+              <p className="lp-lede">{L.how.sub}</p>
+            </div>
+            <ol className="lp-steps">
               {L.how.steps.map((s, i) => (
                 <li key={s.t}>
-                  <span className="hm-step-n">{i + 1}</span>
-                  <div>
-                    <h3>{s.t}</h3>
-                    <p>{s.b}</p>
-                  </div>
+                  <span className="lp-step-n">{i + 1}</span>
+                  <h3 className="lp-h3">{s.t}</h3>
+                  <p className="lp-body">{s.b}</p>
                 </li>
               ))}
             </ol>
           </div>
-          <figure className="hm-how-art" role="img" aria-label={L.how.label}>
-            <div className="hm-tablet">
-              <div className="hm-tablet-screen">
-                <CounterTablet />
-              </div>
-            </div>
-            <IPhone className="hm-how-phone">
-              <CounterPhone />
-            </IPhone>
-          </figure>
-        </BlurFadeStatic>
+          <div>
+            <CounterPreview />
+            <p className="lp-meta lp-caption">{L.counterCaption}</p>
+          </div>
+        </div>
       </section>
 
-      {/* 5. Outcomes, each with the real screen */}
-      <section className="hm-sec" id="product" aria-labelledby="hm-product">
-        <div className="hm-wrap">
-          <div className="hm-head hm-center">
-            <h2 className="hm-h2" id="hm-product">
+      {/* 4. What it does after the first stamp */}
+      <section className="lp-sec" id="product" aria-labelledby="lp-product">
+        <div className="lp-wrap">
+          <div className="lp-head">
+            <h2 className="lp-h2" id="lp-product">
               {L.outcomes.title}
             </h2>
-            <p className="hm-lede">{L.outcomes.sub}</p>
+            <p className="lp-lede">{L.outcomes.sub}</p>
           </div>
-          <div className="hm-rows">
-            {/* The pass row is gone (wave P): the hero already shows the card on a phone, and step 2 of "how" says Wallet. */}
-            <Outcome id="week" i={0}>
-              <IPhone className="hm-row-phone">
-                <TodayPhone />
-              </IPhone>
-            </Outcome>
-            <Outcome id="promos" i={1}>
-              <PromoMock />
-            </Outcome>
-            <Outcome id="map" i={2}>
-              <IPhone className="hm-row-phone">
-                <MapPhone />
-              </IPhone>
-            </Outcome>
-          </div>
-          <div className="hm-ctarow">
+          <ul className="lp-outcomes">
+            {L.outcomes.rows
+              .filter((r) => r.id !== "pass")
+              .map((r) => (
+                <li key={r.id} id={`outcome-${r.id}`}>
+                  <h3 className="lp-h3">{r.title}</h3>
+                  <p className="lp-body">{r.body}</p>
+                  <ul className="lp-points">
+                    {(r.id === "promos" ? [...r.points, planLine("promoAllowance")] : r.points).map((p) => (
+                      <li key={p}>{p}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+          </ul>
+          <div className="lp-actions lp-ctarow">
             <Primary cta="outcomes">{L.outcomes.cta}</Primary>
-            <a className="hm-link" href="#pricing" data-cta="seepricing">
+            <a className="lp-link" href="#pricing" data-cta="seepricing">
               {L.outcomes.pricing}
             </a>
           </div>
         </div>
       </section>
 
-      {/* 6. Where do you fit? */}
-      <section className="hm-sec hm-white" aria-label={L.router.label}>
-        <div className="hm-wrap">
-          <div className="hm-head">
-            <h2 className="hm-h2">{L.router.title}</h2>
-            <p className="hm-lede">{L.router.sub}</p>
+      {/* 5. Where do you fit? Four rows, each one link */}
+      <section className="lp-sec" aria-label={L.router.label}>
+        <div className="lp-wrap">
+          <div className="lp-head">
+            <h2 className="lp-h2">{L.router.title}</h2>
+            <p className="lp-lede">{L.router.sub}</p>
           </div>
-          <BlurFadeStatic>
-            <BentoGrid className="hm-bento auto-rows-auto gap-3 md:auto-rows-[16.5rem] md:gap-4">
-              {L.router.items.map((d, i) => {
-                const r = ROUTER[i]!;
-                return (
-                  <BentoCard
-                    key={d.href}
-                    data-trade={r.trade}
-                    className={`col-span-3 bg-background ${r.span}`}
-                    eyebrow={d.eyebrow}
-                    name={d.title}
-                    description={d.body}
-                    Icon={r.Icon}
-                    href={d.href}
-                    cta={d.cta}
-                    background={
-                      <>
-                        <BentoDemo i={i} />
-                        <CategoryIcon category={r.art} size={i === 0 || i === 3 ? 168 : 120} className="hm-bento-art" />
-                      </>
-                    }
-                  />
-                );
-              })}
-            </BentoGrid>
-          </BlurFadeStatic>
-          <nav aria-label={copy.solo.chipsLabel} className="hm-chips">
+          <ul className="lp-doors">
+            {L.router.items.map((d) => (
+              <li key={d.href} className="lp-door">
+                <span className="grid">
+                  <span className="lp-door-t">{d.title}</span>
+                  <span className="lp-door-k">{d.eyebrow}</span>
+                </span>
+                <span className="lp-body">{d.body}</span>
+                <Link href={d.href} prefetch={false} className="lp-row-go">
+                  {d.cta}
+                  <ArrowRight aria-hidden strokeWidth={1.5} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <nav aria-label={copy.solo.chipsLabel} className="lp-booking">
             <span>{copy.solo.chipsLabel}</span>
             {copy.solo.chips.map((c) => (
               <Link key={c.href} href={c.href} prefetch={false}>
@@ -313,60 +203,57 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 8. Pricing: every word from lib/marketing/plan-copy.ts, every number from PLANS */}
-      <section className="hm-sec hm-white" id="pricing" aria-labelledby="hm-pricing">
-        <div className="hm-wrap">
-          <div className="hm-head hm-center">
-            <h2 className="hm-h2" id="hm-pricing">
+      {/* 6. Pricing: every word from lib/marketing/plan-copy.ts, every number from PLANS */}
+      <section className="lp-sec" id="pricing" aria-labelledby="lp-pricing">
+        <div className="lp-wrap">
+          <div className="lp-head">
+            <h2 className="lp-h2" id="lp-pricing">
               {L.pricing.title}
             </h2>
-            <p className="hm-lede">{f(L.pricing.sub)}</p>
+            <p className="lp-lede">{f(L.pricing.sub)}</p>
           </div>
-          <BlurFadeStatic className="hm-plans">
+          <div className="lp-plans">
             {plans.map((p) => (
-              <div key={p.key} data-plan={p.key} className={p.key === "monthly" ? "hm-plan hm-plan-pro" : "hm-plan"}>
-                <div className="hm-plan-h">
-                  <span className="hm-plan-name">{p.name}</span>
-                  {p.badge ? <span className="hm-badge">{p.badge}</span> : null}
+              <div key={p.key} data-plan={p.key} className={p.key === "monthly" ? "lp-plan lp-plan-pro" : "lp-plan"}>
+                <div className="lp-plan-h">
+                  <span className="lp-plan-name">{p.name}</span>
+                  {p.badge ? <span className="lp-plan-badge">{p.badge}</span> : null}
                 </div>
-                <span className="hm-plan-price">
+                <span className="lp-plan-price">
                   {p.price}
                   {p.per ? <small>{p.per}</small> : null}
                 </span>
-                {p.yearly ? (
-                  <span className="hm-plan-yearly" data-plan={p.key === "monthly" ? "yearly" : undefined}>
-                    {p.yearly.was ? (
+                <span className="lp-plan-yearly" data-plan={p.key === "monthly" ? "yearly" : undefined}>
+                  {p.yearly ? (
+                    p.yearly.was ? (
                       <>
                         {p.yearly.or} <s>{p.yearly.was}</s> <b>{p.yearly.now}</b> {p.yearly.label}
                       </>
                     ) : (
                       p.yearly.line
-                    )}
-                  </span>
-                ) : null}
-                <span className="hm-plan-tag">{p.tagline}</span>
+                    )
+                  ) : null}
+                </span>
+                <span className="lp-plan-tag">{p.tagline}</span>
                 <ul>
                   {p.features.map((x) => (
-                    <li key={x}>
-                      <Check aria-hidden strokeWidth={2.6} />
-                      {x}
-                    </li>
+                    <li key={x}>{x}</li>
                   ))}
                 </ul>
-                <Primary cta="pricing" className={p.key === "monthly" ? "hm-btn-inv" : undefined}>
+                <Primary cta="pricing" quiet={p.key !== "monthly"}>
                   {p.cta}
                 </Primary>
               </div>
             ))}
-          </BlurFadeStatic>
-          <p className="hm-plans-note">
+          </div>
+          <p className="lp-plans-note">
             <span>{planNote("shop")}</span>
-            <Link href="/pricing" prefetch={false}>
+            <Link href="/pricing" prefetch={false} className="lp-link">
               {L.pricing.all}
             </Link>
             <span>
               {L.pricing.restaurants}{" "}
-              <Link href="/for-restaurants" prefetch={false}>
+              <Link href="/for-restaurants" prefetch={false} className="lp-link">
                 {L.pricing.restaurantsLink}
               </Link>
             </span>
@@ -374,60 +261,54 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 9. How we compare: named, dated, sourced */}
+      {/* 7. How we compare: named, dated, sourced */}
       <CompetitorTable />
 
-      {/* 10. Questions */}
-      <section className="hm-sec hm-white" aria-labelledby="hm-faq">
-        <div className="hm-wrap hm-faq">
-          <h2 className="hm-h2" id="hm-faq">
+      {/* 8. Questions */}
+      <section className="lp-sec" aria-labelledby="lp-faq">
+        <div className="lp-wrap lp-faq">
+          <h2 className="lp-h2" id="lp-faq">
             {L.faqTitle}
           </h2>
-          <BlurFadeStatic>
-            <Faq items={L.faq.map((q) => ({ q: q.q, a: f(q.a) }))} />
-          </BlurFadeStatic>
+          <Faq className="lp-faq-list" items={L.faq.map((q) => ({ q: q.q, a: f(q.a) }))} />
         </div>
       </section>
 
-      {/* 11. A hand getting set up */}
-      <section className="hm-sec" id="book" aria-labelledby="hm-book">
-        <BlurFadeStatic className="hm-wrap hm-book">
+      {/* 9. A hand getting set up */}
+      <section className="lp-sec" id="book" aria-labelledby="lp-book">
+        <div className="lp-wrap lp-book">
           <div>
-            <h2 className="hm-h2" id="hm-book">
+            <h2 className="lp-h2" id="lp-book">
               {L.book.title}
             </h2>
-            <p className="hm-lede">{L.book.sub}</p>
+            <p className="lp-lede">{L.book.sub}</p>
             {waUrl ? (
-              <a className="hm-btn2" href={waUrl}>
+              <a className="lp-btn2" href={waUrl}>
                 {L.book.whatsapp}
               </a>
             ) : null}
           </div>
-          <div className="hm-book-form">
+          <div className="lp-book-form">
             <ContactForm kind="visit" />
-          </div>
-        </BlurFadeStatic>
-      </section>
-
-      {/* 12. The closing ask */}
-      <section className="hm-final" aria-labelledby="hm-final">
-        <div className="hm-wrap hm-final-in">
-          <div>
-            <h2 className="hm-h2" id="hm-final">
-              {L.final.title}
-            </h2>
-            <p>{L.final.sub}</p>
-          </div>
-          <div className="hm-ctas">
-            <Primary cta="final" className="hm-btn-inv">
-              {L.final.cta}
-            </Primary>
           </div>
         </div>
       </section>
 
+      {/* 10. The closing ask */}
+      <section className="lp-final" aria-labelledby="lp-final">
+        <div className="lp-wrap lp-final-in">
+          <div>
+            <h2 className="lp-h2" id="lp-final">
+              {L.final.title}
+            </h2>
+            <p className="lp-body">{L.final.sub}</p>
+          </div>
+          <Primary cta="final">{L.final.cta}</Primary>
+        </div>
+      </section>
+
       {/* Phones: the button in reach (hidden over the hero and the closing band where the browser has scroll-driven animation). */}
-      <div className="hm-sticky">
+      <div className="lp-sticky">
         <Primary cta="sticky">{L.sticky}</Primary>
       </div>
       <LandingMeasure path="/" />

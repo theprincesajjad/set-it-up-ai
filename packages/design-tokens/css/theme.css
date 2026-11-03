@@ -227,6 +227,25 @@
   --radius-r7: 26px;
   --radius-r8: 30px;
   --radius-r9: 32px;
+
+  /* Marketing landing (wave R, .mkt scope only): bg-mkt-paper, text-mkt-ink, border-mkt-line, shadow-mkt-object, font-mkt-serif ... */
+  --color-mkt-paper: var(--mkt-paper);
+  --color-mkt-raised: var(--mkt-raised);
+  --color-mkt-stock: var(--mkt-stock);
+  --color-mkt-wall: var(--mkt-wall);
+  --color-mkt-ink: var(--mkt-ink);
+  --color-mkt-ink-hover: var(--mkt-ink-hover);
+  --color-mkt-on-ink: var(--mkt-on-ink);
+  --color-mkt-text2: var(--mkt-text2);
+  --color-mkt-muted: var(--mkt-muted);
+  --color-mkt-vermilion: var(--mkt-vermilion);
+  --color-mkt-line: var(--mkt-line);
+  --color-mkt-line-strong: var(--mkt-line-strong);
+  --shadow-mkt-sm: var(--mkt-shadow-sm);
+  --shadow-mkt-object: var(--mkt-shadow-object);
+  --shadow-mkt-float: var(--mkt-shadow-float);
+  --font-mkt-sans: var(--mkt-face-sans);
+  --font-mkt-serif: var(--mkt-face-serif);
 }
 
 @theme {

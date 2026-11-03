@@ -120,7 +120,7 @@ export function SalesChat() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label={T.launcher}
-          className="fixed bottom-4 end-4 z-50 inline-flex h-12 items-center gap-2 rounded-full bg-primary px-5 text-meta-strong text-primary-foreground shadow-lg hover:bg-primary/90 focus-visible:focus-ring"
+          className="fixed bottom-4 end-4 z-50 inline-flex h-11 items-center gap-2 rounded-r2 bg-primary px-4 text-meta-strong text-primary-foreground shadow-float hover:bg-primary/90 focus-visible:focus-ring"
         >
           <MessageCircle aria-hidden className="size-4" />
           {T.launcher}

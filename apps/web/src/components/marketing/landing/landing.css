@@ -1,0 +1,304 @@
+/*
+ * The home page, wave R (app/(marketing)/page.tsx). Unslop pass: warm paper ramp, ink actions, Instrument Sans with Instrument Serif
+ * for the big headlines, hairlines instead of floating cards, radius 8 to 12 (the stamp card 18). Every colour is a .mkt token
+ * (@ll/design-tokens marketing.ts). Logical properties, so the page mirrors under dir="rtl".
+ * One moment (the stamp card on the counter scene) and one signature (the ink stamp). Motion: the newest stamp presses in once; nothing loops.
+ */
+.lp {
+  --lp-gutter: 16px;
+  --lp-max: 1200px;
+  background: var(--mkt-paper);
+  color: var(--mkt-ink);
+  font-family: var(--mkt-face-sans);
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0;
+  overflow-x: clip;
+}
+@media (min-width: 768px) { .lp { --lp-gutter: 32px; } }
+/* Resets at zero specificity, so every .lp-* rule below wins over them. */
+:where(.lp) :where(h1, h2, h3, p, ol, ul, figure, dl, dd) { margin: 0; }
+:where(.lp) :where(ol, ul) { padding: 0; list-style: none; }
+.lp-wrap { width: min(100% - 2 * var(--lp-gutter), var(--lp-max)); margin-inline: auto; }
+.lp-sec { padding-block: 64px; border-top: 1px solid var(--mkt-line); }
+@media (min-width: 1024px) { .lp-sec { padding-block: 96px; } }
+
+/* ---------- Type: the serif for big headlines only, the sans for everything else ---------- */
+.lp-h1, .lp-h2 { font-family: var(--mkt-face-serif); font-weight: 400; letter-spacing: -0.02em; text-wrap: balance; }
+.lp-h1 { font-size: 44px; line-height: 44px; }
+.lp-h2 { font-size: 36px; line-height: 40px; }
+@media (min-width: 1024px) {
+  .lp-h1 { font-size: 72px; line-height: 72px; }
+  .lp-h2 { font-size: 48px; line-height: 52px; }
+}
+.lp-h3 { font-size: 18px; line-height: 28px; font-weight: 500; }
+.lp-lede { font-size: 18px; line-height: 28px; color: var(--mkt-text2); max-width: 36rem; text-wrap: pretty; }
+.lp-lede b { font-weight: 500; color: var(--mkt-ink); }
+.lp-body { font-size: 16px; line-height: 24px; color: var(--mkt-text2); text-wrap: pretty; }
+.lp-meta { font-size: 13px; line-height: 20px; color: var(--mkt-muted); }
+.lp-num { font-variant-numeric: tabular-nums; }
+.lp-head { display: grid; gap: 12px; max-width: 40rem; margin-bottom: 40px; }
+.lp-head.lp-head-tight { margin-bottom: 0; }
+@media (min-width: 1024px) { .lp-head { margin-bottom: 56px; } }
+/* Locales with their own script: no tracking on the headline, and the Noto face carries it. */
+:is([lang^="hi"], [lang^="ur"], [lang^="pa"]) .lp :is(.lp-h1, .lp-h2) { letter-spacing: 0; }
+
+/* ---------- Actions: ink primary, quiet secondary, radius 8, 48 tall (44 on the sticky bar) ---------- */
+.lp-btn, .lp-btn2 {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 20px; border-radius: var(--mkt-radius-control);
+  font-size: 16px; line-height: 24px; font-weight: 500; white-space: nowrap; text-decoration: none;
+  transition: background-color 150ms var(--mkt-ease), box-shadow 150ms var(--mkt-ease), transform 150ms var(--mkt-ease);
+}
+.lp-btn { background: var(--mkt-ink); color: var(--mkt-on-ink); }
+.lp-btn:hover { background: var(--mkt-ink-hover); }
+.lp-btn2 { background: transparent; color: var(--mkt-ink); box-shadow: inset 0 0 0 1px var(--mkt-line-strong); }
+.lp-btn2:hover { background: color-mix(in srgb, var(--mkt-ink) 5%, transparent); }
+.lp-btn:active, .lp-btn2:active { transform: scale(0.98); }
+.lp-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 500; color: var(--mkt-ink); text-decoration: underline; text-decoration-color: var(--mkt-line-strong); text-underline-offset: 4px; transition: text-decoration-color 150ms var(--mkt-ease); }
+.lp-link:hover { text-decoration-color: var(--mkt-ink); }
+.lp-link svg { width: 16px; height: 16px; }
+[dir="rtl"] .lp-link svg, [dir="rtl"] .lp-row-go svg { transform: scaleX(-1); }
+.lp :is(a, button, summary):focus-visible { outline: 2px solid var(--mkt-ink); outline-offset: 2px; }
+.lp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+/* ---------- Hero: the counter scene with the stamp card on it ---------- */
+.lp-hero { position: relative; display: flex; flex-direction: column; background: var(--mkt-wall); overflow: hidden; }
+.lp-hero-copy { position: relative; z-index: 1; display: grid; gap: 20px; padding-block: 48px 32px; }
+.lp-hero-card { padding-bottom: 48px; }
+.lp-hero-copy .lp-actions { margin-top: 8px; }
+.lp-hero-copy .lp-lede { max-width: 34rem; }
+.lp-scene { display: none; }
+.lp-scene img { display: block; width: 100%; object-fit: cover; }
+.lp-hero .lp-card { position: relative; z-index: 2; margin-inline: var(--lp-gutter); width: min(100% - 2 * var(--lp-gutter), 340px); rotate: -3deg; }
+.lp-hero-card { position: relative; z-index: 2; }
+@media (min-width: 1024px) {
+  .lp-hero { height: clamp(640px, calc(100svh - 64px), 800px); }
+  .lp-scene { display: block; position: absolute; inset: 0; }
+  .lp-scene img { height: 100%; object-position: 62% 86%; }
+  /* The text side of the photo: the wall, a touch calmer (a tone shift within the wall colour, not a hue). */
+  .lp-scene::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--mkt-wall) 72%, transparent) 0%, color-mix(in srgb, var(--mkt-wall) 40%, transparent) 38%, transparent 56%); pointer-events: none; }
+  [dir="rtl"] .lp-scene::after { background: linear-gradient(270deg, color-mix(in srgb, var(--mkt-wall) 72%, transparent) 0%, color-mix(in srgb, var(--mkt-wall) 40%, transparent) 38%, transparent 56%); }
+  .lp-hero-in { position: relative; height: 100%; }
+  .lp-hero-copy { max-width: 600px; padding-block: 0; position: absolute; inset-block-start: 14%; }
+  .lp-hero { display: block; }
+  .lp-hero-card { position: absolute; inset-block-end: 8%; inset-inline-start: 19%; padding-bottom: 0; }
+  .lp-hero .lp-card { margin: 0; width: 352px; rotate: -4deg; }
+}
+@media (min-width: 1280px) { .lp-hero-card { inset-inline-start: 21%; } }
+
+/* ---------- The stamp card (the moment) ---------- */
+.lp-card {
+  --stock: var(--mkt-stock);
+  display: grid; gap: 0; overflow: hidden;
+  border-radius: var(--mkt-radius-stamp-card);
+  background: var(--stock);
+  color: var(--mkt-ink);
+  box-shadow: var(--mkt-shadow-object), inset 0 0 0 1px var(--mkt-line);
+}
+.lp-card-band { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--trade); color: var(--trade-foreground); }
+.lp-card-mark { display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px currentColor; font-family: var(--mkt-face-serif); font-size: 20px; line-height: 1; }
+.lp-card-shop { display: grid; min-width: 0; line-height: 18px; }
+.lp-card-shop b { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp-card-shop small { font-size: 12px; opacity: 0.86; }
+.lp-card-count { margin-inline-start: auto; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.lp-card-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 16px 16px 8px; }
+.lp-card-slots li { display: grid; place-items: center; aspect-ratio: 1; }
+/* A hand-pressed row is never perfectly on the grid: a pixel or two off, fixed per slot. */
+.lp-card-slots li:nth-child(3n + 1) .lp-ink { translate: 1px -1px; }
+.lp-card-slots li:nth-child(3n + 2) .lp-ink { translate: -1px 1px; opacity: 0.8; }
+.lp-card-slots li:nth-child(4n) .lp-ink { translate: 0 2px; opacity: 0.9; }
+.lp-ink { width: 100%; height: 100%; color: var(--trade); opacity: 0.86; overflow: visible; }
+.lp-ink-glyph { font-family: var(--mkt-face-serif); }
+.lp-card-slots li:nth-child(10n + 1) .lp-ink { rotate: -8deg; }
+.lp-card-slots li:nth-child(10n + 2) .lp-ink { rotate: 5deg; }
+.lp-card-slots li:nth-child(10n + 3) .lp-ink { rotate: -3deg; }
+.lp-card-slots li:nth-child(10n + 4) .lp-ink { rotate: 9deg; }
+.lp-card-slots li:nth-child(10n + 5) .lp-ink { rotate: -6deg; }
+.lp-card-slots li:nth-child(10n + 6) .lp-ink { rotate: 3deg; }
+.lp-card-slots li:nth-child(10n + 7) .lp-ink { rotate: -11deg; }
+.lp-card-slots li:nth-child(10n + 8) .lp-ink { rotate: 7deg; }
+.lp-card-slots li:nth-child(10n + 9) .lp-ink { rotate: -4deg; }
+.lp-card-slots li:nth-child(10n) .lp-ink { rotate: 6deg; }
+.lp-slot { width: 80%; height: 80%; border-radius: 50%; border: 1.5px dashed color-mix(in srgb, var(--mkt-ink) 22%, transparent); }
+.lp-card-foot { display: flex; justify-content: space-between; gap: 12px; margin: 0 16px; padding: 10px 0 14px; border-top: 1px solid var(--mkt-line); }
+.lp-card-foot span { display: grid; line-height: 18px; }
+.lp-card-foot small { font-size: 12px; color: var(--mkt-muted); }
+.lp-card-foot b { font-size: 14px; font-weight: 500; }
+.lp-card-holder { text-align: end; }
+@media (prefers-reduced-motion: no-preference) {
+  .lp-ink-fresh { animation: lp-press 360ms var(--mkt-ease) 700ms both; }
+  @keyframes lp-press { from { opacity: 0; scale: 1.25; } to { opacity: 0.86; scale: 1; } }
+}
+
+/* ---------- Under the hero: the live counts and the trades, one quiet band ---------- */
+.lp-band { padding-block: 32px; }
+/* Phones: one row per figure (the figure, then what it counts); wider: three columns split by hairlines. */
+.lp-counts { display: grid; }
+.lp-counts > div { display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline; gap: 16px; padding-block: 8px; }
+.lp-counts > div + div { border-top: 1px solid var(--mkt-line); }
+.lp-counts dd { min-width: 72px; }
+@media (min-width: 640px) {
+  .lp-counts { grid-template-columns: repeat(3, 1fr); }
+  .lp-counts > div { flex-direction: column-reverse; align-items: stretch; gap: 4px; padding-block: 0; padding-inline: 16px; }
+  .lp-counts > div:first-child { padding-inline-start: 0; }
+  .lp-counts > div + div { border-top: 0; border-inline-start: 1px solid var(--mkt-line); }
+}
+.lp-counts dt { font-size: 13px; line-height: 18px; color: var(--mkt-text2); }
+.lp-counts dd { font-size: 28px; line-height: 32px; font-weight: 500; font-variant-numeric: tabular-nums; }
+@media (min-width: 1024px) {
+  .lp-counts > div { padding-inline: 32px; }
+  .lp-counts dt { font-size: 15px; line-height: 22px; }
+  .lp-counts dd { font-size: 40px; line-height: 44px; }
+}
+.lp-counts-note { margin-top: 16px; }
+.lp-trades { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 0; margin-top: 24px; font-size: 15px; line-height: 24px; color: var(--mkt-text2); }
+.lp-trades-label { color: var(--mkt-ink); font-weight: 500; margin-inline-end: 8px; }
+.lp-trades ul { display: contents; }
+.lp-trades li:not(:last-child)::after { content: "·"; margin-inline: 8px; color: var(--mkt-muted); }
+
+/* ---------- How it works: three steps on hairlines, the counter screen beside them ---------- */
+.lp-how { display: grid; gap: 40px; }
+@media (min-width: 1024px) { .lp-how { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; } }
+.lp-steps { display: grid; margin-top: 32px; border-top: 1px solid var(--mkt-line); }
+.lp-steps li { display: grid; grid-template-columns: 32px 1fr; gap: 4px 12px; padding-block: 20px; border-bottom: 1px solid var(--mkt-line); }
+.lp-step-n { grid-row: span 2; font-size: 15px; line-height: 28px; color: var(--mkt-muted); font-variant-numeric: tabular-nums; }
+.lp-steps p { grid-column: 2; }
+.lp-caption { margin-top: 12px; }
+
+/* The counter screen: the product's own words and sample people, drawn as a quiet window. */
+.lp-counter { border-radius: var(--mkt-radius-panel); background: var(--mkt-stock); box-shadow: inset 0 0 0 1px var(--mkt-line), var(--mkt-shadow-float); overflow: hidden; font-size: 14px; line-height: 20px; }
+.lp-counter-top { display: flex; align-items: center; gap: 12px; height: 56px; padding-inline: 16px; border-bottom: 1px solid var(--mkt-line); }
+.lp-counter-top b { font-weight: 500; }
+.lp-counter-top .lp-meta { margin-inline-start: auto; }
+.lp-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex: none; }
+.lp-counter-body { display: grid; }
+@media (min-width: 640px) { .lp-counter-body { grid-template-columns: 240px 1fr; } }
+.lp-find { display: none; padding: 20px 16px; border-inline-end: 1px solid var(--mkt-line); }
+@media (min-width: 640px) { .lp-find { display: grid; gap: 12px; align-content: start; } }
+.lp-digits { display: flex; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--mkt-ink); font-size: 24px; line-height: 32px; letter-spacing: 0.12em; font-variant-numeric: tabular-nums; }
+.lp-digits i { color: var(--mkt-muted); font-style: normal; }
+.lp-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.lp-keys span { display: grid; place-items: center; height: 40px; border-radius: var(--mkt-radius-control); background: var(--mkt-paper); box-shadow: inset 0 0 0 1px var(--mkt-line); font-size: 17px; font-variant-numeric: tabular-nums; }
+.lp-recent { padding: 16px 16px 8px; }
+.lp-recent ol { margin-top: 8px; }
+.lp-recent li { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; padding-block: 10px; border-top: 1px solid var(--mkt-line); }
+.lp-recent li b { font-weight: 500; }
+.lp-recent li span { grid-column: 1; font-size: 13px; color: var(--mkt-muted); }
+.lp-recent li em { grid-row: 1 / span 2; grid-column: 2; font-style: normal; font-weight: 500; font-variant-numeric: tabular-nums; }
+.lp-recent li.is-stamp em { color: var(--mkt-vermilion); }
+
+/* ---------- Outcomes: three columns of words on hairlines ---------- */
+.lp-outcomes { display: grid; border-top: 1px solid var(--mkt-line); }
+.lp-outcomes > li { display: grid; gap: 8px; align-content: start; padding-block: 24px; border-bottom: 1px solid var(--mkt-line); }
+@media (min-width: 1024px) {
+  .lp-outcomes { grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--mkt-line); }
+  .lp-outcomes > li { padding: 32px 32px 32px 0; border-bottom: 0; }
+  .lp-outcomes > li + li { padding-inline-start: 32px; border-inline-start: 1px solid var(--mkt-line); }
+}
+.lp-points { display: grid; gap: 4px; margin-top: 8px; font-size: 15px; line-height: 22px; color: var(--mkt-ink); }
+.lp-points li { padding-inline-start: 16px; position: relative; }
+.lp-points li::before { content: ""; position: absolute; inset-inline-start: 0; top: 10px; width: 6px; height: 1px; background: var(--mkt-muted); }
+.lp-ctarow { margin-top: 40px; }
+
+/* ---------- Where do you fit: four rows, each one link ---------- */
+.lp-doors { border-top: 1px solid var(--mkt-line); }
+.lp-door { position: relative; display: grid; gap: 4px 24px; padding-block: 20px; border-bottom: 1px solid var(--mkt-line); }
+@media (min-width: 1024px) { .lp-door { grid-template-columns: minmax(0, 4fr) minmax(0, 5fr) minmax(0, 3fr); align-items: start; padding-block: 24px; } }
+.lp-door-t { font-size: 18px; line-height: 28px; font-weight: 500; }
+.lp-door-k { font-size: 14px; line-height: 20px; color: var(--mkt-muted); }
+.lp-row-go { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 500; color: var(--mkt-ink); text-decoration: none; justify-self: start; }
+@media (min-width: 1024px) { .lp-row-go { justify-self: end; } }
+.lp-row-go::after { content: ""; position: absolute; inset: 0; }
+.lp-row-go svg { width: 16px; height: 16px; transition: translate 150ms var(--mkt-ease); }
+.lp-door:hover { background: color-mix(in srgb, var(--mkt-ink) 3%, transparent); }
+.lp-door:hover .lp-row-go svg { translate: 2px 0; }
+[dir="rtl"] .lp-door:hover .lp-row-go svg { translate: -2px 0; }
+.lp-booking { display: flex; flex-wrap: wrap; align-items: center; gap: 0 20px; margin-top: 24px; font-size: 15px; }
+.lp-booking span { color: var(--mkt-muted); }
+.lp-booking a { display: inline-flex; align-items: center; min-height: 44px; color: var(--mkt-ink); text-decoration: underline; text-decoration-color: var(--mkt-line-strong); text-underline-offset: 4px; }
+.lp-booking a:hover { text-decoration-color: var(--mkt-ink); }
+
+/* ---------- Pricing: three columns, Pro one surface step up ---------- */
+.lp-plans { display: grid; gap: 16px; }
+@media (min-width: 1024px) { .lp-plans { grid-template-columns: repeat(3, 1fr); gap: 0; border-radius: var(--mkt-radius-card); box-shadow: inset 0 0 0 1px var(--mkt-line); } }
+.lp-plan { display: flex; flex-direction: column; gap: 8px; padding: 24px; border-radius: var(--mkt-radius-card); box-shadow: inset 0 0 0 1px var(--mkt-line); }
+@media (min-width: 1024px) {
+  .lp-plan { border-radius: 0; box-shadow: none; padding: 32px; }
+  .lp-plan + .lp-plan { border-inline-start: 1px solid var(--mkt-line); }
+}
+.lp-plan-pro { background: var(--mkt-raised); }
+.lp-plan-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.lp-plan-name { font-size: 18px; line-height: 28px; font-weight: 500; }
+.lp-plan-badge { font-size: 13px; color: var(--mkt-text2); }
+.lp-plan-price { font-size: 48px; line-height: 52px; font-weight: 400; font-variant-numeric: tabular-nums; font-family: var(--mkt-face-serif); }
+.lp-plan-price small { font-family: var(--mkt-face-sans); font-size: 15px; color: var(--mkt-text2); margin-inline-start: 4px; }
+.lp-plan-yearly { font-size: 14px; line-height: 20px; color: var(--mkt-text2); min-height: 20px; }
+.lp-plan-yearly b { font-weight: 500; color: var(--mkt-vermilion); }
+.lp-plan-tag { margin-top: 8px; font-weight: 500; }
+.lp-plan ul { display: grid; gap: 8px; margin: 8px 0 24px; padding-top: 16px; border-top: 1px solid var(--mkt-line); font-size: 15px; line-height: 22px; color: var(--mkt-text2); }
+.lp-plan li { padding-inline-start: 16px; position: relative; }
+.lp-plan li::before { content: ""; position: absolute; inset-inline-start: 0; top: 10px; width: 6px; height: 1px; background: var(--mkt-muted); }
+.lp-plan .lp-btn, .lp-plan .lp-btn2 { margin-top: auto; width: 100%; }
+.lp-plans-note { display: flex; flex-wrap: wrap; align-items: center; gap: 0 24px; margin-top: 16px; font-size: 14px; color: var(--mkt-text2); }
+
+/* ---------- How we compare ---------- */
+.lp-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 15px; line-height: 22px; font-variant-numeric: tabular-nums; }
+.lp-table th, .lp-table td { padding: 16px 16px 16px 0; text-align: start; vertical-align: top; border-bottom: 1px solid var(--mkt-line); }
+.lp-table thead th { font-size: 14px; font-weight: 500; color: var(--mkt-text2); border-bottom-color: var(--mkt-line-strong); }
+.lp-table tbody th { font-weight: 400; color: var(--mkt-text2); }
+.lp-table td { color: var(--mkt-text2); }
+.lp-table .lp-us { color: var(--mkt-ink); font-weight: 500; }
+.lp-compare-m { display: grid; border-top: 1px solid var(--mkt-line); }
+.lp-table { display: none; }
+@media (min-width: 640px) { .lp-compare-m { display: none; } .lp-table { display: table; } }
+.lp-compare-m dl { padding-block: 16px; border-bottom: 1px solid var(--mkt-line); font-size: 15px; line-height: 22px; }
+.lp-compare-m dt { color: var(--mkt-muted); font-size: 13px; }
+.lp-compare-m dd { color: var(--mkt-text2); }
+.lp-compare-m dd.lp-us { color: var(--mkt-ink); font-weight: 500; margin-top: 4px; }
+.lp-sources { margin-top: 20px; max-width: 56rem; }
+.lp-sources a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------- Questions: the heading on one side, hairline rows on the other ---------- */
+.lp-faq { display: grid; gap: 24px; }
+@media (min-width: 1024px) { .lp-faq { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; } }
+.lp .lp-faq-list { background: none; box-shadow: none; border-radius: 0; padding: 0; border-top: 1px solid var(--mkt-line); }
+.lp .lp-faq-list [data-slot="accordion-item"] { border-color: var(--mkt-line); border-bottom: 1px solid var(--mkt-line); }
+.lp .lp-faq-list [data-slot="accordion-trigger"] { min-height: 64px; font-size: 17px; line-height: 24px; font-weight: 500; color: var(--mkt-ink); border-radius: var(--mkt-radius-control); transition: color 150ms var(--mkt-ease); }
+.lp .lp-faq-list [data-slot="accordion-trigger"] [data-slot="accordion-trigger-icon"] { width: 16px; height: 16px; color: var(--mkt-muted); }
+.lp .lp-faq-list [data-slot="accordion-content"], .lp .lp-faq-list [data-slot="accordion-content"] * { color: var(--mkt-text2); font-size: 16px; line-height: 24px; }
+
+/* ---------- A visit ---------- */
+.lp-book { display: grid; gap: 32px; }
+@media (min-width: 1024px) { .lp-book { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; } }
+.lp-book > div:first-child { display: grid; gap: 16px; align-content: start; justify-items: start; }
+.lp-book-form { padding: 24px; border-radius: var(--mkt-radius-card); background: var(--mkt-stock); box-shadow: inset 0 0 0 1px var(--mkt-line); }
+/* The shared form (components/marketing/ContactForm) in the page's radius: controls 8, not pills. */
+.lp-book-form :is(button, input, select, textarea, [data-slot="input-group"]) { border-radius: var(--mkt-radius-control); }
+.lp-book-form button[type="submit"] { background: var(--mkt-ink); color: var(--mkt-on-ink); font-weight: 500; }
+.lp-book-form button[type="submit"]:hover { background: var(--mkt-ink-hover); }
+
+/* ---------- The closing ask: on the wall colour, one button ---------- */
+.lp-final { background: var(--mkt-wall); padding-block: 64px; }
+@media (min-width: 1024px) { .lp-final { padding-block: 96px; } }
+.lp-final-in { display: grid; gap: 24px; justify-items: start; }
+@media (min-width: 1024px) { .lp-final-in { grid-template-columns: 1fr auto; align-items: end; } }
+.lp-final .lp-body { margin-top: 12px; color: var(--mkt-text2); }
+
+/* ---------- Phones: the button in reach, flush to the edge with a hairline ---------- */
+.lp-sticky { position: fixed; z-index: 40; inset-inline: 0; bottom: 0; display: flex; padding: 8px 140px calc(8px + env(safe-area-inset-bottom)) 16px; background: var(--mkt-paper); border-top: 1px solid var(--mkt-line); }
+[dir="rtl"] .lp-sticky { padding-inline: 16px 140px; }
+.lp-sticky .lp-btn { flex: 1; min-height: 44px; }
+@media (min-width: 1024px) { .lp-sticky { display: none; } }
+@media (max-width: 1023.98px) { .lp { padding-bottom: 64px; } }
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .lp-sticky { animation: lp-sticky linear both; animation-timeline: scroll(root); }
+    @keyframes lp-sticky { 0%, 4% { transform: translateY(110%); visibility: hidden; } 8%, 90% { transform: none; visibility: visible; } 95%, 100% { transform: translateY(110%); visibility: hidden; } }
+  }
+}
+
+/* Below the first screen, sections skip layout and paint until they come near the viewport. The page is static and arrives whole, so
+   without this the first paint lays out all ~800 boxes; with it, the hero only (measured on a throttled phone: about 70 ms of first paint).
+   `auto` remembers each section's real height once drawn; script reads (getBoundingClientRect, find in page) still lay them out. */
+.lp-sec:not(#how), .lp-final { content-visibility: auto; contain-intrinsic-size: auto 760px; }

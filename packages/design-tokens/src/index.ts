@@ -20,6 +20,7 @@ export * from "./charts.js";
 export * from "./contrast.js";
 export * from "./shopColor.js";
 export * from "./map.js";
+export * from "./marketing.js";
 
 import { colors } from "./colors.js";
 import { chartColors } from "./charts.js";

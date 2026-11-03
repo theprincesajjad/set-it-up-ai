@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { LOCALES, LOCALE_LIST, normalizeLocale, type Locale } from "@ll/shared";
-import { buttonClasses } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
-import { Wordmark } from "./Brand";
+import { MarketingWordmark } from "@/components/marketing/landing/Wordmark";
+import { marketingFontVars } from "@/lib/marketing/fonts";
 
 /**
  * The header strings in every language, translated on the server by the layout (see `headerLabels`). The client never imports the
@@ -49,7 +49,8 @@ const subscribeNever = () => () => undefined;
 const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
 /**
- * Marketing top nav: white, hairline, one black button. Mobile menu uses <details> (no JS). The language menu and
+ * Marketing top nav (wave R): warm paper, a hairline, Instrument Sans, quiet text links, "Log in" as a text link and one ink button
+ * (radius 8, not a pill). Its own `.mkt` scope, so the tokens resolve on every marketing page. Mobile menu uses <details> (no JS). The language menu and
  * translated labels appear only on /for-restaurants and /for-shoppers, the pages that have translated content (docs/research/landing-and-network.md 7.3).
  * On /for-bias the sign-in link and the black button become "BIA log in" and "Plan a campaign".
  */
@@ -72,12 +73,12 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
 
   const switcher = translated ? (
     <details className="group relative">
-      <summary className="flex h-9 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-meta-strong text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring [&::-webkit-details-marker]:hidden" >
+      <summary className="flex h-11 cursor-pointer list-none items-center gap-1 rounded-md px-3 text-body text-mkt-text2 hover:text-mkt-ink focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
         <span className="sr-only">{labels[locale].language}: </span>
         <span lang={info.bcp47}>{info.name}</span>
-        <ChevronDown aria-hidden className="size-3.5 transition-transform group-open:rotate-180" strokeWidth={2} />
+        <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" strokeWidth={1.5} />
       </summary>
-      <ul className="absolute end-0 top-10 z-sticky w-40 rounded-card border border-line bg-card p-1 shadow-float">
+      <ul className="absolute end-0 top-12 z-sticky w-44 rounded-r4 border border-mkt-line bg-mkt-stock p-1 shadow-mkt-float">
         {LOCALE_LIST.map((l) => (
           <li key={l.code}>
             <Link
@@ -89,7 +90,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                 setChosen(l.code);
               }}
               aria-current={l.code === locale ? "true" : undefined}
-              className={cn("block rounded-input px-3 py-2 text-body hover:bg-bg-subtle", l.code === locale ? "font-semibold text-fg" : "text-fg-muted")}
+              className={cn("flex min-h-11 items-center rounded-md px-3 text-body hover:bg-mkt-raised", l.code === locale ? "font-medium text-mkt-ink" : "text-mkt-text2")}
             >
               {l.name}
             </Link>
@@ -100,38 +101,38 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
   ) : null;
 
   return (
-    <header className="sticky top-0 z-sticky border-b border-line bg-bg/90 backdrop-blur-chrome" lang={translated ? info.bcp47 : undefined} dir={translated ? info.dir : undefined}>
-      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 md:px-8">
-        <Wordmark />
-        <nav aria-label="Main" className="hidden items-center gap-0.5 lg:flex">
+    <header className={`mkt ${marketingFontVars} sticky top-0 z-sticky border-b border-mkt-line bg-mkt-paper font-mkt-sans text-mkt-ink`} lang={translated ? info.bcp47 : undefined} dir={translated ? info.dir : undefined}>
+      <div className="mx-auto flex h-16 max-w-316 items-center justify-between gap-4 px-4 md:px-8">
+        <MarketingWordmark id="lp-ink-head" />
+        <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
           {nav.map((n) => (
             <Link
               key={n.href}
               href={n.href}
               aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
-              className={cn("rounded-full px-3.5 py-2 text-meta-strong transition-colors hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring", isCurrent(pathname, n.href) ? "text-fg" : "text-fg-muted")}
+              className={cn("inline-flex h-11 items-center rounded-md px-3 text-body transition-colors hover:text-mkt-ink focus-visible:focus-ring", isCurrent(pathname, n.href) ? "font-medium text-mkt-ink" : "text-mkt-text2")}
             >
               {n.label}
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-1 lg:flex">
+        <div className="hidden items-center gap-2 lg:flex">
           {switcher}
-          <Link href={login.href} className="rounded-full px-3.5 py-2 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+          <Link href={login.href} className="inline-flex h-11 items-center rounded-md px-3 text-body text-mkt-ink hover:text-mkt-text2 focus-visible:focus-ring">
             {login.label}
           </Link>
-          <Link href={cta.href} className={buttonClasses({ size: "sm" }) + " rounded-full!"}>
+          <Link href={cta.href} className="inline-flex h-10 items-center rounded-md bg-mkt-ink px-4 text-body font-medium text-mkt-on-ink transition-colors hover:bg-mkt-ink-hover focus-visible:focus-ring">
             {cta.label}
           </Link>
         </div>
         <details className="group relative lg:hidden">
-          <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
-            <Menu aria-hidden className="size-5" strokeWidth={1.75} />
+          <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-md hover:bg-mkt-raised focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
+            <Menu aria-hidden className="size-5" strokeWidth={1.5} />
           </summary>
-          <div className="absolute end-0 top-14 w-[min(88vw,320px)] rounded-card border border-line bg-card p-2 shadow-float">
+          <div className="absolute end-0 top-14 w-[min(88vw,320px)] rounded-r5 border border-mkt-line bg-mkt-stock p-2 shadow-mkt-float">
             <nav aria-label="Main" className="flex flex-col">
               {nav.map((n) => (
-                <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="rounded-input px-3 py-3 text-body text-fg hover:bg-bg-subtle">
+                <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="flex min-h-11 items-center rounded-md px-3 text-body text-mkt-ink hover:bg-mkt-raised">
                   {n.label}
                 </Link>
               ))}
@@ -142,22 +143,22 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                       key={l.code}
                       href={`${langBase}?lang=${l.code}`}
                       lang={l.bcp47}
-                      onClick={() => {
-                rememberLocale(l.code);
-                setChosen(l.code);
-              }}
+                              onClick={() => {
+                        rememberLocale(l.code);
+                        setChosen(l.code);
+                      }}
                       aria-current={l.code === locale ? "true" : undefined}
-                      className={cn("rounded-full border px-3 py-1.5 text-meta-strong", l.code === locale ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line text-fg")}
+                      className={cn("inline-flex min-h-11 items-center rounded-full border px-3 text-body", l.code === locale ? "border-mkt-ink bg-mkt-ink text-mkt-on-ink" : "border-mkt-line-strong text-mkt-ink")}
                     >
                       {l.name}
                     </Link>
                   ))}
                 </div>
               ) : null}
-              <Link href={login.href} className="rounded-input px-3 py-3 text-body text-fg hover:bg-bg-subtle">
+              <Link href={login.href} className="flex min-h-11 items-center rounded-md px-3 text-body text-mkt-ink hover:bg-mkt-raised">
                 {login.label}
               </Link>
-              <Link href={cta.href} className={buttonClasses({ fullWidth: true, size: "lg" }) + " mt-2"}>
+              <Link href={cta.href} className="mt-2 flex min-h-12 items-center justify-center rounded-md bg-mkt-ink px-4 text-body font-medium text-mkt-on-ink hover:bg-mkt-ink-hover">
                 {cta.label}
               </Link>
             </nav>

@@ -1,35 +1,32 @@
 /**
- * Wave Q, visitor: the marketing site on the component kit. The home page has the trades Marquee (read once by screen readers), the
- * where-do-you-fit BentoGrid with whole-card links, and the questions on the kit Accordion with every answer in the HTML; /pricing
+ * Wave Q, visitor: the marketing site on the component kit (the home page was rebuilt in wave R: a plain trades line and hairline
+ * where-do-you-fit rows replace the Marquee and the BentoGrid); the questions are on the kit Accordion with every answer in the HTML; /pricing
  * highlights Pro with the struck first-year price; the footer keeps plain anchors into the A/B pages; legal pages have a contents rail;
  * the neighbourhood cards and the 404 keep their ways on.
  */
 import { expect, test } from "@playwright/test";
 
 test.describe("home on the kit", () => {
-  test("trades marquee: one readable list, moving copies hidden, still under reduced motion", async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: "reduce" });
+  // Wave R (unslop): the trades are a plain line, nothing loops; where-do-you-fit is four hairline rows, each row one link.
+  test("trades: one plain list under the live counts, nothing moving", async ({ page }) => {
     await page.goto("/");
-    const trades = page.getByRole("region", { name: "Made for the shops on your street" });
-    await expect(trades).toContainText("Cafés, Bakeries, Hair salons");
-    const row = trades.locator("[aria-hidden=true]").first();
-    await expect(row).toBeAttached();
-    const anim = await row.locator(":scope > div").first().evaluate((e) => getComputedStyle(e).animationName);
-    expect(anim).toBe("none");
+    const trades = page.getByRole("region", { name: "Set up for" });
+    await expect(trades.getByRole("listitem")).toHaveCount(13);
+    await expect(trades.getByRole("listitem").first()).toHaveText("Cafés");
+    const moving = await page.evaluate(() => [...document.querySelectorAll(".lp *")].filter((e) => getComputedStyle(e).animationIterationCount === "infinite").length);
+    expect(moving).toBe(0);
   });
 
-  test("where do you fit is a bento: each card is one link, 44px or taller", async ({ page }) => {
+  test("where do you fit: four rows, each row one link, 44px or taller", async ({ page }) => {
     await page.goto("/");
     const router = page.getByRole("region", { name: "Where do you fit?" });
-    await expect(router.locator(".hm-bento")).toHaveCount(1);
+    await expect(router.locator(".lp-door")).toHaveCount(4);
     const link = router.getByRole("link", { name: /See booking/ });
     await expect(link).toHaveAttribute("href", "/for-nail-techs");
-    // The link's hit area is the whole card (after:inset-0), so clicking the card's heading follows it.
-    const box = await link.evaluate((e) => {
-      const r = e.closest(".group")!.getBoundingClientRect();
-      return { h: r.height };
-    });
-    expect(box.h).toBeGreaterThanOrEqual(44);
+    // The link's hit area is the whole row (::after inset 0), so clicking the row's title follows it.
+    const h = await link.evaluate((e) => e.closest(".lp-door")!.getBoundingClientRect().height);
+    expect(h).toBeGreaterThanOrEqual(44);
+    expect(await link.evaluate((e) => e.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
   });
 
   test("questions: the kit accordion, answers in the HTML, opens and closes", async ({ page }) => {

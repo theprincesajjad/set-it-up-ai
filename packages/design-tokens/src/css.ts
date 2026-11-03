@@ -3,6 +3,7 @@
  * output to disk; tests call these directly to check the committed css/ is fresh.
  */
 import { chartColors } from "./charts.js";
+import { marketingCss, marketingThemeLines } from "./marketing.js";
 import { chartSeriesV3, colors, rolesV3, v2Alias, type ColorRoles, type RolesV3 } from "./colors.js";
 import { palette } from "./palette.js";
 import { SHOP_TRADE_VARS } from "./shopColor.js";
@@ -410,6 +411,7 @@ export function buildTokensCss(): string {
     // Before Clear: the Clear section never holds a prefers-color-scheme block (the tripled attribute out-ranks Clear's trade rules anyway).
     ...shopColorCss(),
     ...clearCss(),
+    ...marketingCss(SCRIPT_FONTS),
   ].join("\n");
 }
 
@@ -521,6 +523,7 @@ export function buildThemeCss(): string {
   out.push(`  --radius-input: ${px(radii.input)};`, `  --radius-card: var(--ll-radius-card);`, `  --radius-sheet: var(--ll-radius-sheet);`, `  --radius-tile: var(--ll-radius-tile);`);
   out.push(`  /* Clear radius scale (audit 2.3): rounded-r1 4 · r2 8 · r3 10 · r4 12 · r5 16 · r6 20 · r7 26 · r8 30 · r9 32 */`);
   for (const [k, v] of Object.entries(clearLayout.radius)) out.push(`  --radius-${k}: ${px(v)};`);
+  out.push(``, ...marketingThemeLines());
   out.push(`}`, ``);
 
   out.push(`@theme {`);

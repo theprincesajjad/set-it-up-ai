@@ -12,10 +12,14 @@ test.describe("home", () => {
     await page.goto("/");
     const fold = async (loc: ReturnType<typeof page.locator>) => (await loc.boundingBox())!.y < 844;
     expect(await fold(page.getByRole("heading", { level: 1 }))).toBe(true);
-    await expect(page.locator(".hm-hero-copy .hm-lede")).toContainText(/cafés, salons, shops and studios/);
+    // Wave R: what and who in the headline and lede, the price as the lede's last words (no price paragraph under the buttons);
+    // Pro's price with the struck first-year price sits in the plans.
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("stamp card");
+    await expect(page.locator(".lp-hero-copy .lp-lede")).toContainText(/Apple Wallet or Google Wallet/);
     expect(await fold(page.getByTestId("hero-price"))).toBe(true);
     await expect(page.getByTestId("hero-price")).toContainText("Loyalty is free forever.");
-    await expect(page.getByTestId("hero-price").locator("s")).toHaveText("$290");
+    expect(await fold(page.locator("[data-cta=hero]"))).toBe(true);
+    await expect(page.locator("#pricing [data-plan=yearly] s")).toHaveText("$290");
     await expect(page.locator("[data-cta=hero]")).toHaveAttribute("href", "/signup");
     // The page is a story, not a wall: well under the 15,600 px it was.
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(13_000);

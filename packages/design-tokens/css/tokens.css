@@ -2939,3 +2939,29 @@
   --trade-pass-to: #E28E7D;
   --trade-pass-text: #1A1208;
 }
+
+/* Marketing landing (wave R): warm paper, ink, vermilion, Instrument Sans and Serif. Scoped to .mkt (the marketing layout); nothing else reads these. */
+.mkt {
+  --mkt-paper: #F7F4EE;
+  --mkt-raised: #EFE9DF;
+  --mkt-stock: #FDFBF7;
+  --mkt-wall: #EED5BD;
+  --mkt-ink: #1C1A17;
+  --mkt-ink-hover: #36312B;
+  --mkt-on-ink: #FFFFFF;
+  --mkt-text2: #57534E;
+  --mkt-muted: #6B635A;
+  --mkt-vermilion: #B23A0B;
+  --mkt-line: rgb(28 26 23 / 0.10);
+  --mkt-line-strong: rgb(28 26 23 / 0.18);
+  --mkt-shadow-sm: 0 1px 2px rgb(28 26 23 / 0.05);
+  --mkt-shadow-object: 0 1px 2px rgb(40 24 10 / 0.10), -12px 18px 32px rgb(40 24 10 / 0.18), -2px 4px 8px rgb(40 24 10 / 0.10);
+  --mkt-shadow-float: 0 8px 24px rgb(28 26 23 / 0.08);
+  --mkt-radius-control: 8px;
+  --mkt-radius-card: 12px;
+  --mkt-radius-panel: 16px;
+  --mkt-radius-stamp-card: 18px;
+  --mkt-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --mkt-face-sans: var(--font-instrument-sans, "Instrument Sans"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mkt-face-serif: var(--font-instrument-serif, "Instrument Serif"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), "Iowan Old Style", Georgia, serif;
+}

@@ -61,14 +61,14 @@ test.describe("landing", () => {
     const order = [
       page.getByRole("heading", { level: 1 }),
       page.getByRole("region", { name: "Live counts" }),
-      page.getByRole("heading", { name: "Live at your counter today." }),
-      page.getByRole("heading", { name: "Built to bring customers back." }),
+      page.getByRole("heading", { name: "Live at your counter today" }),
+      page.getByRole("heading", { name: "Built to bring customers back" }),
       page.getByRole("region", { name: "Where do you fit?" }),
-      page.getByRole("heading", { name: "Simple pricing." }),
-      page.getByRole("heading", { name: "How we compare." }),
+      page.getByRole("heading", { name: "Simple pricing" }),
+      page.getByRole("heading", { name: "How we compare" }),
       page.getByRole("heading", { name: "Frequently asked questions" }),
       page.getByRole("heading", { name: "Prefer a hand getting set up?" }),
-      page.getByRole("heading", { name: "Start bringing customers back." }),
+      page.getByRole("heading", { name: "Start bringing customers back" }),
     ];
     const ys: number[] = [];
     for (const l of order) ys.push(await y(l));
@@ -84,12 +84,14 @@ test.describe("landing", () => {
     // Wave P: the page was cut down (facts strip, pass row and the separate Pro block are gone), so it has fewer asks.
     for (const gone of ["afterhero", "promos", "pro"]) await expect(page.locator(`[data-cta=${gone}]`)).toHaveCount(0);
     expect(await page.locator('main a[href^="/signup"]').count()).toBeLessThanOrEqual(8);
-    // What it costs, in the hero: loyalty free, Pro's price, the struck first-year price; never "founding".
-    const price = page.getByTestId("hero-price");
-    await expect(price).toContainText("Loyalty is free forever.");
-    await expect(price).toContainText("Pro is $29 a month");
-    await expect(price.locator("s")).toHaveText("$290");
-    await expect(price).toContainText("$199 first year.");
+    // What it costs: loyalty free in the hero lede (wave R: no price paragraph under the buttons); Pro's price and the struck
+    // first-year price in the plans; never "founding".
+    await expect(page.getByTestId("hero-price")).toHaveText("Loyalty is free forever.");
+    const pro = page.locator("#pricing [data-plan=monthly]");
+    await expect(pro).toContainText("Pro");
+    await expect(pro).toContainText("$29");
+    await expect(pro.locator("[data-plan=yearly] s")).toHaveText("$290");
+    await expect(pro.locator("[data-plan=yearly]")).toContainText("$199 first year");
     await expect(page.locator("main")).not.toContainText(/founding/i);
 
     await expect(page.locator("form")).toHaveCount(1);
