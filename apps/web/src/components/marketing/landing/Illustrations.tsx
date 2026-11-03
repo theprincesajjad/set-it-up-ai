@@ -1,6 +1,7 @@
 /**
- * Spot illustrations for the home page (wave S): flat shapes with one confident ink outline, filled from the `.mkt` palette (sun, mint,
- * coral, violet, white). Server-rendered inline SVG: crisp at any size, a few hundred bytes each, no image requests, nothing to hydrate.
+ * Spot illustrations for the home page (wave S, calmed in S2): flat shapes with one ink outline, filled from the `.mkt` palette (sun,
+ * mint, coral, violet, white), no sparkles or confetti. The shops drawn are a mix of trades: a café, a phone repair shop, a barber and a
+ * nail salon on the hero's main street, repair and retail in the tiles. Server-rendered inline SVG: crisp at any size, a few hundred bytes each, no image requests, nothing to hydrate.
  * All decorative (aria-hidden); the words around them carry the meaning. No lettering inside any drawing.
  */
 import type { SVGProps } from "react";
@@ -19,58 +20,159 @@ const O = { stroke: INK, strokeWidth: 2.5, strokeLinejoin: "round", strokeLineca
 type Art = Omit<SVGProps<SVGSVGElement>, "viewBox">;
 const svg = (viewBox: string, p: Art) => ({ viewBox, "aria-hidden": true, focusable: false, ...p }) as SVGProps<SVGSVGElement>;
 
-/** A four-point sparkle centred on (x, y). */
-function Sparkle({ x, y, r = 7, fill = SUN }: { x: number; y: number; r?: number; fill?: string }) {
-  const k = r * 0.28;
-  return <path d={`M${x} ${y - r} Q${x + k} ${y - k} ${x + r} ${y} Q${x + k} ${y + k} ${x} ${y + r} Q${x - k} ${y + k} ${x - r} ${y} Q${x - k} ${y - k} ${x} ${y - r}Z`} fill={fill} {...O} strokeWidth={2} />;
+
+
+type Front = { x: number; top: number; roof: string; children?: React.ReactNode; awning: React.ReactNode; sign: React.ReactNode; door: string };
+const W = 148;
+const GROUND = 330;
+
+/** One shopfront on the main street: the building, its parapet with a round sign, an awning, the window (contents passed in), the door. */
+function ShopUnit({ x, top, roof, children, awning, sign, door }: Front) {
+  return (
+    <g>
+      <rect x={x} y={top + 20} width={W} height={GROUND - top - 20} rx="8" fill={WHITE} {...O} />
+      <rect x={x - 5} y={top} width={W + 10} height="28" rx="9" fill={roof} {...O} />
+      {awning}
+      <rect x={x + 12} y={top + 82} width="76" height={292 - top - 82} rx="8" fill={LILAC} {...O} />
+      {children}
+      <rect x={x + 100} y={GROUND - 112} width="36" height="112" rx="6" fill={door} {...O} />
+      <circle cx={x + 128} cy={GROUND - 56} r="3" fill={INK} />
+      <circle cx={x + W / 2} cy={top + 14} r="19" fill={WHITE} {...O} />
+      {sign}
+    </g>
+  );
 }
 
-/** The hero shopfront: string lights on the parapet, a striped awning, the window with a cup and a plant on the counter, the door. */
-export function ShopFront(p: Art) {
-  const stripes = 8;
-  const top = { x: 52, w: 316 / stripes };
-  const bot = { x: 30, w: 360 / stripes };
+/** A scalloped striped awning across a shopfront. */
+function Stripes({ x, y, a, b }: { x: number; y: number; a: string; b: string }) {
+  const n = 6;
+  const w = (W + 8) / n;
   return (
-    <svg {...svg("0 0 420 372", p)}>
-      <ellipse cx="210" cy="352" rx="200" ry="12" fill={INK} opacity="0.1" />
-      {/* Building and parapet */}
-      <rect x="44" y="70" width="332" height="276" rx="14" fill={WHITE} {...O} />
-      <rect x="30" y="44" width="360" height="40" rx="12" fill={VIOLET} {...O} />
-      {Array.from({ length: 9 }, (_, i) => (
-        <circle key={i} cx={58 + i * 38} cy="64" r="6" fill={i % 3 === 1 ? MINT : SUN} {...O} strokeWidth={2} />
+    <g>
+      <rect x={x - 4} y={y} width={W + 8} height="22" fill={b} />
+      {Array.from({ length: n }, (_, i) => (i % 2 ? null : <rect key={`r${i}`} x={x - 4 + i * w} y={y} width={w} height="22" fill={a} />))}
+      {Array.from({ length: n }, (_, i) => (
+        <path key={i} d={`M${x - 4 + i * w} ${y + 22} a${w / 2} ${w / 2.6} 0 0 0 ${w} 0`} fill={i % 2 ? b : a} {...O} />
       ))}
-      {/* Awning: stripes, then a scallop under each one */}
-      {Array.from({ length: stripes }, (_, i) => (
-        <path key={`s${i}`} d={`M${top.x + i * top.w} 100 H${top.x + (i + 1) * top.w} L${bot.x + (i + 1) * bot.w} 150 H${bot.x + i * bot.w} Z`} fill={i % 2 ? WHITE : CORAL} />
-      ))}
-      {Array.from({ length: stripes }, (_, i) => (
-        <path key={`c${i}`} d={`M${bot.x + i * bot.w} 150 a${bot.w / 2} ${bot.w / 2.4} 0 0 0 ${bot.w} 0`} fill={i % 2 ? WHITE : CORAL} {...O} />
-      ))}
-      <path d={`M${top.x} 100 H${top.x + 316} L390 150 H30 Z`} fill="none" {...O} />
-      {/* Window: the counter, a cup with steam, a plant */}
-      <rect x="72" y="190" width="176" height="128" rx="12" fill={LILAC} {...O} />
-      <path d="M86 206 l26 -0 M86 218 l14 0" stroke={WHITE} strokeWidth="5" strokeLinecap="round" />
-      <rect x="72" y="278" width="176" height="40" rx="0" fill={SUN} {...O} />
-      <path d="M108 248 h34 v18 a12 12 0 0 1 -12 12 h-10 a12 12 0 0 1 -12 -12 z" fill={WHITE} {...O} />
-      <path d="M142 252 a8 8 0 0 1 0 16" fill="none" {...O} />
-      <path d="M118 236 q-5 -7 0 -13 q5 -6 0 -12 M132 236 q-5 -7 0 -13 q5 -6 0 -12" fill="none" {...O} strokeWidth={2} />
-      <path d="M196 278 l4 -26 h28 l4 26 z" fill={CORAL} {...O} />
-      <path d="M214 252 c-14 -6 -20 -22 -12 -34 c10 6 14 20 12 34 z" fill={MINT} {...O} />
-      <path d="M214 252 c10 -8 24 -10 30 -2 c-8 8 -20 8 -30 2 z" fill={MINT} {...O} />
-      <path d="M214 252 c0 -14 6 -28 16 -32 c4 12 -4 26 -16 32 z" fill={MINT} {...O} />
-      {/* Door, with its window and a stamp badge */}
-      <rect x="270" y="190" width="84" height="156" rx="10" fill={MINT} {...O} />
-      <rect x="284" y="204" width="56" height="58" rx="8" fill={LILAC} {...O} />
-      <circle cx="342" cy="292" r="4.5" fill={INK} />
-      <circle cx="312" cy="300" r="15" fill={WHITE} {...O} />
-      <circle cx="312" cy="300" r="8" fill="none" stroke={CORAL} strokeWidth="3.5" />
-      {/* Ground and the bushes either side */}
-      <path d="M8 346 H412" {...O} />
-      <circle cx="30" cy="330" r="18" fill={MINT} {...O} />
-      <circle cx="52" cy="336" r="12" fill={MINT} {...O} />
-      <circle cx="392" cy="332" r="16" fill={MINT} {...O} />
-      <Sparkle x={404} y={30} r={10} />
-      <Sparkle x={16} y={110} r={7} fill={WHITE} />
+      <rect x={x - 4} y={y} width={W + 8} height="22" fill="none" {...O} />
+    </g>
+  );
+}
+
+/** A flat, slanted awning. */
+function Flat({ x, y, fill }: { x: number; y: number; fill: string }) {
+  return <path d={`M${x} ${y} H${x + W} L${x + W + 8} ${y + 26} H${x - 8} Z`} fill={fill} {...O} />;
+}
+
+/**
+ * The hero's main street: four neighbours in one flat style, a café, a phone repair shop, a barber and a nail salon, each with its own
+ * sign glyph (a cup; a phone and a wrench; scissors; a polish bottle) and window. The stamp-card phone stands in front of it on the page.
+ */
+export function MainStreet(p: Art) {
+  const xs = [14, 170, 326, 482];
+  const cy = (top: number) => top + 14;
+  return (
+    <svg {...svg("0 0 644 346", p)}>
+      <ellipse cx="322" cy={GROUND + 4} rx="316" ry="10" fill={INK} opacity="0.08" />
+      {/* Café */}
+      <ShopUnit
+        x={xs[0]!}
+        top={72}
+        roof={CORAL}
+        door={MINT}
+        awning={<Stripes x={xs[0]!} y={112} a={CORAL} b={WHITE} />}
+        sign={<path d={`M${xs[0]! + 64} ${cy(72) - 5} h16 v6 a7 7 0 0 1 -7 7 h-2 a7 7 0 0 1 -7 -7 z M${xs[0]! + 80} ${cy(72) - 3} a4 4 0 0 1 0 8`} fill="none" {...O} strokeWidth={2} />}
+      >
+        <rect x={xs[0]! + 12} y={262} width="76" height="30" fill={SUN} {...O} />
+        <path d={`M${xs[0]! + 26} 246 h20 v8 a8 8 0 0 1 -8 8 h-4 a8 8 0 0 1 -8 -8 z`} fill={WHITE} {...O} strokeWidth={2} />
+        <path d={`M${xs[0]! + 56} 262 a14 12 0 0 1 28 0 z`} fill={CORAL} {...O} strokeWidth={2} />
+      </ShopUnit>
+      {/* Phone repair */}
+      <ShopUnit
+        x={xs[1]!}
+        top={48}
+        roof={VIOLET}
+        door={SUN}
+        awning={<Flat x={xs[1]!} y={88} fill={VIOLET} />}
+        sign={
+          <g>
+            <rect x={xs[1]! + 62} y={cy(48) - 10} width="11" height="19" rx="2.5" fill={INK} />
+            <path d={`M${xs[1]! + 78} ${cy(48) + 8} l8 -12`} {...O} strokeWidth={3} />
+            <circle cx={xs[1]! + 87} cy={cy(48) - 6} r="3.5" fill="none" {...O} strokeWidth={2} />
+          </g>
+        }
+      >
+        <rect x={xs[1]! + 32} y={178} width="36" height="66" rx="7" fill={INK} {...O} strokeWidth={2} />
+        <rect x={xs[1]! + 37} y={186} width="26" height="48" rx="3" fill={MINT} />
+        <path d={`M${xs[1]! + 40} 196 l18 10 M${xs[1]! + 44} 222 l12 -8`} stroke={WHITE} strokeWidth="2" strokeLinecap="round" />
+        <path d={`M${xs[1]! + 22} 292 V266 M${xs[1]! + 78} 292 V266`} {...O} />
+        <rect x={xs[1]! + 16} y={256} width="68" height="10" rx="3" fill={CORAL} {...O} strokeWidth={2} />
+      </ShopUnit>
+      {/* Barber, with its pole */}
+      <ShopUnit
+        x={xs[2]!}
+        top={80}
+        roof={MINT}
+        door={LILAC}
+        awning={<Flat x={xs[2]!} y={120} fill={INK} />}
+        sign={
+          <g>
+            <circle cx={xs[2]! + 68} cy={cy(80) + 6} r="4" fill="none" {...O} strokeWidth={2} />
+            <circle cx={xs[2]! + 80} cy={cy(80) + 6} r="4" fill="none" {...O} strokeWidth={2} />
+            <path d={`M${xs[2]! + 70} ${cy(80) + 3} l12 -12 M${xs[2]! + 78} ${cy(80) + 3} l-12 -12`} {...O} strokeWidth={2} />
+          </g>
+        }
+      >
+        <circle cx={xs[2]! + 50} cy={218} r="22" fill={WHITE} {...O} strokeWidth={2} />
+        <path d={`M${xs[2]! + 30} 292 v-30 a20 20 0 0 1 40 0 v30`} fill={CORAL} {...O} strokeWidth={2} />
+      </ShopUnit>
+      <g>
+        <rect x={xs[2]! + 90} y={186} width="8" height="52" rx="3" fill={WHITE} {...O} strokeWidth={2} />
+        <path d={`M${xs[2]! + 90} 196 l8 -6 M${xs[2]! + 90} 208 l8 -6 M${xs[2]! + 90} 220 l8 -6 M${xs[2]! + 90} 232 l8 -6`} stroke={CORAL} strokeWidth="3" />
+        <circle cx={xs[2]! + 94} cy={183} r="4" fill={INK} />
+      </g>
+      {/* Nail salon */}
+      <ShopUnit
+        x={xs[3]!}
+        top={60}
+        roof={SUN}
+        door={CORAL}
+        awning={<Stripes x={xs[3]!} y={100} a={VIOLET} b={WHITE} />}
+        sign={
+          <g>
+            <rect x={xs[3]! + 70} y={cy(60) - 11} width="8" height="8" rx="1.5" fill={INK} />
+            <rect x={xs[3]! + 66} y={cy(60) - 3} width="16" height="13" rx="3" fill={CORAL} {...O} strokeWidth={2} />
+          </g>
+        }
+      >
+        <path d={`M${xs[3]! + 18} 252 H${xs[3]! + 82}`} {...O} />
+        {[0, 1, 2].map((i) => (
+          <g key={i}>
+            <rect x={xs[3]! + 26 + i * 18} y={222} width="6" height="8" rx="1.5" fill={INK} />
+            <rect x={xs[3]! + 22 + i * 18} y={230} width="14" height="22" rx="3" fill={[CORAL, VIOLET, MINT][i]} {...O} strokeWidth={2} />
+          </g>
+        ))}
+      </ShopUnit>
+      <path d={`M4 ${GROUND} H640`} {...O} />
+      <circle cx="10" cy={GROUND - 12} r="12" fill={MINT} {...O} />
+      <circle cx="636" cy={GROUND - 14} r="14" fill={MINT} {...O} />
+    </svg>
+  );
+}
+
+/** Tile 1 (free loyalty, every kind of shop): a phone with a wrench for the repair counter, and a shopping bag for retail. */
+export function SpotShops(p: Art) {
+  return (
+    <svg {...svg("0 0 140 110", p)}>
+      <path d="M78 36 h40 l6 62 h-52 z" fill={CORAL} {...O} />
+      <path d="M88 36 v-8 a10 10 0 0 1 20 0 v8" fill="none" {...O} />
+      <rect x="22" y="14" width="40" height="76" rx="9" fill={INK} {...O} />
+      <rect x="27" y="22" width="30" height="58" rx="4" fill={MINT} />
+      <path d="M32 34 l20 12 M36 66 l14 -9" stroke={WHITE} strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M50 92 l26 -30" {...O} strokeWidth={6} />
+      <path d="M50 92 l26 -30" stroke={SUN} strokeWidth="2" strokeLinecap="round" />
+      <circle cx="80" cy="57" r="8" fill="none" {...O} strokeWidth={3} />
+      <path d="M8 100 H132" {...O} />
     </svg>
   );
 }
@@ -102,8 +204,6 @@ export function StepSetup(p: Art) {
         ))}
         <rect x="152" y="116" width="40" height="7" rx="3.5" fill={WHITE} />
       </g>
-      <Sparkle x={34} y={40} r={9} />
-      <Sparkle x={210} y={34} r={7} fill={WHITE} />
     </svg>
   );
 }
@@ -134,8 +234,6 @@ export function StepJoin(p: Art) {
       <rect x="112" y="122" width="58" height="18" rx="9" fill={INK} />
       <circle cx="186" cy="28" r="17" fill={MINT} {...O} />
       <path d="M178 28 l6 6 l10 -12" fill="none" {...O} strokeWidth={3} />
-      <Sparkle x={214} y={84} r={8} />
-      <Sparkle x={34} y={30} r={6} fill={WHITE} />
     </svg>
   );
 }
@@ -165,26 +263,10 @@ export function StepStamp(p: Art) {
         <rect x="130" y="68" width="42" height="8" rx="2" fill={INK} />
       </g>
       <path d="M112 74 l-12 -6 M110 88 l-14 2 M192 74 l12 -6 M194 88 l14 2" {...O} />
-      <Sparkle x={38} y={52} r={9} />
-      <Sparkle x={214} y={30} r={6} fill={WHITE} />
     </svg>
   );
 }
 
-/** Where-do-you-fit tile 1: a cup on its saucer, steaming. */
-export function SpotCup(p: Art) {
-  return (
-    <svg {...svg("0 0 140 110", p)}>
-      <ellipse cx="66" cy="94" rx="46" ry="9" fill={WHITE} {...O} />
-      <path d="M30 44 h72 v20 a28 28 0 0 1 -28 28 h-16 a28 28 0 0 1 -28 -28 z" fill={WHITE} {...O} />
-      <rect x="30" y="56" width="72" height="12" fill={VIOLET} />
-      <path d="M30 44 h72 v20 a28 28 0 0 1 -28 28 h-16 a28 28 0 0 1 -28 -28 z" fill="none" {...O} />
-      <path d="M102 52 a13 13 0 0 1 0 26" fill="none" {...O} strokeWidth={3} />
-      <path d="M52 34 q-6 -8 0 -15 q6 -7 0 -14 M74 34 q-6 -8 0 -15 q6 -7 0 -14" fill="none" {...O} />
-      <Sparkle x={118} y={22} r={8} fill={WHITE} />
-    </svg>
-  );
-}
 
 /** Tile 2: scissors and a bottle of nail polish (barbers, nail techs, groomers). */
 export function SpotBooking(p: Art) {
@@ -308,8 +390,6 @@ export function AskBubbles(p: Art) {
       {[142, 160, 178].map((x) => (
         <circle key={x} cx={x} cy="114" r="5" fill={INK} />
       ))}
-      <Sparkle x={196} y={30} r={10} fill={WHITE} />
-      <Sparkle x={12} y={140} r={7} fill={CORAL} />
     </svg>
   );
 }
@@ -331,24 +411,10 @@ export function VisitCalendar(p: Art) {
       <path d="M170 116 h44 v18 a18 18 0 0 1 -18 18 h-8 a18 18 0 0 1 -18 -18 z" fill={CORAL} {...O} />
       <path d="M214 122 a8 8 0 0 1 0 16" fill="none" {...O} />
       <path d="M184 106 q-4 -6 0 -11 M200 106 q-4 -6 0 -11" fill="none" {...O} strokeWidth={2} />
-      <Sparkle x={210} y={40} r={9} />
     </svg>
   );
 }
 
-/** Confetti for the closing band: rings and sparkles on violet. Positioned by CSS at either end. */
-export function Confetti(p: Art) {
-  return (
-    <svg {...svg("0 0 200 200", p)}>
-      <circle cx="40" cy="44" r="18" fill="none" stroke={SUN} strokeWidth="7" />
-      <circle cx="150" cy="150" r="24" fill={MINT} {...O} />
-      <circle cx="150" cy="150" r="12" fill="none" stroke={INK} strokeWidth="3" />
-      <circle cx="160" cy="40" r="9" fill={CORAL} {...O} strokeWidth={2} />
-      <Sparkle x={70} y={150} r={14} />
-      <Sparkle x={120} y={88} r={8} fill={WHITE} />
-    </svg>
-  );
-}
 
 /** Small chip icons for the booking trades. */
 export function IconPolish(p: Art) {

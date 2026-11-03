@@ -1,7 +1,7 @@
 /*
- * The home page, wave S (app/(marketing)/page.tsx): friendly and colourful. A white page carrying big rounded colour blocks (sun, mint,
- * coral, violet; radius 24 to 32), Bricolage Grotesque 700 headlines on Inter, pill buttons, flat inline-SVG spot art and product mockups
- * with soft shadows. Every colour is a .mkt token (@ll/design-tokens marketing.ts): dark ink text on the light blocks, white only on violet.
+ * The home page, wave S (app/(marketing)/page.tsx), calmed in S2: a white page carrying big rounded blocks in soft tints (lilac, sun,
+ * mint, coral) with violet as the one strong colour (radius 24 to 32), a neutral grotesk for headlines on Inter, flat pill buttons, flat
+ * inline-SVG spot art (the bright colours live there) and product mockups with soft shadows. Every colour is a .mkt token (@ll/design-tokens marketing.ts): dark ink text on the light blocks, white only on violet.
  * Logical properties throughout, so the page mirrors under dir="rtl". Motion: a lift on hover and the newest stamp pressing in once.
  */
 .lp {
@@ -27,12 +27,12 @@
 
 /* ---------- Type: the display face for headlines, Inter for everything else ---------- */
 .lp-h1, .lp-h2, .lp-h3 { font-family: var(--mkt-face-display); font-weight: 700; text-wrap: balance; }
-.lp-h1 { font-size: 38px; line-height: 42px; letter-spacing: -0.02em; }
-.lp-h2 { font-size: 32px; line-height: 38px; letter-spacing: -0.015em; }
+.lp-h1 { font-size: 38px; line-height: 42px; letter-spacing: -0.025em; }
+.lp-h2 { font-size: 32px; line-height: 38px; letter-spacing: -0.02em; }
 .lp-h3 { font-size: 20px; line-height: 26px; letter-spacing: -0.005em; }
 @media (min-width: 768px) { .lp-h1 { font-size: 52px; line-height: 56px; } }
 @media (min-width: 1024px) {
-  .lp-h1 { font-size: 64px; line-height: 68px; }
+  .lp-h1 { font-size: 60px; line-height: 64px; }
   .lp-h2 { font-size: 46px; line-height: 52px; }
 }
 .lp-h3-lg { font-size: 26px; line-height: 32px; }
@@ -56,13 +56,14 @@
 }
 .lp-btn svg, .lp-btn2 svg { width: 18px; height: 18px; }
 [dir="rtl"] .lp :is(.lp-btn, .lp-link, .lp-row-go) svg { transform: scaleX(-1); }
-.lp-btn { background: var(--mkt-violet); color: var(--mkt-on-violet); box-shadow: 0 2px 0 var(--mkt-ink); }
-.lp-btn:hover { background: var(--mkt-violet-hover); translate: 0 -1px; box-shadow: 0 3px 0 var(--mkt-ink); }
+.lp-btn { background: var(--mkt-violet); color: var(--mkt-on-violet); }
+.lp-btn:hover { background: var(--mkt-violet-hover); }
 .lp-btn-sun { background: var(--mkt-sun); color: var(--mkt-ink); }
 .lp-btn-sun:hover { background: color-mix(in srgb, var(--mkt-sun) 88%, var(--mkt-stock)); }
-.lp-btn2 { background: var(--mkt-stock); color: var(--mkt-ink); box-shadow: inset 0 0 0 2px var(--mkt-ink); }
+.lp-btn2 { background: var(--mkt-stock); color: var(--mkt-ink); box-shadow: inset 0 0 0 1.5px var(--mkt-line-strong); }
+.lp-btn2:hover { box-shadow: inset 0 0 0 1.5px var(--mkt-ink); }
 .lp-btn2:hover { background: var(--mkt-soft); }
-.lp-btn:active, .lp-btn2:active { translate: 0 1px; box-shadow: none; }
+.lp-btn:active, .lp-btn2:active { translate: 0 1px; }
 .lp-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 600; color: var(--mkt-ink); text-decoration: underline; text-decoration-thickness: 2px; text-decoration-color: var(--mkt-violet); text-underline-offset: 5px; }
 .lp-link:hover { color: var(--mkt-violet); }
 .lp-link svg { width: 16px; height: 16px; }
@@ -72,9 +73,9 @@
 /* ---------- Hero: the sun block, the copy beside the shopfront and the card on a phone ---------- */
 .lp-hero { padding-top: 8px; }
 @media (min-width: 1024px) { .lp-hero { padding-top: 16px; } }
-.lp-hero-panel { position: relative; display: grid; overflow: hidden; border-radius: var(--mkt-radius-card); background: var(--mkt-sun); padding: 36px 20px 0; isolation: isolate; }
+.lp-hero-panel { position: relative; display: grid; overflow: hidden; border-radius: var(--mkt-radius-card); background: var(--mkt-violet-soft); padding: 36px 20px 0; isolation: isolate; }
 /* A soft white disc behind the art, and a ring of dots: the block's own decoration. */
-.lp-hero-panel::before { content: ""; position: absolute; z-index: -1; width: 520px; aspect-ratio: 1; border-radius: 50%; inset-block-end: -260px; inset-inline-end: -160px; background: color-mix(in srgb, var(--mkt-stock) 34%, transparent); }
+.lp-hero-panel::before { content: ""; position: absolute; z-index: -1; width: 520px; aspect-ratio: 1; border-radius: 50%; inset-block-end: -260px; inset-inline-end: -160px; background: color-mix(in srgb, var(--mkt-stock) 45%, transparent); }
 .lp-hero-copy { position: relative; z-index: 2; display: grid; gap: 20px; justify-items: start; padding-bottom: 28px; }
 .lp-hero-copy .lp-actions { margin-top: 4px; }
 .lp-trust { display: none; }
@@ -83,32 +84,33 @@
 .lp-trust li { display: inline-flex; align-items: center; gap: 6px; }
 .lp-trust svg { width: 20px; height: 20px; padding: 3px; border-radius: 50%; background: var(--mkt-stock); flex: none; }
 .lp-hero-art { position: relative; height: 330px; margin-inline: -20px; }
-.lp-shop { position: absolute; inset-block-end: -4px; inset-inline-end: 0; width: 300px; height: auto; }
-.lp-hero-phone { position: absolute; inset-block-end: -96px; inset-inline-start: 16px; width: 190px; rotate: -5deg; }
-.lp-note-a { position: absolute; inset-block-start: 6px; inset-inline-end: 12px; }
+.lp-shop { position: absolute; inset-block-end: -2px; inset-inline-start: 0; width: 100%; height: auto; }
+.lp-hero-phone { position: absolute; inset-block-end: -120px; inset-inline-start: 10px; width: 150px; rotate: -4deg; }
+.lp-note-a { position: absolute; inset-block-start: 24px; inset-inline-end: 12px; }
+@media (max-width: 1023.98px) { .lp-hero-phone :is(.lp-card-count, .lp-card-shop small) { display: none; } }
 .lp-note.lp-note-b { display: none; }
 @media (min-width: 640px) {
-  .lp-hero-art { height: 380px; }
-  .lp-shop { width: 380px; inset-inline-end: 8%; }
-  .lp-hero-phone { width: 210px; inset-inline-start: 10%; }
+  .lp-hero-art { height: 400px; }
+  .lp-shop { width: 560px; inset-inline-start: 4%; }
+  .lp-hero-phone { width: 190px; inset-inline-start: 4%; inset-block-end: -110px; }
 }
 @media (min-width: 1024px) {
-  .lp-hero-panel { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); min-height: 600px; padding: 0; border-radius: var(--mkt-radius-panel); }
+  .lp-hero-panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 620px; padding: 0; border-radius: var(--mkt-radius-panel); }
   .lp-hero-copy { align-self: center; padding-block: 72px; padding-inline: 64px 0; }
   .lp-hero-art { height: auto; margin: 0; }
-  .lp-shop { width: 420px; inset-inline-end: 0; }
-  .lp-hero-phone { width: 250px; inset-inline-start: 0; inset-block-end: -64px; }
-  .lp-note-a { inset-block-start: 56px; inset-inline-end: 32px; }
-  .lp-note.lp-note-b { display: flex; position: absolute; inset-block-end: 170px; inset-inline-end: 16px; max-width: 270px; }
+  .lp-shop { width: calc(100% - 8px); inset-inline-start: auto; inset-inline-end: 0; }
+  .lp-hero-phone { width: 200px; inset-inline-start: 4px; inset-inline-end: auto; inset-block-end: -70px; }
+  .lp-note-a { inset-block-start: 56px; inset-inline-start: 40px; inset-inline-end: auto; }
+  .lp-note.lp-note-b { display: flex; position: absolute; inset-block-start: 140px; inset-inline-end: 40px; max-width: 270px; }
 }
-@media (min-width: 1280px) { .lp-hero-copy { padding-inline-start: 80px; } .lp-shop { width: 450px; } }
+@media (min-width: 1280px) { .lp-hero-copy { padding-inline-start: 72px; } }
 
 /* A floating note on a mockup */
-.lp-note { display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 10px; border-radius: 18px; background: var(--mkt-stock); box-shadow: var(--mkt-shadow-card), inset 0 0 0 1.5px var(--mkt-ink); font-size: 13px; line-height: 18px; max-width: 260px; }
+.lp-note { display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 10px; border-radius: 18px; background: var(--mkt-stock); box-shadow: var(--mkt-shadow-float), inset 0 0 0 1px var(--mkt-line); font-size: 13px; line-height: 18px; max-width: 260px; }
 [dir="rtl"] .lp-note { padding: 10px 10px 10px 16px; }
 .lp-note b { font-weight: 650; font-size: 14px; }
 .lp-note small { color: var(--mkt-text2); font-size: 12px; }
-.lp-note-i { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--mkt-ink); }
+.lp-note-i { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; }
 .lp-note-i svg { width: 18px; height: 18px; }
 .lp-tone-mint { background: var(--mkt-mint); }
 .lp-tone-sun { background: var(--mkt-sun); }
@@ -122,11 +124,11 @@
 [dir="rtl"] .lp-phone-notch { translate: 50% 0; }
 
 /* ---------- The stamp card ---------- */
-.lp-card { display: grid; overflow: hidden; border-radius: 18px; background: var(--mkt-stock); color: var(--mkt-ink); box-shadow: var(--mkt-shadow-sm), inset 0 0 0 1.5px var(--mkt-ink); }
+.lp-card { display: grid; overflow: hidden; border-radius: 18px; background: var(--mkt-stock); color: var(--mkt-ink); box-shadow: var(--mkt-shadow-card), inset 0 0 0 1px var(--mkt-line); }
 .lp-card-band { display: flex; align-items: center; gap: 8px; padding: 10px 10px; background: var(--mkt-violet); color: var(--mkt-on-violet); }
 .lp-card-mark { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--mkt-sun); color: var(--mkt-ink); font-family: var(--mkt-face-display); font-size: 14px; line-height: 1; }
 .lp-card-shop { display: grid; min-width: 0; line-height: 15px; }
-.lp-card-shop b { font-size: 11.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lp-card-shop b { font-size: 12px; font-weight: 650; }
 .lp-card-shop small { font-size: 10px; opacity: 0.9; }
 .lp-card-count { margin-inline-start: auto; flex: none; white-space: nowrap; font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--mkt-stock) 20%, transparent); }
 .lp-card-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 12px 10px 8px; }
@@ -140,6 +142,7 @@
 .lp-card-foot small { font-size: 10px; color: var(--mkt-muted); }
 .lp-card-foot b { font-size: 12px; font-weight: 650; }
 .lp-card-holder { text-align: end; }
+.lp-hero-phone .lp-card-holder { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .lp-fresh { animation: lp-press 420ms cubic-bezier(0.34, 1.5, 0.64, 1) 700ms both; }
   @keyframes lp-press { from { opacity: 0; scale: 1.6; } to { opacity: 1; scale: 1; } }
@@ -173,17 +176,17 @@
 .lp-steps { display: grid; gap: 16px; }
 @media (min-width: 900px) { .lp-step-art { max-width: 280px; } .lp-steps { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
 .lp-step { display: grid; align-content: start; gap: 8px; padding: 20px 24px 28px; border-radius: var(--mkt-radius-card); }
-.lp-step-1 { background: var(--mkt-coral); }
-.lp-step-2 { background: var(--mkt-mint); }
-.lp-step-3 { background: var(--mkt-sun); }
+.lp-step-1 { background: var(--mkt-coral-soft); }
+.lp-step-2 { background: var(--mkt-mint-soft); }
+.lp-step-3 { background: var(--mkt-sun-soft); }
 .lp-step-art { display: block; width: 100%; max-width: 230px; height: auto; margin: 0 auto 8px; }
 .lp-step .lp-body { color: var(--mkt-ink); }
 .lp-step-n { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--mkt-ink); color: var(--mkt-on-ink); font-family: var(--mkt-face-display); font-size: 16px; line-height: 1; margin-bottom: 4px; }
 .lp-counter-panel { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 16px; margin-top: 20px; padding: 28px 12px 24px; border-radius: var(--mkt-radius-card); background: var(--mkt-violet); overflow: hidden; isolation: isolate; }
 .lp-counter-panel::before, .lp-counter-panel::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; }
 .lp-counter-panel::before { width: 280px; height: 280px; inset-block-start: -120px; inset-inline-start: -100px; border: 28px solid color-mix(in srgb, var(--mkt-stock) 10%, transparent); }
-.lp-counter-panel::after { display: none; width: 180px; height: 180px; inset-block-end: -70px; inset-inline-end: -40px; background: var(--mkt-sun); opacity: 0.9; }
-@media (min-width: 1024px) { .lp-counter-panel { padding: 56px 64px 40px; border-radius: var(--mkt-radius-panel); } .lp-counter-panel::after { display: block; } }
+.lp-counter-panel::after { width: 220px; height: 220px; inset-block-end: -110px; inset-inline-end: -60px; border: 24px solid color-mix(in srgb, var(--mkt-stock) 8%, transparent); }
+@media (min-width: 1024px) { .lp-counter-panel { padding: 56px 64px 40px; border-radius: var(--mkt-radius-panel); } }
 .lp-caption { text-align: center; font-size: 14px; line-height: 20px; color: color-mix(in srgb, var(--mkt-on-violet) 90%, var(--mkt-violet)); }
 
 /* The counter tablet */
@@ -222,9 +225,9 @@
 /* ---------- What it does: alternating colour blocks, words on one side, the product on the other ---------- */
 .lp-features { display: grid; gap: 20px; }
 .lp-feature { display: grid; gap: 28px; padding: 32px 20px 20px; border-radius: var(--mkt-radius-card); }
-.lp-feature-week { background: var(--mkt-mint); }
-.lp-feature-promos { background: var(--mkt-coral); }
-.lp-feature-map { background: var(--mkt-sun); }
+.lp-feature-week { background: var(--mkt-mint-soft); }
+.lp-feature-promos { background: var(--mkt-coral-soft); }
+.lp-feature-map { background: var(--mkt-sun-soft); }
 @media (min-width: 1024px) {
   .lp-feature { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 64px; padding: 56px 64px; border-radius: var(--mkt-radius-panel); }
   .lp-feature:nth-child(even) .lp-feature-copy { order: 2; }
@@ -233,10 +236,10 @@
 .lp-feature .lp-body { color: var(--mkt-ink); font-size: 17px; line-height: 26px; }
 .lp-points { display: grid; gap: 10px; margin-top: 8px; font-size: 16px; line-height: 22px; font-weight: 500; }
 .lp-points li { display: flex; align-items: center; gap: 10px; }
-.lp-points svg { flex: none; width: 24px; height: 24px; padding: 4px; border-radius: 50%; background: var(--mkt-stock); box-shadow: inset 0 0 0 1.5px var(--mkt-ink); }
+.lp-points svg { flex: none; width: 24px; height: 24px; padding: 4px; border-radius: 50%; background: var(--mkt-stock); color: var(--mkt-violet); }
 .lp-feature-art { position: relative; display: grid; justify-items: center; }
 /* Today card */
-.lp-today { display: grid; gap: 16px; width: min(100%, 440px); padding: 20px; border-radius: var(--mkt-radius-card); background: var(--mkt-stock); box-shadow: var(--mkt-shadow-pop), inset 0 0 0 1.5px var(--mkt-ink); }
+.lp-today { display: grid; gap: 16px; width: min(100%, 440px); padding: 20px; border-radius: var(--mkt-radius-card); background: var(--mkt-stock); box-shadow: var(--mkt-shadow-pop), inset 0 0 0 1px var(--mkt-line); }
 .lp-today-h { display: grid; }
 .lp-today-h b { font-family: var(--mkt-face-display); font-size: 20px; line-height: 26px; }
 .lp-today-h small { font-size: 13px; color: var(--mkt-muted); }
@@ -250,7 +253,7 @@
 /* Promo note */
 .lp-promo { display: grid; justify-items: center; width: min(100%, 420px); }
 .lp-promo-art { width: min(70%, 230px); height: auto; }
-.lp-promo-note { display: flex; gap: 12px; width: 100%; margin-top: -8px; padding: 14px 16px; border-radius: 22px; background: var(--mkt-stock); box-shadow: var(--mkt-shadow-pop), inset 0 0 0 1.5px var(--mkt-ink); font-size: 14px; line-height: 20px; }
+.lp-promo-note { display: flex; gap: 12px; width: 100%; margin-top: -8px; padding: 14px 16px; border-radius: 22px; background: var(--mkt-stock); box-shadow: var(--mkt-shadow-pop), inset 0 0 0 1px var(--mkt-line); font-size: 14px; line-height: 20px; }
 .lp-promo-icon { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--mkt-violet); color: var(--mkt-on-violet); font-family: var(--mkt-face-display); font-size: 18px; }
 .lp-promo-note small { font-size: 12px; color: var(--mkt-muted); }
 .lp-promo-note b { font-size: 15px; font-weight: 650; }
@@ -266,22 +269,22 @@
 .lp-doors { display: grid; gap: 16px; }
 @media (min-width: 640px) { .lp-doors { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1100px) { .lp-doors { grid-template-columns: repeat(4, 1fr); } }
-.lp-door { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: var(--mkt-radius-card); transition: translate 200ms var(--mkt-ease), box-shadow 200ms var(--mkt-ease); }
-.lp-door-1 { background: var(--mkt-sun); }
-.lp-door-2 { background: var(--mkt-coral); }
-.lp-door-3 { background: var(--mkt-mint); }
+.lp-door { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: var(--mkt-radius-card); transition: box-shadow 200ms var(--mkt-ease); }
+.lp-door-1 { background: var(--mkt-sun-soft); }
+.lp-door-2 { background: var(--mkt-coral-soft); }
+.lp-door-3 { background: var(--mkt-mint-soft); }
 .lp-door-4 { background: var(--mkt-violet-soft); }
 .lp-door-art { width: 120px; height: auto; margin-bottom: 4px; }
 .lp-door-t { font-family: var(--mkt-face-display); font-size: 22px; line-height: 28px; font-weight: 700; }
 .lp-door-k { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--mkt-text2); }
 .lp-door .lp-body { color: var(--mkt-ink); }
-.lp-row-go { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: auto; min-height: 44px; padding: 0 18px; border-radius: var(--mkt-radius-pill); background: var(--mkt-stock); box-shadow: inset 0 0 0 1.5px var(--mkt-ink); font-weight: 600; color: var(--mkt-ink); text-decoration: none; }
+.lp-row-go { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-top: auto; min-height: 44px; padding: 0 18px; border-radius: var(--mkt-radius-pill); background: var(--mkt-stock); box-shadow: inset 0 0 0 1px var(--mkt-line-strong); font-weight: 600; color: var(--mkt-ink); text-decoration: none; }
 .lp-row-go::after { content: ""; position: absolute; inset: 0; border-radius: var(--mkt-radius-card); }
 .lp-row-go svg { width: 16px; height: 16px; transition: translate 150ms var(--mkt-ease); }
 @media (hover: hover) {
-  .lp-door:hover { translate: 0 -4px; box-shadow: var(--mkt-shadow-card); }
-  .lp-door:hover .lp-row-go svg { translate: 3px 0; }
-  [dir="rtl"] .lp-door:hover .lp-row-go svg { translate: -3px 0; }
+  .lp-door:hover { box-shadow: var(--mkt-shadow-sm), inset 0 0 0 1px var(--mkt-line-strong); }
+  .lp-door:hover .lp-row-go svg { translate: 2px 0; }
+  [dir="rtl"] .lp-door:hover .lp-row-go svg { translate: -2px 0; }
 }
 .lp-booking { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px; margin-top: 28px; font-size: 15px; }
 .lp-booking > span { color: var(--mkt-text2); font-weight: 600; margin-inline-end: 4px; }
@@ -295,7 +298,7 @@
 .lp-plan { display: flex; flex-direction: column; gap: 8px; padding: 28px; border-radius: var(--mkt-radius-card); background: var(--mkt-stock); box-shadow: var(--mkt-shadow-card), inset 0 0 0 1.5px var(--mkt-line); }
 .lp-plan-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; }
 .lp-plan-name { font-family: var(--mkt-face-display); font-size: 22px; line-height: 28px; }
-.lp-plan-badge { padding: 4px 12px; border-radius: 999px; background: var(--mkt-sun); color: var(--mkt-ink); font-size: 13px; font-weight: 650; }
+.lp-plan-badge { padding: 4px 12px; border-radius: 999px; background: var(--mkt-sun-soft); color: var(--mkt-ink); font-size: 13px; font-weight: 650; }
 .lp-plan-price { font-family: var(--mkt-face-display); font-size: 56px; line-height: 60px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .lp-plan-price small { font-family: var(--mkt-face-sans); font-size: 15px; font-weight: 500; letter-spacing: 0; color: var(--mkt-text2); margin-inline-start: 4px; }
 .lp-plan-yearly { font-size: 14px; line-height: 20px; color: var(--mkt-text2); min-height: 20px; }
@@ -310,7 +313,6 @@
 .lp-plan-monthly .lp-plan-yearly b { color: var(--mkt-sun); }
 .lp-plan-monthly ul { border-top-color: color-mix(in srgb, var(--mkt-on-violet) 22%, transparent); }
 .lp-plan-monthly li svg { background: var(--mkt-sun); }
-.lp-plan-monthly .lp-btn { box-shadow: 0 2px 0 var(--mkt-ink); }
 @media (min-width: 1024px) { .lp-plan-monthly { translate: 0 -12px; } }
 .lp-plans-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0 24px; margin-top: 24px; font-size: 14px; color: var(--mkt-text2); text-align: center; }
 
@@ -350,18 +352,18 @@
 .lp .lp-faq-list [data-slot="accordion-content"], .lp .lp-faq-list [data-slot="accordion-content"] * { color: var(--mkt-text2); font-size: 16px; line-height: 24px; }
 
 /* ---------- A visit: the mint block, the form on a white card ---------- */
-.lp-book { display: grid; gap: 24px; padding: 32px 20px 20px; border-radius: var(--mkt-radius-card); background: var(--mkt-mint); }
+.lp-book { display: grid; gap: 24px; padding: 32px 20px 20px; border-radius: var(--mkt-radius-card); background: var(--mkt-mint-soft); }
 @media (min-width: 1024px) { .lp-book { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: center; padding: 56px 64px; border-radius: var(--mkt-radius-panel); } }
 .lp-book-copy { display: grid; gap: 16px; align-content: start; justify-items: start; }
 .lp-book-copy .lp-lede { color: var(--mkt-ink); }
 .lp-book-art { width: 200px; height: auto; margin-top: 8px; }
 @media (max-width: 1023.98px) { .lp-book-art { display: none; } }
-.lp-book-form { padding: 24px; border-radius: var(--mkt-radius-card); background: var(--mkt-stock); box-shadow: var(--mkt-shadow-pop), inset 0 0 0 1.5px var(--mkt-ink); }
+.lp-book-form { padding: 24px; border-radius: var(--mkt-radius-card); background: var(--mkt-stock); box-shadow: var(--mkt-shadow-card), inset 0 0 0 1px var(--mkt-line); }
 .lp-book-form :is(input, select, textarea, [data-slot="input-group"]) { border-radius: var(--mkt-radius-control); }
 .lp-book-form button[type="submit"] { border-radius: var(--mkt-radius-pill); background: var(--mkt-violet); color: var(--mkt-on-violet); font-weight: 600; min-height: 52px; }
 .lp-book-form button[type="submit"]:hover { background: var(--mkt-violet-hover); }
 
-/* ---------- The closing ask: the violet band, confetti at either end, the sun button ---------- */
+/* ---------- The closing ask: the violet band with two quiet rings, the sun button ---------- */
 .lp-final { padding-block: 0 56px; }
 @media (min-width: 1024px) { .lp-final { padding-block: 0 96px; } }
 .lp-final-in { position: relative; display: grid; justify-items: center; gap: 16px; padding: 56px 24px; border-radius: var(--mkt-radius-card); background: var(--mkt-violet); color: var(--mkt-on-violet); text-align: center; overflow: hidden; isolation: isolate; }
@@ -369,10 +371,9 @@
 .lp-final-in .lp-h2 { max-width: 20ch; }
 .lp-final-in .lp-lede { color: color-mix(in srgb, var(--mkt-on-violet) 90%, var(--mkt-violet)); }
 .lp-final-in .lp-btn { margin-top: 8px; }
-.lp-confetti { position: absolute; z-index: -1; width: 96px; height: auto; pointer-events: none; }
-.lp-confetti-a { inset-block-start: -40px; inset-inline-start: -40px; }
-.lp-confetti-b { inset-block-end: -40px; inset-inline-end: -40px; rotate: 180deg; }
-@media (min-width: 1024px) { .lp-confetti { width: 220px; } .lp-confetti-a { inset-block-start: 8px; inset-inline-start: 24px; } .lp-confetti-b { inset-block-end: 8px; inset-inline-end: 24px; } }
+.lp-final-in::before, .lp-final-in::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; border: 28px solid color-mix(in srgb, var(--mkt-stock) 8%, transparent); }
+.lp-final-in::before { width: 300px; height: 300px; inset-block-start: -150px; inset-inline-start: -90px; }
+.lp-final-in::after { width: 240px; height: 240px; inset-block-end: -130px; inset-inline-end: -60px; }
 
 /* ---------- Phones: the button in reach ---------- */
 .lp-sticky { position: fixed; z-index: 40; inset-inline: 0; bottom: 0; display: flex; padding: 8px 140px calc(8px + env(safe-area-inset-bottom)) 16px; background: var(--mkt-paper); border-top: 1px solid var(--mkt-line); }

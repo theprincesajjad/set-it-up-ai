@@ -1,16 +1,15 @@
 /**
- * The stamp card (wave S): the wallet card a customer carries, drawn in code. A violet band with the shop's mark and name, ten slots
- * (earned ones are sun-yellow stamps with the shop's initial, open ones dashed rings) and the next reward. Server-rendered, no script.
- * The newest stamp presses in once on load when motion is allowed. Sample shop and person from copy.landing.mock and copy.landing.card.
+ * The stamp card (wave S; S2 makes it a phone repair shop's): the wallet card a customer carries, drawn in code. A violet band with the
+ * shop's mark and name, the slots (earned ones are sun-yellow stamps with the shop's initial, open ones dashed rings) and the reward.
+ * Server-rendered, no script. The newest stamp presses in once on load when motion is allowed. Sample shop and person: copy.landing.card.
  */
 import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
 
-const M = copy.landing.mock;
 const C = copy.landing.card;
 
-export function StampCard({ earned = 9, total = 10, className, fresh = true }: { earned?: number; total?: number; className?: string; fresh?: boolean }) {
-  const glyph = M.shop.charAt(0);
+export function StampCard({ earned = C.earned, total = C.total, className, fresh = true }: { earned?: number; total?: number; className?: string; fresh?: boolean }) {
+  const glyph = C.shop.charAt(0);
   return (
     <figure className={cn("lp-card", className)} role="img" aria-label={C.label}>
       <div className="lp-card-band">
@@ -18,7 +17,7 @@ export function StampCard({ earned = 9, total = 10, className, fresh = true }: {
           {glyph}
         </span>
         <span className="lp-card-shop">
-          <b>{M.shop}</b>
+          <b>{C.shop}</b>
           <small>{C.street}</small>
         </span>
         <span className="lp-card-count">

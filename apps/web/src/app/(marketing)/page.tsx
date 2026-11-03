@@ -10,16 +10,15 @@ import { TradeMarquee } from "@/components/marketing/TradeMarquee";
 import { CounterPreview } from "@/components/marketing/landing/CounterPreview";
 import {
   AskBubbles,
-  Confetti,
   IconDog,
   IconPolish,
   IconScissors,
   MapScene,
   Megaphone,
-  ShopFront,
+  MainStreet,
   SpotBooking,
   SpotBowl,
-  SpotCup,
+  SpotShops,
   SpotStreet,
   StepJoin,
   StepSetup,
@@ -79,13 +78,16 @@ function Note({ b, s, tone = "mint", className }: { b: string; s: string; tone?:
 }
 
 const STEP_ART = [StepSetup, StepJoin, StepStamp];
-const DOOR_ART = [SpotCup, SpotBooking, SpotBowl, SpotStreet];
+/** The hero's second note: the week's visits (sample, from the "Know how your week went" row), so the hero shows more than stamps. */
+const WEEK_NOTE = L.outcomes.rows.find((r) => r.id === "week")!.floats[0]!;
+const DOOR_ART = [SpotShops, SpotBooking, SpotBowl, SpotStreet];
 const CHIP_ICON: Record<string, (p: { className?: string }) => React.ReactNode> = { "/for-nail-techs": IconPolish, "/for-barbers": IconScissors, "/for-groomers": IconDog };
 
 /**
- * The home page, wave S (friendly and colourful, after the founder turned down wave R's paper-and-serif page). A white page carrying big
- * rounded colour blocks (sun, mint, coral, violet), flat inline-SVG spot art with an ink outline, and the product drawn in code in friendly
- * frames (the wallet card on a phone, the counter tablet, a Today card, a promo note, the map).
+ * The home page, wave S (friendly and colourful, after the founder turned down wave R's paper-and-serif page), calmed in S2 so it fits a
+ * phone repair shop as well as a café: a white page carrying big rounded blocks in soft tints with violet as the one strong colour, flat
+ * inline-SVG spot art with an ink outline (a main street of mixed shops in the hero), and the product drawn in code in friendly frames
+ * (a repair shop's card on a phone, the counter tablet, a Today card, a salon's promo note, the map). Samples are spread across trades.
  * Order (e2e/marketing-bia.spec.ts): the promise on the sun block, live counts and trades, how it works with the counter on violet, what it
  * does as alternating feature blocks, where you fit as four colour tiles, the plans, the dated comparison, questions, a visit, the closing
  * band. Static (re-generated every 5 minutes for the live counts); no client script of its own beyond the visit form and the questions.
@@ -98,7 +100,7 @@ export default function Home() {
   return (
     // data-solo-trade="home": the landing beacon's page marker (LandingMeasure below); "/" is counted for the admin funnel (wave N).
     <div className={`mkt ${marketingFontVars} lp`} data-solo-trade="home">
-      {/* 1. The promise, on the sun block, with the shopfront and the card on a phone */}
+      {/* 1. The promise, on the lilac block, with a main street of mixed shops and a repair shop's card on a phone */}
       <section className="lp-hero" aria-labelledby="lp-title">
         <div className="lp-wrap">
           <div className="lp-hero-panel">
@@ -128,12 +130,12 @@ export default function Home() {
               </ul>
             </div>
             <div className="lp-hero-art">
-              <ShopFront className="lp-shop" />
+              <MainStreet className="lp-shop" />
               <Phone className="lp-hero-phone">
                 <StampCard />
               </Phone>
-              <Note b={L.hero.floats[0]!.b} s={L.hero.floats[0]!.s} className="lp-note-a" />
-              <Note b={L.hero.floats[1]!.b} s={L.hero.floats[1]!.s} tone="coral" className="lp-note-b" />
+              <Note b={L.card.note.b} s={L.card.note.s} className="lp-note-a" />
+              <Note b={WEEK_NOTE.b} s={WEEK_NOTE.s} tone="sun" className="lp-note-b" />
             </div>
           </div>
         </div>
@@ -222,9 +224,9 @@ export default function Home() {
                     <div className="lp-promo">
                       <Megaphone className="lp-promo-art" />
                       <span className="lp-promo-note" aria-hidden>
-                        <span className="lp-promo-icon">{M.shop.charAt(0)}</span>
+                        <span className="lp-promo-icon">{L.promoShop.charAt(0)}</span>
                         <span className="grid">
-                          <small>{M.shop}</small>
+                          <small>{L.promoShop}</small>
                           <b>{L.hero.floats[1]!.b}</b>
                           <span>{L.hero.floats[1]!.s}</span>
                         </span>
@@ -397,8 +399,6 @@ export default function Home() {
       <section className="lp-final" aria-labelledby="lp-final">
         <div className="lp-wrap">
           <div className="lp-final-in">
-            <Confetti className="lp-confetti lp-confetti-a" />
-            <Confetti className="lp-confetti lp-confetti-b" />
             <h2 className="lp-h2" id="lp-final">
               {L.final.title}
             </h2>

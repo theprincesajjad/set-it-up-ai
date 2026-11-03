@@ -67,13 +67,13 @@ export const MARKETING_VARS = [...Object.keys(marketingColors), ...Object.keys(m
 /** The `.mkt` block for tokens.css. `scriptFonts` is the hi/ur/pa Noto list, so those scripts keep their faces. */
 export function marketingCss(scriptFonts: string): string[] {
   return [
-    `/* Marketing landing (wave S): white, sun, mint, coral and violet blocks, Bricolage Grotesque headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */`,
+    `/* Marketing landing (wave S): white, sun, mint, coral and violet blocks, Figtree headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */`,
     `.mkt {`,
     ...Object.entries(marketingColors).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
     ...Object.entries(marketingEffects).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
     // Inter is the app's face, preloaded by the root layout, so body text never waits on a marketing download.
     `  --mkt-face-sans: var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;`,
-    `  --mkt-face-display: var(--font-mkt-display, "Bricolage Grotesque"), var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, sans-serif;`,
+    `  --mkt-face-display: var(--font-mkt-display, "Figtree"), var(--font-inter, "Inter"), ${scriptFonts}, ui-sans-serif, system-ui, sans-serif;`,
     `}`,
     ``,
   ];

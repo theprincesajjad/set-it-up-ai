@@ -168,34 +168,43 @@ export const copy = {
         { icon: "megaphone", b: "Double stamps at 2 p.m.", s: "Sent to 412 customers who opted in" },
       ],
     },
-    /** The stamp card on the hero phone (sample shop and person, like the mocks). */
+    /**
+     * The stamp card on the hero phone (wave S2: a phone repair shop, so the first card a visitor sees is not a café's). Sample shop from
+     * mock.wallet.shops; sample person like the mocks. The note beside it matches the card.
+     */
     card: {
-      label: "Sample stamp card for Pinecone Coffee Co.: 9 of 10 stamps, the next one is a free drink",
-      street: "Roncesvalles",
-      rewardLabel: "Next reward",
-      reward: "Free drink",
+      label: "Sample stamp card for Fix-It Phone Lab: 4 of 5 repairs stamped, the 5th earns a free screen protector",
+      shop: "Fix-It Phone Lab",
+      street: "Danforth Ave",
+      total: 5,
+      earned: 4,
+      rewardLabel: "5th repair",
+      reward: "Free screen protector",
       holderLabel: "Card holder",
       holder: "Maya R.",
+      note: { b: "Stamp added for Maya", s: "4 of 5, one to go" },
     },
+    /** The sample shop on the promo note in "Promos that bring people in" (mock.wallet.shops). */
+    promoShop: "Bloom Hair Studio",
     /** Wave R: the counter preview in how-it-works (sample data; the caption says so). */
     counterCaption: "Sample data. Your own customers fill in as you go.",
-    /** The trades under the hero (wave R: a plain line, was a Marquee) (a Marquee; listed once for screen readers). Icons from public/icons3d. */
+    /** The trades under the hero, as chips (wave S2: shops and services interleaved, so repair and retail sit beside cafés and salons). */
     trades: {
       label: "Set up for",
       items: [
         { icon: "cafe", label: "Cafés" },
-        { icon: "bakery", label: "Bakeries" },
-        { icon: "salon", label: "Hair salons" },
-        { icon: "barber", label: "Barbers" },
-        { icon: "nails", label: "Nail techs" },
-        { icon: "brows_lashes", label: "Brow and lash studios" },
-        { icon: "makeup", label: "Makeup artists" },
-        { icon: "groomer", label: "Pet groomers" },
-        { icon: "pet_shop", label: "Pet shops" },
-        { icon: "eat", label: "Restaurants" },
-        { icon: "butcher", label: "Grocers and butchers" },
         { icon: "repair", label: "Repair shops" },
+        { icon: "barber", label: "Barbers" },
+        { icon: "bakery", label: "Bakeries" },
+        { icon: "nails", label: "Nail techs" },
         { icon: "shops", label: "Gift shops and retail" },
+        { icon: "salon", label: "Hair salons" },
+        { icon: "butcher", label: "Grocers and butchers" },
+        { icon: "groomer", label: "Pet groomers" },
+        { icon: "eat", label: "Restaurants" },
+        { icon: "brows_lashes", label: "Brow and lash studios" },
+        { icon: "pet_shop", label: "Pet shops" },
+        { icon: "makeup", label: "Makeup artists" },
       ],
     },
     facts: {
@@ -213,7 +222,7 @@ export const copy = {
       title: "Made for local businesses",
       sub: "Pick your type of business and the program sets itself up.",
       items: [
-        { eyebrow: "Cafés, bakeries, retail, salons and studios", title: "Free loyalty program", body: "Stamps or points, a wallet card and weekly reports.", cta: "Start free", href: "/signup" },
+        { eyebrow: "Cafés, bakeries, repair shops, retail and salons", title: "Free loyalty program", body: "Stamps or points, a wallet card and weekly reports.", cta: "Start free", href: "/signup" },
         { eyebrow: "Nail techs, barbers and groomers", title: "Booking and loyalty", body: "One booking link, reminders and a stamp card.", cta: "See booking", href: "/for-nail-techs" },
         { eyebrow: "Restaurants and sweet shops", title: "Commission-free ordering", body: "Your own ordering page, catering and tiffin.", cta: "See restaurant plans", href: "/for-restaurants" },
         { eyebrow: "BIAs and neighbourhood groups", title: "Street campaigns", body: "Passport weeks with a report for your board.", cta: "See the BIA page", href: "/for-bias" },

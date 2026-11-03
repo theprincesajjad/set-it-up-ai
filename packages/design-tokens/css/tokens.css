@@ -2940,7 +2940,7 @@
   --trade-pass-text: #1A1208;
 }
 
-/* Marketing landing (wave S): white, sun, mint, coral and violet blocks, Bricolage Grotesque headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */
+/* Marketing landing (wave S): white, sun, mint, coral and violet blocks, Figtree headlines on Inter. Scoped to .mkt (the marketing layout); nothing else reads these. */
 .mkt {
   --mkt-paper: #FFFFFF;
   --mkt-soft: #F6F4FF;
@@ -2973,5 +2973,5 @@
   --mkt-radius-pill: 999px;
   --mkt-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --mkt-face-sans: var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mkt-face-display: var(--font-mkt-display, "Bricolage Grotesque"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, sans-serif;
+  --mkt-face-display: var(--font-mkt-display, "Figtree"), var(--font-inter, "Inter"), var(--font-noto-deva, "Noto Sans Devanagari"), var(--font-noto-guru, "Noto Sans Gurmukhi"), var(--font-noto-nastaliq, "Noto Nastaliq Urdu"), var(--font-noto-naskh, "Noto Naskh Arabic"), ui-sans-serif, system-ui, sans-serif;
 }
