@@ -1,0 +1,116 @@
+/*
+ * Direction C, "benefit-led" (wave U): Sora headlines and figures, Manrope text. A black hero, then white and grey; the repair
+ * shop's cobalt pass is the only colour outside the photos. Tokens only (--mkt-*).
+ */
+.wc {
+  --font-mkt-display: var(--font-wc-display);
+  --wu-face-display: var(--font-wc-display);
+  --wu-face-ui: var(--font-wc-sans);
+  --wc-gutter: 20px;
+  background: var(--mkt-paper);
+  color: var(--mkt-black);
+  font-family: var(--font-wc-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+@media (min-width: 768px) { .wc { --wc-gutter: 40px; } }
+@media (min-width: 1280px) { .wc { --wc-gutter: 60px; } }
+.wc-wrap { inline-size: 100%; max-inline-size: 1440px; margin-inline: auto; padding-inline: var(--wc-gutter); }
+.wc-dark { background: var(--mkt-black); color: var(--mkt-on-black); }
+
+/* ---------- Type ---------- */
+.wc :is(.wc-h1, .wc-h2, .wc-h3, .wc-fig, .wc-tile-t) { font-family: var(--font-wc-display), ui-sans-serif, sans-serif; font-weight: 600; }
+.wc-h1 { font-size: 46px; line-height: 1.02; letter-spacing: -0.05em; }
+@media (min-width: 768px) { .wc-h1 { font-size: 72px; } }
+@media (min-width: 1280px) { .wc-h1 { font-size: 86px; line-height: 0.98; letter-spacing: -0.055em; } }
+.wc-h1 span { display: block; }
+.wc-quiet { color: var(--mkt-on-black-muted); }
+.wc-h2 { font-size: 36px; line-height: 1.04; letter-spacing: -0.045em; text-wrap: balance; }
+@media (min-width: 1024px) { .wc-h2 { font-size: 60px; letter-spacing: -0.05em; } }
+.wc-h3 { font-size: 21px; line-height: 1.2; letter-spacing: -0.03em; }
+@media (min-width: 1024px) { .wc-h3 { font-size: 24px; } }
+.wc-lede { font-size: 18px; line-height: 1.55; color: var(--mkt-on-black-muted); max-inline-size: 34rem; font-weight: 500; }
+@media (min-width: 1024px) { .wc-lede { font-size: 20px; } }
+.wc-lede-light { color: var(--mkt-body); }
+.wc-body { margin-block-start: 6px; font-size: 17px; line-height: 1.55; color: var(--mkt-body); font-weight: 500; }
+.wc-note { font-size: 15px; font-weight: 500; color: var(--mkt-on-black-muted); }
+
+/* ---------- Buttons ---------- */
+.wc-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.wc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 56px; padding-inline: 28px; border-radius: 16px; background: var(--mkt-black); color: var(--mkt-on-black); font-size: 17px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; transition: background-color 150ms var(--mkt-ease); }
+.wc-btn:hover { background: var(--mkt-black-hover); }
+.wc-btn svg { inline-size: 18px; block-size: 18px; }
+[dir="rtl"] .wc-btn svg { transform: scaleX(-1); }
+.wc-btn-white { background: var(--mkt-paper); color: var(--mkt-black); }
+.wc-btn-white:hover { background: var(--mkt-grey-hover); }
+.wc-btn-line { background: transparent; color: var(--mkt-on-black); box-shadow: inset 0 0 0 1.5px var(--mkt-rule-on-black); }
+.wc-btn-line:hover { background: var(--mkt-black-hover); }
+.wc-btn-sm { min-block-size: 44px; padding-inline: 18px; border-radius: 12px; font-size: 15px; background: var(--mkt-paper); color: var(--mkt-black); }
+.wc-btn-sm:hover { background: var(--mkt-grey-hover); }
+.wc a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+@media (max-width: 639.98px) { .wc-actions .wc-btn { flex: 1 1 0; padding-inline: 12px; font-size: 16px; } }
+
+/* ---------- Top bar (on black) ---------- */
+.wc-top-in { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-block-size: 72px; }
+.wc-top-nav { display: none; gap: 32px; font-size: 16px; font-weight: 600; }
+@media (min-width: 1024px) { .wc-top-nav { display: flex; } }
+.wc-top-nav a, .wc-top-login { display: inline-flex; align-items: center; min-block-size: 44px; }
+.wc-top-end { display: flex; align-items: center; gap: 20px; font-size: 16px; font-weight: 600; }
+.wc-top-login { display: none; }
+@media (min-width: 640px) { .wc-top-login { display: inline-flex; } }
+
+/* ---------- Hero ---------- */
+.wc-hero { padding-block: 32px 72px; }
+@media (min-width: 1024px) { .wc-hero { padding-block: 48px 112px; } }
+.wc-hero-grid { display: grid; gap: 56px; }
+@media (min-width: 1024px) { .wc-hero-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 64px; align-items: center; } }
+.wc-hero-copy { display: grid; gap: 24px; justify-items: start; }
+@media (min-width: 1024px) { .wc-hero-copy { gap: 30px; } }
+.wc-chips { display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 15px; font-weight: 600; }
+@media (min-width: 1024px) { .wc-chips { display: grid; grid-template-columns: repeat(2, minmax(0, auto)); gap: 12px 28px; font-size: 16px; } }
+.wc-chips li { display: inline-flex; align-items: center; gap: 8px; }
+.wc-chips svg { inline-size: 18px; block-size: 18px; flex: none; }
+.wc-hero-art { position: relative; padding-block-end: 36px; }
+.wc-photo { overflow: hidden; aspect-ratio: 4 / 5; border-radius: 24px; background: var(--mkt-black-hover); margin-inline-start: 20%; }
+@media (min-width: 1024px) { .wc-photo { max-block-size: 720px; border-radius: 28px; } }
+.wc :is(.wc-photo, .wc-how-photo, .wc-tile-photo) :is(.lp-pic, img) { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+.wc-hero-phone { position: absolute; inset-block-end: 0; inset-inline-start: 0; inline-size: 46%; max-inline-size: 280px; }
+.wc-hero-week { position: absolute; inset-block-start: 8%; inset-inline-end: -16px; inline-size: 50%; max-inline-size: 260px; }
+@media (min-width: 1024px) { .wc-hero-week { inset-inline-end: calc(var(--wc-gutter) * -0.5); } }
+@media (max-width: 639.98px) { .wc-hero-week { inset-inline-end: -6px; inline-size: 56%; padding: 16px 16px 14px; } .wc-hero-week .wu-week-n { font-size: 44px; } .wc-hero-week .wu-week-bars { block-size: 56px; gap: 5px; } }
+
+/* ---------- How it works ---------- */
+.wc-how { padding-block: 88px; }
+@media (min-width: 1024px) { .wc-how { padding-block: 144px; } }
+.wc-head { display: grid; gap: 16px; margin-block-end: 48px; max-inline-size: 52rem; }
+@media (min-width: 1024px) { .wc-head { gap: 20px; margin-block-end: 72px; } }
+.wc-head-row { max-inline-size: none; justify-items: start; }
+.wc-head-row > div { display: grid; gap: 16px; }
+@media (min-width: 1024px) { .wc-head-row { grid-template-columns: minmax(0, 1fr) auto; align-items: end; } }
+.wc-how-grid { display: grid; gap: 56px; }
+@media (min-width: 1024px) { .wc-how-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 96px; align-items: center; } }
+.wc-steps { display: grid; }
+.wc-steps li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; padding-block: 28px; border-block-start: 1px solid var(--mkt-rule); }
+@media (min-width: 640px) { .wc-steps li { grid-template-columns: 180px minmax(0, 1fr); gap: 20px; padding-block: 36px; } }
+.wc-steps li:last-child { border-block-end: 1px solid var(--mkt-rule); }
+.wc-fig { display: inline-flex; align-items: baseline; gap: 6px; font-size: 64px; line-height: 0.85; letter-spacing: -0.06em; font-variant-numeric: tabular-nums; }
+@media (min-width: 1024px) { .wc-fig { font-size: 88px; } }
+.wc-fig small { font-size: 18px; letter-spacing: -0.02em; color: var(--mkt-quiet); }
+@media (min-width: 1024px) { .wc-fig small { font-size: 22px; } }
+.wc-how-art { position: relative; padding-block-end: 40px; }
+.wc-how-photo { overflow: hidden; aspect-ratio: 4 / 5; border-radius: 28px; background: var(--mkt-grey); margin-inline-end: 16%; }
+.wc-how-stamp { position: absolute; inset-block-end: 0; inset-inline-end: 0; inline-size: 52%; max-inline-size: 300px; }
+
+/* ---------- Shops ---------- */
+.wc-shops { padding-block: 88px; background: var(--mkt-grey); }
+@media (min-width: 1024px) { .wc-shops { padding-block: 144px; } }
+.wc-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 1024px) { .wc-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; } }
+.wc-tile { display: grid; align-content: start; overflow: hidden; border-radius: 20px; background: var(--mkt-paper); }
+@media (min-width: 1024px) { .wc-tile { border-radius: 28px; } }
+.wc-tile-photo { overflow: hidden; aspect-ratio: 5 / 4; background: var(--mkt-grey-hover); }
+.wc-tile-text { display: grid; gap: 6px; padding: 16px 16px 20px; }
+@media (min-width: 1024px) { .wc-tile-text { gap: 8px; padding: 24px 28px 30px; } }
+.wc-tile-t { font-size: 18px; letter-spacing: -0.035em; }
+@media (min-width: 1024px) { .wc-tile-t { font-size: 26px; } }
+.wc-tile-line { font-size: 14px; line-height: 1.4; font-weight: 500; color: var(--mkt-body); }
+@media (min-width: 1024px) { .wc-tile-line { font-size: 17px; } }

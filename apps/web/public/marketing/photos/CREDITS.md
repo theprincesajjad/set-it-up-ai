@@ -19,3 +19,11 @@ https://unsplash.com/license). Cropped and re-encoded to AVIF and WebP for the h
 The product images in ../product/ (today, counter, pass) are screenshots of our own app (the owner's Today screen at Pinecone Coffee
 Co., the counter at Fix-It Phone Lab, and a customer's pass at /me), taken from the seeded demo stack. All names and numbers in them
 are demo data.
+
+## Wave U crops (/dev/landing-a, -b, -c only)
+
+The `u-*` files are new crops of the same Unsplash photos above, re-encoded from the originals at larger sizes for the three dev
+directions. Same photographers and licence: u-pour and u-pour-m (Eilis Garvey, cafe-pour), u-bakery and u-t-bakery (Ekaterina
+Tyapkina, bakery), u-repair and u-t-repair (Clint Bustrillos, repair), u-barber and u-t-barber (delfina pan, barber), u-counter
+(Blake Wisz, counter-help), u-t-cafe (Brooke Cagle, cafe), u-t-nails (Giorgio Trovato, nails), u-t-corner (Ilya Yakubovich,
+corner-store).

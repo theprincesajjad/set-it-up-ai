@@ -1,0 +1,107 @@
+/*
+ * Direction A, "direct" (wave U): General Sans, Square-hard black and white. Tokens only (--mkt-*); the pass colours are shop data
+ * (../_landing/product.css). Logical properties, so it mirrors in RTL.
+ */
+.wa {
+  --font-mkt-display: var(--font-wa);
+  --wu-face-display: var(--font-wa);
+  --wu-face-ui: var(--font-wa);
+  --wa-gutter: 20px;
+  background: var(--mkt-paper);
+  color: var(--mkt-black);
+  font-family: var(--font-wa), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+@media (min-width: 768px) { .wa { --wa-gutter: 40px; } }
+@media (min-width: 1280px) { .wa { --wa-gutter: 60px; } }
+.wa-wrap { inline-size: 100%; max-inline-size: 1440px; margin-inline: auto; padding-inline: var(--wa-gutter); }
+
+/* ---------- Type ---------- */
+.wa-h1 { font-size: 68px; font-weight: 600; line-height: 0.92; letter-spacing: -0.05em; }
+@media (min-width: 768px) { .wa-h1 { font-size: 120px; } }
+@media (min-width: 1280px) { .wa-h1 { font-size: 156px; letter-spacing: -0.055em; } }
+.wa-h2 span { display: block; }
+.wa-h2 { font-size: 40px; font-weight: 600; line-height: 1; letter-spacing: -0.04em; text-wrap: balance; }
+@media (min-width: 1024px) { .wa-h2 { font-size: 68px; line-height: 0.98; } }
+.wa-h3 { font-size: 22px; font-weight: 600; line-height: 1.2; letter-spacing: -0.02em; }
+@media (min-width: 1024px) { .wa-h3 { font-size: 26px; } }
+.wa-lede { font-size: 18px; line-height: 1.5; color: var(--mkt-body); max-inline-size: 36rem; }
+@media (min-width: 1024px) { .wa-lede { font-size: 21px; line-height: 1.45; } }
+.wa-lede b { font-weight: 600; color: var(--mkt-black); }
+.wa-note { font-size: 15px; line-height: 1.4; color: var(--mkt-quiet); }
+
+/* ---------- Buttons ---------- */
+.wa-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.wa-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 56px; padding-inline: 30px; border-radius: 999px; background: var(--mkt-black); color: var(--mkt-on-black); font-size: 17px; font-weight: 500; letter-spacing: -0.005em; white-space: nowrap; transition: background-color 150ms var(--mkt-ease); }
+.wa-btn:hover { background: var(--mkt-black-hover); }
+.wa-btn svg { inline-size: 18px; block-size: 18px; }
+[dir="rtl"] .wa-btn svg { transform: scaleX(-1); }
+.wa-btn-line { background: transparent; color: var(--mkt-black); box-shadow: inset 0 0 0 1.5px var(--mkt-black); }
+.wa-btn-line:hover { background: var(--mkt-grey); }
+.wa-btn-sm { min-block-size: 44px; padding-inline: 20px; font-size: 15px; }
+.wa :is(.wa-btn, a):focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+
+/* ---------- Top bar ---------- */
+.wa-top-in { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-block-size: 72px; }
+.wa-top-nav { display: none; gap: 32px; font-size: 16px; font-weight: 500; }
+@media (min-width: 1024px) { .wa-top-nav { display: flex; } }
+.wa-top-nav a, .wa-top-login { display: inline-flex; align-items: center; min-block-size: 44px; }
+.wa-top-end { display: flex; align-items: center; gap: 20px; font-size: 16px; font-weight: 500; }
+.wa-top-login { display: none; }
+@media (min-width: 640px) { .wa-top-login { display: inline-flex; } }
+
+/* ---------- Hero ---------- */
+.wa-hero { padding-block: 28px 96px; }
+@media (min-width: 1024px) { .wa-hero { padding-block: 36px 160px; } }
+.wa-hero-row { display: grid; gap: 24px; margin-block: 24px 36px; }
+@media (min-width: 1024px) { .wa-hero-row { grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 64px; margin-block: 28px 40px; } }
+.wa-hero-act { display: grid; gap: 14px; }
+@media (min-width: 1024px) { .wa-hero-act { justify-items: end; } }
+@media (max-width: 639.98px) { .wa-actions .wa-btn { flex: 1 1 0; padding-inline: 16px; } }
+
+.wa-stage { position: relative; }
+.wa-photo { overflow: hidden; aspect-ratio: 4 / 5; border-radius: 20px; background: var(--mkt-grey); }
+@media (min-width: 768px) { .wa-photo { aspect-ratio: 16 / 7; border-radius: 28px; } }
+.wa-photo .lp-pic, .wa-photo img, .wa-how-photo .lp-pic, .wa-how-photo img, .wa-tile-photo .lp-pic, .wa-tile-photo img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
+.wa-pass-wrap { position: absolute; inset-block-end: -56px; inset-inline-end: 16px; inline-size: 60%; max-inline-size: 360px; }
+@media (min-width: 768px) { .wa-pass-wrap { inset-inline-end: 7%; inset-block-end: -72px; inline-size: 30%; } }
+.wa-pass { transform: rotate(0deg); }
+.wa-toast { position: absolute; z-index: 1; inset-block-start: 30%; inset-inline-end: calc(100% + 20px); white-space: nowrap; }
+@media (max-width: 767.98px) { .wa-toast { inset-block-start: -84px; inset-inline-end: 38%; } }
+
+/* ---------- How it works (black) ---------- */
+.wa-how { padding-block: 80px; background: var(--mkt-black); color: var(--mkt-on-black); }
+@media (min-width: 1024px) { .wa-how { padding-block: 144px; } }
+.wa-how-grid { display: grid; gap: 64px; }
+@media (min-width: 1024px) { .wa-how-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 96px; align-items: center; } }
+.wa-how-copy { display: grid; gap: 20px; align-content: start; }
+.wa-lede-dark { color: var(--mkt-on-black-muted); }
+.wa-steps { margin-block-start: 28px; border-block-start: 1px solid var(--mkt-rule-on-black); }
+.wa-steps li { display: grid; grid-template-columns: 56px minmax(0, 1fr); column-gap: 8px; row-gap: 8px; padding-block: 28px; border-block-end: 1px solid var(--mkt-rule-on-black); }
+.wa-steps .wa-h3, .wa-steps p { grid-column: 2; }
+.wa-steps p { font-size: 17px; line-height: 1.5; color: var(--mkt-on-black-muted); max-inline-size: 30rem; }
+.wa-step-n { grid-row: 1 / span 2; display: grid; place-items: center; inline-size: 36px; block-size: 36px; border-radius: 50%; background: var(--mkt-on-black); color: var(--mkt-black); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.wa-how-art { position: relative; padding-block-end: 40px; }
+.wa-how-photo { overflow: hidden; aspect-ratio: 4 / 5; border-radius: 24px; background: var(--mkt-black-hover); margin-inline-start: 18%; }
+.wa-how-phone { position: absolute; inset-block-end: 0; inset-inline-start: 0; inline-size: 44%; max-inline-size: 270px; }
+.wa-how-week { position: absolute; inset-block-start: 7%; inset-inline-end: -12px; inline-size: 52%; max-inline-size: 290px; }
+@media (min-width: 1024px) { .wa-how-week { inset-inline-end: calc(var(--wa-gutter) * -0.5); } }
+@media (max-width: 639.98px) { .wa-how-photo { margin-inline-start: 22%; } .wa-how-phone { inline-size: 50%; } .wa-how-week { inline-size: 62%; inset-block-start: 4%; inset-inline-end: -6px; } .wa-how-week .wu-week-n { font-size: 48px; } .wa-how-week .wu-week-bars { block-size: 64px; } }
+
+/* ---------- Shops ---------- */
+.wa-shops { padding-block: 88px; }
+@media (min-width: 1024px) { .wa-shops { padding-block: 144px; } }
+.wa-shops-head { display: grid; gap: 24px; justify-items: start; margin-block-end: 40px; }
+.wa-shops-head > div { display: grid; gap: 16px; }
+@media (min-width: 1024px) { .wa-shops-head { grid-template-columns: minmax(0, 1fr) auto; align-items: end; margin-block-end: 64px; } }
+.wa-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 12px; }
+@media (min-width: 1024px) { .wa-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 56px 24px; } }
+.wa-tile { display: grid; gap: 14px; align-content: start; }
+.wa-tile-photo { position: relative; overflow: hidden; aspect-ratio: 4 / 5; border-radius: 16px; background: var(--mkt-grey); }
+@media (min-width: 1024px) { .wa-tile-photo { border-radius: 24px; } }
+.wa-tag { position: absolute; inset-block-end: 12px; inset-inline-start: 12px; display: inline-flex; align-items: center; min-block-size: 32px; padding-inline: 14px; border-radius: 999px; background: var(--mkt-black); color: var(--mkt-on-black); font-size: 14px; font-weight: 500; }
+@media (min-width: 1024px) { .wa-tag { inset-block-end: 18px; inset-inline-start: 18px; min-block-size: 38px; padding-inline: 18px; font-size: 16px; } }
+.wa-tile-line { font-size: 16px; font-weight: 500; line-height: 1.3; letter-spacing: -0.01em; }
+@media (min-width: 1024px) { .wa-tile-line { font-size: 24px; letter-spacing: -0.02em; } }

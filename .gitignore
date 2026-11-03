@@ -17,3 +17,5 @@ apps/api/data/
 
 # Design-team screenshots belong in the scratchpad, not the repo
 /shots/
+# General Sans (ITF FFL) may not be redistributed from a public repo
+apps/web/src/app/dev/_landing/fonts/*.woff2
