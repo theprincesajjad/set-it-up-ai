@@ -219,6 +219,7 @@ legend.lp-label { margin-block-end: 10px; }
 .lp-notice-ready { margin-block-start: 2.6cqi; }
 .lp-notice-ready .lp-notice-text b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lp-notice-ready .lp-notice-text b { color: var(--mkt-accent); }
+.lp-nowrap { white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
   .lp-try-art .lp-notice { animation: lp-rise 600ms var(--mkt-ease) 900ms both; }
   .lp-try-art .lp-notice-ready { animation-delay: 1900ms; }
@@ -400,10 +401,12 @@ legend.lp-label { margin-block-end: 10px; }
 .lp-final-in .lp-actions { justify-content: center; gap: 12px 28px; }
 
 /* ---------- Phones: the button in reach ---------- */
-.lp-sticky { position: fixed; z-index: 40; inset-inline: 0; inset-block-end: 0; display: flex; padding: 8px 140px calc(8px + env(safe-area-inset-bottom)) 16px; background: var(--mkt-paper); border-block-start: 1px solid var(--mkt-rule); box-shadow: 0 -8px 24px rgb(0 0 0 / 0.07); transition: transform 240ms var(--mkt-ease), visibility 240ms; }
+.lp-sticky { position: fixed; z-index: 40; inset-inline: 0; inset-block-end: 0; display: flex; padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); background: var(--mkt-paper); border-block-start: 1px solid var(--mkt-rule); box-shadow: 0 -8px 24px rgb(0 0 0 / 0.07); transition: transform 240ms var(--mkt-ease), visibility 240ms; }
 /* Hidden while another sign-up button is on screen (the page's SNAP_SCRIPT sets it; the server markup starts hidden, over the hero). */
 .lp-sticky[data-hide] { transform: translateY(110%); visibility: hidden; }
-[dir="rtl"] .lp-sticky { padding-inline: 16px 140px; }
+/* Wave W2: the end of the bar is the chat launcher's slot when the chat is on (SalesChat: the "Ask us" pill, a 48px icon on phones). */
+body:has([data-chat-launcher]) .lp-sticky { padding-inline-end: 140px; }
+@media (max-width: 639.98px) { body:has([data-chat-launcher]) .lp-sticky { padding-inline-end: 76px; } }
 .lp-sticky .lp-btn { flex: 1; min-block-size: 44px; font-size: 16px; }
 @media (min-width: 1024px) { .lp-sticky { display: none; } }
 @media (max-width: 1023.98px) { .lp { padding-block-end: 64px; } }

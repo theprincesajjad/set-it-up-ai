@@ -7,11 +7,13 @@ import { Container } from "@/components/ui/Layout";
 import { requireMe } from "@/lib/auth/session";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const metadata: Metadata = { title: { default: "Rep console", template: "%s · Rep console" }, robots: { index: false, follow: false } };
 
 /** Rep console guard (rep-console.md): platform role rep (admins pass). */
 export default async function RepLayout({ children }: { children: ReactNode }) {
+  preloadInter();
   const me = await requireMe("/rep");
   if (me.platformRole !== "rep" && me.platformRole !== "admin")
     return (

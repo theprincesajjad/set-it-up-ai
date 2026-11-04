@@ -51,8 +51,8 @@ export const PHOTOS = {
   /** The shop tiles (4:5). */
   tCafe: photo("u-t-cafe", [480, 720], 720, 900),
   tRepair: photo("u-t2-repair", [480, 720], 720, 900),
-  tBarber: photo("v-t-barber", [480, 720], 720, 900),
+  tBarber: photo("u-t2-barber", [480, 720], 720, 900),
   tNails: photo("u-t2-nails", [480, 720], 720, 900),
   tCorner: photo("v-t-corner", [480, 720], 720, 900),
-  tFlorist: photo("v-t-florist", [480, 720], 720, 900),
+  tFlorist: photo("u-t2-florist", [480, 720], 720, 900),
 } as const;

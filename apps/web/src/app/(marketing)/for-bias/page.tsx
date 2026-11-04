@@ -10,6 +10,7 @@ import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
 import { fill, moneyShort } from "@/lib/marketing/text";
 import { BRAND } from "@ll/shared";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const revalidate = 300;
 
@@ -41,6 +42,7 @@ const passportGoal = PACKAGES.passport.goalVisits;
  * campaign runs, packages (prices from CAMPAIGN_PACKAGES, never typed here), how BIAs pay, trust, FAQ and the form.
  */
 export default function BiaPage() {
+  preloadInter();
   return (
     <>
       {/* 1. Hero with the labelled sample board report. */}

@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LegalDocView } from "@/components/site/LegalDocView";
 import { LEGAL_DOCS_FR, hasFrench, loadLegalDoc } from "@/lib/legal";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const dynamicParams = false;
 
@@ -22,6 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function LegalPageFr({ params }: Props) {
+  preloadInter();
   const { doc } = await params;
   if (!hasFrench(doc)) notFound();
   const { html, isDraft } = await loadLegalDoc(doc, "fr");

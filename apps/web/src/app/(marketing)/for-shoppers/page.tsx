@@ -11,6 +11,7 @@ import { publicServerApi } from "@/lib/api/server";
 import { env } from "@/lib/env";
 import { LocaleScope } from "@/lib/i18n";
 import { LOCALE_COOKIE } from "@/lib/i18n/server";
+import { preloadInter } from "@/lib/fonts/inter";
 
 // The language comes from ?lang= or the saved cookie, so the page renders per request; the data it shows is cached for 300 s by the API client.
 export const revalidate = 300;
@@ -55,6 +56,7 @@ const FAQ: [MessageKey, MessageKey][] = [
  * that is on now), and can I read it in my language (switcher in the header; hi, ur, pa translated, Urdu right to left).
  */
 export default async function ShoppersPage({ searchParams }: Props) {
+  preloadInter();
   const locale = await pageLocale(await searchParams);
   const t = translator(locale);
   const pub = publicServerApi();

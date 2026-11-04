@@ -75,6 +75,11 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
+        // Wave W2: Inter, self-hosted the same way (lib/fonts/inter.ts).
+        source: "/fonts/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         // Token links (quotes, invoices) and signed-in pages must never be indexed or cached by proxies.
         source: "/:prefix(q|i|e|o|me|m|rep|admin|bia|dev)/:path*",
         headers: [

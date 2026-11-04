@@ -4,6 +4,7 @@ import { SalesChat } from "@/components/marketing/SalesChat";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader, type HeaderLabelsByLocale } from "@/components/site/SiteHeader";
 import { t, type Locale } from "@ll/shared";
+import { marketingSkipLinkCss } from "@/lib/marketing/fonts";
 
 /** Header strings per language, translated here on the server so the message catalogs stay out of the client bundle. */
 function headerLabels(): HeaderLabelsByLocale {
@@ -16,10 +17,16 @@ function headerLabels(): HeaderLabelsByLocale {
   return { en: one("en"), hi: one("hi"), ur: one("ur"), pa: one("pa") };
 }
 
-/** Paper canvas for the whole marketing site, with the one awning stripe above the header. */
+/**
+ * Paper canvas for the whole marketing site, with the one awning stripe above the header. Inter is not preloaded here: the home page
+ * draws nothing in it, so each other marketing page calls preloadInter() itself (lib/fonts/inter.ts).
+ */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-paper">
+      <style href="ll-skip-mkt" precedence="default">
+        {marketingSkipLinkCss}
+      </style>
       <Awning />
       <SiteHeader labels={headerLabels()} />
       <main id="main">{children}</main>

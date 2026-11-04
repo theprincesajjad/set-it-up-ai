@@ -17,6 +17,7 @@ import { DOORDASH_CANADA, formatAsOf } from "@/lib/marketing/sources";
 import { appCommission, dollarRange } from "@/lib/marketing/savings";
 import { fill, moneyShort } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
+import { preloadInter } from "@/lib/fonts/inter";
 
 // The language comes from ?lang= or the saved cookie, so the page renders per request; the data it shows is cached for 300 s by the API client.
 export const revalidate = 300;
@@ -41,6 +42,7 @@ const pct = (bps: number) => `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function ForRestaurantsPage({ searchParams }: Props) {
+  preloadInter();
   const locale = await pageLocale(await searchParams);
   const t = (k: Parameters<typeof translate>[1]) => translate(locale, k);
   const waUrl = whatsappUrl(R.bookWhatsappText);

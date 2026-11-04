@@ -18,12 +18,12 @@ export async function devOnly() {
 
 const photo = (name: string, widths: readonly number[], width: number, height: number): PhotoSet => ({ src: `/marketing/photos/${name}`, widths, width, height });
 
-/** Direction B's photos (public/marketing/photos/CREDITS.md). Since wave V the barber, nail and corner store tiles share the live page's new photos. */
+/** Direction B's photos (public/marketing/photos/CREDITS.md). The barber, nail, repair and corner store tiles share the live page's photos. */
 export const UPHOTOS = {
   bakery: photo("u-bakery", [900, 1280], 1280, 1600),
   tCafe: photo("u-t-cafe", [480, 720], 720, 900),
   tRepair: photo("u-t2-repair", [480, 720], 720, 900),
-  tBarber: photo("v-t-barber", [480, 720], 720, 900),
+  tBarber: photo("u-t2-barber", [480, 720], 720, 900),
   tNails: photo("u-t2-nails", [480, 720], 720, 900),
   tBakery: photo("u-t-bakery", [480, 720], 720, 900),
   tCorner: photo("v-t-corner", [480, 720], 720, 900),

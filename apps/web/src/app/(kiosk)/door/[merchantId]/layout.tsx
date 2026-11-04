@@ -6,6 +6,7 @@ import { ThemeStyle } from "@/components/ui/ThemeStyle";
 import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
 import { requireMe } from "@/lib/auth/session";
+import { preloadInter } from "@/lib/fonts/inter";
 
 /** The title is set by the page (it reads ?lang=). */
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
  * The tablet stays signed in as staff, so it can only be left with a staff PIN (see DoorTablet).
  */
 export default async function DoorLayout({ children, params }: { children: ReactNode; params: Promise<{ merchantId: string }> }) {
+  preloadInter();
   const { merchantId } = await params;
   const me = await requireMe(`/door/${merchantId}`);
   const membership = me.merchants.find((m) => m.merchantId === merchantId);

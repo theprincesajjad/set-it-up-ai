@@ -24,3 +24,10 @@ const sans = localFont({
 });
 
 export const marketingFontVars = sans.variable;
+
+/**
+ * Wave W2: the root layout's skip link ("Skip to content", `.ll-skip`) sits outside every `.mkt` wrapper, so it would draw in Inter,
+ * which the home page does not otherwise load. The marketing layouts render this rule in a hoisted <style> (React dedupes it by href),
+ * so on marketing pages it uses the face they already preload; app pages keep Inter.
+ */
+export const marketingSkipLinkCss = `.ll-skip{font-family:${sans.style.fontFamily}}`;

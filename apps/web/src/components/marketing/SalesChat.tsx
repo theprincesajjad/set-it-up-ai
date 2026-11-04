@@ -6,10 +6,11 @@
  */
 import { MessageCircle, Send, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AGENT_TEXTS, WIDGET_TEXTS, type AgentLang, type salesAgentApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
 import { cn } from "@/lib/cn";
+import { marketingFontVars } from "@/lib/marketing/fonts";
 import { afterReply, chatLang, lastRemoteAt, loadChat, mergeLines, saveChat, shouldPoll, type Line } from "@/lib/marketing/salesChat";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
 
@@ -20,6 +21,61 @@ const store = (): Storage | null => {
     return null;
   }
 };
+
+/** The sign-up buttons and links the launcher must never cover. The sticky bar's own button is beside it, not under it. */
+const CTA = "[data-cta], .lp-btn, main a[href^='/signup']";
+
+/** Is any sign-up button under the launcher (with an 8px margin)? What lies under the sticky bar is hidden by it, so it does not count. */
+function coversCta(el: HTMLElement): boolean {
+  const r = el.getBoundingClientRect();
+  const xs = [r.left - 8, r.left + r.width / 2, r.right + 8];
+  const ys = [r.top - 8, r.top + r.height / 2, r.bottom + 8];
+  for (const x of xs)
+    for (const y of ys)
+      for (const hit of document.elementsFromPoint(x, y)) {
+        if (el.contains(hit)) continue;
+        if (hit.closest(".lp-sticky")) break;
+        if (hit.closest(CTA)) return true;
+      }
+  return false;
+}
+
+/**
+ * Phones only: marks the launcher `data-covered` (it fades out) while a sign-up button scrolls under it, and clears it when the button
+ * has passed. Checked once a frame on scroll and resize, and when the sticky bar shows or hides. Never while it has focus.
+ */
+function useOffCtas(ref: RefObject<HTMLButtonElement | null>, on: boolean) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!on || !el) return;
+    const phone = window.matchMedia("(max-width: 639.98px)");
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      el.toggleAttribute("data-covered", phone.matches && document.activeElement !== el && coversCta(el));
+    };
+    const queue = () => {
+      if (!raf) raf = requestAnimationFrame(check);
+    };
+    window.addEventListener("scroll", queue, { passive: true });
+    window.addEventListener("resize", queue);
+    phone.addEventListener("change", queue);
+    const sticky = document.querySelector(".lp-sticky");
+    const mo = new MutationObserver(queue);
+    if (sticky) mo.observe(sticky, { attributes: true, attributeFilter: ["data-hide"] });
+    // The sticky bar slides for 240ms; look again once it has settled.
+    sticky?.addEventListener("transitionend", queue);
+    queue();
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", queue);
+      window.removeEventListener("resize", queue);
+      phone.removeEventListener("change", queue);
+      sticky?.removeEventListener("transitionend", queue);
+      mo.disconnect();
+    };
+  }, [ref, on]);
+}
 
 export function SalesChat() {
   const [info, setInfo] = useState<salesAgentApi.SalesAgentStatus | null>(null);
@@ -33,6 +89,7 @@ export function SalesChat() {
   const [error, setError] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const launcher = useRef<HTMLButtonElement>(null);
   const linesRef = useRef<Line[]>([]);
   useEffect(() => {
     linesRef.current = lines;
@@ -106,6 +163,8 @@ export function SalesChat() {
     [busy, token, lang],
   );
 
+  useOffCtas(launcher, Boolean(info?.enabled) && !open);
+
   if (!info?.enabled) return null;
   const T = WIDGET_TEXTS[lang];
   const wa = whatsappUrl(undefined, info.whatsappNumber ?? undefined);
@@ -116,14 +175,19 @@ export function SalesChat() {
   return (
     <>
       {!open ? (
+        // Phones (under 640px, max-sm): a 48px round icon in the sticky bar's end slot (landing.css keeps that slot free), hidden while
+        // it would sit over a sign-up button (useOffCtas). Wider screens keep the labelled pill. The label is in the marketing sans the
+        // page already loaded, so the home page never fetches Inter for two words.
         <button
+          ref={launcher}
           type="button"
           onClick={() => setOpen(true)}
           aria-label={T.launcher}
-          className="fixed bottom-4 end-4 z-50 inline-flex h-11 items-center gap-2 rounded-r2 bg-primary px-4 text-meta-strong text-primary-foreground shadow-float hover:bg-primary/90 focus-visible:focus-ring"
+          data-chat-launcher=""
+          className={`mkt ${marketingFontVars} fixed bottom-4 end-4 z-50 inline-flex h-11 items-center gap-2 rounded-r2 bg-primary px-4 text-meta-strong text-primary-foreground shadow-float transition-[opacity,visibility] duration-200 hover:bg-primary/90 focus-visible:focus-ring data-covered:invisible data-covered:opacity-0 max-sm:bottom-[calc(6px+env(safe-area-inset-bottom))] max-sm:size-12 max-sm:justify-center max-sm:rounded-full max-sm:px-0 max-sm:ring-1 max-sm:ring-white/20 motion-reduce:transition-none font-mkt-sans`}
         >
-          <MessageCircle aria-hidden className="size-4" />
-          {T.launcher}
+          <MessageCircle aria-hidden className="size-4 max-sm:size-5" />
+          <span className="max-sm:hidden">{T.launcher}</span>
         </button>
       ) : null}
       {open ? (

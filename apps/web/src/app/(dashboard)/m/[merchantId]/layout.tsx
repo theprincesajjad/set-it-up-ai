@@ -12,6 +12,7 @@ import { isApiError } from "@/lib/api/errors";
 import { requireMe } from "@/lib/auth/session";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const metadata: Metadata = { title: { default: "Dashboard", template: "%s · Dashboard" }, robots: { index: false, follow: false } };
 
@@ -21,6 +22,7 @@ export const metadata: Metadata = { title: { default: "Dashboard", template: "%s
  * impersonation banner ("Viewing as ... Changes are logged.").
  */
 export default async function MerchantLayout({ children, params }: { children: ReactNode; params: Promise<{ merchantId: string }> }) {
+  preloadInter();
   const { merchantId } = await params;
   const me = await requireMe(`/m/${merchantId}`);
   const membership = me.merchants.find((m) => m.merchantId === merchantId);

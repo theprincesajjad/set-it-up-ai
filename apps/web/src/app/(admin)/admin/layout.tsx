@@ -7,11 +7,13 @@ import { Container } from "@/components/ui/Layout";
 import { requireMe } from "@/lib/auth/session";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const metadata: Metadata = { title: { default: "Admin", template: "%s · Admin" }, robots: { index: false, follow: false } };
 
 /** Admin guard (admin.md): platform role admin only. */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
+  preloadInter();
   const me = await requireMe("/admin");
   if (me.platformRole !== "admin")
     return (

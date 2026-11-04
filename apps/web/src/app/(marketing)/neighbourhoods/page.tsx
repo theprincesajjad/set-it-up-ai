@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { copy } from "@/copy/en-CA";
 import { publicServerApi } from "@/lib/api/server";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const revalidate = 300;
 
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NeighbourhoodsPage() {
+  preloadInter();
   let items: Awaited<ReturnType<ReturnType<typeof publicServerApi>["network"]["neighbourhoods"]>>["items"] | null = null;
   try {
     items = (await publicServerApi().network.neighbourhoods()).items;

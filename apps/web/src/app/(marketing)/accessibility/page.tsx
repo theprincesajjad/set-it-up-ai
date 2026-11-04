@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { BRAND } from "@ll/shared";
 import { Container } from "@/components/ui/Layout";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const metadata: Metadata = { title: "Accessibility", alternates: { canonical: "/accessibility" } };
 
 export default function AccessibilityPage() {
+  preloadInter();
   return (
     <Container size="prose" className="py-12 md:py-20">
       <div className="prose-ll">

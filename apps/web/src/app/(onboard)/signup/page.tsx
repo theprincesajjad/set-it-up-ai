@@ -5,6 +5,7 @@ import { getMe } from "@/lib/auth/session";
 import { signupPrefill } from "@/lib/marketing/signupPrefill";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Get started free", description: "Set up a free loyalty program for your shop in minutes.", alternates: { canonical: "/signup" } };
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Get started free", description: "Set
  * one question on screen. The flow draws its own slim top bar (components/onboarding/signup/Shell.tsx).
  */
 export default async function SignupPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  preloadInter();
   const sp = await searchParams;
   const prefill = signupPrefill(sp);
   // The flow reads in the visitor's language (?lang=ur, the language cookie).

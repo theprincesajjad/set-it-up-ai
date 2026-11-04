@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { SampleReportCard } from "@/components/marketing/SampleReportCard";
 import { MSection } from "@/components/marketing/Section";
 import { copy } from "@/copy/en-CA";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const metadata: Metadata = {
   title: copy.bia.sample.pageTitle,
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 
 /** The sample board report on its own, for printing or saving as a PDF. No email needed; the numbers are labelled "Sample data". */
 export default function SampleReportPage() {
+  preloadInter();
   return (
     <MSection className="md:py-16!">
       <div className="mx-auto max-w-3xl">

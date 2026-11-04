@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/Button";
 import { MSection } from "@/components/marketing/Section";
 import { copy } from "@/copy/en-CA";
 import { moneyShort } from "@/lib/marketing/text";
+import { preloadInter } from "@/lib/fonts/inter";
 
 const P = campaignsApi.CAMPAIGN_PACKAGES;
 
 /** The grant-ready one-pager: what the campaign is, what it costs, what is measured and what is not. Prints on one page; no email needed. */
 export default function OnePagerPage() {
+  preloadInter();
   return (
     <MSection className="md:py-16!">
       <article className="mx-auto max-w-3xl text-foreground">

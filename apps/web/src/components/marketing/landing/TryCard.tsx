@@ -47,7 +47,7 @@ export interface TryCopy {
   updated: string;
   passLabel: string;
   notice: { now: string; stamps: string; points: string; left: string };
-  ready: { when: string; title: string; line: string };
+  ready: { when: string; title: string; line: string; ask: string };
 }
 
 const ICONS = { coffee: Coffee, croissant: Croissant, scissors: Scissors, sparkles: Sparkles, phone: Smartphone, basket: ShoppingBasket, flower: Flower2, paw: PawPrint } as const;
@@ -318,7 +318,10 @@ export function TryReady() {
           <small>{R.when}</small>
         </span>
         <b>{R.title}</b>
-        <span>{fill(R.line, { reward: trade.reward })}</span>
+        {/* A long reward wraps before the ask, never inside it ("Free screen protector ·" then "Show this card"). */}
+        <span>
+          {fill(R.line, { reward: trade.reward })} <span className="lp-nowrap">{R.ask}</span>
+        </span>
       </span>
     </div>
   );

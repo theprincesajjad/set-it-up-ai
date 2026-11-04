@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import { requireMe } from "@/lib/auth/session";
 import { routes } from "@/lib/routes";
+import { preloadInter } from "@/lib/fonts/inter";
 
 /** /m → the user's first shop (or the right console / signup). */
 export default async function DashboardIndex() {
+  preloadInter();
   const me = await requireMe("/m");
   const first = me.merchants[0];
   if (first) redirect(routes.dashboard(first.merchantId));

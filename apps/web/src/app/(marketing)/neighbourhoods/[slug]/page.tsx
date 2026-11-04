@@ -10,6 +10,7 @@ import { copy } from "@/copy/en-CA";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { formatDate } from "@/lib/format";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const revalidate = 300;
 
@@ -41,6 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function NeighbourhoodPage({ params }: Props) {
+  preloadInter();
   const { slug } = await params;
   const data = await load(slug);
   if (!data) return <MSection><ErrorState title="Can't load this neighbourhood right now" description={copy.err.network} action={<Button variant="secondary" href={`/neighbourhoods/${slug}`}>Try again</Button>} /></MSection>;

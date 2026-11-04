@@ -15,6 +15,7 @@ import { planNote } from "@/lib/marketing/plan-copy";
 import { CompareTable, FreeCard, PLUS_TARGET, PaidCard, ServiceLine, SoloTable, pv } from "./PlanCards";
 import { TradeRows } from "./TradeRows";
 import { RestaurantPricing } from "./RestaurantPricing";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const revalidate = 300;
 
@@ -83,6 +84,7 @@ function OtherAudiences({ audience }: { audience: "shop" | "restaurant" | "bia" 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function PricingPage({ searchParams }: Props) {
+  preloadInter();
   const sp = await searchParams;
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k][0] : sp[k]);
   const audience = one("for") === "restaurant" || one("for") === "bia" ? (one("for") as "restaurant" | "bia") : "shop";

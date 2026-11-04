@@ -208,8 +208,8 @@ export const copy = {
       phoneNote: "A preview. Your real card adds your logo.",
       /** The phone's notification under the pass, as a customer sees it after a visit. */
       notice: { now: "now", stamps: "Stamp added", points: "{n} points added", left: "{left} more to go · {reward}" },
-      /** The second notification (wave W), a later visit: the card is full and the reward is waiting. */
-      ready: { when: "later", title: "Reward ready", line: "{reward} · show this card" },
+      /** The second notification (wave W), a later visit: the card is full and the reward is waiting. `line` wraps only before `ask`, kept whole. */
+      ready: { when: "later", title: "Reward ready", line: "{reward} ·", ask: "Show this card" },
     },
     /** The words inside the drawn product moments (components/marketing/landing/Product.tsx): the phone, the pass, the counter, the week. */
     product: {
@@ -303,10 +303,10 @@ export const copy = {
       tiles: [
         { key: "cafe", label: "Cafés", title: "Make the morning coffee a habit", line: "Every 10th drink free, stamped from your phone.", link: "Make a café card", alt: "A barista laughing with a customer at a café counter" },
         { key: "repair", label: "Repair shops", title: "Be their first call next time", line: "Points on each repair toward a free screen protector.", link: "Make a repair shop card", alt: "A smiling repair tech at his bench, an opened phone in front of him" },
-        { key: "barber", label: "Barbers", title: "Keep them in your chair", line: "Every 8th cut free, right in their phone’s wallet.", link: "Make a barber card", alt: "A barber trimming a client's hair with scissors and a comb" },
+        { key: "barber", label: "Barbers", title: "Keep them in your chair", line: "Every 8th cut free, right in their phone’s wallet.", link: "Make a barber card", alt: "A smiling barber with clippers and a laughing client in the chair" },
         { key: "nails", label: "Nail studios", title: "Keep the standing appointment", line: "$10 off every 6th visit, counted for you.", link: "Make a nail studio card", alt: "A nail tech in an apron painting a smiling client's nails by the window" },
         { key: "corner", label: "Corner stores", title: "Turn quick stops into regulars", line: "Points on every purchase add up to $5 off.", link: "Make a corner store card", alt: "A smiling clerk at the counter of a corner store" },
-        { key: "florist", label: "Florists", title: "Be the shop for every birthday", line: "Points on every bouquet toward a free stem.", link: "Make a florist card", alt: "A florist tying a bouquet at her workbench" },
+        { key: "florist", label: "Florists", title: "Be the shop for every birthday", line: "Points on every bouquet toward a free stem.", link: "Make a florist card", alt: "A smiling florist handing a bouquet across the counter" },
       ],
       /** Wave W: the next step after the tiles, a big link up to the card maker (not a sign-up link: the page keeps to 8). */
       next: "Try it with your shop’s name",

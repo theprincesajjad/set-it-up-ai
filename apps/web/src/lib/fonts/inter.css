@@ -1,0 +1,9 @@
+/*
+ * Inter, the app's UI and body face (docs/design/foundations.md "Type"), self-hosted (wave W2; see inter.ts). The Google Fonts Latin
+ * file next/font served before, unchanged: variable weight 100 to 900 and the opsz axis (14 to 32, Clear's display cut on titles), the
+ * same unicode-range, `font-display: swap`. The fallback is Arial sized to Inter's metrics (the overrides next/font computed), so the
+ * swap moves nothing. `--font-inter` is what @ll/design-tokens' --font-sans stack reads.
+ */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("/fonts/inter-latin.dd8a4575.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Inter Fallback"; src: local("Arial"); ascent-override: 90.44%; descent-override: 22.52%; line-gap-override: 0%; size-adjust: 107.12%; }
+:root { --font-inter: "Inter", "Inter Fallback"; }

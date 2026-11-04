@@ -1,5 +1,5 @@
 "use client";
-import { ChevronDown, Menu } from "lucide-react";
+import { ArrowRight, ChevronDown, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
@@ -158,8 +158,10 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
               <Link href={login.href} className="flex min-h-11 items-center rounded-r4 px-3 text-body font-medium text-mkt-black hover:bg-mkt-grey">
                 {login.label}
               </Link>
-              <Link href={cta.href} className="mt-2 flex min-h-12 items-center justify-center rounded-full bg-mkt-black px-4 text-body font-semibold text-mkt-on-black hover:bg-mkt-black-hover">
+              {/* The page's primary button (landing.css .lp-btn): 56px, the arrow, darker on hover, the focus ring. */}
+              <Link href={cta.href} className="group/cta mt-2 flex min-h-14 items-center justify-center gap-2.5 rounded-full bg-mkt-black px-6 text-lg font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
                 {cta.label}
+                <ArrowRight aria-hidden strokeWidth={2} className="-me-1 size-4.5 transition-transform group-hover/cta:translate-x-0.5 motion-reduce:transition-none rtl:-scale-x-100" />
               </Link>
             </nav>
           </div>

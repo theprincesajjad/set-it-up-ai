@@ -6,6 +6,7 @@ import { PageFrame } from "@/components/restaurant/PageFrame";
 import { AuthLayout } from "@/components/marketing/AuthLayout";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { safeNext } from "@/lib/routes";
+import { preloadInter } from "@/lib/fonts/inter";
 
 export const metadata: Metadata = { title: "Sign in", alternates: { canonical: "/login" } };
 
@@ -13,6 +14,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 /** Customers see this page in their language (?lang= → ll_lang cookie → Accept-Language → en); the shop tab's form stays English. */
 export default async function LoginPage({ searchParams }: Props) {
+  preloadInter();
   const sp = await searchParams;
   const nextRaw = typeof sp.next === "string" ? sp.next : null;
   const next = nextRaw ? safeNext(nextRaw, "/") : null;

@@ -98,7 +98,7 @@ export function marketingCss(scriptFonts: string): string[] {
     ...Object.entries(marketingColors).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
     ...Object.entries(marketingEffects).map(([k, v]) => `  --mkt-${kebab(k)}: ${v};`),
     // Wave V: Schibsted Grotesk for text and the wordmark (lib/marketing/fonts.ts), Newsreader for the landing headlines (lib/marketing/serif.ts,
-    // loaded by the home page only). Inter, which the root layout preloads, is the fallback, so text never waits on a marketing download.
+    // loaded by the home page only). Inter (apps/web lib/fonts/inter.ts) is the fallback.
     `  --mkt-face-sans: var(--font-mkt-sans, var(--font-inter, "Inter")), ${scriptFonts}, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;`,
     `  --mkt-face-display: var(--font-mkt-sans, var(--font-inter, "Inter")), ${scriptFonts}, ui-sans-serif, system-ui, sans-serif;`,
     `  --mkt-face-serif: var(--font-mkt-serif, "Newsreader"), Georgia, "Times New Roman", ${scriptFonts}, serif;`,
