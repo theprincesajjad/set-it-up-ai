@@ -1096,7 +1096,7 @@ export const pa: Messages = {
   "mkt.nav.bias": "ਬੀਆਈਏ ਲਈ",
   "mkt.nav.pricing": "ਕੀਮਤਾਂ",
   "mkt.nav.login": "ਸਾਈਨ ਇਨ ਕਰੋ",
-  "mkt.nav.getStarted": "ਮੁਫ਼ਤ ਸ਼ੁਰੂ ਕਰੋ",
+  "mkt.nav.getStarted": "ਆਪਣਾ ਕਾਰਡ ਮੁਫ਼ਤ ਬਣਾਓ",
   "mkt.nav.language": "ਭਾਸ਼ਾ",
   "mkt.rest.eyebrow": "ਰੈਸਟੋਰੈਂਟਾਂ, ਮਠਿਆਈ ਦੀਆਂ ਦੁਕਾਨਾਂ ਅਤੇ ਟਿਫ਼ਿਨ ਰਸੋਈਆਂ ਲਈ",
   "mkt.rest.title": "ਪੂਰਾ ਆਰਡਰ ਆਪਣੇ ਕੋਲ ਰੱਖੋ।",

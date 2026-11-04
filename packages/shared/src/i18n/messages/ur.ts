@@ -1096,7 +1096,7 @@ export const ur: Messages = {
   "mkt.nav.bias": "بی آئی اے کے لیے",
   "mkt.nav.pricing": "قیمتیں",
   "mkt.nav.login": "سائن اِن کریں",
-  "mkt.nav.getStarted": "مفت شروع کریں",
+  "mkt.nav.getStarted": "اپنا کارڈ مفت بنائیں",
   "mkt.nav.language": "زبان",
   "mkt.rest.eyebrow": "ریستورانوں، مٹھائی کی دکانوں اور ٹفن کچنوں کے لیے",
   "mkt.rest.title": "پورا آرڈر اپنے پاس رکھیں۔",

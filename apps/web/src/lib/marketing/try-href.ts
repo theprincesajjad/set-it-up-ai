@@ -13,3 +13,13 @@ export function tryHref(input: { name: string; vertical: string; colour: string 
   q.set("src", "home-try");
   return `/signup?${q.toString()}`;
 }
+
+/** The name on the button: cut at about 22 characters (on a word end when one is close) with "…". */
+export function buttonName(name: string, max = 22): string {
+  const n = name.trim().replace(/\s+/g, " ");
+  const chars = Array.from(n);
+  if (chars.length <= max) return n;
+  const cut = chars.slice(0, max - 1).join("");
+  const space = cut.lastIndexOf(" ");
+  return `${(space >= max - 8 ? cut.slice(0, space) : cut).replace(/[\s,.\-–—&]+$/, "")}…`;
+}

@@ -19,12 +19,15 @@ test.describe("home on the kit", () => {
     await expect(tryIt.getByRole("radio", { name: "Café" })).toBeChecked();
     await expect(tryIt.getByText("Free drink after 10 stamps", { exact: true })).toBeVisible();
     await expect(cta).toHaveAttribute("href", "/signup?vertical=cafe&src=home-try");
+    // Wave W: the button names the shop once one is typed.
+    await expect(cta).toHaveText("Keep this card, start free");
     await tryIt.getByLabel("Your shop’s name").fill("Fix-It Phone Lab");
     // The radios are visually hidden inside their labels (the chips and swatches): click what a person clicks.
     await tryIt.locator(".lp-chip", { hasText: "Repair shop" }).click();
     await tryIt.locator(".lp-swatch", { has: page.getByRole("radio", { name: "Blue" }) }).click();
     await expect(tryIt.getByRole("radio", { name: "Repair shop" })).toBeChecked();
     await expect(pass.locator(".wu-pass-name")).toHaveText("Fix-It Phone Lab");
+    await expect(cta).toHaveText("Keep Fix-It Phone Lab’s card, start free");
     await expect(pass.locator(".wu-pass-logo")).toHaveText("F");
     await expect(pass).toContainText("Free screen protector");
     await expect(tryIt.getByText("Free screen protector at 150 points, 1 point a dollar", { exact: true })).toBeVisible();
@@ -83,6 +86,9 @@ test.describe("pricing on the kit", () => {
 test.describe("footer, legal, neighbourhoods, 404", () => {
   test("footer: the ask, four columns, the trade pages", async ({ page }) => {
     await page.goto("/pricing");
+    // Wave W: the header's button says what the home page's buttons say.
+    // Both copies: the desktop button and the one in the phone menu sheet (closed here, so matched by its href, not its role).
+    await expect(page.locator('header a[href="/signup"]')).toHaveText(["Make your card free", "Make your card free"]);
     const footer = page.getByRole("contentinfo");
     await expect(footer.getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/signup");
     for (const h of ["Shops", "Neighbourhoods", "Company", "Legal"]) await expect(footer.getByRole("heading", { name: h, exact: true })).toBeVisible();

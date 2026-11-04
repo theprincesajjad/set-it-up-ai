@@ -1096,7 +1096,7 @@ export const hi: Messages = {
   "mkt.nav.bias": "बीआईए के लिए",
   "mkt.nav.pricing": "कीमतें",
   "mkt.nav.login": "साइन इन करें",
-  "mkt.nav.getStarted": "मुफ़्त शुरू करें",
+  "mkt.nav.getStarted": "अपना कार्ड मुफ़्त बनाएं",
   "mkt.nav.language": "भाषा",
   "mkt.rest.eyebrow": "रेस्तराँ, मिठाई की दुकानों और टिफ़िन किचन के लिए",
   "mkt.rest.title": "पूरा ऑर्डर अपने पास रखिए।",

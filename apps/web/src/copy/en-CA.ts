@@ -138,7 +138,8 @@ export const copy = {
     ],
     login: "Log in",
     biaLogin: "BIA log in",
-    getStarted: "Get started free",
+    /** Wave W: the header button says what the page buttons say. */
+    getStarted: "Make your card free",
     planCampaign: "Plan a campaign",
     menu: "Menu",
   },
@@ -150,6 +151,8 @@ export const copy = {
   landing: {
     /** Also the sign-in page's promise row (AuthLayout). */
     heroTrust: "Free forever · No fee on loyalty · No contract · Unlimited locations and staff",
+    /** Wave W: the one reassurance line, in muted text, under every primary sign-up button on the home page. */
+    reassure: "Free forever · No credit card · About 5 minutes",
     meta: {
       title: "a free loyalty card for local shops",
       description: "A free digital stamp card for your shop, kept in your customers’ Apple Wallet or Google Wallet and stamped from any phone. Try yours on the page, then set it up in about 5 minutes.",
@@ -167,7 +170,8 @@ export const copy = {
       free: "Loyalty is free forever.",
       primary: "Make your card free",
       secondary: "Try it with your name",
-      points: ["Nothing for customers to download", "Any phone or tablet", "No credit card"],
+      /** Wave W: "No credit card" moved into the reassurance line under the buttons. */
+      points: ["Nothing for customers to download", "Any phone or tablet", "Unlimited staff"],
       /** Sample notes: the sign-in stage (AuthLayout) uses the first. */
       floats: [
         { icon: "stamp_card", b: "Stamp added for Maya", s: "9 of 10, one to go" },
@@ -195,7 +199,8 @@ export const copy = {
       points: "{reward} at {goal} points, 1 point a dollar",
       rewardNote: "You can change the reward, the goal and the colour any time.",
       cta: "Keep this card, start free",
-      note: "Free forever. No credit card. About 5 minutes to finish.",
+      /** Once a name is typed (cut at 22 characters with "…"); always ’s, the Canadian English possessive. */
+      ctaNamed: "Keep {name}’s card, start free",
       pass: { stamps: "Stamps", points: "Points", reward: "Reward", member: "Member", memberName: "Maya Chen", code: "4471 2208" },
       /** Read out after each change (aria-live). */
       updated: "Card updated: {name}, {trade}, {reward}.",
@@ -203,6 +208,8 @@ export const copy = {
       phoneNote: "A preview. Your real card adds your logo.",
       /** The phone's notification under the pass, as a customer sees it after a visit. */
       notice: { now: "now", stamps: "Stamp added", points: "{n} points added", left: "{left} more to go · {reward}" },
+      /** The second notification (wave W), a later visit: the card is full and the reward is waiting. */
+      ready: { when: "later", title: "Reward ready", line: "{reward} · show this card" },
     },
     /** The words inside the drawn product moments (components/marketing/landing/Product.tsx): the phone, the pass, the counter, the week. */
     product: {
@@ -295,12 +302,15 @@ export const copy = {
       sub: "Pick your kind of business and the card sets itself up with a reward that suits it.",
       tiles: [
         { key: "cafe", label: "Cafés", title: "Make the morning coffee a habit", line: "Every 10th drink free, stamped from your phone.", link: "Make a café card", alt: "A barista laughing with a customer at a café counter" },
-        { key: "repair", label: "Repair shops", title: "Be their first call next time", line: "Points on each repair toward a free screen protector.", link: "Make a repair shop card", alt: "Hands taking apart a smartphone at a repair bench" },
+        { key: "repair", label: "Repair shops", title: "Be their first call next time", line: "Points on each repair toward a free screen protector.", link: "Make a repair shop card", alt: "A smiling repair tech at his bench, an opened phone in front of him" },
         { key: "barber", label: "Barbers", title: "Keep them in your chair", line: "Every 8th cut free, right in their phone’s wallet.", link: "Make a barber card", alt: "A barber trimming a client's hair with scissors and a comb" },
-        { key: "nails", label: "Nail studios", title: "Keep the standing appointment", line: "$10 off every 6th visit, counted for you.", link: "Make a nail studio card", alt: "A nail tech painting a client's nails" },
+        { key: "nails", label: "Nail studios", title: "Keep the standing appointment", line: "$10 off every 6th visit, counted for you.", link: "Make a nail studio card", alt: "A nail tech in an apron painting a smiling client's nails by the window" },
         { key: "corner", label: "Corner stores", title: "Turn quick stops into regulars", line: "Points on every purchase add up to $5 off.", link: "Make a corner store card", alt: "A smiling clerk at the counter of a corner store" },
         { key: "florist", label: "Florists", title: "Be the shop for every birthday", line: "Points on every bouquet toward a free stem.", link: "Make a florist card", alt: "A florist tying a bouquet at her workbench" },
       ],
+      /** Wave W: the next step after the tiles, a big link up to the card maker (not a sign-up link: the page keeps to 8). */
+      next: "Try it with your shop’s name",
+      nextNote: "See your own card in a few seconds. No sign-up.",
       also: "Also on Local Loyalty",
       more: [
         { href: "/for-restaurants", label: "Restaurants", line: "Commission-free ordering" },
@@ -382,7 +392,8 @@ export const copy = {
       title: "Your regulars are *already here*.",
       sub: "Give them a reason to come back. **Free forever** for loyalty, and ready in about five minutes.",
       cta: "Make your card free",
-      pricing: "See pricing",
+      /** The quiet second ask beside the button: back up to the card maker. */
+      tryIt: "Try it with your name",
     },
     sticky: "Make your card free",
     mock: {

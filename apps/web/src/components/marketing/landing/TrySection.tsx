@@ -3,7 +3,7 @@ import { copy } from "@/copy/en-CA";
 import { Emph } from "@/lib/marketing/emphasis";
 import { tryColours, tryTrades } from "@/lib/marketing/try-card";
 import { Phone } from "./Product";
-import { TryControls, TryCta, TryNotice, TryPass, TryProvider, type TryTradeData } from "./TryCard";
+import { TryControls, TryCta, TryNotice, TryPass, TryProvider, TryReady, type TryTradeData } from "./TryCard";
 
 const T = copy.landing.tryIt;
 const P = copy.landing.product;
@@ -19,7 +19,7 @@ export function TrySection() {
   const colours = tryColours().map((c, i) => ({ ...c, name: T.colours[i] ?? c.base }));
   return (
     <section className="lp-try" id="try" aria-labelledby="lp-try">
-      <TryProvider trades={trades} colours={colours} copy={T}>
+      <TryProvider trades={trades} colours={colours} copy={{ ...T, note: copy.landing.reassure }}>
         <div className="lp-wrap lp-try-grid">
           <div className="lp-try-head">
             <p className="lp-eyebrow">{T.eyebrow}</p>
@@ -45,6 +45,7 @@ export function TrySection() {
                 </div>
                 <TryPass qr={<QrCode value="https://localloyalty.ca/c/44712208" size={120} ecc="L" label={T.pass.code} />} />
                 <TryNotice />
+                <TryReady />
               </div>
             </Phone>
             <p className="lp-caption lp-try-caption">{T.phoneNote}</p>

@@ -1,7 +1,7 @@
 "use client";
 import { ArrowRight, Check, Coffee, Croissant, Flower2, PawPrint, Scissors, ShoppingBasket, Smartphone, Sparkles } from "lucide-react";
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { tryHref } from "@/lib/marketing/try-href";
+import { buttonName, tryHref } from "@/lib/marketing/try-href";
 
 /**
  * The home page's "try it" card maker (wave V): the one client island on the landing page. The owner types a name, picks a trade and a
@@ -41,11 +41,13 @@ export interface TryCopy {
   points: string;
   rewardNote: string;
   cta: string;
+  ctaNamed: string;
   note: string;
   pass: { stamps: string; points: string; reward: string; member: string; memberName: string; code: string };
   updated: string;
   passLabel: string;
   notice: { now: string; stamps: string; points: string; left: string };
+  ready: { when: string; title: string; line: string };
 }
 
 const ICONS = { coffee: Coffee, croissant: Croissant, scissors: Scissors, sparkles: Sparkles, phone: Smartphone, basket: ShoppingBasket, flower: Flower2, paw: PawPrint } as const;
@@ -182,14 +184,15 @@ export function TryControls() {
   );
 }
 
-/** The hand-off: name, trade and colour into signup (data-cta="tryit"). */
+/** The hand-off: name, trade and colour into signup (data-cta="tryit"). The button names the owner's shop once one is typed. */
 export function TryCta() {
   const { name, trade, colourAt, colour, copy } = useTry();
   const href = useMemo(() => tryHref({ name, vertical: trade.vertical, colour: colourAt >= 0 && colour.base !== trade.colour.base ? colour.base : null }), [name, trade, colourAt, colour]);
+  const shop = buttonName(name);
   return (
     <div className="lp-try-cta">
-      <a href={href} className="lp-btn lp-btn-black" data-cta="tryit">
-        {copy.cta}
+      <a href={href} className="lp-btn lp-btn-black lp-btn-xl" data-cta="tryit">
+        <span>{shop ? fill(copy.ctaNamed, { name: shop }) : copy.cta}</span>
         <ArrowRight aria-hidden strokeWidth={2} />
       </a>
       <p className="lp-note">{copy.note}</p>
@@ -297,6 +300,25 @@ export function TryNotice() {
         </span>
         <b>{trade.kind === "stamps" ? N.stamps : fill(N.points, { n: Math.max(1, Math.round(trade.goal / 10)) })}</b>
         <span>{fill(N.left, { left: left.toLocaleString("en-CA"), reward: trade.reward })}</span>
+      </span>
+    </div>
+  );
+}
+
+/** The second notification, a later visit: the card is full and the reward is ready (fills the phone's lower half on desktop). */
+export function TryReady() {
+  const { trade, colour, copy, shown } = useTry();
+  const R = copy.ready;
+  return (
+    <div className="lp-notice lp-notice-ready" aria-hidden style={{ "--shop": colour.fill, "--shop-ink": colour.ink } as CSSProperties}>
+      <span className="lp-notice-icon">{Array.from(shown)[0]?.toUpperCase()}</span>
+      <span className="lp-notice-text">
+        <span className="lp-notice-top">
+          <span>{shown}</span>
+          <small>{R.when}</small>
+        </span>
+        <b>{R.title}</b>
+        <span>{fill(R.line, { reward: trade.reward })}</span>
       </span>
     </div>
   );

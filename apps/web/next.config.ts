@@ -70,6 +70,11 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Wave W: the landing page's self-hosted headline faces carry a content hash in their names (lib/marketing/serif.ts).
+        source: "/marketing/fonts/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         // Token links (quotes, invoices) and signed-in pages must never be indexed or cached by proxies.
         source: "/:prefix(q|i|e|o|me|m|rep|admin|bia|dev)/:path*",
         headers: [

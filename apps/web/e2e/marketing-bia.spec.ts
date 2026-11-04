@@ -85,7 +85,9 @@ test.describe("landing", () => {
     await expect(shops.getByRole("link", { name: /Restaurants/ })).toHaveAttribute("href", "/for-restaurants");
     await expect(shops.getByRole("link", { name: /BIAs/ })).toHaveAttribute("href", "/for-bias");
     // Calls to action down the page (landing v4): every one carries data-cta.
-    for (const c of ["hero", "how", "tryit", "outcomes", "pricing", "final", "sticky", "seepricing"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
+    // Wave W: a next step after the shop tiles ("shops") and the closing band's second ask ("finaltry"), both up to the card maker.
+    for (const c of ["hero", "how", "tryit", "outcomes", "pricing", "final", "sticky", "seepricing", "shops", "finaltry"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
+    for (const c of ["how", "shops", "finaltry"]) await expect(page.locator(`[data-cta=${c}]`)).toHaveAttribute("href", "#try");
     // Wave P: the page was cut down (facts strip, pass row and the separate Pro block are gone), so it has fewer asks.
     for (const gone of ["afterhero", "promos", "pro"]) await expect(page.locator(`[data-cta=${gone}]`)).toHaveCount(0);
     expect(await page.locator('main a[href^="/signup"]').count()).toBeLessThanOrEqual(8);

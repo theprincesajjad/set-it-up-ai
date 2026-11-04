@@ -16,7 +16,7 @@ import { copy } from "@/copy/en-CA";
 import { Emph } from "@/lib/marketing/emphasis";
 import { marketingFontVars } from "@/lib/marketing/fonts";
 import { marketingPlans, planNote, planVars } from "@/lib/marketing/plan-copy";
-import { marketingSerifVar } from "@/lib/marketing/serif";
+import { marketingSerifVar, preloadSerif } from "@/lib/marketing/serif";
 import { fill } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
 
@@ -41,12 +41,31 @@ const P = PASSES.bakery;
  * Every sign-up ask on the page goes to /signup and carries its data-cta (the funnel counts them; e2e/marketing-bia.spec.ts allows 8 in
  * <main>). Black pill by default, white on the black bands, outlined as the quiet one. The arrow nudges on hover (landing.css).
  */
-function Primary({ cta, children, tone = "black" }: { cta: string; children: React.ReactNode; tone?: "black" | "outline" | "white" }) {
+function Primary({ cta, children, tone = "black", xl = false }: { cta: string; children: React.ReactNode; tone?: "black" | "outline" | "white"; xl?: boolean }) {
   return (
-    <Link href="/signup" prefetch={false} className={`lp-btn lp-btn-${tone}`} data-cta={cta}>
+    <Link href="/signup" prefetch={false} className={`lp-btn lp-btn-${tone}${xl ? " lp-btn-xl" : ""}`} data-cta={cta}>
       {children}
       <ArrowRight aria-hidden strokeWidth={2} />
     </Link>
+  );
+}
+
+/** Wave W: the one reassurance line under every primary ask, in muted text. */
+function Reassure() {
+  return <p className="lp-reassure">{L.reassure}</p>;
+}
+
+/**
+ * Phones: the dots under a sideways row (how it works, what you get, the shop tiles). Drawn on the server with the first one on;
+ * SNAP_SCRIPT moves the mark as the row scrolls. Hidden where the row is a grid.
+ */
+function Dots({ n }: { n: number }) {
+  return (
+    <div className="lp-dots" data-snap-dots aria-hidden>
+      {Array.from({ length: n }, (_, i) => (
+        <i key={i} data-on={i === 0 ? "" : undefined} />
+      ))}
+    </div>
   );
 }
 
@@ -71,6 +90,13 @@ const TILE_TRADE = { cafe: "cafe", repair: "repair", barber: "barber", nails: "n
 const FILL_SCRIPT = `(()=>{try{if(!("IntersectionObserver"in window)||matchMedia("(prefers-reduced-motion: reduce)").matches)return;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.setAttribute("data-fill","in");io.unobserve(e.target)}})},{threshold:.4});document.querySelectorAll("[data-fill]").forEach(function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)el.setAttribute("data-fill","in");else{el.setAttribute("data-fill","wait");io.observe(el)}})}catch(e){}})()`;
 
 /**
+ * Wave W, plain script beside the fill: (1) the dots under each sideways row follow its scroll; (2) the phone's sticky button hides
+ * while the hero's button, the card maker's button or the closing band's button is on screen ("data-hide"; the server markup starts
+ * hidden, over the hero). Without IntersectionObserver it simply shows; without script the first dot stays marked.
+ */
+const SNAP_SCRIPT = `(()=>{try{document.querySelectorAll("[data-snap]").forEach(function(row){var d=row.nextElementSibling;if(!d||!d.hasAttribute("data-snap-dots"))return;var dots=d.children,t=0;row.addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;var k=row.children,w=k.length>1?k[1].offsetLeft-k[0].offsetLeft:1,max=row.scrollWidth-row.clientWidth,i=Math.abs(row.scrollLeft)>=max-4?k.length-1:Math.round(Math.abs(row.scrollLeft)/Math.abs(w||1));for(var j=0;j<dots.length;j++)j===i?dots[j].setAttribute("data-on",""):dots[j].removeAttribute("data-on")})},{passive:true})});var s=document.querySelector(".lp-sticky");if(!s)return;if(!("IntersectionObserver"in window)){s.removeAttribute("data-hide");return}var on=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?on.add(e.target):on.delete(e.target)});on.size?s.setAttribute("data-hide",""):s.removeAttribute("data-hide")});document.querySelectorAll(".lp [data-cta=hero],.lp [data-cta=tryit],.lp [data-cta=final]").forEach(function(el){io.observe(el)})}catch(e){}})()`;
+
+/**
  * The home page, wave V: direction B, the look the founder picked from three (dev/landing-b): Newsreader headlines with one italic
  * phrase each, Schibsted Grotesk text, black and white with grey bands, real photos (Unsplash, public/marketing/photos/CREDITS.md) and
  * the wallet pass drawn in code in a phone. Value first: the payoff in the hero, then a card maker the owner can try without signing up
@@ -79,6 +105,8 @@ const FILL_SCRIPT = `(()=>{try{if(!("IntersectionObserver"in window)||matchMedia
  * Static, re-generated every 5 minutes for the live counts.
  */
 export default function Home() {
+  // The headline face, beside the CSS (lib/marketing/serif.ts): the h1 waits for it rather than flash Georgia.
+  preloadSerif();
   const waUrl = whatsappUrl(L.book.whatsappText);
   const plans = marketingPlans("shop");
   const O = L.outcomes;
@@ -95,11 +123,16 @@ export default function Home() {
             <p className="lp-lede">
               <Emph text={L.hero.sub} /> <b className="lp-free" data-testid="hero-price">{L.hero.free}</b>
             </p>
-            <div className="lp-actions">
-              <Primary cta="hero">{L.hero.primary}</Primary>
-              <a className="lp-btn lp-btn-outline" href="#try" data-cta="how">
-                {L.hero.secondary}
-              </a>
+            <div className="lp-ask">
+              <div className="lp-actions">
+                <Primary cta="hero" xl>
+                  {L.hero.primary}
+                </Primary>
+                <a className="lp-btn lp-btn-outline lp-btn-xl" href="#try" data-cta="how">
+                  {L.hero.secondary}
+                </a>
+              </div>
+              <Reassure />
             </div>
             <ul className="lp-trust">
               {L.hero.points.map((t) => (
@@ -142,7 +175,7 @@ export default function Home() {
               <Emph text={L.how.sub} />
             </p>
           </div>
-          <ol className="lp-steps">
+          <ol className="lp-steps lp-snap" data-snap>
             <li>
               <div className="lp-panel lp-panel-pass" aria-hidden>
                 <div className="lp-panel-pass-in">
@@ -177,6 +210,7 @@ export default function Home() {
               <p className="lp-body">{L.how.steps[2]!.b}</p>
             </li>
           </ol>
+          <Dots n={3} />
         </div>
       </section>
 
@@ -189,7 +223,7 @@ export default function Home() {
             </h2>
             <p className="lp-lede">{f(O.sub)}</p>
           </div>
-          <ul className="lp-gets">
+          <ul className="lp-gets lp-snap" data-snap>
             {O.rows.map((r) => (
               <li key={r.id} id={`outcome-${r.id}`} className="lp-get">
                 <div className={`lp-get-art lp-get-${r.id}`} aria-hidden>
@@ -207,15 +241,19 @@ export default function Home() {
               </li>
             ))}
           </ul>
+          <Dots n={O.rows.length} />
           <p className="lp-caption">{O.caption}</p>
-          <div className="lp-actions lp-gets-end">
-            <Primary cta="outcomes" tone="white">
-              {O.cta}
-            </Primary>
-            <a className="lp-link" href="#pricing" data-cta="seepricing">
-              {O.pricing}
-              <ArrowRight aria-hidden strokeWidth={2} />
-            </a>
+          <div className="lp-ask lp-gets-end">
+            <div className="lp-actions">
+              <Primary cta="outcomes" tone="white" xl>
+                {O.cta}
+              </Primary>
+              <a className="lp-link" href="#pricing" data-cta="seepricing">
+                {O.pricing}
+                <ArrowRight aria-hidden strokeWidth={2} />
+              </a>
+            </div>
+            <Reassure />
           </div>
         </div>
       </section>
@@ -229,7 +267,7 @@ export default function Home() {
             </h2>
             <p className="lp-lede">{L.shops.sub}</p>
           </div>
-          <ul className="lp-tiles">
+          <ul className="lp-tiles lp-snap" data-snap>
             {L.shops.tiles.map((t) => (
               <li key={t.key} className="lp-tile">
                 <figure className="lp-tile-photo">
@@ -245,6 +283,15 @@ export default function Home() {
               </li>
             ))}
           </ul>
+          <Dots n={L.shops.tiles.length} />
+          {/* The next step after the tiles: up to the card maker (an in-page link, not a sign-up link). */}
+          <div className="lp-ask lp-shops-next">
+            <a className="lp-btn lp-btn-black lp-btn-xl" href="#try" data-cta="shops">
+              {L.shops.next}
+              <ArrowRight aria-hidden strokeWidth={2} />
+            </a>
+            <p className="lp-reassure">{L.shops.nextNote}</p>
+          </div>
           <div className="lp-also">
             {/* Plain anchors: the A/B landing pages count only a full page load (SiteFooter's LANDING_AB note). */}
             <nav aria-label={copy.solo.chipsLabel} className="lp-also-row">
@@ -379,17 +426,27 @@ export default function Home() {
           <p className="lp-lede">
             <Emph text={L.final.sub} />
           </p>
-          <Primary cta="final" tone="white">
-            {L.final.cta}
-          </Primary>
+          <div className="lp-ask">
+            <div className="lp-actions">
+              <Primary cta="final" tone="white" xl>
+                {L.final.cta}
+              </Primary>
+              <a className="lp-link" href="#try" data-cta="finaltry">
+                {L.final.tryIt}
+                <ArrowRight aria-hidden strokeWidth={2} />
+              </a>
+            </div>
+            <Reassure />
+          </div>
         </div>
       </section>
 
-      {/* Phones: the button in reach (hidden over the hero and the closing band where the browser has scroll-driven animation). */}
-      <div className="lp-sticky">
+      {/* Phones: the button in reach, hidden while the hero's, the card maker's or the closing band's own button is on screen (SNAP_SCRIPT). */}
+      <div className="lp-sticky" data-hide="">
         <Primary cta="sticky">{L.sticky}</Primary>
       </div>
       <script dangerouslySetInnerHTML={{ __html: FILL_SCRIPT }} />
+      <script dangerouslySetInnerHTML={{ __html: SNAP_SCRIPT }} />
       <LandingMeasure path="/" />
     </div>
   );

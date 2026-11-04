@@ -24,8 +24,9 @@ test.describe("home", () => {
     await expect(page.locator("#pricing [data-plan=yearly] s")).toHaveText("$290");
     await expect(page.locator("[data-cta=hero]")).toHaveAttribute("href", "/signup");
     // The page is a story, not a wall: under the 15,600 px it was before wave P. Wave V added the card maker under the hero (about
-    // 1,900 px at 390), so the bar moved from 13,000 to 15,000.
-    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(15_000);
+    // 1,900 px at 390) and reached about 14,900. Wave W turned how it works and what you get into sideways rows on phones and
+    // tightened the bands: about 11,900 px with every band drawn, so the bar is 12,500.
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThan(12_500);
   });
 
   test("every start button on the marketing pages goes to the sign-up entry", async ({ page }) => {

@@ -73,7 +73,7 @@ export function SiteFooter() {
         <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-8 py-12 md:grid-cols-4 md:gap-10 md:py-14">
           {COLS.map((c) => (
             <div key={c.title}>
-              <h2 className="text-body font-semibold text-mkt-on-black">{c.title}</h2>
+              <h2 className="font-mkt-sans text-body font-semibold text-mkt-on-black">{c.title}</h2>
               <ul className="mt-3 flex flex-col md:gap-1">
                 {c.links.map((l) => (
                   <li key={l.href + l.label}>

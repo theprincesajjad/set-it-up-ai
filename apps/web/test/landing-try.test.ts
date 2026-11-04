@@ -4,7 +4,7 @@ import { cardFor, emptyDraft, firstOpenStep, withPrefill } from "@/components/on
 import { copy } from "@/copy/en-CA";
 import { signupPrefill } from "@/lib/marketing/signupPrefill";
 import { TRY_TRADES, tryColours, tryTrades } from "@/lib/marketing/try-card";
-import { tryHref } from "@/lib/marketing/try-href";
+import { buttonName, tryHref } from "@/lib/marketing/try-href";
 
 /** Wave V: the home page's "try it" card maker and its hand-off into signup. */
 describe("try it: the card maker's data", () => {
@@ -65,5 +65,22 @@ describe("try it: the hand-off into signup", () => {
     expect(withPrefill(emptyDraft(), { shop: "A", vertical: "cafe" }).prefillKey).toBe(JSON.stringify(["A", "cafe", "", ""]));
     // A bad colour never reaches the draft.
     expect(withPrefill(emptyDraft(), { shop: "A", color: "#12" }).color).toBeNull();
+  });
+});
+
+/** Wave W: the try-it button names the shop ("Keep {name}’s card, start free"), cut short for long names. */
+describe("try it: the name on the button", () => {
+  it("keeps short names whole, trims space, and cuts long ones near 22 characters with an ellipsis", () => {
+    expect(buttonName("")).toBe("");
+    expect(buttonName("   ")).toBe("");
+    expect(buttonName("  Morning   Glory Café ")).toBe("Morning Glory Café");
+    expect(buttonName("Gloss Studios")).toBe("Gloss Studios");
+    const long = buttonName("The Very Long Neighbourhood Phone Repair Lab");
+    expect(long.endsWith("…")).toBe(true);
+    expect(Array.from(long).length).toBeLessThanOrEqual(22);
+    expect(long).toBe("The Very Long Neighbo…");
+    expect(buttonName("Morning Glory Coffee and Pastry")).toBe("Morning Glory Coffee…");
+    expect(buttonName("Abcdefghijklmnopqrstuvwxyz")).toBe("Abcdefghijklmnopqrstu…");
+    expect(copy.landing.tryIt.ctaNamed.replace("{name}", buttonName("Gloss Studios"))).toBe("Keep Gloss Studios’s card, start free");
   });
 });

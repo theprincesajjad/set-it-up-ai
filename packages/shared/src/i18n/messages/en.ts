@@ -1100,7 +1100,7 @@ export const en = {
   "mkt.nav.bias": "For BIAs",
   "mkt.nav.pricing": "Pricing",
   "mkt.nav.login": "Log in",
-  "mkt.nav.getStarted": "Get started free",
+  "mkt.nav.getStarted": "Make your card free",
   "mkt.nav.language": "Language",
   "mkt.rest.eyebrow": "For restaurants, sweet shops and tiffin kitchens",
   "mkt.rest.title": "keep the whole order.",
