@@ -1,6 +1,6 @@
 /*
- * The home page, wave V: direction B (the founder's pick, dev/landing-b). Newsreader headlines at display optical size with one italic
- * phrase each, Schibsted Grotesk text, a white page with grey bands and two black ones, real photos in 24px frames and the wallet pass
+ * The home page, wave V: direction B (the founder's pick, dev/landing-b); wave Y: Strata headlines with one Newsreader italic
+ * phrase each, Halden text, a white page with grey bands and two black ones, real photos in 24px frames and the wallet pass
  * drawn in code (product.css). Tokens only (var(--mkt-*), @ll/design-tokens marketing.ts), scoped to `.lp` inside `.mkt`. Logical
  * properties throughout, so it mirrors in RTL. Motion is small and once: buttons nudge their arrow, photos zoom a little, the phone
  * lifts, stamps fill in when a pass first shows. Transform and opacity only, and nothing moves under prefers-reduced-motion.
@@ -12,7 +12,7 @@
   /* The drawn product moments (product.css) read these: serif numbers, grotesk labels. */
   --wu-face-display: var(--mkt-face-serif);
   --wu-face-ui: var(--mkt-face-sans);
-  --wu-num-weight: 500;
+  --wu-num-weight: 850;
   background: var(--mkt-paper);
   color: var(--mkt-black);
   font-family: var(--mkt-face-sans);
@@ -24,29 +24,33 @@
 .lp-wrap { inline-size: 100%; max-inline-size: 1440px; margin-inline: auto; padding-inline: var(--lp-gutter); }
 
 /* ---------- Type ---------- */
-.lp :is(.lp-h1, .lp-h2, .lp-h3, .lp-tile-t, .lp-step-n, .lp-plan-price, .lp-counts dd) { font-family: var(--mkt-face-serif); font-optical-sizing: auto; font-weight: 500; }
+/* Wave Y: the headlines and big numbers in Strata, a condensed grotesque at 850 (serif.css); the one emphasised phrase in each
+   headline stays the Newsreader italic, a size smaller so its x-height sits with Strata's (and on the same baseline). */
+.lp :is(.lp-h1, .lp-h2, .lp-h3, .lp-tile-t, .lp-plan-price, .lp-counts dd) { font-family: var(--mkt-face-serif); font-weight: 850; }
+.lp :is(.lp-h3, .lp-tile-t) { font-weight: 800; }
 .lp :is(.lp-h1, .lp-h2, .lp-h3, .lp-tile-t) { text-wrap: balance; }
-.lp :is(.lp-h1, .lp-h2) em { font-style: italic; font-weight: 400; letter-spacing: -0.02em; }
+.lp :is(.lp-h1, .lp-h2) em { font-family: var(--mkt-face-italic); font-style: italic; font-weight: 400; font-size: 0.94em; letter-spacing: -0.03em; }
 /* The emphasised phrase stays in one piece. */
 .lp-h2 em { white-space: nowrap; }
 .lp :is(p, li, dd) { text-wrap: pretty; }
 
-/* Wave X: the headline fills a phone's width (two lines, tight leading), and grows to 112px on desktop. */
-.lp-h1 { font-size: min(15.6vw, 76px); line-height: 0.9; letter-spacing: -0.045em; }
-@media (min-width: 768px) { .lp-h1 { font-size: 96px; } }
-@media (min-width: 1024px) { .lp-h1 { font-size: min(7.6vw, 112px); } }
+/* Wave Y: on a phone the headline stacks ("Your", "regulars,", then the italic turn), as big as the width allows; from 640px "Your
+   regulars," shares a line, and on desktop it fills the column. */
+.lp-h1 { font-size: min(21vw, 100px); line-height: 0.84; letter-spacing: -0.012em; }
+@media (min-width: 640px) { .lp-h1 { font-size: 104px; } }
+@media (min-width: 1024px) { .lp-h1 { font-size: min(8vw, 118px); } }
 /* The hero's italic turn takes its own line, with a fine underline drawn under it (a rule, so it can draw in, see "Wave X" below). */
-.lp-h1 em { position: relative; display: block; inline-size: fit-content; padding-block-end: 0.1em; }
-.lp-h1 em::after { content: ""; position: absolute; inset-inline: 0.02em 0.04em; inset-block-end: 0; block-size: max(2px, 0.026em); border-radius: 99px; background: currentColor; opacity: 0.8; transform-origin: left center; }
+.lp .lp-h1 em { position: relative; display: block; inline-size: fit-content; margin-block-start: 0.06em; padding-block-end: 0.1em; font-size: 0.86em; line-height: 0.98; }
+.lp-h1 em::after { content: ""; position: absolute; inset-inline: 0.02em 0.04em; inset-block-end: 0; block-size: max(2px, 0.03em); border-radius: 99px; background: currentColor; opacity: 0.85; transform-origin: left center; }
 [dir="rtl"] .lp-h1 em::after { transform-origin: right center; }
 .lp-w { display: inline-block; }
 
-.lp-h2 { font-size: 42px; line-height: 1.02; letter-spacing: -0.03em; }
-@media (min-width: 768px) { .lp-h2 { font-size: 60px; } }
-@media (min-width: 1280px) { .lp-h2 { font-size: 76px; line-height: 0.98; letter-spacing: -0.036em; } }
-@media (min-width: 1280px) { .lp-h2-xl { font-size: 116px; line-height: 0.92; letter-spacing: -0.042em; } }
-.lp-h3 { font-size: 25px; line-height: 1.15; letter-spacing: -0.018em; }
-@media (min-width: 1024px) { .lp-h3 { font-size: 30px; } }
+.lp-h2 { font-size: 48px; line-height: 0.96; letter-spacing: -0.008em; }
+@media (min-width: 768px) { .lp-h2 { font-size: 66px; } }
+@media (min-width: 1280px) { .lp-h2 { font-size: 84px; line-height: 0.94; } }
+@media (min-width: 1280px) { .lp-h2-xl { font-size: 128px; line-height: 0.9; } }
+.lp-h3 { font-size: 27px; line-height: 1.08; letter-spacing: 0; }
+@media (min-width: 1024px) { .lp-h3 { font-size: 32px; } }
 
 .lp-lede { font-size: 18px; line-height: 1.55; color: var(--mkt-body); max-inline-size: 36rem; }
 @media (min-width: 1024px) { .lp-lede { font-size: 20px; line-height: 1.5; } }
@@ -128,22 +132,24 @@
 @media (min-width: 1024px) { .lp-photo { border-radius: 32px; } }
 
 /* ---------- 1. Hero (wave X: fewer words, and they move) ---------- */
-.lp-hero { position: relative; padding-block: 14px 40px; overflow: clip; }
+.lp-hero { position: relative; padding-block: 10px 40px; overflow: clip; }
 @media (min-width: 1024px) { .lp-hero { padding-block: 40px 88px; } }
-.lp-hero-grid { display: grid; gap: 22px; }
+.lp-hero-grid { display: grid; gap: 8px; }
 @media (min-width: 1024px) { .lp-hero-grid { grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr); gap: 56px; align-items: center; } }
-.lp-hero-copy { display: grid; gap: 18px; justify-items: start; }
+.lp-hero-copy { display: grid; gap: 14px; justify-items: start; }
 @media (min-width: 1024px) { .lp-hero-copy { gap: 26px; } }
 .lp-hero .lp-lede { max-inline-size: 30rem; font-size: 20px; line-height: 1.35; color: var(--mkt-black); }
+/* Wave Y: one line on a phone, so the phone and its video start inside the first screen. */
+@media (max-width: 639.98px) { .lp-hero .lp-lede { font-size: 17.5px; } }
 @media (min-width: 1024px) { .lp-hero .lp-lede { font-size: 24px; } }
-.lp-hero .lp-ask { gap: 10px; margin-block-start: 6px; }
+.lp-hero .lp-ask { gap: 6px; margin-block-start: 4px; }
 @media (min-width: 640px) { .lp-hero .lp-ask { grid-template-columns: auto auto; align-items: center; column-gap: 28px; } .lp-hero .lp-reassure { grid-column: 1 / -1; } }
-.lp-hero-try { justify-content: center; min-block-size: 40px; }
+.lp-hero-try { justify-content: center; min-block-size: 36px; }
 .lp-hero-try svg { inline-size: 17px; block-size: 17px; }
 @media (hover: hover) { .lp .lp-hero-try:hover svg { transform: translateY(3px); } }
 .lp-hero .lp-reassure b { font-weight: 600; color: var(--mkt-black); }
 
-/* The trade pill: a dot in the shop's colour, "For", and the word sliding up (LIVE_SCRIPT steps it with the phone). */
+/* The trade pill: a dot in the shop's colour, "For", and the word sliding up (VIDEO_SCRIPT steps it with the video). */
 .lp-pill { display: inline-flex; align-items: center; gap: 0.36em; min-block-size: 34px; padding: 0 14px 0 12px; border-radius: 99px; background: var(--mkt-grey); font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
 @media (min-width: 1024px) { .lp-pill { min-block-size: 38px; font-size: 16px; } }
 .lp-pill-dots { display: grid; margin-inline-end: 0.2em; }
@@ -175,22 +181,21 @@
   .lp-hero-phone { position: absolute; inset-block-end: 0; inset-inline-start: 0; inline-size: 44%; max-inline-size: 280px; margin: 0; }
 }
 
-/* The live phone: a soft glow in the pass's colour behind it, six stacked passes (one shown) and their "Stamp added" banners. */
+/* The live phone (wave Y): a soft glow in the pass's colour behind it, the wallet at the video's first frame, and the video over it. */
 .lp-live { position: relative; }
 .lp-live-glow { position: absolute; inset: -14% -55% -20%; z-index: 0; display: grid; pointer-events: none; }
 @media (max-width: 1023.98px) { .lp-live-glow { inset: 0 -45% -30%; } }
 .lp-live-glow i { grid-area: 1 / 1; background: radial-gradient(closest-side, color-mix(in srgb, var(--shop) 42%, transparent), color-mix(in srgb, var(--shop) 16%, transparent) 50%, transparent); opacity: 0; transition: opacity 700ms var(--mkt-ease); }
 .lp-live-glow i[data-on] { opacity: 1; }
 .lp-live-phone { position: relative; z-index: 1; }
-.lp-live-passes { flex: 1; display: grid; }
-/* Each step is a whole wallet: its pass, and the other sample cards stacked at the bottom. */
-.lp-live-pass { display: flex; flex-direction: column; }
-.lp-live-pass { grid-area: 1 / 1; opacity: 0; visibility: hidden; transform: translateY(10px) scale(0.97); transition: opacity 360ms var(--mkt-ease), transform 460ms var(--mkt-ease), visibility 0s 460ms; }
-.lp-live-pass[data-on] { opacity: 1; visibility: visible; transform: none; transition: opacity 360ms var(--mkt-ease) 80ms, transform 520ms cubic-bezier(0.2, 0.9, 0.25, 1.1) 80ms, visibility 0s; }
-.lp-live-pass[data-was] { transform: translateY(-6px) scale(0.98); }
-.lp-live-banners { position: absolute; z-index: 2; inset-block-start: 3.2cqi; inset-inline: 3.2cqi; display: grid; }
-.lp-live .lp-live-banner { grid-area: 1 / 1; margin: 0; background: rgb(255 255 255 / 0.96); backdrop-filter: none; box-shadow: 0 1px 2px rgb(0 0 0 / 0.1), 0 14px 30px -10px rgb(0 0 0 / 0.4); opacity: 0; visibility: hidden; }
-.lp-live .lp-live-banner[data-on] { opacity: 1; visibility: visible; }
+/* The video is drawn in the text face on every phone (scripts/hero-video), so the HTML under it is too (no SF Pro on iPhones). */
+.lp-live :is(.wu-pass-card, .wu-phone-bar, .wu-wallet-top) { font-family: var(--mkt-face-sans); }
+/* Every size on the screen scales with the phone (cqi), the inherited line height too, so the HTML matches the video at any width. */
+.lp-live .wu-phone-screen { font-size: 4cqi; line-height: 1.25; }
+/* The video covers the whole screen, status bar included; it fades in over the identical HTML once it can play through. */
+.lp-live-video { position: absolute; inset: 0; z-index: 3; inline-size: 100%; block-size: 100%; object-fit: cover; opacity: 0; pointer-events: none; transition: opacity 450ms var(--mkt-ease); }
+.lp-live[data-play] .lp-live-video { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .lp-live-video { display: none; } }
 
 .lp-proof:empty { display: none; }
 .lp-proof { margin-block-start: 44px; padding-block-start: 28px; border-block-start: 1px solid var(--mkt-rule); }
@@ -276,7 +281,7 @@ legend.lp-label { margin-block-end: 10px; }
 @media (max-width: 639.98px) { .lp-step-n { margin-block-start: 16px; } }
 @media (min-width: 1024px) { .lp-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; } }
 .lp-steps li { display: grid; gap: 10px; align-content: start; }
-.lp-step-n { margin-block-start: 22px; font-size: 22px; font-style: italic; font-weight: 400; color: var(--mkt-quiet); }
+.lp-step-n { margin-block-start: 22px; font-family: var(--mkt-face-italic); font-size: 24px; font-style: italic; font-weight: 400; color: var(--mkt-quiet); }
 .lp-panel { position: relative; display: grid; place-items: center; overflow: hidden; aspect-ratio: 1 / 1; border-radius: 28px; background: var(--mkt-grey); }
 .lp-panel-pass { align-items: start; }
 .lp-panel-pass-in { inline-size: 64%; margin-block-start: 15%; }
@@ -469,16 +474,6 @@ body:has([data-chat-launcher]) .lp-sticky { padding-inline-end: 140px; }
   .lp-h1[data-fw] .lp-w, .lp-h1[data-fw] em::after { animation-play-state: paused; }
   @keyframes lp-word { from { transform: translateY(0.42em); } }
   @keyframes lp-draw { from { transform: scaleX(0); } }
-
-  /* Each step of the live phone: the newest stamp pops in with a little overshoot and a ring, then the banner drops in. */
-  .lp-live-pass[data-on] .wu-stamp-new { position: relative; animation: lp-pop 520ms cubic-bezier(0.3, 1.6, 0.5, 1) 420ms both; }
-  .lp-live-pass[data-on] .wu-stamp-new::after { content: ""; position: absolute; inset: -12%; border-radius: 50%; box-shadow: 0 0 0 0.9cqi var(--shop-ink); opacity: 0; animation: lp-ring 700ms var(--mkt-ease) 620ms both; }
-  .lp-live .lp-live-banner[data-on] { animation: lp-drop 520ms cubic-bezier(0.2, 0.9, 0.25, 1.05) 820ms both; }
-  .lp-live .lp-live-banner[data-was] { visibility: visible; animation: lp-lift 320ms var(--mkt-ease) both; }
-  @keyframes lp-pop { from { transform: scale(0); } }
-  @keyframes lp-ring { 0% { opacity: 0.7; transform: scale(0.8); } 100% { opacity: 0; transform: scale(1.5); } }
-  @keyframes lp-drop { from { opacity: 0; transform: translateY(-120%) scale(0.96); } to { opacity: 1; transform: none; } }
-  @keyframes lp-lift { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-60%) scale(0.97); } }
 }
 @media (prefers-reduced-motion: reduce) {
   .lp *, .lp *::after { transition: none !important; }

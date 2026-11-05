@@ -1,0 +1,119 @@
+<!doctype html>
+<!--
+  The home page hero video's scene (wave Y): the phone's screen, drawn with the page's own pass and notice styles (product.css and
+  landing.css) and fonts, moved by scene.js. render.mjs opens this file, steps scene.js's clock frame by frame and encodes the result.
+  The markup mirrors Product.tsx (WalletPass, Phone) and HeroLive.tsx (the first frame is the page's static hero phone). Sample shop
+  data, as on the page (Product.tsx PASSES); the words are en-CA (copy/en-CA.ts landing.product and tryIt.notice).
+  Open it in a browser with ?t=4.2 to see one moment, or scrub.html to scrub the whole loop.
+-->
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<title>Hero video scene</title>
+<link rel="stylesheet" href="../../src/components/marketing/landing/product.css">
+<link rel="stylesheet" href="../../src/components/marketing/landing/landing.css">
+<style>
+  @font-face { font-family: "Halden"; src: url("../../src/lib/marketing/fonts/halden.woff2") format("woff2"); font-weight: 400 700; }
+  @font-face { font-family: "Strata"; src: url("../../public/marketing/fonts/strata-800-900.7cec53ce.woff2") format("woff2"); font-weight: 800 900; }
+  /* The --mkt-* tokens the pass and the notice read (@ll/design-tokens marketing.ts). */
+  .mkt { --mkt-paper: #FFFFFF; --mkt-grey: #F2F2F2; --mkt-black: #0B0B0B; --mkt-quiet: #616161; --mkt-rule: rgb(0 0 0 / 0.12); --mkt-accent: #0B6E33;
+    --mkt-face-sans: "Halden", Arial, sans-serif; --mkt-face-serif: "Strata", Arial, sans-serif; --mkt-ease: cubic-bezier(0.22, 1, 0.36, 1); --qr-bg: #fff; --qr-fg: #000; }
+  .fill-qr-bg { fill: var(--qr-bg); } .fill-qr-fg { fill: var(--qr-fg); } .block { display: block; } .max-w-full { max-width: 100%; }
+  /* The page's base styles that the pass reads (Tailwind's preflight and the body rule in the app CSS). */
+  *, ::before, ::after { box-sizing: border-box; border: 0 solid; margin: 0; padding: 0; }
+  html { line-height: 1.5; -webkit-text-size-adjust: 100%; tab-size: 4; }
+  img, svg, video { display: block; vertical-align: middle; }
+  small { font-size: 80%; }
+  b, strong { font-weight: bolder; }
+  body { font-variant-numeric: normal; font-feature-settings: "cv11"; background: #F2F2F2; }
+  /* The phone at the size whose screen is the video frame: 288 x 646 CSS px (576 x 1292 at 2x). No bezel: the page draws that. */
+  .wu-phone { inline-size: 307.036px; }
+  .wu-phone-body { aspect-ratio: auto; padding: 0; border-radius: 0; background: none; box-shadow: none; }
+  .wu-phone-screen { inline-size: 288px; block-size: 646px; border-radius: 0; }
+  .wu-wallet { position: relative; }
+  .wu-wallet-stack { position: relative; z-index: 5; }
+  [data-v] { will-change: transform; transform-origin: 50% 0; }
+  [data-v="cafe"], [data-v="repair"] { position: absolute; visibility: hidden; }
+  [data-v] .wu-pass-card { position: relative; }
+  [data-v] .wu-pass-code { position: relative; }
+  .wu-stamp { position: relative; }
+  [data-disc] { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; background: var(--shop-ink); color: var(--shop); opacity: 0; transform: scale(0); }
+  [data-pop] { position: absolute; inset: -12%; border-radius: 50%; box-shadow: 0 0 0 0.9cqi var(--shop-ink); opacity: 0; }
+  [data-ring] { position: absolute; inset-inline-start: 50%; inline-size: 44cqi; aspect-ratio: 1; border-radius: 50%; box-shadow: 0 0 0 0.8cqi var(--shop-ink); opacity: 0; pointer-events: none; }
+  [data-sheen] { position: absolute; z-index: 2; inset-block: -10%; inset-inline-start: 0; inline-size: 38%; background: linear-gradient(90deg, rgb(255 255 255 / 0), rgb(255 246 222 / 0.2), rgb(255 255 255 / 0)); opacity: 0; pointer-events: none; }
+  [data-spark] { position: absolute; z-index: 4; inline-size: 5cqi; aspect-ratio: 1; color: #F3D99A; opacity: 0; filter: drop-shadow(0 0 1.2cqi rgb(243 217 154 / 0.7)); }
+  [data-spark] svg { display: block; inline-size: 100%; block-size: 100%; }
+  [data-banner] { position: absolute; z-index: 9; inset-block-start: 3.2cqi; inset-inline: 3.2cqi; margin: 0; background: #FFFFFF; box-shadow: 0 1px 2px rgb(0 0 0 / 0.1), 0 14px 30px -10px rgb(0 0 0 / 0.4); opacity: 0; will-change: transform; }
+  [data-banner][data-ready] .lp-notice-text b { color: var(--mkt-accent); }
+  /* The page draws the pass, the bar and the wallet's top row in the text face on every phone (HeroLive.tsx), so the video matches. */
+  .lp-live :is(.wu-pass-card, .wu-phone-bar, .wu-wallet-top) { font-family: var(--mkt-face-sans); }
+</style>
+</head>
+<body>
+<div class="mkt lp lp-live">
+<div class="wu-phone" data-tone="wallet">
+<div class="wu-phone-body">
+<div class="wu-phone-screen" data-screen>
+<div class="wu-phone-bar" aria-hidden="true"><span>9:41</span><span class="wu-phone-island"></span><span class="wu-phone-icons"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg viewBox="0 0 26 12"><rect x="0.5" y="0.5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity="0.4"></rect><rect x="2.5" y="2.5" width="16" height="7" rx="2"></rect><rect x="24" y="4" width="1.6" height="4" rx="0.8" opacity="0.4"></rect></svg></span></div>
+<div class="wu-wallet">
+  <div class="wu-wallet-top"><span class="wu-wallet-done">Done</span><span class="wu-wallet-dots"><i></i><i></i><i></i></span></div>
+  <div data-pass="bakery"></div>
+  <div data-pass="cafe"></div>
+  <div data-pass="repair"></div>
+  <span class="wu-wallet-stack">
+    <span class="wu-wallet-sliver" data-shop="barber"><i>D</i>Dundas Cuts</span><span class="wu-wallet-sliver" data-shop="nails"><i>G</i>Gloss Studio</span><span class="wu-wallet-sliver" data-shop="florist"><i>W</i>Wild Rose Flowers</span>
+  </span>
+</div>
+<div class="lp-notice" data-banner data-shop="bakery">
+  <span class="lp-notice-icon">L</span>
+  <span class="lp-notice-text"><span class="lp-notice-top"><span>Little Oven</span><small>now</small></span><b>Stamp added</b><span>3 more to a free loaf</span></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<template id="qr"><svg role="img" aria-label="Member code" width="120" height="120" viewBox="0 0 25 25" shape-rendering="crispEdges" class="block max-w-full" style="height:auto"><rect width="25" height="25" class="fill-qr-bg"></rect><path d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM11 0h1v1h-1zM12 0h1v1h-1zM14 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM21 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM14 1h1v1h-1zM16 1h1v1h-1zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM11 2h1v1h-1zM15 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM11 3h1v1h-1zM13 3h1v1h-1zM16 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM21 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM9 4h1v1h-1zM11 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM10 5h1v1h-1zM11 5h1v1h-1zM14 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM12 7h1v1h-1zM0 8h1v1h-1zM1 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM9 8h1v1h-1zM12 8h1v1h-1zM13 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM3 9h1v1h-1zM5 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM15 9h1v1h-1zM19 9h1v1h-1zM20 9h1v1h-1zM21 9h1v1h-1zM22 9h1v1h-1zM23 9h1v1h-1zM0 10h1v1h-1zM2 10h1v1h-1zM4 10h1v1h-1zM6 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM12 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM17 10h1v1h-1zM21 10h1v1h-1zM23 10h1v1h-1zM24 10h1v1h-1zM2 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM8 11h1v1h-1zM12 11h1v1h-1zM14 11h1v1h-1zM15 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM24 11h1v1h-1zM1 12h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM9 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM14 12h1v1h-1zM16 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM24 12h1v1h-1zM0 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM8 13h1v1h-1zM9 13h1v1h-1zM12 13h1v1h-1zM13 13h1v1h-1zM15 13h1v1h-1zM16 13h1v1h-1zM19 13h1v1h-1zM23 13h1v1h-1zM0 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM13 14h1v1h-1zM14 14h1v1h-1zM15 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM21 14h1v1h-1zM23 14h1v1h-1zM24 14h1v1h-1zM0 15h1v1h-1zM2 15h1v1h-1zM4 15h1v1h-1zM5 15h1v1h-1zM10 15h1v1h-1zM11 15h1v1h-1zM14 15h1v1h-1zM17 15h1v1h-1zM19 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM24 15h1v1h-1zM0 16h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM9 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM18 16h1v1h-1zM19 16h1v1h-1zM20 16h1v1h-1zM22 16h1v1h-1zM8 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM16 17h1v1h-1zM20 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM2 18h1v1h-1zM3 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM8 18h1v1h-1zM11 18h1v1h-1zM14 18h1v1h-1zM16 18h1v1h-1zM18 18h1v1h-1zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM9 19h1v1h-1zM11 19h1v1h-1zM12 19h1v1h-1zM14 19h1v1h-1zM15 19h1v1h-1zM16 19h1v1h-1zM20 19h1v1h-1zM0 20h1v1h-1zM2 20h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM6 20h1v1h-1zM9 20h1v1h-1zM10 20h1v1h-1zM12 20h1v1h-1zM13 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM0 21h1v1h-1zM2 21h1v1h-1zM3 21h1v1h-1zM4 21h1v1h-1zM6 21h1v1h-1zM9 21h1v1h-1zM11 21h1v1h-1zM14 21h1v1h-1zM16 21h1v1h-1zM17 21h1v1h-1zM18 21h1v1h-1zM23 21h1v1h-1zM24 21h1v1h-1zM0 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM16 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM24 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM11 23h1v1h-1zM14 23h1v1h-1zM16 23h1v1h-1zM18 23h1v1h-1zM19 23h1v1h-1zM20 23h1v1h-1zM24 23h1v1h-1zM0 24h1v1h-1zM1 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM12 24h1v1h-1zM14 24h1v1h-1zM16 24h1v1h-1zM18 24h1v1h-1zM21 24h1v1h-1zM24 24h1v1h-1z" class="fill-qr-fg"></path></svg></template>
+<template id="icon-bakery"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-croissant" aria-hidden="true"><path d="M10.2 18H4.774a1.5 1.5 0 0 1-1.352-.97 11 11 0 0 1 .132-6.487"></path><path d="M18 10.2V4.774a1.5 1.5 0 0 0-.97-1.352 11 11 0 0 0-6.486.132"></path><path d="M18 5a4 3 0 0 1 4 3 2 2 0 0 1-2 2 10 10 0 0 0-5.139 1.42"></path><path d="M5 18a3 4 0 0 0 3 4 2 2 0 0 0 2-2 10 10 0 0 1 1.42-5.14"></path><path d="M8.709 2.554a10 10 0 0 0-6.155 6.155 1.5 1.5 0 0 0 .676 1.626l9.807 5.42a2 2 0 0 0 2.718-2.718l-5.42-9.807a1.5 1.5 0 0 0-1.626-.676"></path></svg></template>
+<template id="icon-cafe"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-coffee" aria-hidden="true"><path d="M10 2v2"></path><path d="M14 2v2"></path><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"></path><path d="M6 2v2"></path></svg></template>
+<template id="icon-repair"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smartphone" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg></template>
+<template id="spark"><svg viewBox="0 0 24 24"><path d="M12 0c.6 6.2 5.8 11.4 12 12-6.2.6-11.4 5.8-12 12-.6-6.2-5.8-11.4-12-12C6.2 11.4 11.4 6.2 12 0z" fill="currentColor"/></svg></template>
+<script>
+  // Build the three passes (Product.tsx WalletPass markup; Fix-It is a points card, TryCard.tsx's layout).
+  const DATA = {
+    bakery: { name: "Little Oven", mono: "L", count: "4/8", of: 8, on: 4, reward: "Free loaf", member: "Sam Okafor", code: "2290 8815" },
+    cafe: { name: "Pinecone Coffee", mono: "P", count: "8/10", of: 10, on: 8, reward: "Free drink", member: "Maya Chen", code: "4471 2208" },
+    repair: { name: "Fix-It Phone Lab", mono: "F", count: "90/150", points: true, reward: "Free screen protector", member: "Arjun Mehta", code: "6034 1179" },
+  };
+  const tpl = (id) => document.getElementById(id).innerHTML;
+  for (const [k, d] of Object.entries(DATA)) {
+    const icon = tpl("icon-" + k);
+    const strip = d.points
+      ? `<div class="wu-pass-points"><span class="wu-pass-points-icon" aria-hidden="true">${icon}</span><span class="wu-pass-bar" aria-hidden="true"><i style="--to:${90 / 150}"></i></span></div>`
+      : `<div class="wu-pass-strip" data-of="${d.of}">${Array.from({ length: d.of }, (_, i) => i < d.on ? `<span class="wu-stamp wu-stamp-on" style="--i:${i}">${icon}</span>` : `<span class="wu-stamp" style="--i:${i}"><i data-disc>${icon}</i><i data-pop></i></span>`).join("")}</div>`;
+    const sparks = k === "cafe" ? [[9, 5], [90, 4], [86, 47], [33, 60]].map(([x, y]) => `<i data-spark style="left:${x}%;top:${y}%">${tpl("spark")}</i>`).join("") : "";
+    const el = document.querySelector(`[data-pass="${k}"]`);
+    el.outerHTML = `<div class="wu-pass" data-shop="${k}" data-v="${k}" role="img"><div class="wu-pass-card"><div class="wu-pass-head"><span class="wu-pass-logo" aria-hidden="true">${d.mono}</span><span class="wu-pass-name">${d.name}</span><span class="wu-pass-field wu-pass-field-end"><small>${d.points ? "Points" : "Stamps"}</small><b>${d.count}</b></span></div>${strip}<div class="wu-pass-fields"><span class="wu-pass-field"><small>Reward</small><b>${d.reward}</b></span><span class="wu-pass-field wu-pass-field-end"><small>Member</small><b>${d.member}</b></span></div><div class="wu-pass-code"><i data-ring></i><i data-ring></i><span class="wu-pass-qr">${tpl("qr")}<small>${d.code}</small></span></div>${k === "cafe" ? "<i data-sheen></i>" : ""}</div>${sparks}</div>`;
+  }
+  // The sheen sits inside the card (clipped by it); scene.js moves it. Move it into the card.
+  const cafe = document.querySelector('[data-v="cafe"]');
+  cafe.querySelector(".wu-pass-card").appendChild(cafe.querySelector("[data-sheen]"));
+  // The other passes sit exactly where the bakery pass sits, over it.
+  window.layout = () => {
+    const b = document.querySelector('[data-v="bakery"]');
+    for (const k of ["cafe", "repair"]) {
+      const e = document.querySelector(`[data-v="${k}"]`);
+      e.style.top = b.offsetTop + "px"; e.style.left = b.offsetLeft + "px"; e.style.width = b.offsetWidth + "px";
+    }
+    // The tap rings are centred on each code.
+    document.querySelectorAll("[data-v]").forEach((p) => {
+      const q = p.querySelector(".wu-pass-qr");
+      p.querySelectorAll("[data-ring]").forEach((r) => (r.style.top = q.offsetTop + q.offsetHeight / 2 + "px"));
+    });
+  };
+</script>
+<script src="scene.js"></script>
+<script>
+  window.sceneReady = document.fonts.ready.then(() => { layout(); HERO.render(+(new URLSearchParams(location.search).get("t") ?? 0)); });
+</script>
+</body>
+</html>

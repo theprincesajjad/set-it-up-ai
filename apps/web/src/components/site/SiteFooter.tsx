@@ -45,7 +45,7 @@ const LINK = "inline-flex min-h-11 items-center rounded-md text-body text-mkt-on
 const LANDING_AB = /^\/for-(nail-techs|barbers|groomers)(\?|$)/;
 
 /**
- * Marketing footer (wave T, after squareup.com; wave V: Schibsted Grotesk, links underline on hover): a black band. The wordmark, the one line it stands for and the one ask (a white pill),
+ * Marketing footer (wave T, after squareup.com; wave V: the marketing text face, Halden since wave Y; links underline on hover): a black band. The wordmark, the one line it stands for and the one ask (a white pill),
  * then shop, neighbourhood, company and legal links in a dense grid, and a bottom bar under a hairline. "For shoppers" lives here, not
  * in the top nav. Links are 44px tall on phones, and every trade page and sign-in are one tap away. Its own `.mkt` scope (it also closes
  * the A/B landing pages, which have no marketing wrapper). Server-rendered, no script.

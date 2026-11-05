@@ -49,7 +49,7 @@ const subscribeNever = () => () => undefined;
 const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
 /**
- * Marketing top nav (wave T; wave V restyled it to direction B): white, a hairline, the black wordmark in Schibsted Grotesk, plain
+ * Marketing top nav (wave T; wave V restyled it to direction B): white, a hairline, the black wordmark in the marketing text face (Halden since wave Y), plain
  * text links that underline on hover (the current page keeps the line), "Log in" as a text link and one black pill button. Its own `.mkt` scope, so the tokens resolve on every marketing page. Mobile menu uses <details> (no JS). The language menu and
  * translated labels appear only on /for-restaurants and /for-shoppers, the pages that have translated content (docs/research/landing-and-network.md 7.3).
  * On /for-bias the sign-in link and the black button become "BIA log in" and "Plan a campaign".

@@ -1,10 +1,13 @@
 /*
- * The landing page's headline face, Newsreader (wave W; see serif.ts). Self-hosted from public/marketing/fonts (content-hashed names,
- * cached for a year by next.config.ts), so only the pages that draw it preload it. `font-display: block`: the headline waits for its
- * face and is never drawn in Georgia first. The fallback is Times New Roman sized to Newsreader's metrics (the overrides next/font
- * computed for these files), so a face arriving after the block period moves nothing.
+ * The landing page's headline faces (wave Y; see serif.ts): Strata (fontzz), a condensed grotesque at 800 to 900, for the headlines and
+ * big numbers, and the Newsreader italic for the one emphasised phrase in each headline. Self-hosted from public/marketing/fonts
+ * (content-hashed names, cached for a year by next.config.ts), so only the pages that draw them preload them. `font-display: block`:
+ * a headline waits for its face and is never drawn in a fallback first. The fallbacks are Arial and Times New Roman sized to each
+ * face's metrics (Strata: its width at 850 against Arial Bold, measured over the headline copy; Newsreader: the overrides next/font
+ * computed for it), so a face arriving after the block period moves nothing.
  */
-@font-face { font-family: "Newsreader"; src: url("/marketing/fonts/newsreader-500.cdb2e484.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }
+@font-face { font-family: "Strata"; src: url("/marketing/fonts/strata-800-900.7cec53ce.woff2") format("woff2"); font-weight: 800 900; font-style: normal; font-display: block; }
+@font-face { font-family: "Strata Fallback"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Arial"); font-weight: 800 900; ascent-override: 104.27%; descent-override: 27.44%; line-gap-override: 0%; size-adjust: 91.11%; }
 @font-face { font-family: "Newsreader"; src: url("/marketing/fonts/newsreader-italic-400.b966f4e1.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: block; }
-@font-face { font-family: "Newsreader Fallback"; src: local("Times New Roman"); ascent-override: 80.21%; descent-override: 28.92%; line-gap-override: 0%; size-adjust: 91.64%; }
-.mkt-serif { --font-mkt-serif: "Newsreader", "Newsreader Fallback"; }
+@font-face { font-family: "Newsreader Fallback"; src: local("Times New Roman Italic"), local("TimesNewRomanPS-ItalicMT"), local("Times New Roman"); font-style: italic; ascent-override: 80.21%; descent-override: 28.92%; line-gap-override: 0%; size-adjust: 91.64%; }
+.mkt-serif { --font-mkt-serif: "Strata", "Strata Fallback"; --mkt-face-italic: "Newsreader", "Newsreader Fallback", Georgia, serif; }

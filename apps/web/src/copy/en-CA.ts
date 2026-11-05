@@ -166,12 +166,13 @@ export const copy = {
     hero: {
       title: "Your regulars, *on repeat.*",
       /**
-       * Wave X: fewer words, and they move. The pill above the headline cycles the trades (in step with the live pass beside it);
+       * Wave X: fewer words, and they move. The pill above the headline names the trade of the pass on the phone (wave Y: it follows
+       * the hero video's clock, so the three trades are the video's three sample shops, in HeroLive.tsx CUE_SHOPS order);
        * `tradesAll` is what a screen reader hears instead. The lede is one line; "free forever" is the first part of the reassurance line.
        */
       for: "For",
-      trades: ["bakeries", "cafés", "barbers", "repair shops", "nail studios", "florists"],
-      tradesAll: "For bakeries, cafés, barbers, repair shops, nail studios and florists",
+      trades: ["bakeries", "cafés", "repair shops"],
+      tradesAll: "For bakeries, cafés, repair shops and every local shop",
       sub: "The stamp card that lives in their phone’s wallet.",
       primary: "Make your card free",
       secondary: "or try it with your name",
@@ -183,8 +184,8 @@ export const copy = {
         { icon: "megaphone", b: "Double stamps at 2 p.m.", s: "Sent to 412 customers who opted in" },
       ],
       photoAlt: "A baker behind her counter of bread, croissants and meringues",
-      /** Wave X: the hero phone cycles sample shops, one stamp each. */
-      phoneLabel: "A sample stamp card in a phone’s wallet getting a stamp, for a bakery, a café, a barber, a repair shop, a nail studio and a florist",
+      /** Wave Y: the hero phone's video, sample shops getting a stamp or points, then a reward. */
+      phoneLabel: "Sample cards in a phone’s wallet: a bakery card gets a stamp, a café card a stamp, a repair shop card points, then the café’s free drink is ready",
     },
     /** The card maker under the hero (components/marketing/landing/TryCard.tsx): no sign-up, nothing saved until "Keep this card". */
     tryIt: {

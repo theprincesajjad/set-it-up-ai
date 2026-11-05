@@ -23,7 +23,13 @@ test.describe("home", () => {
     expect(await fold(page.getByTestId("hero-price"))).toBe(true);
     await expect(page.getByTestId("hero-price")).toHaveText("Free forever");
     await expect(page.locator("[data-cta=how]")).toHaveAttribute("href", "#try");
-    expect(await fold(page.locator(".lp-live-pass[data-on] .wu-pass-card"))).toBe(true);
+    expect(await fold(page.locator(".lp-live .wu-pass-card"))).toBe(true);
+    // Wave Y: the phone's video (AV1, VP9, H.264) waits off the network until the page has loaded and gone idle: nothing in the
+    // server markup has a src, and the pass under it is the video's first frame.
+    const html = await (await page.request.get("/")).text();
+    expect(html).not.toMatch(/<source[^>]* src=/);
+    expect(await page.locator(".lp-live video source").count()).toBe(3);
+    await expect(page.locator(".lp-live .wu-pass-head b")).toHaveText("4/8");
     expect(await fold(page.locator("[data-cta=hero]"))).toBe(true);
     await expect(page.locator("#pricing [data-plan=yearly] s")).toHaveText("$290");
     await expect(page.locator("[data-cta=hero]")).toHaveAttribute("href", "/signup");

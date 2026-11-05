@@ -6,7 +6,7 @@ import { CompetitorTable } from "@/components/marketing/CompetitorTable";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { Faq } from "@/components/marketing/Faq";
 import { LiveProof } from "@/components/marketing/LiveProof";
-import { LIVE_SCRIPT, LivePhone, RISE_SCRIPT, RiseTitle, TradePill } from "@/components/marketing/landing/HeroLive";
+import { LivePhone, RISE_SCRIPT, RiseTitle, TradePill, VIDEO_SCRIPT } from "@/components/marketing/landing/HeroLive";
 import { PHOTOS, Photo, type PhotoSet } from "@/components/marketing/landing/Photo";
 import { PASSES, StampAdded, WalletPass, WeeklyCard, WinBack } from "@/components/marketing/landing/Product";
 import { TrySection } from "@/components/marketing/landing/TrySection";
@@ -101,8 +101,8 @@ const FILL_SCRIPT = `(()=>{try{if(!("IntersectionObserver"in window)||matchMedia
 const SNAP_SCRIPT = `(()=>{try{document.querySelectorAll("[data-snap]").forEach(function(row){var d=row.nextElementSibling;if(!d||!d.hasAttribute("data-snap-dots"))return;var dots=d.children,t=0;row.addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;var k=row.children,w=k.length>1?k[1].offsetLeft-k[0].offsetLeft:1,max=row.scrollWidth-row.clientWidth,i=Math.abs(row.scrollLeft)>=max-4?k.length-1:Math.round(Math.abs(row.scrollLeft)/Math.abs(w||1));for(var j=0;j<dots.length;j++)j===i?dots[j].setAttribute("data-on",""):dots[j].removeAttribute("data-on")})},{passive:true})});var s=document.querySelector(".lp-sticky");if(!s)return;if(!("IntersectionObserver"in window)){s.removeAttribute("data-hide");return}var on=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?on.add(e.target):on.delete(e.target)});on.size?s.setAttribute("data-hide",""):s.removeAttribute("data-hide")});document.querySelectorAll(".lp [data-cta=hero],.lp [data-cta=tryit],.lp [data-cta=final]").forEach(function(el){io.observe(el)})}catch(e){}})()`;
 
 /**
- * The home page, wave V: direction B, the look the founder picked from three (dev/landing-b): Newsreader headlines with one italic
- * phrase each, Schibsted Grotesk text, black and white with grey bands, real photos (Unsplash, public/marketing/photos/CREDITS.md) and
+ * The home page, wave V: direction B, the look the founder picked from three (dev/landing-b): Strata headlines (wave Y) with one Newsreader italic
+ * phrase each, Halden text, black and white with grey bands, real photos (Unsplash, public/marketing/photos/CREDITS.md) and
  * the wallet pass drawn in code in a phone. Value first: the payoff in the hero, then a card maker the owner can try without signing up
  * (TrySection, the page's one client island beyond the visit form and the questions), then how it works, what they get, the shop
  * types (each tile presets the card maker), the plans, the dated comparison, questions, a visit, and the closing band.
@@ -452,7 +452,7 @@ export default function Home() {
       </div>
       <script dangerouslySetInnerHTML={{ __html: FILL_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: SNAP_SCRIPT }} />
-      <script dangerouslySetInnerHTML={{ __html: LIVE_SCRIPT }} />
+      <script dangerouslySetInnerHTML={{ __html: VIDEO_SCRIPT }} />
       <LandingMeasure path="/" />
     </div>
   );

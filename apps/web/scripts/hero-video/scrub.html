@@ -1,0 +1,18 @@
+<!doctype html>
+<!-- Scrub the hero video's timeline by hand: the scene in a frame, a slider for t (0 to 12 s), and play/pause at real speed. -->
+<html lang="en-CA">
+<head><meta charset="utf-8"><title>Hero video: scrub</title>
+<style>body{margin:0;display:grid;justify-items:center;gap:12px;padding:16px;font:14px system-ui;background:#ddd}iframe{border:0;width:288px;height:646px;background:#fff}input{width:576px}</style></head>
+<body>
+<iframe id="f" src="scene.html"></iframe>
+<div><input id="t" type="range" min="0" max="12" step="0.0166667" value="0"> <output id="o">0.00 s</output> <button id="p">Play</button></div>
+<script>
+  const f = document.getElementById("f"), t = document.getElementById("t"), o = document.getElementById("o"), p = document.getElementById("p");
+  const draw = () => { o.textContent = (+t.value).toFixed(2) + " s"; f.contentWindow.HERO?.render(+t.value); };
+  t.oninput = draw;
+  let run = 0, last = 0;
+  const loop = (now) => { if (!run) return; t.value = String(((+t.value) + (now - last) / 1000) % 12); last = now; draw(); requestAnimationFrame(loop); };
+  p.onclick = () => { run = !run; p.textContent = run ? "Pause" : "Play"; last = performance.now(); requestAnimationFrame(loop); };
+</script>
+</body>
+</html>

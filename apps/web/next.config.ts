@@ -75,6 +75,11 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
+        // Wave Y: the hero video and its posters, content-hashed by scripts/hero-video/render.mjs.
+        source: "/marketing/video/:file*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      {
         // Wave W2: Inter, self-hosted the same way (lib/fonts/inter.ts).
         source: "/fonts/:file*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
