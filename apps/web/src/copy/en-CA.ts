@@ -165,14 +165,7 @@ export const copy = {
      */
     hero: {
       title: "Your regulars, *on repeat.*",
-      /**
-       * Wave X: fewer words, and they move. The pill above the headline names the trade of the pass on the phone (wave Y: it follows
-       * the hero video's clock, so the three trades are the video's three sample shops, in HeroLive.tsx CUE_SHOPS order);
-       * `tradesAll` is what a screen reader hears instead. The lede is one line; "free forever" is the first part of the reassurance line.
-       */
-      for: "For",
-      trades: ["bakeries", "cafés", "repair shops"],
-      tradesAll: "For bakeries, cafés, repair shops and every local shop",
+      /** Wave X: fewer words, and they move. The lede is one line; "free forever" is the first part of the reassurance line. */
       sub: "The stamp card that lives in their phone’s wallet.",
       primary: "Make your card free",
       secondary: "or try it with your name",

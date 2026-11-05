@@ -10,7 +10,7 @@
  */
 (() => {
   const T = 12;
-  /** When each pass starts rising into view: the page's trade pill follows these (render.mjs writes them to hero-video.ts). */
+  /** When each pass starts rising into view: the glow behind the phone follows these (render.mjs writes them to hero-video.ts). */
   const CUES = [
     [0, "bakery"],
     [2.7, "cafe"],

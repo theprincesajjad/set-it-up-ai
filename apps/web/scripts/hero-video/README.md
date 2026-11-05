@@ -22,8 +22,8 @@ poster: it draws frame 0 in HTML under the video. `--only-frames` and `--only-en
 - `scene.html`: the phone's screen at 288 x 646 CSS px (576 x 1292 in the video), built from the page's own `product.css` and
   `landing.css`, the shipped fonts and the same sample shop data as `Product.tsx`. Open it with `?t=4.2` to see one moment.
 - `scene.js`: the single timeline. `HERO.render(t)` sets everything for time `t` (springs and ease-out curves computed from `t`, no CSS
-  transitions or timers), so any frame can be drawn in any order. `HERO.CUES` are the moments each pass starts rising; the page's trade
-  pill follows them.
+  transitions or timers), so any frame can be drawn in any order. `HERO.CUES` are the moments each pass starts rising; the glow behind
+  the phone follows them.
 - `scrub.html`: a slider over the timeline, for reviewing the motion by hand.
 - `render.mjs`: frames, encodes, poster, manifest.
 

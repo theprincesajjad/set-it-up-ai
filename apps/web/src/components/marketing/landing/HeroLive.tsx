@@ -11,8 +11,8 @@ import { PASSES, Phone, WalletPass, type ShopKey } from "./Product";
  *   - nothing is fetched until the page has loaded and gone idle, and only once the phone is on screen (IntersectionObserver);
  *   - the video fades in over the HTML once it can play through, plays only while on screen and the tab is visible, and never under
  *     reduced motion or Save-Data;
- *   - the trade pill above the headline and the glow behind the phone follow the video's clock (video.currentTime against the
- *     cue points in hero-video.ts), so the pill says "bakeries" while the bakery pass is up.
+ *   - the glow behind the phone follows the video's clock (video.currentTime against the cue points in hero-video.ts), so it
+ *     takes the colour of the shop on screen.
  *
  * Every group that follows the video carries data-cue-set; its children are the shops in CUE_SHOPS order. React is told not to mind
  * the moved attributes.
@@ -21,7 +21,7 @@ import { PASSES, Phone, WalletPass, type ShopKey } from "./Product";
 const H = copy.landing.hero;
 const W = copy.landing.product;
 
-/** The shops the video shows, in the order of H.trades (the pill's words). */
+/** The shops the video shows, in cue order. */
 export const CUE_SHOPS: readonly ShopKey[] = ["bakery", "cafe", "repair"];
 /** The wallet's other cards, stacked at the bottom of the screen (the same three in every frame of the video). */
 const STACK: readonly ShopKey[] = ["barber", "nails", "florist"];
@@ -29,28 +29,6 @@ const STACK: readonly ShopKey[] = ["barber", "nails", "florist"];
 const FIRST = { ...PASSES.bakery, stamps: 4 };
 
 const on = (i: number) => (i === 0 ? "" : undefined);
-
-/** The pill: a dot in the shop's colour, "For", and the trade word sliding up into place. */
-export function TradePill() {
-  return (
-    <p className="lp-pill">
-      <span className="sr-only">{H.tradesAll}</span>
-      <span className="lp-pill-dots" data-cue-set aria-hidden>
-        {CUE_SHOPS.map((k, i) => (
-          <i key={k} data-shop={k} data-on={on(i)} suppressHydrationWarning />
-        ))}
-      </span>
-      <span aria-hidden>{H.for}</span>
-      <span className="lp-pill-words" data-cue-set aria-hidden>
-        {H.trades.map((t, i) => (
-          <span key={t} data-on={on(i)} suppressHydrationWarning>
-            {t}
-          </span>
-        ))}
-      </span>
-    </p>
-  );
-}
 
 /** The phone: the wallet at the video's first frame in HTML, and the video over it (sources attached by VIDEO_SCRIPT). */
 export function LivePhone() {

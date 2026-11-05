@@ -150,15 +150,6 @@
 .lp-hero .lp-reassure b { font-weight: 600; color: var(--mkt-black); }
 
 /* The trade pill: a dot in the shop's colour, "For", and the word sliding up (VIDEO_SCRIPT steps it with the video). */
-.lp-pill { display: inline-flex; align-items: center; gap: 0.36em; min-block-size: 34px; padding: 0 14px 0 12px; border-radius: 99px; background: var(--mkt-grey); font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
-@media (min-width: 1024px) { .lp-pill { min-block-size: 38px; font-size: 16px; } }
-.lp-pill-dots { display: grid; margin-inline-end: 0.2em; }
-.lp-pill-dots i { grid-area: 1 / 1; inline-size: 9px; block-size: 9px; border-radius: 50%; background: var(--shop); opacity: 0; transition: opacity 300ms var(--mkt-ease); }
-.lp-pill-dots i[data-on] { opacity: 1; }
-.lp-pill-words { display: inline-grid; overflow: hidden; padding-block: 0.12em; margin-block: -0.12em; }
-.lp-pill-words > span { grid-area: 1 / 1; white-space: nowrap; transform: translateY(110%); opacity: 0; }
-.lp-pill-words > span[data-on] { transform: none; opacity: 1; transition: transform 440ms cubic-bezier(0.2, 0.9, 0.2, 1) 140ms, opacity 200ms linear 140ms; }
-.lp-pill-words > span[data-was] { transform: translateY(-110%); opacity: 0; transition: transform 260ms cubic-bezier(0.5, 0, 0.75, 0), opacity 180ms linear 60ms; }
 
 .lp-trust { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; line-height: 22px; color: var(--mkt-body); }
 .lp-trust li { display: inline-flex; align-items: center; gap: 7px; }

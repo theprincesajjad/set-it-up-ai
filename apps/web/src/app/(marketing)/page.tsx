@@ -6,7 +6,7 @@ import { CompetitorTable } from "@/components/marketing/CompetitorTable";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { Faq } from "@/components/marketing/Faq";
 import { LiveProof } from "@/components/marketing/LiveProof";
-import { LivePhone, RISE_SCRIPT, RiseTitle, TradePill, VIDEO_SCRIPT } from "@/components/marketing/landing/HeroLive";
+import { LivePhone, RISE_SCRIPT, RiseTitle, VIDEO_SCRIPT } from "@/components/marketing/landing/HeroLive";
 import { PHOTOS, Photo, type PhotoSet } from "@/components/marketing/landing/Photo";
 import { PASSES, StampAdded, WalletPass, WeeklyCard, WinBack } from "@/components/marketing/landing/Product";
 import { TrySection } from "@/components/marketing/landing/TrySection";
@@ -117,11 +117,10 @@ export default function Home() {
   return (
     // data-solo-trade="home": the landing beacon's page marker (LandingMeasure below); "/" is counted for the admin funnel (wave N).
     <div className={`mkt ${marketingFontVars} ${marketingSerifVar} lp`} data-solo-trade="home">
-      {/* 1. The payoff (wave X): a trade pill, the headline, one line, one button; the phone cycling sample shops, one stamp each */}
+      {/* 1. The payoff (wave X): the headline, one line, one button; the phone cycling sample shops, one stamp each */}
       <section className="lp-hero" aria-labelledby="lp-title">
         <div className="lp-wrap lp-hero-grid">
           <div className="lp-hero-copy">
-            <TradePill />
             <h1 className="lp-h1" id="lp-title" suppressHydrationWarning>
               <RiseTitle text={L.hero.title} />
             </h1>
