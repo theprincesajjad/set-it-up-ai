@@ -91,9 +91,9 @@ test.describe("landing", () => {
     // Wave P: the page was cut down (facts strip, pass row and the separate Pro block are gone), so it has fewer asks.
     for (const gone of ["afterhero", "promos", "pro"]) await expect(page.locator(`[data-cta=${gone}]`)).toHaveCount(0);
     expect(await page.locator('main a[href^="/signup"]').count()).toBeLessThanOrEqual(8);
-    // What it costs: loyalty free in the hero lede (wave R: no price paragraph under the buttons); Pro's price and the struck
+    // What it costs: "Free forever" in the hero (wave X: the first words of the line under its button); Pro's price and the struck
     // first-year price in the plans; never "founding".
-    await expect(page.getByTestId("hero-price")).toHaveText("Loyalty is free forever.");
+    await expect(page.getByTestId("hero-price")).toHaveText("Free forever");
     const pro = page.locator("#pricing [data-plan=monthly]");
     await expect(pro).toContainText("Pro");
     await expect(pro).toContainText("$29");

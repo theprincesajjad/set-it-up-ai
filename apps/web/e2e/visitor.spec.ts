@@ -16,10 +16,14 @@ test.describe("home", () => {
     // Pro's price with the struck first-year price sits in the plans.
     // Wave V: the payoff in the headline ("Your regulars, on repeat."), what it is in the lede.
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your regulars, on repeat.");
+    // Wave X: about 20 words above the button. The lede is one line; "Free forever" leads the reassurance line under the button, and
+    // the live pass is in the first screen.
     await expect(page.locator(".lp-hero-copy .lp-lede")).toContainText("stamp card");
-    await expect(page.locator(".lp-hero-copy .lp-lede")).toContainText(/Apple Wallet or Google Wallet/);
+    await expect(page.locator(".lp-hero-copy .lp-lede")).toContainText(/wallet/);
     expect(await fold(page.getByTestId("hero-price"))).toBe(true);
-    await expect(page.getByTestId("hero-price")).toContainText("Loyalty is free forever.");
+    await expect(page.getByTestId("hero-price")).toHaveText("Free forever");
+    await expect(page.locator("[data-cta=how]")).toHaveAttribute("href", "#try");
+    expect(await fold(page.locator(".lp-live-pass[data-on] .wu-pass-card"))).toBe(true);
     expect(await fold(page.locator("[data-cta=hero]"))).toBe(true);
     await expect(page.locator("#pricing [data-plan=yearly] s")).toHaveText("$290");
     await expect(page.locator("[data-cta=hero]")).toHaveAttribute("href", "/signup");

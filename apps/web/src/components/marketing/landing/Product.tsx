@@ -1,4 +1,4 @@
-import { Check, Coffee, Croissant, MessageCircle, Scissors, Smartphone, Sparkles } from "lucide-react";
+import { Check, Coffee, Croissant, Flower2, MessageCircle, Scissors, Smartphone, Sparkles } from "lucide-react";
 import { QrCode } from "@/components/ui/QrCode";
 import { copy } from "@/copy/en-CA";
 import "./product.css";
@@ -14,9 +14,9 @@ import "./product.css";
 const W = copy.landing.product;
 const fillIn = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k: string) => String(v[k] ?? ""));
 
-export type ShopKey = "cafe" | "bakery" | "repair" | "nails" | "barber";
+export type ShopKey = "cafe" | "bakery" | "repair" | "nails" | "barber" | "florist";
 
-const ICON = { cafe: Coffee, bakery: Croissant, repair: Smartphone, nails: Sparkles, barber: Scissors } as const;
+const ICON = { cafe: Coffee, bakery: Croissant, repair: Smartphone, nails: Sparkles, barber: Scissors, florist: Flower2 } as const;
 
 export interface PassData {
   shop: ShopKey;
@@ -36,10 +36,15 @@ export const PASSES: Record<ShopKey, PassData> = {
   repair: { shop: "repair", name: "Fix-It Phone Lab", mono: "F", stamps: 3, of: 5, reward: "Free screen protector", member: "Arjun Mehta", code: "6034 1179" },
   nails: { shop: "nails", name: "Gloss Studio", mono: "G", stamps: 4, of: 6, reward: "Free gel fill", member: "Priya Nair", code: "5108 3362" },
   barber: { shop: "barber", name: "Dundas Cuts", mono: "D", stamps: 6, of: 8, reward: "Free cut", member: "Leo Martins", code: "7731 0046" },
+  florist: { shop: "florist", name: "Wild Rose Flowers", mono: "W", stamps: 4, of: 8, reward: "Free bouquet", member: "Nadia Haddad", code: "3315 9027" },
 };
 
-/** An Apple Wallet store card: logo and name, the stamps field, the strip of stamps, reward and member, then the code. */
-export function WalletPass({ data, className, fill = false }: { data: PassData; className?: string; fill?: boolean }) {
+/**
+ * An Apple Wallet store card: logo and name, the stamps field, the strip of stamps, reward and member, then the code.
+ * Wave X: `newest` marks the last earned stamp (the hero pops it in, landing.css); `qr` overrides the code's QR value, so the hero's
+ * six sample passes share one QR drawing (identical markup, which compresses to almost nothing).
+ */
+export function WalletPass({ data, className, fill = false, newest = false, qr }: { data: PassData; className?: string; fill?: boolean; newest?: boolean; qr?: string }) {
   const Icon = ICON[data.shop];
   // `fill`: the page's inline script (app/(marketing)/page.tsx FILL_SCRIPT) sets data-fill to "wait", then "in" once the pass scrolls
   // into view, and the CSS fills the stamps in once. The attribute changes before hydration, so React is told not to mind.
@@ -60,7 +65,7 @@ export function WalletPass({ data, className, fill = false }: { data: PassData; 
       </div>
       <div className="wu-pass-strip" data-of={data.of}>
         {Array.from({ length: data.of }, (_, i) => (
-          <span key={i} className={i < data.stamps ? "wu-stamp wu-stamp-on" : "wu-stamp"} style={{ "--i": i } as React.CSSProperties}>
+          <span key={i} className={i < data.stamps ? (newest && i === data.stamps - 1 ? "wu-stamp wu-stamp-on wu-stamp-new" : "wu-stamp wu-stamp-on") : "wu-stamp"} style={{ "--i": i } as React.CSSProperties}>
             {i < data.stamps ? <Icon aria-hidden strokeWidth={2} /> : null}
           </span>
         ))}
@@ -77,7 +82,7 @@ export function WalletPass({ data, className, fill = false }: { data: PassData; 
       </div>
       <div className="wu-pass-code">
         <span className="wu-pass-qr">
-          <QrCode value={`https://localloyalty.ca/c/${data.code.replace(" ", "")}`} size={120} ecc="L" label={W.memberCode} />
+          <QrCode value={qr ?? `https://localloyalty.ca/c/${data.code.replace(" ", "")}`} size={120} ecc="L" label={W.memberCode} />
           <small>{data.code}</small>
         </span>
       </div>

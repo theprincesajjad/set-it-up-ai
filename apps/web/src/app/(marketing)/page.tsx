@@ -1,4 +1,4 @@
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowDown, ArrowRight, Check } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND, FEES } from "@ll/shared";
@@ -6,8 +6,9 @@ import { CompetitorTable } from "@/components/marketing/CompetitorTable";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { Faq } from "@/components/marketing/Faq";
 import { LiveProof } from "@/components/marketing/LiveProof";
+import { LIVE_SCRIPT, LivePhone, RISE_SCRIPT, RiseTitle, TradePill } from "@/components/marketing/landing/HeroLive";
 import { PHOTOS, Photo, type PhotoSet } from "@/components/marketing/landing/Photo";
-import { PASSES, Phone, StampAdded, WalletPass, WalletScreen, WeeklyCard, WinBack } from "@/components/marketing/landing/Product";
+import { PASSES, StampAdded, WalletPass, WeeklyCard, WinBack } from "@/components/marketing/landing/Product";
 import { TrySection } from "@/components/marketing/landing/TrySection";
 import "@/components/marketing/landing/landing.css";
 import { LandingMeasure } from "@/components/marketing/landing-ab/LandingMeasure";
@@ -49,6 +50,9 @@ function Primary({ cta, children, tone = "black", xl = false }: { cta: string; c
     </Link>
   );
 }
+
+/** Wave X: the hero's reassurance line, its first part ("Free forever") the price in the first screen (data-testid hero-price). */
+const reassure = L.reassure.split(" · ");
 
 /** Wave W: the one reassurance line under every primary ask, in muted text. */
 function Reassure() {
@@ -113,44 +117,36 @@ export default function Home() {
   return (
     // data-solo-trade="home": the landing beacon's page marker (LandingMeasure below); "/" is counted for the admin funnel (wave N).
     <div className={`mkt ${marketingFontVars} ${marketingSerifVar} lp`} data-solo-trade="home">
-      {/* 1. The payoff: the headline, the mechanism, the price, two asks; a bakery counter with the bakery's card on a phone */}
+      {/* 1. The payoff (wave X): a trade pill, the headline, one line, one button; the phone cycling sample shops, one stamp each */}
       <section className="lp-hero" aria-labelledby="lp-title">
         <div className="lp-wrap lp-hero-grid">
           <div className="lp-hero-copy">
-            <h1 className="lp-h1" id="lp-title">
-              <Emph text={L.hero.title} />
+            <TradePill />
+            <h1 className="lp-h1" id="lp-title" suppressHydrationWarning>
+              <RiseTitle text={L.hero.title} />
             </h1>
-            <p className="lp-lede">
-              <Emph text={L.hero.sub} /> <b className="lp-free" data-testid="hero-price">{L.hero.free}</b>
-            </p>
+            <script dangerouslySetInnerHTML={{ __html: RISE_SCRIPT }} />
+            <p className="lp-lede">{L.hero.sub}</p>
             <div className="lp-ask">
-              <div className="lp-actions">
-                <Primary cta="hero" xl>
-                  {L.hero.primary}
-                </Primary>
-                <a className="lp-btn lp-btn-outline lp-btn-xl" href="#try" data-cta="how">
-                  {L.hero.secondary}
-                </a>
-              </div>
-              <Reassure />
+              <Primary cta="hero" xl>
+                {L.hero.primary}
+              </Primary>
+              <a className="lp-link lp-hero-try" href="#try" data-cta="how">
+                {L.hero.secondary}
+                <ArrowDown aria-hidden strokeWidth={2} />
+              </a>
+              <p className="lp-reassure">
+                <b data-testid="hero-price">{reassure[0]}</b>
+                {reassure.slice(1).map((r) => ` · ${r}`)}
+              </p>
             </div>
-            <ul className="lp-trust">
-              {L.hero.points.map((t) => (
-                <li key={t}>
-                  <Check aria-hidden strokeWidth={2.5} />
-                  {t}
-                </li>
-              ))}
-            </ul>
           </div>
           <div className="lp-hero-art">
             <figure className="lp-photo lp-hero-photo">
-              <Photo set={PHOTOS.heroBakery} mobile={PHOTOS.heroBakeryM} alt={L.hero.photoAlt} sizes="(min-width: 1440px) 560px, (min-width: 1024px) 40vw, 78vw" priority preloadMobile={false} />
+              <Photo set={PHOTOS.heroBakery} alt={L.hero.photoAlt} sizes="(min-width: 1440px) 560px, 40vw" priority from={1024} />
             </figure>
-            <div className="lp-hero-phone" role="img" aria-label={L.hero.phoneLabel}>
-              <Phone tone="wallet">
-                <WalletScreen data={P} fill />
-              </Phone>
+            <div className="lp-hero-phone">
+              <LivePhone />
             </div>
           </div>
         </div>
@@ -211,6 +207,15 @@ export default function Home() {
             </li>
           </ol>
           <Dots n={3} />
+          {/* Wave X: the three doubts the hero used to answer, now under the steps. */}
+          <ul className="lp-trust lp-how-trust">
+            {L.hero.points.map((t) => (
+              <li key={t}>
+                <Check aria-hidden strokeWidth={2.5} />
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -447,6 +452,7 @@ export default function Home() {
       </div>
       <script dangerouslySetInnerHTML={{ __html: FILL_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: SNAP_SCRIPT }} />
+      <script dangerouslySetInnerHTML={{ __html: LIVE_SCRIPT }} />
       <LandingMeasure path="/" />
     </div>
   );

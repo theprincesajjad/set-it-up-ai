@@ -20,15 +20,23 @@ const srcset = (s: PhotoSet, ext: "avif" | "webp") => s.widths.map((w) => `${s.s
 const PHONE = "(max-width: 767.98px)";
 const WIDE = "(min-width: 768px)";
 
-export function Photo({ set, mobile, alt, sizes, priority = false, preloadMobile = true, className }: { set: PhotoSet; mobile?: PhotoSet; alt: string; sizes: string; priority?: boolean; preloadMobile?: boolean; className?: string }) {
+/** A 1x1 transparent GIF: what a `from` photo loads below its width, so narrower screens download nothing. */
+const BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+/**
+ * `from` (wave X): the photo only shows from this viewport width up (the hero drops its photo on phones and tablets, where the live
+ * pass alone leads); below it the <picture> picks a blank and the preload is limited to wider screens. Hide the frame there in CSS.
+ */
+export function Photo({ set, mobile, alt, sizes, priority = false, preloadMobile = true, className, from }: { set: PhotoSet; mobile?: PhotoSet; alt: string; sizes: string; priority?: boolean; preloadMobile?: boolean; className?: string; from?: number }) {
   // `preloadMobile={false}`: on phones the photo sits below the first screen, so it should not take bandwidth from the text and CSS.
   if (priority) {
     if (mobile && preloadMobile) preload(`${mobile.src}-${mobile.widths[0]}.avif`, { as: "image", type: "image/avif", imageSrcSet: srcset(mobile, "avif"), imageSizes: "100vw", media: PHONE, fetchPriority: "high" });
-    preload(`${set.src}-${set.widths[0]}.avif`, { as: "image", type: "image/avif", imageSrcSet: srcset(set, "avif"), imageSizes: sizes, media: mobile ? WIDE : undefined, fetchPriority: "high" });
+    preload(`${set.src}-${set.widths[0]}.avif`, { as: "image", type: "image/avif", imageSrcSet: srcset(set, "avif"), imageSizes: sizes, media: from ? `(min-width: ${from}px)` : mobile ? WIDE : undefined, fetchPriority: "high" });
   }
   const small = Math.min(...set.widths);
   return (
     <picture className={cn("lp-pic", className)}>
+      {from ? <source media={`(max-width: ${from - 0.02}px)`} srcSet={BLANK} /> : null}
       {mobile ? <source media={PHONE} type="image/avif" srcSet={srcset(mobile, "avif")} sizes="100vw" width={mobile.width} height={mobile.height} /> : null}
       {mobile ? <source media={PHONE} type="image/webp" srcSet={srcset(mobile, "webp")} sizes="100vw" width={mobile.width} height={mobile.height} /> : null}
       <source type="image/avif" srcSet={srcset(set, "avif")} sizes={sizes} />

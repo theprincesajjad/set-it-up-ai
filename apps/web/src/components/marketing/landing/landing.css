@@ -31,11 +31,15 @@
 .lp-h2 em { white-space: nowrap; }
 .lp :is(p, li, dd) { text-wrap: pretty; }
 
-.lp-h1 { font-size: 58px; line-height: 0.96; letter-spacing: -0.035em; }
-@media (min-width: 768px) { .lp-h1 { font-size: 92px; } }
-@media (min-width: 1280px) { .lp-h1 { font-size: 112px; line-height: 0.92; letter-spacing: -0.042em; } }
-/* The hero's italic turn takes its own line, with a fine underline that steps around the descenders. */
-.lp-h1 em { display: block; text-decoration-line: underline; text-decoration-thickness: max(2px, 0.028em); text-underline-offset: 0.14em; text-decoration-skip-ink: auto; text-decoration-color: color-mix(in srgb, currentColor 70%, transparent); }
+/* Wave X: the headline fills a phone's width (two lines, tight leading), and grows to 112px on desktop. */
+.lp-h1 { font-size: min(15.6vw, 76px); line-height: 0.9; letter-spacing: -0.045em; }
+@media (min-width: 768px) { .lp-h1 { font-size: 96px; } }
+@media (min-width: 1024px) { .lp-h1 { font-size: min(7.6vw, 112px); } }
+/* The hero's italic turn takes its own line, with a fine underline drawn under it (a rule, so it can draw in, see "Wave X" below). */
+.lp-h1 em { position: relative; display: block; inline-size: fit-content; padding-block-end: 0.1em; }
+.lp-h1 em::after { content: ""; position: absolute; inset-inline: 0.02em 0.04em; inset-block-end: 0; block-size: max(2px, 0.026em); border-radius: 99px; background: currentColor; opacity: 0.8; transform-origin: left center; }
+[dir="rtl"] .lp-h1 em::after { transform-origin: right center; }
+.lp-w { display: inline-block; }
 
 .lp-h2 { font-size: 42px; line-height: 1.02; letter-spacing: -0.03em; }
 @media (min-width: 768px) { .lp-h2 { font-size: 60px; } }
@@ -96,7 +100,6 @@
   [dir="rtl"] .lp :is(.lp-btn, .lp-link, .lp-also-row a):hover svg { transform: scaleX(-1) translateX(3px); }
 }
 [dir="rtl"] .lp :is(.lp-btn, .lp-link, .lp-tile-go, .lp-also-row a) svg { transform: scaleX(-1); }
-@media (max-width: 639.98px) { .lp-hero .lp-actions .lp-btn { flex: 1 1 100%; } }
 /* The reassurance line right under each primary ask. */
 .lp-ask { display: grid; gap: 14px; justify-items: start; }
 .lp-ask .lp-link { font-size: 17px; }
@@ -124,28 +127,71 @@
 .lp-photo { overflow: hidden; border-radius: 24px; background: var(--mkt-grey); }
 @media (min-width: 1024px) { .lp-photo { border-radius: 32px; } }
 
-/* ---------- 1. Hero ---------- */
-.lp-hero { padding-block: 24px 56px; }
-@media (min-width: 1024px) { .lp-hero { padding-block: 48px 104px; } }
-.lp-hero-grid { display: grid; gap: 36px; }
-@media (min-width: 1024px) { .lp-hero-grid { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: 64px; align-items: center; } }
-.lp-hero-copy { display: grid; gap: 24px; justify-items: start; }
-@media (min-width: 1024px) { .lp-hero-copy { gap: 30px; } }
-.lp-hero .lp-lede { max-inline-size: 33rem; }
-.lp-free { display: block; margin-block-start: 10px; }
+/* ---------- 1. Hero (wave X: fewer words, and they move) ---------- */
+.lp-hero { position: relative; padding-block: 14px 40px; overflow: clip; }
+@media (min-width: 1024px) { .lp-hero { padding-block: 40px 88px; } }
+.lp-hero-grid { display: grid; gap: 22px; }
+@media (min-width: 1024px) { .lp-hero-grid { grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr); gap: 56px; align-items: center; } }
+.lp-hero-copy { display: grid; gap: 18px; justify-items: start; }
+@media (min-width: 1024px) { .lp-hero-copy { gap: 26px; } }
+.lp-hero .lp-lede { max-inline-size: 30rem; font-size: 20px; line-height: 1.35; color: var(--mkt-black); }
+@media (min-width: 1024px) { .lp-hero .lp-lede { font-size: 24px; } }
+.lp-hero .lp-ask { gap: 10px; margin-block-start: 6px; }
+@media (min-width: 640px) { .lp-hero .lp-ask { grid-template-columns: auto auto; align-items: center; column-gap: 28px; } .lp-hero .lp-reassure { grid-column: 1 / -1; } }
+.lp-hero-try { justify-content: center; min-block-size: 40px; }
+.lp-hero-try svg { inline-size: 17px; block-size: 17px; }
+@media (hover: hover) { .lp .lp-hero-try:hover svg { transform: translateY(3px); } }
+.lp-hero .lp-reassure b { font-weight: 600; color: var(--mkt-black); }
+
+/* The trade pill: a dot in the shop's colour, "For", and the word sliding up (LIVE_SCRIPT steps it with the phone). */
+.lp-pill { display: inline-flex; align-items: center; gap: 0.36em; min-block-size: 34px; padding: 0 14px 0 12px; border-radius: 99px; background: var(--mkt-grey); font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+@media (min-width: 1024px) { .lp-pill { min-block-size: 38px; font-size: 16px; } }
+.lp-pill-dots { display: grid; margin-inline-end: 0.2em; }
+.lp-pill-dots i { grid-area: 1 / 1; inline-size: 9px; block-size: 9px; border-radius: 50%; background: var(--shop); opacity: 0; transition: opacity 300ms var(--mkt-ease); }
+.lp-pill-dots i[data-on] { opacity: 1; }
+.lp-pill-words { display: inline-grid; overflow: hidden; padding-block: 0.12em; margin-block: -0.12em; }
+.lp-pill-words > span { grid-area: 1 / 1; white-space: nowrap; transform: translateY(110%); opacity: 0; }
+.lp-pill-words > span[data-on] { transform: none; opacity: 1; transition: transform 440ms cubic-bezier(0.2, 0.9, 0.2, 1) 140ms, opacity 200ms linear 140ms; }
+.lp-pill-words > span[data-was] { transform: translateY(-110%); opacity: 0; transition: transform 260ms cubic-bezier(0.5, 0, 0.75, 0), opacity 180ms linear 60ms; }
+
 .lp-trust { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; line-height: 22px; color: var(--mkt-body); }
 .lp-trust li { display: inline-flex; align-items: center; gap: 7px; }
 .lp :is(.lp-trust, .lp-plan ul) svg { flex: none; inline-size: 17px; block-size: 17px; color: var(--mkt-accent); }
+.lp-how-trust { justify-content: center; margin-block-start: 36px; }
+@media (min-width: 1024px) { .lp-how-trust { margin-block-start: 56px; gap: 8px 32px; font-size: 16px; } }
 
-.lp-hero-art { position: relative; padding-block-end: 36px; }
-.lp-hero-photo { aspect-ratio: 4 / 5; margin-inline-start: 24%; }
-@media (min-width: 1024px) { .lp-hero-photo { margin-inline-start: 20%; max-block-size: 740px; } }
-.lp-hero-phone { position: absolute; inset-block-end: 0; inset-inline-start: 0; inline-size: 50%; max-inline-size: 292px; }
-.lp-hero-phone .wu-phone { transition: transform 420ms var(--mkt-ease); transform-origin: 50% 80%; }
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .lp-hero-phone:hover .wu-phone { transform: translateY(-8px) rotate(-1.5deg); }
-  [dir="rtl"] .lp-hero-phone:hover .wu-phone { transform: translateY(-8px) rotate(1.5deg); }
+/* The art: phones and tablets show the live phone alone, cut off by the band's edge; desktop puts it over the bakery photo. */
+.lp-hero-art { position: relative; }
+.lp-hero-photo { display: none; }
+.lp-hero-phone { position: relative; inline-size: min(78%, 330px); margin-inline: auto; }
+@media (max-width: 1023.98px) {
+  /* Only the top of the phone (the pass, the stamp, the banner): the rest is below the fold anyway. */
+  .lp-hero-art { block-size: min(116vw, 470px); margin-block-start: 4px; margin-inline: calc(var(--lp-gutter) * -1); padding-inline: var(--lp-gutter); overflow: hidden; }
+  .lp-hero-art::after { content: ""; position: absolute; inset: auto 0 0; block-size: 72px; background: linear-gradient(to bottom, rgb(255 255 255 / 0), var(--mkt-paper)); pointer-events: none; }
 }
+@media (min-width: 1024px) {
+  .lp-hero-photo { display: block; aspect-ratio: 4 / 5; margin-inline-start: 24%; max-block-size: 720px; }
+  .lp-hero-art { padding-block-end: 28px; }
+  .lp-hero-phone { position: absolute; inset-block-end: 0; inset-inline-start: 0; inline-size: 44%; max-inline-size: 280px; margin: 0; }
+}
+
+/* The live phone: a soft glow in the pass's colour behind it, six stacked passes (one shown) and their "Stamp added" banners. */
+.lp-live { position: relative; }
+.lp-live-glow { position: absolute; inset: -14% -55% -20%; z-index: 0; display: grid; pointer-events: none; }
+@media (max-width: 1023.98px) { .lp-live-glow { inset: 0 -45% -30%; } }
+.lp-live-glow i { grid-area: 1 / 1; background: radial-gradient(closest-side, color-mix(in srgb, var(--shop) 42%, transparent), color-mix(in srgb, var(--shop) 16%, transparent) 50%, transparent); opacity: 0; transition: opacity 700ms var(--mkt-ease); }
+.lp-live-glow i[data-on] { opacity: 1; }
+.lp-live-phone { position: relative; z-index: 1; }
+.lp-live-passes { flex: 1; display: grid; }
+/* Each step is a whole wallet: its pass, and the other sample cards stacked at the bottom. */
+.lp-live-pass { display: flex; flex-direction: column; }
+.lp-live-pass { grid-area: 1 / 1; opacity: 0; visibility: hidden; transform: translateY(10px) scale(0.97); transition: opacity 360ms var(--mkt-ease), transform 460ms var(--mkt-ease), visibility 0s 460ms; }
+.lp-live-pass[data-on] { opacity: 1; visibility: visible; transform: none; transition: opacity 360ms var(--mkt-ease) 80ms, transform 520ms cubic-bezier(0.2, 0.9, 0.25, 1.1) 80ms, visibility 0s; }
+.lp-live-pass[data-was] { transform: translateY(-6px) scale(0.98); }
+.lp-live-banners { position: absolute; z-index: 2; inset-block-start: 3.2cqi; inset-inline: 3.2cqi; display: grid; }
+.lp-live .lp-live-banner { grid-area: 1 / 1; margin: 0; background: rgb(255 255 255 / 0.96); backdrop-filter: none; box-shadow: 0 1px 2px rgb(0 0 0 / 0.1), 0 14px 30px -10px rgb(0 0 0 / 0.4); opacity: 0; visibility: hidden; }
+.lp-live .lp-live-banner[data-on] { opacity: 1; visibility: visible; }
+
 .lp-proof:empty { display: none; }
 .lp-proof { margin-block-start: 44px; padding-block-start: 28px; border-block-start: 1px solid var(--mkt-rule); }
 @media (min-width: 1024px) { .lp-proof { margin-block-start: 88px; } }
@@ -412,9 +458,27 @@ body:has([data-chat-launcher]) .lp-sticky { padding-inline-end: 140px; }
 @media (max-width: 1023.98px) { .lp { padding-block-end: 64px; } }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* The hero: the phone settles in once, and the swash under the italic draws once. */
+  /* The hero: the phone settles in once. */
   .lp-hero-phone { animation: lp-rise 700ms var(--mkt-ease) 150ms both; }
   @keyframes lp-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+  /* Wave X. The headline's words rise into place, 60 ms apart (transform only: the h1 paints at once and stays the largest paint),
+     then the rule under "on repeat." draws from the start of the line. RISE_SCRIPT holds both (data-fw) until the face has loaded. */
+  .lp-h1 .lp-w { animation: lp-word 460ms cubic-bezier(0.2, 0.85, 0.25, 1) calc(var(--w) * 60ms) both; }
+  .lp-h1 em::after { animation: lp-draw 520ms cubic-bezier(0.6, 0, 0.2, 1) 520ms both; }
+  .lp-h1[data-fw] .lp-w, .lp-h1[data-fw] em::after { animation-play-state: paused; }
+  @keyframes lp-word { from { transform: translateY(0.42em); } }
+  @keyframes lp-draw { from { transform: scaleX(0); } }
+
+  /* Each step of the live phone: the newest stamp pops in with a little overshoot and a ring, then the banner drops in. */
+  .lp-live-pass[data-on] .wu-stamp-new { position: relative; animation: lp-pop 520ms cubic-bezier(0.3, 1.6, 0.5, 1) 420ms both; }
+  .lp-live-pass[data-on] .wu-stamp-new::after { content: ""; position: absolute; inset: -12%; border-radius: 50%; box-shadow: 0 0 0 0.9cqi var(--shop-ink); opacity: 0; animation: lp-ring 700ms var(--mkt-ease) 620ms both; }
+  .lp-live .lp-live-banner[data-on] { animation: lp-drop 520ms cubic-bezier(0.2, 0.9, 0.25, 1.05) 820ms both; }
+  .lp-live .lp-live-banner[data-was] { visibility: visible; animation: lp-lift 320ms var(--mkt-ease) both; }
+  @keyframes lp-pop { from { transform: scale(0); } }
+  @keyframes lp-ring { 0% { opacity: 0.7; transform: scale(0.8); } 100% { opacity: 0; transform: scale(1.5); } }
+  @keyframes lp-drop { from { opacity: 0; transform: translateY(-120%) scale(0.96); } to { opacity: 1; transform: none; } }
+  @keyframes lp-lift { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-60%) scale(0.97); } }
 }
 @media (prefers-reduced-motion: reduce) {
   .lp *, .lp *::after { transition: none !important; }

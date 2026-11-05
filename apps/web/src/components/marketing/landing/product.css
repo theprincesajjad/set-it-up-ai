@@ -10,6 +10,7 @@
 [data-shop="bakery"] { --shop: #8A3A22; --shop-ink: #FBF0E4; --shop-soft: rgb(251 240 228 / 0.72); --shop-well: rgb(251 240 228 / 0.09); }
 [data-shop="repair"] { --shop: #1D3BD1; --shop-ink: #FFFFFF; --shop-soft: rgb(255 255 255 / 0.72); --shop-well: rgb(255 255 255 / 0.09); }
 [data-shop="nails"] { --shop: #EBD5CC; --shop-ink: #3B1F1A; --shop-soft: rgb(59 31 26 / 0.66); --shop-well: rgb(59 31 26 / 0.06); }
+[data-shop="florist"] { --shop: #74106A; --shop-ink: #FBEAF6; --shop-soft: rgb(251 234 246 / 0.7); --shop-well: rgb(251 234 246 / 0.08); }
 [data-shop="barber"] { --shop: #141414; --shop-ink: #E9D3A6; --shop-soft: rgb(233 211 166 / 0.66); --shop-well: rgb(233 211 166 / 0.08); }
 
 /* ---------- The wallet pass ---------- */

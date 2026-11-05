@@ -165,12 +165,17 @@ export const copy = {
      */
     hero: {
       title: "Your regulars, *on repeat.*",
-      sub: "A free stamp card that brings customers back more often. It lives in their Apple Wallet or Google Wallet, you stamp it from any phone at the counter, and it’s ready in **about five minutes**.",
-      /** The last words of the lede (data-testid hero-price): the price in the first screen. */
-      free: "Loyalty is free forever.",
+      /**
+       * Wave X: fewer words, and they move. The pill above the headline cycles the trades (in step with the live pass beside it);
+       * `tradesAll` is what a screen reader hears instead. The lede is one line; "free forever" is the first part of the reassurance line.
+       */
+      for: "For",
+      trades: ["bakeries", "cafés", "barbers", "repair shops", "nail studios", "florists"],
+      tradesAll: "For bakeries, cafés, barbers, repair shops, nail studios and florists",
+      sub: "The stamp card that lives in their phone’s wallet.",
       primary: "Make your card free",
-      secondary: "Try it with your name",
-      /** Wave W: "No credit card" moved into the reassurance line under the buttons. */
+      secondary: "or try it with your name",
+      /** Wave X: moved out of the hero, under how it works. */
       points: ["Nothing for customers to download", "Any phone or tablet", "Unlimited staff"],
       /** Sample notes: the sign-in stage (AuthLayout) uses the first. */
       floats: [
@@ -178,7 +183,8 @@ export const copy = {
         { icon: "megaphone", b: "Double stamps at 2 p.m.", s: "Sent to 412 customers who opted in" },
       ],
       photoAlt: "A baker behind her counter of bread, croissants and meringues",
-      phoneLabel: "Little Oven’s stamp card in a phone’s wallet, 5 of 8 stamps (a sample shop)",
+      /** Wave X: the hero phone cycles sample shops, one stamp each. */
+      phoneLabel: "A sample stamp card in a phone’s wallet getting a stamp, for a bakery, a café, a barber, a repair shop, a nail studio and a florist",
     },
     /** The card maker under the hero (components/marketing/landing/TryCard.tsx): no sign-up, nothing saved until "Keep this card". */
     tryIt: {
