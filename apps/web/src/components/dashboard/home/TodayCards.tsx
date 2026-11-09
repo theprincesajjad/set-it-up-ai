@@ -243,13 +243,13 @@ function ClearStat({ item: s, icon: Icon, loading }: { item: StatItem; icon: Luc
   const chip = d ? (
     <>
       {Arrow ? <Arrow aria-hidden className="size-3 shrink-0 rtl:-scale-x-100" strokeWidth={2.4} /> : null}
-      <span className="truncate">
+      <span className="min-w-0">
         {d.text}
         {d.context ? <span className="max-lg:hidden"> {d.context}</span> : null}
       </span>
     </>
   ) : s.caption ? (
-    <span className="truncate">{s.caption}</span>
+    <span className="min-w-0">{s.caption}</span>
   ) : null;
   const label = s.href ? (
     <Link href={s.href} className="after:absolute after:inset-0 after:z-[2] after:rounded-[inherit] focus-visible:focus-ring">{s.label}</Link>
@@ -268,7 +268,7 @@ function ClearStat({ item: s, icon: Icon, loading }: { item: StatItem; icon: Luc
         {loading ? <span className="skeleton inline-block h-8 w-16 rounded-sm align-middle" /> : s.num != null ? <AnimatedNumber value={s.num} format={s.numFormat} /> : s.value}
       </div>
       {chip && !loading ? (
-        <span className={cn("inline-flex h-6 max-w-full items-center gap-1 self-start whitespace-nowrap rounded-xl px-2 text-xs font-[600] leading-4", chipTone)}>{chip}</span>
+        <span className={cn("inline-flex min-h-6 max-w-full items-center gap-1 self-start text-pretty rounded-xl px-2 py-1 text-xs font-[600] leading-4", chipTone)}>{chip}</span>
       ) : (
         <span aria-hidden className="h-6" />
       )}

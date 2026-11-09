@@ -119,7 +119,7 @@ function Profile({ active }: { active: boolean }) {
     <>
       <Panel>
         <form id="profile-form" className="flex flex-col gap-5" noValidate onSubmit={(e) => { e.preventDefault(); void save(); }}>
-          <TextField label="Shop name" value={f.name} error={shown.name} onChange={(e) => set("name", e.target.value)} maxLength={120} />
+          <TextField label="Shop name" autoComplete="organization" value={f.name} error={shown.name} onChange={(e) => set("name", e.target.value)} maxLength={120} />
           <TextField type="textarea" label="About your shop" value={f.description} onChange={(e) => set("description", e.target.value)} maxLength={2000} showCount />
           {/* Wave Q: the brand colour is the kit ColorField (trade swatches, your own colour, hex, a live contrast sample); the logo and
               cover links fold into an Accordion under it, since most shops never paste one. */}
@@ -137,17 +137,17 @@ function Profile({ active }: { active: boolean }) {
               <AccordionItem value="links">
                 <AccordionTrigger className="min-h-12 items-center text-body font-[550] text-fg hover:no-underline">{t("ownq.set.links")}</AccordionTrigger>
                 <AccordionContent keepMounted className="flex flex-col gap-4 pb-4 text-body">
-                  <TextField type="url" label="Logo URL" optionalLabel hint="Square image. Without one we show your initials." value={f.logoUrl} error={shown.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} />
-                  <TextField type="url" label="Cover photo URL" optionalLabel value={f.coverUrl} error={shown.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
+                  <TextField type="url" label="Logo URL" autoComplete="off" autoCapitalize="none" spellCheck={false} optionalLabel hint="Square image. Without one we show your initials." value={f.logoUrl} error={shown.logoUrl} onChange={(e) => set("logoUrl", e.target.value)} />
+                  <TextField type="url" label="Cover photo URL" autoComplete="off" autoCapitalize="none" spellCheck={false} optionalLabel value={f.coverUrl} error={shown.coverUrl} onChange={(e) => set("coverUrl", e.target.value)} />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
           </section>
           <div className="grid gap-5 sm:grid-cols-2">
-            <TextField type="email" label="Email" optionalLabel value={f.email} error={shown.email} onChange={(e) => set("email", e.target.value)} />
+            <TextField type="email" label="Email" autoComplete="email" autoCapitalize="none" spellCheck={false} optionalLabel value={f.email} error={shown.email} onChange={(e) => set("email", e.target.value)} />
             <PhoneField label="Shop phone" value={phoneDigits} onChangeDigits={setPhoneDigits} onChangeE164={setPhone} error={shown.phone} />
-            <TextField type="url" label="Website" optionalLabel value={f.website} error={shown.website} onChange={(e) => set("website", e.target.value)} />
-            <TextField label="Instagram" optionalLabel prefix="@" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/^@/, ""))} />
+            <TextField type="url" label="Website" autoComplete="url" autoCapitalize="none" spellCheck={false} optionalLabel value={f.website} error={shown.website} onChange={(e) => set("website", e.target.value)} />
+            <TextField label="Instagram" autoComplete="off" autoCapitalize="none" spellCheck={false} optionalLabel prefix="@" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/^@/, ""))} />
           </div>
           <div>
             <Button variant="ghost" size="sm" iconEnd={ExternalLink} href={`/shops/${m.slug}`}>

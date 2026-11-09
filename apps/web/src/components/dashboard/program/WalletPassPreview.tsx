@@ -53,9 +53,10 @@ export function WalletPassPreview({ model, shop, memberCode = "1034" }: { model:
         {stamps ? <p className="mt-4 text-[14px] font-medium text-fg">{stampsLeft(goal - filled, model.rewardName)}</p> : null}
         <div className="mt-4 flex h-[100px] items-center justify-center rounded-[14px] bg-bg-subtle text-[13px] text-fg-muted">QR code · {memberCode}</div>
       </div>
-      <button type="button" tabIndex={-1} aria-disabled className="inline-flex h-[46px] cursor-default items-center justify-center rounded-full bg-primary px-5 text-[14px] font-medium text-primary-foreground">
+      {/* A picture of the customer's button, not a control here: kept out of the accessibility tree so it is not announced as a dead button. */}
+      <span aria-hidden className="inline-flex h-[46px] cursor-default select-none items-center justify-center rounded-full bg-primary px-5 text-[14px] font-medium text-primary-foreground">
         Add to Apple Wallet
-      </button>
+      </span>
       <p className="text-[12px] text-fg-muted">Same pass for Google Wallet. {stamps ? "Stamps" : "Your balance"} {stamps ? "update" : "updates"} on the lock screen.</p>
     </div>
   );

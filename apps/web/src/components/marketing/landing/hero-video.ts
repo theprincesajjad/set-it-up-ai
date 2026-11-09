@@ -9,9 +9,9 @@ export const HERO_VIDEO = {
   height: 1292,
   seconds: 12,
   sources: [
-    { src: "/marketing/video/hero-phone.a5df0ee1.av1.mp4", type: 'video/mp4; codecs="av01.0.08M.08"', bytes: 428342 },
-    { src: "/marketing/video/hero-phone.a5df0ee1.vp9.webm", type: 'video/webm; codecs="vp9"', bytes: 561949 },
-    { src: "/marketing/video/hero-phone.a5df0ee1.h264.mp4", type: 'video/mp4; codecs="avc1.640028"', bytes: 539264 },
+    { src: "/marketing/video/hero-phone.86ad4262.av1.mp4", type: 'video/mp4; codecs="av01.0.08M.08"', bytes: 410599 },
+    { src: "/marketing/video/hero-phone.86ad4262.vp9.webm", type: 'video/webm; codecs="vp9"', bytes: 543348 },
+    { src: "/marketing/video/hero-phone.86ad4262.h264.mp4", type: 'video/mp4; codecs="avc1.640028"', bytes: 523061 },
   ],
   cues: [[0, "bakery"], [2.7, "cafe"], [5.5, "repair"], [8.3, "cafe"], [11.3, "bakery"]] as ReadonlyArray<readonly [number, "bakery" | "cafe" | "repair"]>,
 } as const;

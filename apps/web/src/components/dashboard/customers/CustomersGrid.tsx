@@ -106,7 +106,7 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
           if (!goal) return text;
           // Wave Q: a small bar under the count (the card at a glance), the points colour once the reward is ready.
           return (
-            <div className="ms-auto flex w-16 flex-col items-end gap-1">
+            <div className="ms-auto flex w-max min-w-16 flex-col items-end gap-1 whitespace-nowrap">
               {text}
               <span aria-hidden className="block h-1 w-full overflow-hidden rounded-full bg-muted">
                 <span className={cn("block h-full rounded-full", c.rewardAvailable ? "bg-points" : "bg-trade")} style={{ width: `${Math.min(100, Math.round((Math.min(c.balance, goal) / goal) * 100))}%` }} />
@@ -118,8 +118,10 @@ export function CustomersGrid({ rows, term, goal, openId, onOpen, total, hasMore
       {
         id: "visits",
         accessorFn: (c) => c.visits30d,
-        header: ({ column }) => <SortHeader column={column} title="Visits, last 30 days" />,
-        size: 130,
+        // A count: end-aligned under its header like Stamps, so the two number columns do not run together.
+        header: ({ column }) => <div className="flex justify-end"><SortHeader column={column} title="Visits, last 30 days" align="end" /></div>,
+        size: 150,
+        meta: { headerClassName: "pe-8", cellClassName: "text-end pe-8" },
         cell: ({ row }) => <span className="tabular">{formatNumber(row.original.visits30d)}</span>,
       },
       {

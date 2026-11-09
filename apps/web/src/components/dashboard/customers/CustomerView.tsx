@@ -233,11 +233,11 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
                   )}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-meta text-fg">
+                  <p className="text-pretty break-words text-meta text-fg">
                     <span className="capitalize">{t.type.replace(/_/g, " ")}</span>
                     {t.description && t.description.toLowerCase() !== t.type.replace(/_/g, " ").toLowerCase() ? <span className="text-fg-muted"> · {t.description}</span> : null}
                   </p>
-                  <TimelineDate dateTime={t.createdAt} className="mb-0 truncate text-caption font-normal text-fg-muted">
+                  <TimelineDate dateTime={t.createdAt} className="mb-0 text-pretty text-caption font-normal text-fg-muted">
                     {formatDateTime(t.createdAt)} · {sourceLabel(t.source)}
                     {t.amountCents != null ? ` · ${formatMoney(t.amountCents)}` : ""}
                     {t.reversedAt ? " · Reversed" : ""}

@@ -94,11 +94,12 @@ const TILE_TRADE = { cafe: "cafe", repair: "repair", barber: "barber", nails: "n
 const FILL_SCRIPT = `(()=>{try{if(!("IntersectionObserver"in window)||matchMedia("(prefers-reduced-motion: reduce)").matches)return;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.setAttribute("data-fill","in");io.unobserve(e.target)}})},{threshold:.4});document.querySelectorAll("[data-fill]").forEach(function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)el.setAttribute("data-fill","in");else{el.setAttribute("data-fill","wait");io.observe(el)}})}catch(e){}})()`;
 
 /**
- * Wave W, plain script beside the fill: (1) the dots under each sideways row follow its scroll; (2) the phone's sticky button hides
+ * Wave W, plain script beside the fill: (0, wave Z2) a sideways row with nothing focusable in it becomes a tab stop while it scrolls, so
+ * the keyboard can scroll it (it is named by its section's heading); (1) the dots under each sideways row follow its scroll; (2) the phone's sticky button hides
  * while the hero's button, the card maker's button or the closing band's button is on screen ("data-hide"; the server markup starts
  * hidden, over the hero). Without IntersectionObserver it simply shows; without script the first dot stays marked.
  */
-const SNAP_SCRIPT = `(()=>{try{document.querySelectorAll("[data-snap]").forEach(function(row){var d=row.nextElementSibling;if(!d||!d.hasAttribute("data-snap-dots"))return;var dots=d.children,t=0;row.addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;var k=row.children,w=k.length>1?k[1].offsetLeft-k[0].offsetLeft:1,max=row.scrollWidth-row.clientWidth,i=Math.abs(row.scrollLeft)>=max-4?k.length-1:Math.round(Math.abs(row.scrollLeft)/Math.abs(w||1));for(var j=0;j<dots.length;j++)j===i?dots[j].setAttribute("data-on",""):dots[j].removeAttribute("data-on")})},{passive:true})});var s=document.querySelector(".lp-sticky");if(!s)return;if(!("IntersectionObserver"in window)){s.removeAttribute("data-hide");return}var on=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?on.add(e.target):on.delete(e.target)});on.size?s.setAttribute("data-hide",""):s.removeAttribute("data-hide")});document.querySelectorAll(".lp [data-cta=hero],.lp [data-cta=tryit],.lp [data-cta=final]").forEach(function(el){io.observe(el)})}catch(e){}})()`;
+const SNAP_SCRIPT = `(()=>{try{var kb=function(){document.querySelectorAll("[data-snap]").forEach(function(row){if(row.querySelector("a,button"))return;row.scrollWidth>row.clientWidth+1?row.setAttribute("tabindex","0"):row.removeAttribute("tabindex")})};kb();addEventListener("resize",kb,{passive:true});document.querySelectorAll("[data-snap]").forEach(function(row){var d=row.nextElementSibling;if(!d||!d.hasAttribute("data-snap-dots"))return;var dots=d.children,t=0;row.addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;var k=row.children,w=k.length>1?k[1].offsetLeft-k[0].offsetLeft:1,max=row.scrollWidth-row.clientWidth,i=Math.abs(row.scrollLeft)>=max-4?k.length-1:Math.round(Math.abs(row.scrollLeft)/Math.abs(w||1));for(var j=0;j<dots.length;j++)j===i?dots[j].setAttribute("data-on",""):dots[j].removeAttribute("data-on")})},{passive:true})});var s=document.querySelector(".lp-sticky");if(!s)return;if(!("IntersectionObserver"in window)){s.removeAttribute("data-hide");return}var on=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?on.add(e.target):on.delete(e.target)});on.size?s.setAttribute("data-hide",""):s.removeAttribute("data-hide")});document.querySelectorAll(".lp [data-cta=hero],.lp [data-cta=tryit],.lp [data-cta=final]").forEach(function(el){io.observe(el)})}catch(e){}})()`;
 
 /**
  * The home page, wave V: direction B, the look the founder picked from three (dev/landing-b): Strata headlines (wave Y) with one Newsreader italic
@@ -170,7 +171,7 @@ export default function Home() {
               <Emph text={L.how.sub} />
             </p>
           </div>
-          <ol className="lp-steps lp-snap" data-snap>
+          <ol className="lp-steps lp-snap" data-snap aria-labelledby="lp-how">
             <li>
               <div className="lp-panel lp-panel-pass" aria-hidden>
                 <div className="lp-panel-pass-in">
@@ -227,7 +228,7 @@ export default function Home() {
             </h2>
             <p className="lp-lede">{f(O.sub)}</p>
           </div>
-          <ul className="lp-gets lp-snap" data-snap>
+          <ul className="lp-gets lp-snap" data-snap aria-labelledby="lp-product">
             {O.rows.map((r) => (
               <li key={r.id} id={`outcome-${r.id}`} className="lp-get">
                 <div className={`lp-get-art lp-get-${r.id}`} aria-hidden>
@@ -313,7 +314,11 @@ export default function Home() {
               <span>{L.shops.also}</span>
               {L.shops.more.map((m) => (
                 <Link key={m.href} href={m.href} prefetch={false}>
-                  <b>{m.label}</b> {m.line}
+                  <b>{m.label}</b>
+                  <span className="lp-also-sep" aria-hidden>
+                    ·
+                  </span>
+                  {m.line}
                   <ArrowRight aria-hidden strokeWidth={2} />
                 </Link>
               ))}
@@ -335,7 +340,7 @@ export default function Home() {
             {plans.map((p) => (
               <div key={p.key} data-plan={p.key} className={`lp-plan lp-plan-${p.key}`}>
                 <div className="lp-plan-h">
-                  <span className="lp-plan-name">{p.name}</span>
+                  <h3 className="lp-plan-name">{p.name}</h3>
                   {p.badge ? <span className="lp-plan-badge">{p.badge}</span> : null}
                 </div>
                 <span className="lp-plan-tag">{p.tagline}</span>

@@ -6,7 +6,6 @@ import type { merchantApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { EarnScopePicker, EarnUnitPicker, GoalStepper, selectedNames, type UnitOption } from "@/components/dashboard/program/EarnRules";
 import { ChangeHistory, TiersEditor } from "@/components/dashboard/program/TiersAndHistory";
-import { NotifyLink } from "@/components/dashboard/FeatureTeaser";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { PageSkeleton } from "@/components/dashboard/PageStates";
 import { ProgramPreview } from "@/components/dashboard/ProgramPreview";
@@ -14,7 +13,7 @@ import { CategoriesEditor } from "@/components/dashboard/program/CategoriesEdito
 import { RewardCost } from "@/components/dashboard/program/RewardCost";
 import { RewardsEditor } from "@/components/dashboard/program/RewardsEditor";
 import { VipEditor } from "@/components/dashboard/program/VipEditor";
-import { ErrorLine, PageHeader, Panel, QuietButton, Segmented, ToolbarButton } from "@/components/dashboard/kit";
+import { ErrorLine, PageHeader, Panel, QuietButton, QuietLink, Segmented, ToolbarButton } from "@/components/dashboard/kit";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -116,7 +115,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
   program: merchantApi.LoyaltyProgram; onSaved: (p: merchantApi.LoyaltyProgram) => void; rewards: merchantApi.Reward[]; setRewards: (r: merchantApi.Reward[]) => void;
   vip: merchantApi.VipLevel[]; setVip: (l: merchantApi.VipLevel[]) => void; categories: merchantApi.Category[]; setCategories: (c: merchantApi.Category[]) => void;
 }) {
-  const { api, detail, setDetail, enabled, role, viewingAs } = useMerchant();
+  const { api, detail, setDetail, enabled, role, viewingAs, base } = useMerchant();
   // Only an owner or a manager changes the rules (the API checks too); everyone else sees them read-only.
   const canEdit = role === "owner" || role === "manager" || viewingAs === "admin";
   const vertical = detail.merchant.vertical;
@@ -427,9 +426,10 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
             <section id="bonuses" className="rounded-card bg-bg-subtle px-6 py-5" aria-labelledby="more-h">
               <h2 id="more-h" className="text-[15px] font-semibold text-fg">More ways to earn</h2>
               <p className="mt-2 text-[14px] text-fg-muted">Birthday treat, refer a friend and VIP levels come with Pro. They show up here once you subscribe.</p>
-              <p className="mt-2 text-[14px] text-fg">
-                <NotifyLink keys={["loyalty.birthday_bonus", "loyalty.referrals", "loyalty.vip_levels"]} className="text-[14px] no-underline" /> when they are ready
-              </p>
+              {/* They exist today on Pro, so the way on is the plan (a "Notify me when they are ready" read as if they were not built yet). */}
+              {role === "owner" ? (
+                <QuietLink href={`${base}/billing?plan=plus`} className="mt-1 min-h-11 text-[14px] text-link hover:text-link">See what Pro adds</QuietLink>
+              ) : null}
             </section>
           )}
 

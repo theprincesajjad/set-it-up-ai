@@ -155,7 +155,7 @@ export function WhereStep({ draft, update, next }: StepProps) {
         {draft.work === "shop" ? <TextField name="street" label={t("su.street")} autoComplete="street-address" hint={t("su.streetHint")} value={draft.address} onChange={(e) => update({ address: e.target.value })} error={errors.address} /> : null}
         {draft.work === "home" ? (
           <div className="flex flex-col gap-3">
-            <TextField name="postal" label={t("su.postal")} autoComplete="postal-code" hint={t("su.postalHint")} value={draft.postal} onChange={(e) => update({ postal: e.target.value.toUpperCase() })} error={errors.postal} maxLength={7} dir="ltr" className="max-w-55" />
+            <TextField name="postal" label={t("su.postal")} autoComplete="postal-code" autoCapitalize="characters" spellCheck={false} hint={t("su.postalHint")} value={draft.postal} onChange={(e) => update({ postal: e.target.value.toUpperCase() })} error={errors.postal} maxLength={7} dir="ltr" className="max-w-55" />
             <p className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg">{t("su.privateNote")}</p>
           </div>
         ) : null}

@@ -120,10 +120,10 @@
 
   const BANNERS = [
     // [drop, lift, shop, top line, title, body]
-    [1.1, 2.4, "bakery", "Little Oven", "Stamp added", "3 more to a free loaf"],
-    [4.2, 5.3, "cafe", "Pinecone Coffee", "Stamp added", "1 more to a free drink"],
-    [7.0, 8.1, "repair", "Fix-It Phone Lab", "15 points added", "45 more to a free screen protector"],
-    [9.9, 11.0, "cafe", "Pinecone Coffee", "Reward ready", "Free drink · Show this card"],
+    [1.1, 2.25, "bakery", "Little Oven", "Stamp added", "3 more to a free loaf"],
+    [4.2, 5.15, "cafe", "Pinecone Coffee", "Stamp added", "1 more to a free drink"],
+    [7.0, 7.95, "repair", "Fix-It Phone Lab", "15 points added", "45 more to a free screen protector"],
+    [9.9, 10.95, "cafe", "Pinecone Coffee", "Reward ready", "Free drink · Show this card"],
   ];
   function drawBanner(t) {
     const b = BANNERS.find(([a, l]) => t >= a && t < l + 0.4);
@@ -142,14 +142,15 @@
     set(".lp-notice-text b", title);
     set(".lp-notice-text > span:last-child", body);
     banner.toggleAttribute("data-ready", title === "Reward ready");
-    const h = banner.getBoundingClientRect().height + 14 * cq();
+    // Wave Z2: it rises a little into the open space under the pass and settles, then sinks back and fades (it never leaves the space).
+    const h = 7 * cq();
     if (t < l) {
       const k = spring(t - a, 15, 0.78);
-      banner.style.transform = `translateY(${-(1 - k) * h}px) scale(${mix(0.94, 1, k)})`;
-      banner.style.opacity = String(clamp((t - a) / 0.12));
+      banner.style.transform = `translateY(${(1 - k) * h}px) scale(${mix(0.94, 1, k)})`;
+      banner.style.opacity = String(clamp((t - a) / 0.16));
     } else {
       const x = inCubic(prog(t, l, 0.32));
-      banner.style.transform = `translateY(${-x * h * 0.7}px) scale(${mix(1, 0.97, x)})`;
+      banner.style.transform = `translateY(${x * h * 0.6}px) scale(${mix(1, 0.97, x)})`;
       banner.style.opacity = String(1 - outQuart(prog(t, l + 0.05, 0.27)));
     }
   }

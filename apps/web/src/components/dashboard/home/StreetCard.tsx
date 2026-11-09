@@ -19,8 +19,9 @@ export function StreetCard() {
   const s = state.data;
   if (!s || (s.onMap && s.open)) return null;
   const owner = role === "owner";
+  // English-only copy: dir and lang keep its punctuation in order on an Urdu (right-to-left) page.
   return (
-    <section aria-label="Your place on the map" className="flex flex-col gap-3 rounded-card bg-card shadow-card p-5">
+    <section aria-label="Your place on the map" dir="ltr" lang="en" className="flex flex-col gap-3 rounded-card bg-card shadow-card p-5">
       <div className="flex items-start gap-3">
         <MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-muted" strokeWidth={1.75} />
         <div className="min-w-0">

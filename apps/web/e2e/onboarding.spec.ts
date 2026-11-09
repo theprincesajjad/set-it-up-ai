@@ -53,7 +53,7 @@ test("signup is a stepped flow that ends on You're live and lands on the first s
   await atStep(page, "shop");
   // Validation is inline, on the step.
   await cont(page);
-  await expect(page.getByText("Shop name is required.")).toBeVisible();
+  await expect(page.getByText("Enter your shop's name.")).toBeVisible();
   await page.getByLabel("Shop name").fill(`Sunrise Bakery ${rand()}`);
   // Your name is not asked at signup any more (Settings, later).
   await expect(page.getByLabel("Your name")).toHaveCount(0);

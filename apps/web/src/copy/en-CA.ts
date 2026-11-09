@@ -139,7 +139,7 @@ export const copy = {
     login: "Log in",
     biaLogin: "BIA log in",
     /** Wave W: the header button says what the page buttons say. */
-    getStarted: "Make your card free",
+    getStarted: "Make your free card",
     planCampaign: "Plan a campaign",
     menu: "Menu",
   },
@@ -167,8 +167,8 @@ export const copy = {
       title: "Your regulars, *on repeat.*",
       /** Wave X: fewer words, and they move. The lede is one line; "free forever" is the first part of the reassurance line. */
       sub: "The stamp card that lives in their phone’s wallet.",
-      primary: "Make your card free",
-      secondary: "or try it with your name",
+      primary: "Make your free card",
+      secondary: "or try it with your shop’s name",
       /** Wave X: moved out of the hero, under how it works. */
       points: ["Nothing for customers to download", "Any phone or tablet", "Unlimited staff"],
       /** Sample notes: the sign-in stage (AuthLayout) uses the first. */
@@ -179,6 +179,9 @@ export const copy = {
       photoAlt: "A baker behind her counter of bread, croissants and meringues",
       /** Wave Y: the hero phone's video, sample shops getting a stamp or points, then a reward. */
       phoneLabel: "Sample cards in a phone’s wallet: a bakery card gets a stamp, a café card a stamp, a repair shop card points, then the café’s free drink is ready",
+      /** Wave Z2: the video's pause button (its label swaps while paused). */
+      pause: "Pause the animation",
+      play: "Play the animation",
     },
     /** The card maker under the hero (components/marketing/landing/TryCard.tsx): no sign-up, nothing saved until "Keep this card". */
     tryIt: {
@@ -263,14 +266,14 @@ export const copy = {
       ],
     },
     proof: {
-      shops: "local businesses signed up, counted live",
+      shops: "local businesses signed up",
       streets: "streets where the card works today",
       multi: "of customers collect at 2 or more businesses",
       note: "Counted live from the network, refreshed every few minutes",
     },
     how: {
       title: "Ready before the *morning rush*.",
-      sub: "Three small steps, **about five minutes**, and no new hardware.",
+      sub: "Three small steps, **about 5 minutes**, and no new hardware.",
       steps: [
         { t: "Make it look like you", b: "Your name, your colour and a reward for the last stamp. Change any of it later." },
         { t: "Leave the code by the till", b: "Customers scan it once and the card lands in their phone’s wallet. No app to download." },
@@ -293,7 +296,7 @@ export const copy = {
       winback: { who: "Maya Chen", line: "Hasn’t been in for 3 weeks", last: "Last visit: oat flat white", action: "Send her a nudge", offer: "Double stamps this week" },
       week: { label: "regulars came back", shop: "Little Oven" },
       caption: "Sample data. Your own customers fill in as you go.",
-      cta: "Make your card free",
+      cta: "Make your free card",
       pricing: "See pricing",
     },
     /** The shop types: a photo, a short headline on what the card does, and the reward it starts with (VERTICAL_TEMPLATES). */
@@ -304,7 +307,7 @@ export const copy = {
         { key: "cafe", label: "Cafés", title: "Make the morning coffee a habit", line: "Every 10th drink free, stamped from your phone.", link: "Make a café card", alt: "A barista laughing with a customer at a café counter" },
         { key: "repair", label: "Repair shops", title: "Be their first call next time", line: "Points on each repair toward a free screen protector.", link: "Make a repair shop card", alt: "A smiling repair tech at his bench, an opened phone in front of him" },
         { key: "barber", label: "Barbers", title: "Keep them in your chair", line: "Every 8th cut free, right in their phone’s wallet.", link: "Make a barber card", alt: "A smiling barber with clippers and a laughing client in the chair" },
-        { key: "nails", label: "Nail studios", title: "Keep the standing appointment", line: "$10 off every 6th visit, counted for you.", link: "Make a nail studio card", alt: "A nail tech in an apron painting a smiling client's nails by the window" },
+        { key: "nails", label: "Nail studios", title: "Keep the standing appointment", line: "$10 off every 6th visit, counted for you.", link: "Make a nail studio card", alt: "A nail tech in an apron painting a smiling client’s nails by the window" },
         { key: "corner", label: "Corner stores", title: "Turn quick stops into regulars", line: "Points on every purchase add up to $5 off.", link: "Make a corner store card", alt: "A smiling clerk at the counter of a corner store" },
         { key: "florist", label: "Florists", title: "Be the shop for every birthday", line: "Points on every bouquet toward a free stem.", link: "Make a florist card", alt: "A smiling florist handing a bouquet across the counter" },
       ],
@@ -353,7 +356,7 @@ export const copy = {
     compare: {
       eyebrow: "Free means free",
       title: "How we *compare*.",
-      sub: "Loyalty programs for independent businesses, from each company's public pricing page.",
+      sub: "Loyalty programs for independent businesses, from each company’s public pricing page.",
       rows: ["Monthly fee", "Locations", "Fee on sales through the program"],
       us: ["$0", "Unlimited", "0%"],
       foot: "From each company’s public pricing page. Loyalty never moves to a paid plan.",
@@ -376,10 +379,10 @@ export const copy = {
       { q: "Do my customers need an app?", a: "No. They scan your code once and add the card to Apple Wallet or Google Wallet, which is already on their phone. Nothing to download." },
       { q: "Is the loyalty program really free?", a: "Yes. Stamps and points, rewards, the wallet card, your customer list, reports and your map listing are free forever, for unlimited locations and staff. There is no subscription and no fee on loyalty. Online orders on the Free plan carry a {orderFee}% fee." },
       { q: "How do you make money?", a: "From optional paid plans. {pro} is {monthly} a month for businesses that want more; restaurant plans and BIA street campaigns are priced separately. Your loyalty program never moves to a paid plan." },
-      { q: "Do I need a POS system?", a: "No. Staff add stamps in the free counter app on any phone or tablet. They scan the customer's card or type the last four digits of their phone number." },
+      { q: "Do I need a POS system?", a: "No. Staff add stamps in the free counter app on any phone or tablet. They scan the customer’s card or type the last four digits of their phone number." },
       { q: "How long does setup take?", a: "About 5 minutes. Sign up, choose your reward and print your QR stand. Want a hand? Book a free 20-minute visit." },
-      { q: "Who owns the customer data?", a: "You do. Other businesses never see your customers, and customers only get offers they agreed to, as Canada's anti-spam law (CASL) requires." },
-      { q: "Is there a contract?", a: "No. There's no contract and no setup fee. Leave any time." },
+      { q: "Who owns the customer data?", a: "You do. Other businesses never see your customers, and customers only get offers they agreed to, as Canada’s anti-spam law (CASL) requires." },
+      { q: "Is there a contract?", a: "No. There’s no contract and no setup fee. Leave any time." },
     ],
     book: {
       title: "Rather we *set it up* for you?",
@@ -390,12 +393,13 @@ export const copy = {
     },
     final: {
       title: "Your regulars are *already here*.",
-      sub: "Give them a reason to come back. **Free forever** for loyalty, and ready in about five minutes.",
-      cta: "Make your card free",
+      /** Wave Z2: the reassurance line under the button already says free, no card and 5 minutes, so the lede does not repeat it. */
+      sub: "Give them a reason to come back, starting with their next visit.",
+      cta: "Make your free card",
       /** The quiet second ask beside the button: back up to the card maker. */
-      tryIt: "Try it with your name",
+      tryIt: "Try it with your shop’s name",
     },
-    sticky: "Make your card free",
+    sticky: "Make your free card",
     mock: {
       shop: "Pinecone Coffee Co.",
       shopShort: "PC",

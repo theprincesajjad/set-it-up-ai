@@ -11,20 +11,25 @@ import { BookingsActivationCard } from "./BookingsActivationCard";
  * Home, first 30 days (docs/research/merchant-onboarding.md). One number that matters (members who visited),
  * whether that is enough for today's date, the four milestones, and one concrete next move.
  */
-export function ActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist; base: string }) {
+export function ActivationCard({ c, base, guide = false }: { c: merchantApi.OnboardingChecklist; base: string; guide?: boolean }) {
   // phase-solo B: a solo pro counts bookings, not members.
   if (c.solo && c.path !== "storefront") return <BookingsActivationCard solo={c.solo} base={base} />;
-  return <MembersActivationCard c={c} base={base} />;
+  return <MembersActivationCard c={c} base={base} guide={guide} />;
 }
 
-function MembersActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist; base: string }) {
+/**
+ * `guide`: the setup guide is on the page above, so its steps are not listed again here ("Setup left") and a next move that is one
+ * of those steps is left to the guide; the card keeps the goal, the milestones and where customers came from.
+ */
+function MembersActivationCard({ c, base, guide }: { c: merchantApi.OnboardingChecklist; base: string; guide: boolean }) {
   const L = normalizeLocale(useMerchant().me.user.locale) ?? "en";
   const a = c.activation;
   const pct = a.target > 0 ? Math.min(100, (a.members / a.target) * 100) : 0;
   const mark = leadingMarkPct(a);
   const left = stepsLeft(c);
+  const showMove = !(guide && a.nextMove.path.startsWith("/setup"));
   return (
-    <section aria-label={t(L, "ob.card.title", { days: a.windowDays })} dir={L === "ur" ? "rtl" : undefined} lang={L} className="flex flex-col gap-5 rounded-card bg-card shadow-card p-5 md:p-6">
+    <section aria-label={t(L, "ob.card.title", { days: a.windowDays })} dir={L === "ur" ? "rtl" : "ltr"} lang={L} className="flex flex-col gap-5 rounded-card bg-card shadow-card p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-caption font-semibold uppercase tracking-wide text-fg-muted">{t(L, "ob.card.title", { days: a.windowDays })}</p>
@@ -63,6 +68,7 @@ function MembersActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
         ))}
       </ol>
 
+      {showMove ? (
       <div className="flex flex-col gap-3 rounded-[12px] bg-bg-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-caption font-semibold text-fg-muted">{a.nextMove.title}</p>
@@ -72,8 +78,9 @@ function MembersActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
           {a.nextMove.cta}
         </Button>
       </div>
+      ) : null}
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className={cn("grid gap-6", !guide && "md:grid-cols-2")}>
         <div>
           <h3 className="text-body-strong text-fg">{t(L, "ob.card.sources")}</h3>
           {a.sources.length ? (
@@ -89,6 +96,7 @@ function MembersActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
             <p className="mt-2 text-meta text-fg-muted">{t(L, "ob.card.none")}</p>
           )}
         </div>
+        {guide ? null : (
         <div>
           <div className="flex items-center justify-between">
             <h3 className="text-body-strong text-fg">{t(L, "ob.card.setupLeft")}</h3>
@@ -117,6 +125,7 @@ function MembersActivationCard({ c, base }: { c: merchantApi.OnboardingChecklist
             <p className="mt-2 text-meta text-fg-muted">{t(L, "ob.card.allSet")}</p>
           )}
         </div>
+        )}
       </div>
     </section>
   );

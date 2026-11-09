@@ -43,7 +43,9 @@
   [data-sheen] { position: absolute; z-index: 2; inset-block: -10%; inset-inline-start: 0; inline-size: 38%; background: linear-gradient(90deg, rgb(255 255 255 / 0), rgb(255 246 222 / 0.2), rgb(255 255 255 / 0)); opacity: 0; pointer-events: none; }
   [data-spark] { position: absolute; z-index: 4; inline-size: 5cqi; aspect-ratio: 1; color: #F3D99A; opacity: 0; filter: drop-shadow(0 0 1.2cqi rgb(243 217 154 / 0.7)); }
   [data-spark] svg { display: block; inline-size: 100%; block-size: 100%; }
-  [data-banner] { position: absolute; z-index: 9; inset-block-start: 3.2cqi; inset-inline: 3.2cqi; margin: 0; background: #FFFFFF; box-shadow: 0 1px 2px rgb(0 0 0 / 0.1), 0 14px 30px -10px rgb(0 0 0 / 0.4); opacity: 0; will-change: transform; }
+  /* Wave Z2: the banner sits in the wallet's open space between the pass and the stacked cards (layout() centres it there), so it
+     never covers the status bar or the pass's count, and that space is not left empty. */
+  [data-banner] { position: absolute; z-index: 9; inset-block-start: 0; inset-inline: 4cqi; margin: 0; background: #FFFFFF; box-shadow: 0 1px 2px rgb(0 0 0 / 0.1), 0 14px 30px -10px rgb(0 0 0 / 0.4); opacity: 0; will-change: transform; }
   [data-banner][data-ready] .lp-notice-text b { color: var(--mkt-accent); }
   /* The page draws the pass, the bar and the wallet's top row in the text face on every phone (HeroLive.tsx), so the video matches. */
   .lp-live :is(.wu-pass-card, .wu-phone-bar, .wu-wallet-top) { font-family: var(--mkt-face-sans); }
@@ -104,6 +106,10 @@
       const e = document.querySelector(`[data-v="${k}"]`);
       e.style.top = b.offsetTop + "px"; e.style.left = b.offsetLeft + "px"; e.style.width = b.offsetWidth + "px";
     }
+    // The banner: centred in the space between the tallest pass (Little Oven) and the stacked cards.
+    const n = document.querySelector("[data-banner]"), st = document.querySelector(".wu-wallet-stack");
+    const bottom = b.offsetTop + b.offsetHeight + document.querySelector(".wu-wallet").offsetTop, top = st.getBoundingClientRect().top - document.querySelector("[data-screen]").getBoundingClientRect().top;
+    n.style.top = Math.round(bottom + (top - bottom - n.offsetHeight) / 2) + "px";
     // The tap rings are centred on each code.
     document.querySelectorAll("[data-v]").forEach((p) => {
       const q = p.querySelector(".wu-pass-qr");

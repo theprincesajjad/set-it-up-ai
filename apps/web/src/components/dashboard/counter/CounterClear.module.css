@@ -89,8 +89,8 @@
   background: var(--lg-seg-track);
 }
 
-/* Phones: the bar stays one 64px row (it wrapped to 112 at 390): the identity block takes the free width, the status line clips instead of
- * wrapping, and "Exit counter" becomes a 44 glass circle with its label kept for assistive tech. */
+/* Phones: the bar stays one row (it wrapped to 112 at 390): the identity block takes the free width, a long status line wraps under
+ * the shop name (it used to clip, which hid the stamps-today count), and "Exit counter" becomes a 44 glass circle with its label kept for assistive tech. */
 @media (max-width: 39.99rem) {
   :global([data-theme-style="clear"]) .top {
     flex-wrap: nowrap;
@@ -101,13 +101,12 @@
   :global([data-theme-style="clear"]) .who {
     flex: 1 1 auto;
   }
+  /* Wraps rather than cutting off: "Online · 33 stamps today" is the count staff glance at, so it must stay readable on a phone. */
   :global([data-theme-style="clear"]) .status {
     display: block;
     flex: 1 1 0;
     min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    text-wrap: pretty;
   }
   :global([data-theme-style="clear"]) .status > span[aria-hidden] {
     display: inline-block;

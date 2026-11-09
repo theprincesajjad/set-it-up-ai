@@ -61,7 +61,7 @@ test.describe("home on the kit", () => {
     await expect(q).toHaveAttribute("aria-expanded", "false");
     await q.click();
     await expect(q).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByText("There's no contract and no setup fee.")).toBeVisible();
+    await expect(page.getByText("There’s no contract and no setup fee.")).toBeVisible();
     await q.click();
     await expect(q).toHaveAttribute("aria-expanded", "false");
   });
@@ -88,7 +88,7 @@ test.describe("footer, legal, neighbourhoods, 404", () => {
     await page.goto("/pricing");
     // Wave W: the header's button says what the home page's buttons say.
     // Both copies: the desktop button and the one in the phone menu sheet (closed here, so matched by its href, not its role).
-    await expect(page.locator('header a[href="/signup"]')).toHaveText(["Make your card free", "Make your card free"]);
+    await expect(page.locator('header a[href="/signup"]')).toHaveText(["Make your free card", "Make your free card"]);
     const footer = page.getByRole("contentinfo");
     await expect(footer.getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/signup");
     for (const h of ["Shops", "Neighbourhoods", "Company", "Legal"]) await expect(footer.getByRole("heading", { name: h, exact: true })).toBeVisible();

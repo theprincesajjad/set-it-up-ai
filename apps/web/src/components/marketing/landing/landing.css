@@ -118,6 +118,8 @@
   /* position: relative keeps absolutely placed bits (the sr-only "(Pro)") inside the scroller, not hanging off the page. */
   .lp-snap > li { position: relative; scroll-snap-align: start; }
 }
+/* Wave Z2: a row that scrolls sideways is a tab stop (SNAP_SCRIPT), so the arrow keys can scroll it; it shows where focus is. */
+.lp .lp-snap:focus-visible { outline: 3px solid currentColor; outline-offset: 4px; border-radius: 4px; }
 .lp-dots { display: flex; justify-content: center; gap: 8px; margin-block-start: 22px; }
 .lp-dots i { inline-size: 7px; block-size: 7px; border-radius: 99px; background: var(--mkt-rule); transition: inline-size 200ms var(--mkt-ease), background-color 200ms var(--mkt-ease); }
 .lp-dots i[data-on] { inline-size: 22px; background: currentColor; }
@@ -144,7 +146,7 @@
 @media (min-width: 1024px) { .lp-hero .lp-lede { font-size: 24px; } }
 .lp-hero .lp-ask { gap: 6px; margin-block-start: 4px; }
 @media (min-width: 640px) { .lp-hero .lp-ask { grid-template-columns: auto auto; align-items: center; column-gap: 28px; } .lp-hero .lp-reassure { grid-column: 1 / -1; } }
-.lp-hero-try { justify-content: center; min-block-size: 36px; }
+.lp-hero-try { justify-content: center; min-block-size: 44px; }
 .lp-hero-try svg { inline-size: 17px; block-size: 17px; }
 @media (hover: hover) { .lp .lp-hero-try:hover svg { transform: translateY(3px); } }
 .lp-hero .lp-reassure b { font-weight: 600; color: var(--mkt-black); }
@@ -163,8 +165,9 @@
 .lp-hero-phone { position: relative; inline-size: min(78%, 330px); margin-inline: auto; }
 @media (max-width: 1023.98px) {
   /* Only the top of the phone (the pass, the stamp, the banner): the rest is below the fold anyway. */
-  .lp-hero-art { block-size: min(116vw, 470px); margin-block-start: 4px; margin-inline: calc(var(--lp-gutter) * -1); padding-inline: var(--lp-gutter); overflow: hidden; }
-  .lp-hero-art::after { content: ""; position: absolute; inset: auto 0 0; block-size: 72px; background: linear-gradient(to bottom, rgb(255 255 255 / 0), var(--mkt-paper)); pointer-events: none; }
+  /* Wave Z2: tall enough to show the video's banner, which rises into the open space under the pass (1.75 phone widths down). */
+  .lp-hero-art { block-size: calc(min(0.78 * (100vw - 2 * var(--lp-gutter)), 330px) * 1.75 + 64px); margin-block-start: 4px; margin-inline: calc(var(--lp-gutter) * -1); padding-inline: var(--lp-gutter); overflow: hidden; }
+  .lp-hero-art::after { content: ""; position: absolute; inset: auto 0 0; block-size: 56px; background: linear-gradient(to bottom, rgb(255 255 255 / 0), var(--mkt-paper)); pointer-events: none; }
 }
 @media (min-width: 1024px) {
   .lp-hero-photo { display: block; aspect-ratio: 4 / 5; margin-inline-start: 24%; max-block-size: 720px; }
@@ -187,17 +190,41 @@
 .lp-live-video { position: absolute; inset: 0; z-index: 3; inline-size: 100%; block-size: 100%; object-fit: cover; opacity: 0; pointer-events: none; transition: opacity 450ms var(--mkt-ease); }
 .lp-live[data-play] .lp-live-video { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .lp-live-video { display: none; } }
+/* Wave Z2: the video's pause button (WCAG 2.2.2), beside the phone: at its top end on phones and tablets (the phone's foot is cut off
+   there), at its foot on desktop. VIDEO_SCRIPT unhides it once the video plays and swaps the icon with data-held. */
+.lp-live-toggle { position: absolute; z-index: 4; inset-block-start: 4%; inset-inline-start: calc(100% + 8px); display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 50%; background: var(--mkt-paper); color: var(--mkt-black); box-shadow: 0 0 0 1px var(--mkt-rule), 0 4px 12px -4px rgb(0 0 0 / 0.18); cursor: pointer; transition: background-color 160ms var(--mkt-ease); }
+.lp-live-toggle[hidden] { display: none; }
+.lp-live-toggle::before { content: ""; position: absolute; inset: -4px; }
+.lp-live-toggle:hover { background: var(--mkt-grey); }
+.lp .lp-live-toggle:focus-visible { outline: 3px solid var(--mkt-black); outline-offset: 2px; }
+.lp-live-toggle svg { inline-size: 16px; block-size: 16px; fill: currentColor; }
+.lp-live-play, .lp-live[data-held] .lp-live-pause { display: none; }
+.lp-live[data-held] .lp-live-play { display: block; }
+@media (min-width: 1024px) { .lp-live-toggle { inset-block: auto 48px; inset-inline-start: calc(100% + 16px); } }
 
 .lp-proof:empty { display: none; }
 .lp-proof { margin-block-start: 44px; padding-block-start: 28px; border-block-start: 1px solid var(--mkt-rule); }
 @media (min-width: 1024px) { .lp-proof { margin-block-start: 88px; } }
 .lp-counts { display: grid; gap: 20px; }
-@media (min-width: 640px) { .lp-counts { grid-template-columns: repeat(3, 1fr); gap: 32px; } }
+/* Wave Z2: wider, the three share two rows (subgrid), so the numbers sit on one line however many lines a label takes. */
+@media (min-width: 640px) {
+  .lp-counts { grid-template-columns: repeat(3, 1fr); grid-template-rows: auto auto; gap: 4px 32px; }
+  .lp .lp-counts > div { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 4px; align-content: start; }
+  .lp-counts dd { grid-row: 1; }
+  .lp-counts dt { grid-row: 2; }
+}
 .lp-counts > div { display: flex; flex-direction: column-reverse; gap: 4px; }
 .lp-counts dt { font-size: 16px; line-height: 22px; color: var(--mkt-body); }
 .lp-counts dd { font-size: 44px; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 @media (min-width: 1024px) { .lp-counts dd { font-size: 56px; } }
 .lp-counts-note { margin-block-start: 14px; }
+/* Wave Z2, phones: each number beside its label, the numbers in one column (subgrid), so the three take a third of the height. */
+@media (max-width: 639.98px) {
+  .lp-counts { grid-template-columns: auto minmax(0, 1fr); gap: 14px 16px; }
+  .lp-counts > div { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; column-gap: 16px; align-items: baseline; }
+  .lp-counts dd { grid-area: 1 / 1; font-size: 40px; }
+  .lp-counts dt { grid-area: 1 / 2; }
+}
 
 /* ---------- 2. Try it: the card maker on the grey band ---------- */
 .lp-try { padding-block: 56px 64px; background: var(--mkt-grey); }
@@ -253,7 +280,7 @@ legend.lp-label { margin-block-end: 10px; }
 /* The phone's notification under the pass. */
 .lp-notice { display: flex; gap: 3.4cqi; margin-block-start: 5cqi; padding: 3.6cqi 4cqi; border-radius: 5.4cqi; background: rgb(255 255 255 / 0.92); color: var(--mkt-black); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 10px 28px -10px rgb(0 0 0 / 0.25); font-family: var(--mkt-face-sans); }
 .lp-notice-icon { display: grid; place-items: center; flex: none; inline-size: 10cqi; block-size: 10cqi; border-radius: 2.6cqi; background: var(--shop); color: var(--shop-ink); font-family: var(--mkt-face-serif); font-size: 5.2cqi; font-weight: 600; }
-.lp-notice-text { display: grid; gap: 0.4cqi; min-inline-size: 0; font-size: 3.7cqi; line-height: 1.3; }
+.lp-notice-text { flex: 1; display: grid; gap: 0.4cqi; min-inline-size: 0; font-size: 3.7cqi; line-height: 1.3; }
 .lp-notice-top { display: flex; justify-content: space-between; gap: 2cqi; color: var(--mkt-quiet); font-weight: 500; }
 .lp-notice-top span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lp-notice-text b { font-size: 4.1cqi; font-weight: 600; }
@@ -317,15 +344,18 @@ legend.lp-label { margin-block-end: 10px; }
 .lp-gets-end { margin-block-start: 32px; }
 /* After the shop tiles: the next step, centred, up to the card maker. */
 .lp-shops-next { justify-items: center; margin-block-start: 48px; text-align: center; }
-@media (min-width: 1024px) { .lp-shops-next { margin-block-start: 72px; } }
+@media (min-width: 640px) { .lp-shops-next { margin-block-start: 8px; } }
+@media (min-width: 1024px) { .lp-shops-next { margin-block-start: 0; } }
 @media (max-width: 639.98px) { .lp-shops-next { margin-block-start: 32px; } }
 
 /* ---------- 5. Shop types: photo tiles, each one link ---------- */
 /* Phones: one row that scrolls sideways with snap points; the page itself never scrolls sideways. */
 .lp-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: 80%; gap: 14px; margin-inline: calc(var(--lp-gutter) * -1); padding-inline: var(--lp-gutter); padding-block-end: 4px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: var(--lp-gutter); scrollbar-width: none; }
 .lp-tiles::-webkit-scrollbar { display: none; }
-@media (min-width: 640px) { .lp-tiles { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 20px; margin-inline: 0; padding-inline: 0; overflow: visible; } }
-@media (min-width: 1024px) { .lp-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 72px 28px; } }
+/* Wave Z2: no row gap on the grid itself (the tiles' subgrid rows would inherit it between the label, title, line and link); each tile's
+   bottom margin spaces the rows instead. */
+@media (min-width: 640px) { .lp-tiles { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; margin-inline: 0; padding-inline: 0; overflow: visible; } .lp-tile { margin-block-end: 56px; } }
+@media (min-width: 1024px) { .lp-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 28px; } .lp-tile { margin-block-end: 72px; } }
 .lp-tile { position: relative; display: flex; flex-direction: column; scroll-snap-align: start; }
 /* Wider: each tile's photo, label, headline, line and link share rows with its neighbours, so a two-line headline never leaves the row ragged. */
 @media (min-width: 640px) { .lp-tile { display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: 0; align-content: start; } }
@@ -356,6 +386,7 @@ legend.lp-label { margin-block-end: 10px; }
 @media (max-width: 1023.98px) { .lp-also-row > span { flex-basis: 100%; } }
 .lp-also-row a { display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding-inline: 16px; border-radius: var(--mkt-radius-pill); box-shadow: inset 0 0 0 1px var(--mkt-rule); color: var(--mkt-black); font-weight: 500; transition: box-shadow 140ms var(--mkt-ease), background-color 140ms var(--mkt-ease); }
 .lp-also-row a b { font-weight: 600; }
+.lp-also-sep { color: var(--mkt-quiet); }
 .lp-also-row a:hover { box-shadow: inset 0 0 0 1.5px var(--mkt-black); }
 .lp-also-row a svg { inline-size: 16px; block-size: 16px; transition: transform 200ms var(--mkt-ease); }
 
@@ -366,7 +397,7 @@ legend.lp-label { margin-block-end: 10px; }
 @media (min-width: 1024px) { .lp-plan { padding: 40px 36px; } }
 .lp-plan-monthly { background: var(--mkt-black); color: var(--mkt-on-black); }
 .lp-plan-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-block-size: 30px; }
-.lp-plan-name { font-size: 20px; font-weight: 600; }
+.lp-plan-name { font-family: var(--mkt-face-sans); font-size: 20px; font-weight: 600; line-height: 1.3; }
 .lp-plan-badge { display: inline-flex; align-items: center; min-block-size: 28px; padding-inline: 12px; border-radius: var(--mkt-radius-pill); background: var(--mkt-paper); color: var(--mkt-black); font-size: 13px; font-weight: 600; }
 .lp-plan-tag { min-block-size: 44px; font-size: 16px; line-height: 22px; color: var(--mkt-body); }
 .lp-plan-price { display: flex; align-items: baseline; gap: 8px; margin-block-start: 8px; font-size: 64px; line-height: 1; letter-spacing: -0.035em; }

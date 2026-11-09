@@ -317,11 +317,11 @@ export function TodayPage() {
       {manager ? (
         <>
           {m.vertical === "grocery" && hasGroceryFeature(set) ? <GroceryHome /> : null}
-          {ob && showActivation && !(guide && ob.solo && ob.path !== "storefront") ? <ActivationCard c={ob} base={base} /> : null /* wave P: for a solo pro the setup guide already covers the first-bookings steps */}
+          {ob && showActivation && !(guide && ob.solo && ob.path !== "storefront") ? <ActivationCard c={ob} base={base} guide={!!guide} /> : null /* wave P: for a solo pro the setup guide already covers the first-bookings steps */}
           <StreetCard />
           {ob ? <UpsellCard upsell={ob.upsell} base={base} activeLine={ob.activatedAt ? `Your regulars are on the card: ${ob.activeMembers} customers have visited` : undefined} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
           {upsellKeys.length === 3 ? (
-            <p className="border-t border-border pt-4 text-meta text-muted-foreground">
+            <p dir="ltr" lang="en" className="border-t border-border pt-4 text-meta text-muted-foreground">
               More with {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month: {TRADE_TOOLS[m.vertical] ? `${TRADE_TOOLS[m.vertical]}, ` : ""}{PROMOS_PER_MONTH_PLUS} promos a month, {PLANS.plus.smsPerMonth} texts, your week every Sunday and the tools for your kind of shop ·{" "}
               <a href={`${base}/billing?plan=plus`} className="text-foreground underline underline-offset-4">Subscribe</a>
             </p>

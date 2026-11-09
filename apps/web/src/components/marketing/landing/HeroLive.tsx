@@ -1,3 +1,4 @@
+import { Pause, Play } from "lucide-react";
 import { copy } from "@/copy/en-CA";
 import { HERO_VIDEO } from "./hero-video";
 import { PASSES, Phone, WalletPass, type ShopKey } from "./Product";
@@ -33,13 +34,15 @@ const on = (i: number) => (i === 0 ? "" : undefined);
 /** The phone: the wallet at the video's first frame in HTML, and the video over it (sources attached by VIDEO_SCRIPT). */
 export function LivePhone() {
   return (
-    <div className="lp-live" data-hero-video role="img" aria-label={H.phoneLabel} suppressHydrationWarning>
+    <div className="lp-live" data-hero-video suppressHydrationWarning>
       <div className="lp-live-glow" data-cue-set aria-hidden>
         {CUE_SHOPS.map((k, i) => (
           <i key={k} data-shop={k} data-on={on(i)} suppressHydrationWarning />
         ))}
       </div>
-      <Phone tone="wallet" className="lp-live-phone">
+      {/* Wave Z2: the picture is the role="img" (its children are presentational), so the pause button sits beside it, not inside. */}
+      <div className="lp-live-phone" role="img" aria-label={H.phoneLabel}>
+      <Phone tone="wallet">
         <div className="wu-wallet" aria-hidden>
           <div className="wu-wallet-top">
             <span className="wu-wallet-done">{W.done}</span>
@@ -65,6 +68,13 @@ export function LivePhone() {
           ))}
         </video>
       </Phone>
+      </div>
+      {/* WCAG 2.2.2: the looping video can be paused. Hidden until it plays (never shown under reduced motion or Save-Data); VIDEO_SCRIPT
+          swaps the label and the icon. */}
+      <button type="button" className="lp-live-toggle" data-video-toggle aria-label={H.pause} hidden suppressHydrationWarning>
+        <Pause aria-hidden className="lp-live-pause" strokeWidth={2.25} />
+        <Play aria-hidden className="lp-live-play" strokeWidth={2.25} />
+      </button>
     </div>
   );
 }
@@ -74,10 +84,11 @@ const CUES = JSON.stringify(HERO_VIDEO.cues.map(([t, k]) => [t, CUE_SHOPS.indexO
 
 /**
  * Hands the phone over to the video (see the top of this file). Arms after `load` and an idle moment; attaches the sources when the
- * phone is on screen; fades in on canplaythrough; pauses off screen and in a hidden tab; steps the cue sets from currentTime on each
+ * phone is on screen; fades in on canplaythrough and shows the pause button; pauses off screen, in a hidden tab and while the visitor has
+ * paused it (wave Z2, WCAG 2.2.2); steps the cue sets from currentTime on each
  * animation frame while playing (and after a seek). Under reduced motion or Save-Data, or without IntersectionObserver, it does nothing.
  */
-export const VIDEO_SCRIPT = `(()=>{try{var r=document.querySelector("[data-hero-video]"),c=navigator.connection;if(!r||!("IntersectionObserver"in window)||matchMedia("(prefers-reduced-motion: reduce)").matches||c&&c.saveData)return;var v=r.querySelector("video"),S=document.querySelectorAll("[data-cue-set]"),C=${CUES},cur=0,vis=0,armed=0,att=0,ok=0,raf=0;function show(i){if(i===cur)return;var p=cur;cur=i;for(var a=0;a<S.length;a++){var k=S[a].children;for(var j=0;j<k.length;j++){j===i?k[j].setAttribute("data-on",""):k[j].removeAttribute("data-on");j===p?k[j].setAttribute("data-was",""):k[j].removeAttribute("data-was")}}}function step(){raf=0;var t=v.currentTime,i=0;for(var k=0;k<C.length;k++)if(t>=C[k][0])i=C[k][1];show(i);if(!v.paused)raf=requestAnimationFrame(step)}function go(){if(ok&&vis&&!document.hidden){var p=v.play();p&&p.catch(function(){});if(!raf)raf=requestAnimationFrame(step)}else if(ok)v.pause()}function attach(){if(att||!armed||!vis)return;att=1;v.muted=true;v.querySelectorAll("source").forEach(function(s){s.src=s.getAttribute("data-src")});v.addEventListener("canplaythrough",function(){ok=1;r.setAttribute("data-play","");go()},{once:true});v.addEventListener("playing",function(){if(!raf)raf=requestAnimationFrame(step)});v.addEventListener("seeked",step);v.preload="auto";v.load()}function arm(){armed=1;attach()}new IntersectionObserver(function(e){vis=e[e.length-1].isIntersecting;attach();go()}).observe(r);document.addEventListener("visibilitychange",go);var idle=function(){(window.requestIdleCallback||function(f){setTimeout(f,300)})(arm,{timeout:2500})};document.readyState==="complete"?idle():addEventListener("load",idle,{once:true})}catch(e){}})()`;
+export const VIDEO_SCRIPT = `(()=>{try{var r=document.querySelector("[data-hero-video]"),c=navigator.connection;if(!r||!("IntersectionObserver"in window)||matchMedia("(prefers-reduced-motion: reduce)").matches||c&&c.saveData)return;var v=r.querySelector("video"),B=r.querySelector("[data-video-toggle]"),S=document.querySelectorAll("[data-cue-set]"),C=${CUES},cur=0,vis=0,armed=0,att=0,ok=0,raf=0,held=0;function show(i){if(i===cur)return;var p=cur;cur=i;for(var a=0;a<S.length;a++){var k=S[a].children;for(var j=0;j<k.length;j++){j===i?k[j].setAttribute("data-on",""):k[j].removeAttribute("data-on");j===p?k[j].setAttribute("data-was",""):k[j].removeAttribute("data-was")}}}function step(){raf=0;var t=v.currentTime,i=0;for(var k=0;k<C.length;k++)if(t>=C[k][0])i=C[k][1];show(i);if(!v.paused)raf=requestAnimationFrame(step)}function go(){if(ok&&vis&&!document.hidden&&!held){var p=v.play();p&&p.catch(function(){});if(!raf)raf=requestAnimationFrame(step)}else if(ok)v.pause()}function attach(){if(att||!armed||!vis)return;att=1;v.muted=true;v.querySelectorAll("source").forEach(function(s){s.src=s.getAttribute("data-src")});v.addEventListener("canplaythrough",function(){ok=1;r.setAttribute("data-play","");B.hidden=false;go()},{once:true});B.addEventListener("click",function(){held=!held;held?r.setAttribute("data-held",""):r.removeAttribute("data-held");B.setAttribute("aria-label",held?${JSON.stringify(H.play)}:${JSON.stringify(H.pause)});go()});v.addEventListener("playing",function(){if(!raf)raf=requestAnimationFrame(step)});v.addEventListener("seeked",step);v.preload="auto";v.load()}function arm(){armed=1;attach()}new IntersectionObserver(function(e){vis=e[e.length-1].isIntersecting;attach();go()}).observe(r);document.addEventListener("visibilitychange",go);var idle=function(){(window.requestIdleCallback||function(f){setTimeout(f,300)})(arm,{timeout:2500})};document.readyState==="complete"?idle():addEventListener("load",idle,{once:true})}catch(e){}})()`;
 
 /**
  * The headline's words rise in once (landing.css). The headline face is font-display: block, so on a slow line the words are still

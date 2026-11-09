@@ -66,12 +66,12 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, o
         )}
         <span className="min-w-0 flex-1">
           <span className="block text-caption text-fg-muted">{t("sf.acct.making")}</span>
-          <span className="block truncate text-body font-[600] text-fg">
+          <span className="block text-pretty break-words text-body font-[600] text-fg">
             <bdi>{draft.name}</bdi>
           </span>
           <span className="flex items-center gap-1.5 text-meta text-fg-muted">
             <Gift aria-hidden className="size-3.5 shrink-0" strokeWidth={2} />
-            <span className="truncate">{t("sf.card.rule", { goal: card.goal, unit, reward: card.reward.trim() || t("sf.card.rewardBlank") })}</span>
+            <span className="min-w-0 text-pretty">{t("sf.card.rule", { goal: card.goal, unit, reward: card.reward.trim() || t("sf.card.rewardBlank") })}</span>
           </span>
         </span>
       </div>
@@ -79,7 +79,7 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, o
       <PhoneField label={t("su.phone")} hint={t("su.phoneHint")} value={draft.phone} onChangeDigits={(d) => update({ phone: d })} error={errors.phone} />
       {!registered ? (
         <>
-          <TextField name="email" label={t("su.email")} type="email" autoComplete="email" value={draft.email} onChange={(e) => update({ email: e.target.value })} error={errors.email} dir="ltr" />
+          <TextField name="email" label={t("su.email")} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={draft.email} onChange={(e) => update({ email: e.target.value })} error={errors.email} dir="ltr" />
           <div className="relative">
             <TextField
               name="password"
