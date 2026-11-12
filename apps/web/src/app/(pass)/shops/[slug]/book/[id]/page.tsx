@@ -43,7 +43,7 @@ export default async function ManageAppointmentPage({ params, searchParams }: Pr
     if (isApiError(e) && (e.status === 404 || e.status === 403))
       return (
         <PageFrame locale={locale}>
-          <EmptyState title={t("bk.manage.notFound")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("bk.back")}</Button>} />
+          <EmptyState headingLevel={1} title={t("bk.manage.notFound")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("bk.back")}</Button>} />
         </PageFrame>
       );
     throw e;

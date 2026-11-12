@@ -183,13 +183,16 @@ export function readCallParams(p: Record<string, unknown>): IncomingCall {
   };
 }
 
+/** A shop name for the spoken line: a trailing period would double up with the sentence's own. */
+const spokenName = (name: string) => name.replace(/\.+\s*$/, "");
+
 /** Store (or update) a call and parse its transcript. Returns the TwiML to answer with. */
 export async function ingestCall(ctx: AppContext, merchant: Merchant, call: IncomingCall, selfUrl: string): Promise<{ xml: string; row: Call | null }> {
   const enabled = await isFeatureOn(ctx.db, merchant, "restaurant.phone_ai");
-  if (!enabled) return { xml: voiceResponse({ say: `Thanks for calling ${merchant.name}. Please call back during business hours to place your order.` }), row: null };
+  if (!enabled) return { xml: voiceResponse({ say: `Thanks for calling ${spokenName(merchant.name)}. Please call back during business hours to place your order.` }), row: null };
   const lang = languageFromCode(call.languageCode) ?? (merchant.languages[0] as "en" | "hi" | "ur" | "pa" | undefined) ?? "en";
   if (!call.transcript) {
-    return { xml: voiceResponse({ say: `Thanks for calling ${merchant.name}. After the tone, tell us what you would like to order and a time for pickup.`, gatherAction: selfUrl, language: SPEECH_LANG[lang], notices: noticeSays(lang) }), row: null };
+    return { xml: voiceResponse({ say: `Thanks for calling ${spokenName(merchant.name)}. After the tone, tell us what you would like to order and a time for pickup.`, gatherAction: selfUrl, language: SPEECH_LANG[lang], notices: noticeSays(lang) }), row: null };
   }
   const menu = await menuFor(ctx, merchant.id);
   const { draft } = parseTranscript(call.transcript, menu, ctx.now(), merchant.timezone);

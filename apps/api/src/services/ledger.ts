@@ -646,7 +646,7 @@ async function awardPurchaseTx(ctx: AppContext, args: AwardArgs): Promise<AwardR
     if (visitBased && !args.ignoreCooldown && member.lastVisitAt && program.visitCooldownMinutes > 0) {
       const mins = (now.getTime() - member.lastVisitAt.getTime()) / 60000;
       if (mins < program.visitCooldownMinutes) {
-        throw new HttpError(409, "cooldown", `Already checked in ${Math.floor(mins)} min ago. Next ${program.terminology === "stamps" ? "stamp" : "visit"} in ${Math.ceil(program.visitCooldownMinutes - mins)} min.`);
+        throw new HttpError(409, "cooldown", `Already checked in ${mins < 1 ? "just now" : `${Math.floor(mins)} min ago`}. Next ${program.terminology === "stamps" ? "stamp" : "visit"} in ${Math.ceil(program.visitCooldownMinutes - mins)} min.`);
       }
     }
 

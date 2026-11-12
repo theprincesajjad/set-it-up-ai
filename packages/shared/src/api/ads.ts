@@ -64,7 +64,7 @@ export const createAdCampaignBody = z
     promoId: z.uuid().optional(),
     headline: z.string().trim().min(3).max(80).optional(),
     body: z.string().trim().max(280).optional(),
-    imageUrl: z.url().max(2000).optional(),
+    imageUrl: z.url({ protocol: /^https?$/ }).max(2000).optional(),
     /** Target by neighbourhood(s) and/or a radius around the merchant's locations. */
     neighbourhoodIds: z.array(z.uuid()).max(20).default([]),
     radiusMetres: z.number().int().min(200).max(AD_RULES.maxRadiusMetres).optional(),

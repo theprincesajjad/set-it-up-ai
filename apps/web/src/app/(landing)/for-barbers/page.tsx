@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SoloLanding } from "@/components/marketing/SoloLanding";
 import { copy } from "@/copy/en-CA";
+import { soloSocial } from "@/lib/marketing/solo-og";
 
 // Static: the page reads no request data (?src= is read by the start form in the browser).
 export const dynamic = "force-static";
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   title: copy.solo.barber.title,
   description: copy.solo.barber.description,
   alternates: { canonical: "/for-barbers" },
-  openGraph: { title: copy.solo.barber.title, description: copy.solo.barber.description },
+  ...soloSocial("barber", { title: copy.solo.barber.title, description: copy.solo.barber.description, path: "/for-barbers" }),
 };
 
 export default function ForBarbersPage() {

@@ -79,10 +79,10 @@ export function DateStrip({ days, day, onSelect, state, label, onPickLater, clas
               className={cn(
                 "relative flex h-19 w-15 shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-r4 border transition-[background-color,border-color,box-shadow,transform] duration-200 focus-visible:focus-ring motion-safe:active:scale-95 disabled:cursor-not-allowed",
                 on ? "border-trade bg-trade text-trade-foreground shadow-card" : "border-line bg-card text-fg hover:border-trade/50 hover:bg-trade-soft",
-                !on && empty && "border-dashed bg-transparent text-fg-subtle hover:border-line hover:bg-transparent",
+                !on && empty && "border-dashed bg-transparent text-fg-muted hover:border-line hover:bg-transparent",
               )}
             >
-              <span className={cn("text-caption", on ? "opacity-90" : "text-fg-muted", !on && empty && "text-fg-subtle")}>{d === today ? t("kit.today") : date(dayDate(d), { weekday: "short" }, "UTC")}</span>
+              <span className={cn("text-caption", on ? "" : "text-fg-muted", !on && empty && "text-fg-muted")}>{d === today ? t("kit.today") : date(dayDate(d), { weekday: "short" }, "UTC")}</span>
               <span className="text-title tabular-nums">{date(dayDate(d), { day: "numeric" }, "UTC")}</span>
               {s.full ? <span className="text-caption leading-none">{t("wl.full")}</span> : <span aria-hidden className={cn("size-1.5 rounded-full", s.count ? (on ? "bg-trade-foreground" : "bg-trade") : "bg-transparent")} />}
             </button>

@@ -9,7 +9,7 @@ so the web pages should not be indexed (`noindex`). Paid features are still gate
 `402 feature_locked`. Unknown tokens/slugs → `404`. Drafts are never public.
 
 Other `/v1/public/...` routes are documented by their owning area: `GET /v1/public/shops/:slug`, `GET /v1/public/plans`,
-`GET /v1/public/restaurants/founding` and the QR join in [network.md](network.md) (`networkApi`); `POST /v1/public/leads` in [rep.md](rep.md) (`repApi.publicLeadBody`).
+`GET /v1/public/restaurants/corridors` and the QR join in [network.md](network.md) (`networkApi`); `POST /v1/public/leads` in [rep.md](rep.md) (`repApi.publicLeadBody`).
 
 ## Link lifetimes, rate limits and unsubscribe
 

@@ -60,7 +60,7 @@ export default async function RestockPage({ params, searchParams }: Props) {
   if (!menu || !item || item.preorderOnly)
     return (
       <PageFrame locale={locale}>
-        <EmptyState title={t("gr.restock.goneTitle")} description={t("gr.restock.goneBody", { shop: shop.name })} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+        <EmptyState headingLevel={1} title={t("gr.restock.goneTitle")} description={t("gr.restock.goneBody", { shop: shop.name })} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       </PageFrame>
     );
   const me = await getMe();

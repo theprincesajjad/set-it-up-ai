@@ -12,17 +12,19 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 
 type Data = autoApi.MyVehiclesResponse;
 
 export function MyVehicles() {
+  const errText = useErrorText();
   const { t, date } = useFmt();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const load = () => browserApi.me.myVehicles().then(setData).catch((e) => setError(errorMessage(e)));
+  const load = () => browserApi.me.myVehicles().then(setData).catch((e) => setError(errText(e)));
   useEffect(() => {
     void load();
   }, []);
@@ -63,6 +65,7 @@ const TONE = { overdue: "text-negative", due_soon: "text-points-text", ok: "text
 const DOT = { overdue: "bg-negative", due_soon: "bg-points", ok: "bg-positive", unknown: "bg-fg-subtle" } as const;
 
 function VehicleCard({ v, day, onChanged, onError }: { v: autoApi.MyVehicleDto; day: (ymd: string) => string; onChanged: () => Promise<unknown>; onError: (m: string | null) => void }) {
+  const errText = useErrorText();
   const { t, number } = useFmt();
   const [km, setKm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -81,7 +84,7 @@ function VehicleCard({ v, day, onChanged, onError }: { v: autoApi.MyVehicleDto; 
           size="sm"
           onClick={async () => {
             if (!window.confirm(`${t("auto.my.remove")}: ${v.label}?`)) return;
-            await browserApi.me.removeVehicle(v.id).catch((e) => onError(errorMessage(e)));
+            await browserApi.me.removeVehicle(v.id).catch((e) => onError(errText(e)));
             await onChanged();
           }}
         >
@@ -101,7 +104,7 @@ function VehicleCard({ v, day, onChanged, onError }: { v: autoApi.MyVehicleDto; 
             setKm("");
             await onChanged();
           } catch (err) {
-            onError(errorMessage(err));
+            onError(errText(err));
           } finally {
             setBusy(false);
           }
@@ -137,6 +140,7 @@ function VehicleCard({ v, day, onChanged, onError }: { v: autoApi.MyVehicleDto; 
 }
 
 function TireShop({ shop, vehicles, day, onChanged, onError }: { shop: autoApi.MyTireShopDto; vehicles: autoApi.MyVehicleDto[]; day: (ymd: string) => string; onChanged: () => Promise<unknown>; onError: (m: string | null) => void }) {
+  const errText = useErrorText();
   const { t } = useFmt();
   const [car, setCar] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -147,7 +151,7 @@ function TireShop({ shop, vehicles, day, onChanged, onError }: { shop: autoApi.M
     try {
       await browserApi.me.bookMySwap({ merchantId: shop.merchantId, vehicleId: car || null, day: d });
     } catch (e) {
-      onError(isApiError(e) && e.code === "day_full" ? t("auto.tire.full.err") : errorMessage(e));
+      onError(isApiError(e) && e.code === "day_full" ? t("auto.tire.full.err") : errText(e));
     } finally {
       setBusy(null);
       await onChanged();
@@ -166,7 +170,7 @@ function TireShop({ shop, vehicles, day, onChanged, onError }: { shop: autoApi.M
                 variant="secondary"
                 size="sm"
                 onClick={async () => {
-                  await browserApi.me.cancelMySwap(s.id).catch((e) => onError(errorMessage(e)));
+                  await browserApi.me.cancelMySwap(s.id).catch((e) => onError(errText(e)));
                   await onChanged();
                 }}
               >
@@ -211,6 +215,7 @@ function TireShop({ shop, vehicles, day, onChanged, onError }: { shop: autoApi.M
 }
 
 function AddVehicle({ onDone, onCancel }: { onDone: () => Promise<unknown>; onCancel: () => void }) {
+  const errText = useErrorText();
   const { t } = useFmt();
   const [year, setYear] = useState("");
   const [make, setMake] = useState("");
@@ -234,7 +239,7 @@ function AddVehicle({ onDone, onCancel }: { onDone: () => Promise<unknown>; onCa
           await browserApi.me.addVehicle({ year: year ? Number(year) : null, make: make.trim(), model: model.trim(), plate: plate.trim() || null, use });
           await onDone();
         } catch (err) {
-          setError(errorMessage(err));
+          setError(errText(err));
         } finally {
           setBusy(false);
         }

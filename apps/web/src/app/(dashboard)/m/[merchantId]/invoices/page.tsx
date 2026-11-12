@@ -5,6 +5,7 @@ import { Capsules, Dot, EmptyState, PageHeader, SidePanel, StatBlock, Table, Tab
 import { ListError, ListLoading } from "@/components/dashboard/ListStates";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { InvoiceDetail } from "@/components/dashboard/service/InvoiceDetail";
+import { ErrorPanel } from "@/components/errors";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -44,7 +45,7 @@ function Invoices() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="Invoices" description={calendarShop ? "Every checkout from the calendar makes an invoice here. Customers pay by link, or you take payment at the counter." : "Every invoice comes from an approved quote. Customers pay by link, or you take payment at the counter."} actions={<Capsules label="Show" value={filter} onChange={setFilter} options={[{ value: "all", label: "All" }, { value: "open", label: "Open" }, { value: "overdue", label: "Overdue", count: s?.overdueCount || null, tone: "negative" }, { value: "paid", label: "Paid" }]} />} />
-      <StatBlock tiles
+      {summary.error && !s ? (list.error && !list.data ? null : <ErrorPanel error={summary.cause ?? summary.error} what="your invoice numbers" onRetry={() => void summary.reload()} />) : <StatBlock tiles
         label="Invoices at a glance"
         cols={5}
         loading={summary.loading && !s}
@@ -55,7 +56,7 @@ function Invoices() {
           { label: "Deposits held", dot: "neutral", value: formatMoney(s?.depositsHeldCents ?? 0).replace(/\.00$/, ""), caption: calendarShop ? "Held for online bookings" : `On ${n(s?.depositsHeldQuotes ?? 0, "approved quote", "approved quotes")}` },
           { label: "Average time to pay", dot: "neutral", value: s?.avgDaysToPay == null ? "None yet" : `${Math.max(0, s.avgDaysToPay)} days`, caption: "From sent to paid" },
         ]}
-      />
+      />}
       <TextField type="search" label="Search invoices" hideLabel placeholder="Customer, phone, invoice or ticket number" value={q} onChange={(e) => setQ(e.target.value)} />
       {list.error && !list.data ? (
         <ListError title="Couldn't load your invoices." detail={list.error} onRetry={list.reload} />

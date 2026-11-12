@@ -1,6 +1,7 @@
 import { copy } from "@/copy/en-CA";
 import type { SoloKey } from "@/lib/marketing/solo";
 import type { SoloView } from "@/lib/marketing/solo-view";
+import { ContactField } from "./ContactField";
 import { Arrow, Check } from "./parts";
 import { SourceField } from "./SourceField";
 
@@ -10,7 +11,7 @@ const TRADES: SoloKey[] = ["nails", "brows", "lashes", "makeup", "barber", "groo
 /**
  * Block 7: name, trade and email or mobile, then the existing sign-up (the wizard asks the rest: where you work, the password).
  * A plain GET form to /signup, so it works before any script loads; signupPrefill turns ?shop, ?trade and ?contact into the
- * wizard's starting values. The trade chips are native radios.
+ * wizard's starting values. The trade chips are native radios; "Email or mobile" is checked by the browser (ContactField).
  */
 export function Start({ v }: { v: SoloView }) {
   return (
@@ -51,7 +52,7 @@ export function Start({ v }: { v: SoloView }) {
           </fieldset>
           <label>
             {S.contact}
-            <input type="text" name="contact" required maxLength={254} autoComplete="email" inputMode="email" aria-describedby="sl-contact-hint" />
+            <ContactField hintId="sl-contact-hint" error={S.contactError} />
             <span className="hint" id="sl-contact-hint">
               {S.contactHint}
             </span>

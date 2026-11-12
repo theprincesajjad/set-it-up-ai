@@ -27,7 +27,8 @@ import { inputBase } from "@/components/ui/TextField";
 import { copy } from "@/copy/en-CA"; // l10n-ok: the consent line is the legal text recorded with the member, English by design
 import { newIdempotencyKey } from "@/lib/api/client";
 import type { MerchantEndpoints } from "@/lib/api/endpoints";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import {
   applyKey,
@@ -169,6 +170,7 @@ export function CounterApp({
   vertical,
   earnPicks,
 }: CounterAppProps) {
+  const errText = useErrorText();
   const ct = useCounterText();
   const { t } = ct;
   const { time } = useLocaleOrEnglish();
@@ -219,6 +221,8 @@ export function CounterApp({
   }, []);
   const [code, setCode] = useState("");
   const [recent, setRecent] = useState<staffApi.ActivityItemDto[]>([]);
+  /** The last try at the recent list failed: say so, instead of "Awards and redemptions show up here" over a list that never loaded. */
+  const [recentFailed, setRecentFailed] = useState<string | null>(null);
   const [regulars, setRegulars] = useState<staffApi.MemberSummaryDto[]>([]);
   const [stampsToday, setStampsToday] = useState<number | null>(null);
   const [now, setNow] = useState(() => clock());
@@ -236,7 +240,14 @@ export function CounterApp({
   const addedKey = !perDollar && program.terminology === "stamps" ? "counter.stampAddedFor" : "counter.pointsAddedFor";
   const goal = program.stampGoal || 10;
   const [queue, setQueue] = useState<QueuedAward[]>([]);
-  const [online, setOnline] = useState(true);
+  const [browserOnline, setOnline] = useState(true);
+  /** False once a request failed to reach the server (Wi-Fi up, internet or our API down), until one gets through. `navigator.onLine` alone says "Online" in that case. */
+  const [reachable, setReachable] = useState(true);
+  const online = browserOnline && reachable;
+  const reachableRef = useRef(true);
+  const loadRecentRef = useRef<() => Promise<void>>(async () => undefined);
+  // eslint-disable-next-line react-hooks/refs
+  reachableRef.current = reachable;
   const [sending, setSending] = useState(false);
   const [sentNote, setSentNote] = useState<string | null>(null);
   const queueRef = useRef<QueuedAward[]>([]);
@@ -283,9 +294,13 @@ export function CounterApp({
           item.key,
         );
         sent += 1;
+        setReachable(true);
         saveQueue(queueRef.current.filter((x) => x.key !== item.key));
       } catch (e) {
-        if (isApiError(e) && e.isNetwork) break;
+        if (isApiError(e) && e.isNetwork) {
+          setReachable(false);
+          break;
+        }
         // A final error (duplicate, cooldown...) is dropped from the queue but said out loud.
         saveQueue(queueRef.current.filter((x) => x.key !== item.key));
         setError(
@@ -303,12 +318,14 @@ export function CounterApp({
     const up = () => {
       setOnline(true);
       void flush();
+      void loadRecentRef.current();
     };
     const down = () => setOnline(false);
     window.addEventListener("online", up);
     window.addEventListener("offline", down);
     const t = setInterval(() => {
       if (queueRef.current.length && navigator.onLine) void flush();
+      else if (!reachableRef.current && navigator.onLine) void loadRecentRef.current();
     }, 20_000);
     return () => {
       window.removeEventListener("online", up);
@@ -335,8 +352,12 @@ export function CounterApp({
       ]);
       setRecent(r.items);
       setStampsToday(t.pointsIssued);
-    } catch {
-      /* the activity strip is a convenience */
+      setReachable(true);
+      setRecentFailed(null);
+    } catch (e) {
+      // The strip is a convenience, but a failure to reach the server is what the Online dot must say.
+      setRecentFailed(errText(e));
+      if (isApiError(e) && e.isNetwork) setReachable(false);
     }
     try {
       // Regulars not yet stamped today: one tap instead of four digits.
@@ -344,8 +365,9 @@ export function CounterApp({
     } catch {
       /* optional shortcut */
     }
-  }, [api, locationId]);
+  }, [api, locationId, errText]);
   useEffect(() => {
+    loadRecentRef.current = loadRecent;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadRecent();
   }, [loadRecent]);
@@ -462,6 +484,7 @@ export function CounterApp({
         void loadRecent();
       } catch (e) {
         if (isApiError(e) && e.isNetwork) {
+          setReachable(false);
           // Saved, not lost: same key, sent later. The staff member moves on now.
           const who =
             p.kind === "member" || p.kind === "reward"
@@ -556,7 +579,7 @@ export function CounterApp({
         } else setPhase({ kind: "member", member: r.items[0]! });
       } catch (e) {
         setEntry("");
-        setError(errorMessage(e));
+        setError(errText(e));
       } finally {
         setBusy(false);
       }
@@ -614,7 +637,8 @@ export function CounterApp({
         setAnnounce(t("counter.redeemed.announce", { reward: res.redemption.reward.name }));
         void loadRecent();
       } catch (e) {
-        if (!(isApiError(e) && e.isNetwork)) redeemKey.current = null;
+        if (isApiError(e) && e.isNetwork) setReachable(false);
+        else redeemKey.current = null;
         setError(
           isApiError(e) && e.isNetwork
             ? t("counter.err.redeemOffline")
@@ -643,7 +667,7 @@ export function CounterApp({
         setError(
           isApiError(e) && e.status === 403
             ? t("counter.err.tooLate")
-            : errorMessage(e),
+            : errText(e),
         );
       } finally {
         setBusy(false);
@@ -666,6 +690,7 @@ export function CounterApp({
       setAnnounce(t("counter.redeemed.announce", { reward: res.redemption.reward.name }));
       void loadRecent();
     } catch (e) {
+      if (isApiError(e) && e.isNetwork) setReachable(false);
       setError(
         isApiError(e) && e.isNetwork
           ? t("counter.err.verifyOffline")
@@ -1398,6 +1423,13 @@ export function CounterApp({
                 );
               })}
             </ul>
+          ) : recentFailed ? (
+            <div role="alert" className={cn(s.recentEmpty, "mt-2 flex flex-col items-start gap-2 text-meta text-fg-muted")}>
+              <p>{recentFailed}</p>
+              <button type="button" onClick={() => void loadRecent()} className="min-h-11 rounded-full px-3 font-semibold text-fg underline underline-offset-2 focus-visible:focus-ring">
+                {t("err.action.retry")}
+              </button>
+            </div>
           ) : (
             <p className={cn(s.recentEmpty, "mt-2 text-meta text-fg-muted")}>
               {t("counter.recent.empty")}
@@ -1846,10 +1878,16 @@ function PinPad({
   onDone: (s: CounterStaff) => void;
   onCancel: () => void;
 }) {
+  const errText = useErrorText();
   const { t } = useCounterText();
   const [pin, setPin] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const dialogRef = useRef<HTMLElement>(null);
+  // Focus moves into the dialog when it opens, so a physical keyboard or a screen reader starts here.
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
   const submit = useCallback(
     async (value: string) => {
       setBusy(true);
@@ -1866,19 +1904,37 @@ function PinPad({
         setErr(
           isApiError(e) && e.status === 401
             ? t("counter.err.pin")
-            : errorMessage(e),
+            : isApiError(e) && e.status === 429
+              ? t("counter.err.pinLocked")
+              : errText(e),
         );
       } finally {
         setBusy(false);
       }
     },
-    [verify, onDone, t],
+    [verify, onDone, t, errText],
   );
   return (
     <section
+      ref={dialogRef}
       role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
       aria-label={t("counter.pin.title")}
-      className="flex flex-col gap-3 rounded-card bg-card p-4 shadow-card"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") return onCancel();
+        if (busy || e.metaKey || e.ctrlKey || e.altKey) return;
+        if (/^\d$/.test(e.key)) {
+          e.preventDefault();
+          const next = pushDigit(pin, e.key as never);
+          setPin(next);
+          if (next.length === 4 && next !== pin) void submit(next);
+        } else if (e.key === "Backspace") {
+          e.preventDefault();
+          setPin((p) => p.slice(0, -1));
+        }
+      }}
+      className="flex flex-col gap-3 rounded-card bg-card p-4 shadow-card outline-none"
     >
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-body-strong text-fg">

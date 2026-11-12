@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { TextField } from "@/components/ui/TextField";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { publicWaitlistEndpoints } from "@/lib/api/waitlist";
 import { cn } from "@/lib/cn";
 import { dayDate } from "@/lib/restaurant/util";
@@ -38,6 +39,7 @@ function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 }
 
 export function WaitlistSheet({ open, onClose, shop, serviceId, serviceName, staffId, day, full, signedIn, needsName }: { open: boolean; onClose: () => void; shop: { slug: string; name: string }; serviceId: string; serviceName: string; staffId: string | null; day: string; full: boolean; signedIn: boolean; needsName: boolean }) {
+  const errText = useErrorText();
   const { t, date } = useFmt();
   const [span, setSpan] = useState<Span>(full ? "day" : "two");
   const [pref, setPref] = useState<waitlistApi.WaitlistTimePref>("any");
@@ -62,7 +64,7 @@ export function WaitlistSheet({ open, onClose, shop, serviceId, serviceName, sta
       await api.join(shop.slug, { serviceId, staffId, windowStart: day, windowEnd: end, timePref: pref, name: name.trim() || null, phone: !signedIn && !email ? contact.trim() : null, email: !signedIn && email ? contact.trim() : null });
       setDone(true);
     } catch (e) {
-      setError(isApiError(e) && e.isNetwork ? t("rc.error.body") : errorMessage(e));
+      setError(isApiError(e) && e.isNetwork ? t("rc.error.body") : errText(e));
     } finally {
       setBusy(false);
     }

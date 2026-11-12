@@ -1,35 +1,34 @@
-import { ImageResponse } from "next/og";
-import { rolesV3 } from "@ll/design-tokens";
 import { BRAND } from "@ll/shared";
 import { LANDING_VARIANTS } from "@/copy/en-CA";
-import { ogFonts } from "@/lib/og";
+import { OG_SIZE, brandOgImage } from "./og-brand";
 
-export const SOLO_OG_SIZE = { width: 1200, height: 630 } as const;
+export const SOLO_OG_SIZE = OG_SIZE;
 
-type Page = "nail" | "barber" | "groom";
+export const SOLO_OG_PAGES = ["nail", "barber", "groom"] as const;
+export type SoloOgPage = (typeof SOLO_OG_PAGES)[number];
+
 const V = { nail: LANDING_VARIANTS.nails.control, barber: LANDING_VARIANTS.barber.control, groom: LANDING_VARIANTS.groom.control };
-/** The page's control hook, as on the hero (landing v2). */
-const TITLE = { nail: V.nail.hook.join(" "), barber: V.barber.hook.join(" "), groom: V.groom.hook.join(" ") } as const;
-const KICKER = { nail: V.nail.eyebrow, barber: V.barber.eyebrow, groom: V.groom.eyebrow } as const;
-const CTA = { nail: V.nail.cta, barber: V.barber.cta, groom: V.groom.cta } as const;
 
-/** One social card per landing page: flat paper, the headline in the display face, the call to action. No gradient, no photo. Literal colours come from the light v3 roles. */
-export async function soloOgImage(page: Page) {
-  const bg = rolesV3.light.background;
-  const ink = rolesV3.light.foreground;
-  const fonts = await ogFonts();
-  const display = fonts.length ? "Bricolage Grotesque" : undefined; // l10n-ok: font family name
-  return new ImageResponse(
-    (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: bg, padding: 72, color: ink }}>
-        <div style={{ display: "flex", fontSize: 32, fontWeight: 700, color: "#6B6B70" }}>{KICKER[page]}</div>
-        <div style={{ display: "flex", fontSize: 76, fontWeight: 800, lineHeight: 1.04, letterSpacing: -1.5, fontFamily: display }}>{TITLE[page]}</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 30 }}>
-          <div style={{ display: "flex", padding: "16px 32px", borderRadius: 999, background: ink, color: bg, fontWeight: 700 }}>{CTA[page]}</div>
-          <div style={{ display: "flex", color: "#6B6B70" }}>{BRAND.name}</div>
-        </div>
-      </div>
-    ),
-    { ...SOLO_OG_SIZE, fonts },
-  );
+/** Where each trade page's share card is served (app/og/solo/[page]/route.ts): outside the page folders, whose [variant] routes and A/B rewrite swallowed a card placed beside the page. */
+export const soloOgPath = (page: SoloOgPage) => `/og/solo/${page}`;
+
+/**
+ * The `openGraph` and `twitter` blocks for a trade page: its own card, plus the site name, type and locale the root layout sets (a
+ * page-level `openGraph` replaces the root's, it does not merge). Spread into the page's metadata.
+ */
+export function soloSocial(page: SoloOgPage, { title, description, path }: { title: string; description: string; path: string }) {
+  const images = [{ url: soloOgPath(page), ...OG_SIZE, alt: title, type: "image/png" }];
+  return {
+    openGraph: { type: "website" as const, siteName: BRAND.name, locale: "en_CA", url: path, title, description, images },
+    twitter: { card: "summary_large_image" as const, title, description, images },
+  };
+}
+
+/** The trade pages' promise in five words (PLAN_COPY.priceLine: "Free to start ... No credit card."). */
+const SOLO_FOOT = "Free to start · No credit card";
+
+/** One share card per trade page: the page's control headline in the site's identity, the audience above it, the promise under it. */
+export function soloOgImage(page: SoloOgPage) {
+  const v = V[page];
+  return brandOgImage({ kicker: v.eyebrow, title: v.hook.join(" "), foot: SOLO_FOOT });
 }

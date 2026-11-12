@@ -10,7 +10,8 @@ import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { disp } from "../../theme";
 import { useSession } from "../../state/session";
-import { Badge, Banner, Button, Card, ErrorState, QuoteApproval, Screen, Section, SkeletonList, Text, TICKET_STATUS_KEYS, Timeline, useToast } from "../../ui";
+import { LinkProblem } from "../../features/customer/LinkProblem";
+import { Badge, Banner, Button, Card, QuoteApproval, Screen, Section, SkeletonList, Text, TICKET_STATUS_KEYS, Timeline, useToast } from "../../ui";
 
 function ticketTitle(ticket: serviceApi.TicketDto): string {
   const d = ticket.itemDetails;
@@ -32,7 +33,7 @@ export default function TicketDetail() {
   const [deposit, setDeposit] = useState<serviceApi.DepositPaymentDto | null>(null);
 
   if (q.isLoading) return <Screen back><SkeletonList rows={4} /></Screen>;
-  if (!q.data) return <Screen back><ErrorState message={tr("ms.ticket.notFound")} onRetry={() => q.refetch()} /></Screen>;
+  if (!q.data) return <LinkProblem error={q.error} onRetry={() => q.refetch()} missingTitle={tr("ms.ticket.notFound")} />;
   const { ticket, events, quotes, invoices } = q.data;
   const quote = [...quotes].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
   const invoice = invoices.find((i) => i.status === "open") ?? invoices.find((i) => i.status === "paid") ?? null;

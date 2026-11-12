@@ -33,16 +33,16 @@ export default function RolloutPage() {
             {groupFeatures(d.items).map((g) => (
               <Section key={g.id} title={g.title}>
                 <TableWrap>
-                  <Table label={g.title} className="max-md:block md:min-w-[960px] md:table-fixed">
+                  <Table label={g.title} className="max-md:block md:min-w-[1060px] md:table-fixed">
                     <thead className="max-md:hidden">
                       <tr>
                         <Th className="w-[240px]">Feature</Th>
                         <Th className="w-[110px]">Plan</Th>
-                        <Th className="w-[180px]">Stage</Th>
-                        <Th className="w-[200px]">Unlock target</Th>
+                        <Th className="w-[290px]">Stage</Th>
+                        <Th className="w-[190px]">Unlock target</Th>
                         <Th align="end" className="w-[100px]">Notify requests</Th>
                         <Th className="w-[100px]">Shop exceptions</Th>
-                        <Th className="w-[160px]">Last changed</Th>
+                        <Th className="w-[150px]">Last changed</Th>
                       </tr>
                     </thead>
                     <tbody className="max-md:block">

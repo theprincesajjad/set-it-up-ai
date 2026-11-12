@@ -75,7 +75,7 @@ test.describe("Amara, a new nail tech, on her phone", () => {
     await page.goto(`${base}/promos`);
     const teaser = page.getByTestId("feature-teaser");
     await expect(teaser.getByRole("heading", { level: 1, name: "Promos" })).toBeVisible();
-    await expect(teaser.getByText("On Pro · $29 a month")).toBeVisible();
+    await expect(teaser.getByText("Included in Pro · $29 a month")).toBeVisible();
     await expect(teaser.getByRole("link", { name: "See plans" })).toBeVisible();
     await page.screenshot({ path: shot("nails-promos-locked-390"), fullPage: true });
     await teaser.getByTestId("teaser-trial").click();

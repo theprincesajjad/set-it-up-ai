@@ -24,6 +24,9 @@ import { ThemeProvider, useTheme } from "../theme";
 import { installWebStyles } from "../theme/webStyles";
 import { ToastProvider } from "../ui";
 
+/** A screen that throws while rendering falls here, in the person's language, with a way back (see ui/AppErrorBoundary). */
+export { AppErrorBoundary as ErrorBoundary } from "../ui/AppErrorBoundary";
+
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 wireQueryOnlineManager();
 installWebStyles();

@@ -3,6 +3,7 @@
  * calls in production, token pages slow down enumeration and expire, provider errors never reach callers,
  * CSV exports neutralise formulas.
  */
+import { PROD_ENV } from "./prodEnv.js";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cateringEvents, merchants } from "@ll/db";
@@ -36,7 +37,7 @@ describe("baseline response headers", () => {
     expect(missing.headers["x-content-type-options"]).toBe("nosniff");
     env.ctx.config.env = "production";
     const prod = await env.app.inject({ method: "GET", url: "/health" });
-    expect(prod.headers["strict-transport-security"]).toBe("max-age=15552000");
+    expect(prod.headers["strict-transport-security"]).toBe("max-age=63072000");
   });
 });
 
@@ -136,16 +137,16 @@ describe("client address behind a proxy", () => {
 
   it("production defaults to one hop; development and test trust the header", async () => {
     const { loadConfig } = await import("../src/config.js");
-    expect(loadConfig({ NODE_ENV: "production", JWT_SECRET: "x".repeat(40), ENCRYPTION_KEY: "0".repeat(64), DATABASE_URL: "postgres://x", ALLOW_CONSOLE_SMS: "1" } as never).trustProxy).toBe(1);
+    expect(loadConfig({ ...PROD_ENV, ALLOW_CONSOLE_SMS: "1" } as never).trustProxy).toBe(1);
     expect(loadConfig({ NODE_ENV: "development" }).trustProxy).toBe(true);
-    expect(loadConfig({ NODE_ENV: "production", TRUST_PROXY_HOPS: "2", JWT_SECRET: "x".repeat(40), ENCRYPTION_KEY: "0".repeat(64), DATABASE_URL: "postgres://x", ALLOW_CONSOLE_SMS: "1" } as never).trustProxy).toBe(2);
+    expect(loadConfig({ ...PROD_ENV, TRUST_PROXY_HOPS: "2", ALLOW_CONSOLE_SMS: "1" } as never).trustProxy).toBe(2);
   });
 });
 
 describe("production config", () => {
   it("refuses to start without a real SMS provider (sign-in codes would only reach the log), unless it is a staging server", async () => {
     const { loadConfig } = await import("../src/config.js");
-    const base = { NODE_ENV: "production", JWT_SECRET: "x".repeat(40), ENCRYPTION_KEY: "0".repeat(64), DATABASE_URL: "postgres://x" };
+    const { TWILIO_ACCOUNT_SID: _a, TWILIO_AUTH_TOKEN: _b, TWILIO_FROM: _c, ...base } = PROD_ENV;
     expect(() => loadConfig(base as never)).toThrow(/TWILIO_ACCOUNT_SID/);
     expect(() => loadConfig({ ...base, TWILIO_ACCOUNT_SID: "AC1", TWILIO_AUTH_TOKEN: "t" } as never)).toThrow(/TWILIO_FROM/);
     expect(loadConfig({ ...base, TWILIO_ACCOUNT_SID: "AC1", TWILIO_AUTH_TOKEN: "t", TWILIO_FROM: "+14165550100" } as never).sms.provider).toBe("twilio");

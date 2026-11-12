@@ -59,7 +59,7 @@ export default async function ShopBanquetPage({ params, searchParams }: Props) {
     if (isApiError(e) && (e.status === 402 || e.status === 404))
       return (
         <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
-          <EmptyState title={t("rc.bq.noHalls")} description={t("rc.bq.noHallsBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+          <EmptyState headingLevel={1} title={t("rc.bq.noHalls")} description={t("rc.bq.noHallsBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
         </PageFrame>
       );
     return (

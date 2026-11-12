@@ -160,7 +160,7 @@ test.describe("landing", () => {
 });
 
 test.describe("pricing", () => {
-  test("paid cards show real prices in the text colour with a status badge; compare is closed until ?compare=1", async ({ page }) => {
+  test("paid cards show real prices in the text colour; compare is closed until ?compare=1", async ({ page }) => {
     await page.goto("/pricing");
     // Free, Pro and Studio as cards, Service as a line under them (pro-value.md §2.2); prices from PLANS through plan-copy.ts.
     const free = page.locator("#shops").getByText("$0", { exact: true }).first();
@@ -175,19 +175,24 @@ test.describe("pricing", () => {
     await expect(page.locator("#shops [data-plan=plus]")).toContainText("$199");
     await expect(page.locator("#shops")).not.toContainText(/founding/i);
     const color = (l: typeof plus) => l.evaluate((e) => getComputedStyle(e).color);
-    // Both paid prices share one colour that differs from Free, and none is a subdued grey. The marketing site draws in Clear (the default
-    // theme), where the paid prices (`text-primary-text`) are link blue #0066CC (Main Street Warm: forest Free, terracotta paid, rgb(178, 58, 35)).
+    // Every price is the page's text colour, like the home page's plan cards: no accent colour and no subdued grey.
     expect(await color(pro)).toBe(await color(plus));
     expect(await color(studio)).toBe(await color(plus));
-    expect(await color(plus)).not.toBe(await color(free));
-    expect(await color(plus)).toBe("rgb(0, 102, 204)");
+    expect(await color(plus)).toBe(await color(free));
+    expect(await color(plus)).toBe(await page.locator("h1").evaluate((e) => getComputedStyle(e).color));
     // Trade tools self-serve: both paid plans can be bought today, so no pilot badge and a working Start button on each.
     const plans = (await call<{ items: { id: string; available: boolean }[] }>("GET", "/v1/public/plans")).json.items;
     expect(plans.filter((p) => p.id !== "free").every((p) => p.available)).toBe(true);
     await expect(page.locator("#shops").getByText("Early access")).toHaveCount(0);
     // Pro starts as the 14-day trial with no card (plain signup); Studio and Service open their checkout after signup.
-    await expect(page.locator("#shops [data-plan=plus]").getByRole("link", { name: "Start free, with 14 days of Pro" })).toHaveAttribute("href", "/signup");
-    await expect(page.locator("#shops").getByRole("link", { name: "Start Studio" })).toHaveAttribute("href", "/signup?plan=studio");
+    // The button labels are the home page's (lib/marketing/plan-copy.ts), and a shop reads the home page's plan words, not the booking ones.
+    await expect(page.locator("#shops [data-plan=plus]").getByRole("link", { name: "Start your 14-day trial" })).toHaveAttribute("href", "/signup");
+    await expect(page.locator("#shops [data-plan=studio]").getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/signup?plan=studio");
+    await expect(page.locator("#shops [data-plan=free]")).toContainText("A complete loyalty program, free forever.");
+    // (The three cards only: the closed "See everything in each plan" table below them lists every feature, calendars included.)
+    for (const plan of ["free", "plus", "studio"]) await expect(page.locator(`#shops [data-plan=${plan}]`).first()).not.toContainText(/bookable calendar|per-chair/);
+    await expect(page.locator("#booking-apps")).toHaveCount(0);
+    await expect(page.getByTestId("booking-plans-link")).toHaveAttribute("href", "/pricing?for=booking#shops");
     await expect(page.locator("#shops").getByRole("link", { name: "Start Service" })).toHaveAttribute("href", "/signup?plan=pro");
     await expect(page.locator("#trades")).toContainText("Pharmacies");
     await expect(page.getByTestId("compare")).not.toHaveAttribute("open", "");
@@ -235,16 +240,52 @@ test.describe("for restaurants", () => {
     test.use({ javaScriptEnabled: false });
     test("the content is in the page", async ({ page }) => {
       await page.goto("/for-restaurants");
-      await expect(page.getByRole("heading", { level: 1, name: "keep the whole order." })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "built for how a Desi kitchen runs." })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Keep the whole order." })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Built for how a Desi kitchen runs." })).toBeVisible();
       await expect(page.locator("#festivals li").first()).toContainText(" · ");
-      await expect(page.getByRole("heading", { name: "flat prices, no commission." })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Flat prices, no commission." })).toBeVisible();
       await expect(page.getByText("Do you deliver?")).toBeVisible();
     });
   });
 
+  for (const width of [390, 1440]) {
+    test(`in Urdu the headline is legible and every section is translated at ${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/for-restaurants?lang=ur");
+      await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+      const h1 = page.getByRole("heading", { level: 1 });
+      await expect(h1).toHaveText("پورا آرڈر اپنے پاس رکھیں۔");
+      await page.evaluate(() => document.fonts.ready);
+      // The Nastaliq lines must not print over each other, the chip above or the paragraph below.
+      const boxes = await h1.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const lines: [number, number][] = [];
+        for (const r of range.getClientRects()) if (!lines.some((l) => Math.abs(l[0] - r.top) < 4)) lines.push([r.top, r.bottom]);
+        return { lines, above: el.previousElementSibling!.getBoundingClientRect().bottom, below: el.nextElementSibling!.getBoundingClientRect().top };
+      });
+      for (let i = 1; i < boxes.lines.length; i++) expect(boxes.lines[i]![0]).toBeGreaterThanOrEqual(boxes.lines[i - 1]![1] - 1);
+      expect(boxes.lines[0]![0]).toBeGreaterThanOrEqual(boxes.above);
+      expect(boxes.lines[boxes.lines.length - 1]![1]).toBeLessThanOrEqual(boxes.below);
+      // The tab title, description and hreflang links follow the language.
+      await expect(page).toHaveTitle(/ریستورانوں کے لیے/);
+      await expect(page.locator('link[rel="alternate"][hreflang]')).toHaveCount(5);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/for-restaurants\?lang=ur$/);
+      // Every section is in Urdu, not only the hero and the visit form: no English heading or paragraph is left between them.
+      await expect(page.getByTestId("english-below")).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "کوئی رش ہاتھ سے نہ جائے۔" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "وہ سوالات جو ریستوران پوچھتے ہیں۔" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "کیا آپ ڈیلیوری کرتے ہیں؟" })).toBeVisible();
+      const english = await page.locator("main :is(h2, h3, p, li, summary, button)").evaluateAll((els) =>
+        els.filter((el) => !el.closest('[lang^="en"]') && /^[A-Za-z][A-Za-z ,.'’-]{14,}$/.test((el.textContent ?? "").trim())).map((el) => (el.textContent ?? "").trim().slice(0, 60)),
+      );
+      expect(english).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    });
+  }
+
   test("founding strip shows the API's spots; Urdu sample reads right to left; no WhatsApp button without a number", async ({ page }) => {
-    const founding = (await call<{ corridors: { name: string; taken: number; total: number }[] }>("GET", "/v1/public/restaurants/founding")).json.corridors;
+    const founding = (await call<{ corridors: { name: string; taken: number; total: number }[] }>("GET", "/v1/public/restaurants/corridors")).json.corridors;
     await page.goto("/for-restaurants");
     const open = founding.filter((c) => c.total - c.taken > 0).sort((a, b) => b.total - b.taken - (a.total - a.taken) || a.name.localeCompare(b.name));
     if (open.length) await expect(page.getByTestId("founding-headline")).toHaveText(`${open[0]!.total - open[0]!.taken} of ${open[0]!.total} first-year offer spots left on ${open[0]!.name}`);
@@ -255,7 +296,7 @@ test.describe("for restaurants", () => {
     expect(await ticket.evaluate((e) => e.closest("[lang]")?.getAttribute("lang"))).toMatch(/^ur/);
     // No NEXT_PUBLIC_WHATSAPP_NUMBER in this build: the WhatsApp button is hidden, never a placeholder link.
     await expect(page.getByRole("link", { name: "Message us on WhatsApp" })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Log in" })).toBeVisible();
+    await expect(page.getByRole("banner").getByRole("link", { name: "Sign in" })).toBeVisible();
   });
 
   test("the hero line, nav labels and form switch to Urdu with right-to-left layout", async ({ page }) => {
@@ -309,12 +350,12 @@ test.describe("marketing language scope", () => {
       await expect(page.getByRole("banner").getByText("Language", { exact: false })).toHaveCount(0);
       await expect(page.locator('a[href*="lang="]')).toHaveCount(0);
       await expect(page.locator('[dir="rtl"]')).toHaveCount(0);
-      await expect(page.getByRole("banner").getByRole("link", { name: "Log in" })).toBeVisible();
+      await expect(page.getByRole("banner").getByRole("link", { name: "Sign in" })).toBeVisible();
     });
   }
 
   test("/for-restaurants works in all four languages with a switcher that links to each", async ({ page }) => {
-    const h1 = { en: "keep the whole order.", hi: "पूरा ऑर्डर अपने पास रखिए।", ur: "پورا آرڈر اپنے پاس رکھیں۔", pa: "ਪੂਰਾ ਆਰਡਰ ਆਪਣੇ ਕੋਲ ਰੱਖੋ।" } as const;
+    const h1 = { en: "Keep the whole order.", hi: "पूरा ऑर्डर अपने पास रखिए।", ur: "پورا آرڈر اپنے پاس رکھیں۔", pa: "ਪੂਰਾ ਆਰਡਰ ਆਪਣੇ ਕੋਲ ਰੱਖੋ।" } as const;
     for (const [code, title] of Object.entries(h1)) {
       await page.goto(`/for-restaurants?lang=${code}`);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText(title);
@@ -329,7 +370,7 @@ test.describe("marketing language scope", () => {
 test.describe("for BIAs", () => {
   test("the sample board report is labelled, prices match the packages, and the form takes a board meeting date", async ({ page }) => {
     await page.goto("/for-bias");
-    await expect(page.getByRole("heading", { level: 1, name: "show your board what the street event did." })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Show your board what the street event did." })).toBeVisible();
     const card = page.locator("figure", { hasText: "Sample data" }).first();
     await expect(card).toContainText("Sample data");
     await expect(card).toContainText("+38%");
@@ -345,7 +386,7 @@ test.describe("for BIAs", () => {
     await form.getByLabel("Email").fill("maya@example.com");
     await form.getByLabel("Next board meeting").fill(soon);
     await form.getByRole("button", { name: "Send" }).click();
-    await expect(page.getByText("Thanks. We'll get back to you within 1 business day.")).toBeVisible();
+    await expect(page.getByText("Thanks. We’ll get back to you within 1 business day.")).toBeVisible();
     const leads = (await call<{ items: { businessName: string; boardMeetingAt: string | null; contactRole: string | null }[] }>("GET", `/v1/rep/leads?q=${encodeURIComponent(bia)}`, undefined, adminToken)).json.items;
     expect(leads[0]).toMatchObject({ businessName: bia, boardMeetingAt: soon, contactRole: "Executive director" });
     // The rep inbox shows the board date and flags it as inside 30 days.

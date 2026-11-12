@@ -46,7 +46,7 @@ test.describe("website chat and the founder's console", () => {
     await expect(chat.getByText(question)).toBeVisible();
     await expect(chat.getByText("Our assistant is not available right now.")).toBeVisible();
     // one disclosure only: the first line the server sent replaced the pre-chat copy
-    await expect(chat.getByText(/I'm Local Loyalty's AI assistant/)).toHaveCount(1);
+    await expect(chat.getByText(/I’m Local Loyalty’s AI assistant/)).toHaveCount(1);
     await shot(visitor, "widget-offline-390");
 
     // The same tab keeps the chat across a page change.

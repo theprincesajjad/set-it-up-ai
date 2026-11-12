@@ -89,10 +89,20 @@ async function getStaff(db: DbOrTx, merchantId: string, userId: string) {
 
 /** Send a transactional invite (email preferred, SMS fallback). Not marketing: no consent needed. */
 export async function sendStaffInvite(ctx: AppContext, opts: { merchantName: string; role: StaffRole; email?: string | null; phone?: string | null }) {
-  const loginUrl = `${ctx.config.publicWebUrl.replace(/\/$/, "")}/login`;
-  const text = `${opts.merchantName} added you to their team on ${BRAND.name} as ${opts.role === "owner" ? "an owner" : `a ${opts.role}`}. Sign in with this ${opts.email ? "email" : "phone number"}: ${loginUrl}`;
-  if (opts.email) await ctx.providers.email.send({ to: opts.email, subject: `You're on the ${opts.merchantName} team`, text });
-  else if (opts.phone) await ctx.providers.sms.send(opts.phone, text);
+  const base = ctx.config.publicWebUrl.replace(/\/$/, "");
+  const roleText = opts.role === "owner" ? "an owner" : `a ${opts.role}`;
+  const lead = `${opts.merchantName} added you to their team on ${BRAND.name} as ${roleText}.`;
+  if (opts.email) {
+    // No password yet: the link opens "email me a code" with the address filled in.
+    const link = `${base}/login?mode=code&email=${encodeURIComponent(opts.email)}`;
+    const text = `${lead} Open this link and we\u2019ll email you a 6-digit code to sign in: ${link} No password needed.`;
+    await ctx.providers.email.send({ to: opts.email, subject: `You\u2019re on the ${opts.merchantName} team`, text });
+  } else if (opts.phone) {
+    // The phone code lives on the Customer tab; after the code the web app sends staff to their dashboard.
+    const link = `${base}/login?as=customer`;
+    const text = `${lead} Sign in with this phone number. We text you a code: ${link}`;
+    await ctx.providers.sms.send(opts.phone, text);
+  }
 }
 
 export async function inviteStaff(ctx: AppContext, merchantId: string, actorUserId: string, body: { email?: string; phone?: string; name?: string; role: StaffRole }) {
@@ -140,7 +150,7 @@ export async function updateStaffMember(
     if (patch.role !== undefined) set.role = role;
     if (patch.locale !== undefined) set.locale = patch.locale;
     if (patch.station !== undefined) set.station = patch.station?.trim() ? patch.station.trim() : null;
-    await tx.update(merchantStaff).set(set).where(and(eq(merchantStaff.merchantId, merchantId), eq(merchantStaff.userId, userId)));
+    if (Object.keys(set).length) await tx.update(merchantStaff).set(set).where(and(eq(merchantStaff.merchantId, merchantId), eq(merchantStaff.userId, userId)));
     if (patch.role !== undefined && patch.role !== current.role) {
       await writeAudit(tx, { actorUserId, merchantId, action: "staff.role_changed", entity: "user", entityId: userId, data: { from: current.role, to: role } });
     }

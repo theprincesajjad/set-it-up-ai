@@ -373,7 +373,8 @@ export function Regulars({ v }: { v: SoloView }) {
         </div>
         <div className="sl-reg">
           <div className="sl-pass-wrap">
-            <Photo photo={v.photos.band} sizes="(min-width: 900px) 590px, 100vw" />
+            {/* The slot is the wide column of .sl-reg: full width under 900px, then 60% of the wrap, 708px at most. */}
+            <Photo photo={v.photos.band} sizes="(min-width: 1280px) 708px, (min-width: 900px) 58vw, 100vw" />
             <div className="sl-pass glass-sheet" aria-hidden>
               <div className="t">
                 <div>
@@ -593,7 +594,6 @@ export function PriceBlock({ v }: { v: SoloView }) {
             <div key={p.key} data-plan={p.key} className={p.key === "monthly" ? "sl-plan featured" : "sl-plan card-clear"}>
               <div className="sl-plan-h">
                 <span className="name">{p.name}</span>
-                {p.badge ? <span className="sl-badge">{p.badge}</span> : null}
               </div>
               <span className="price num">
                 {p.price}
@@ -627,7 +627,7 @@ export function PriceBlock({ v }: { v: SoloView }) {
         </div>
         <p className="sl-plans-note">
           <span>{v.price.note}</span>
-          <Link href="/pricing#booking-apps" prefetch={false}>
+          <Link href="/pricing?for=booking#booking-apps" prefetch={false}>
             {C.price.compare}
           </Link>
         </p>

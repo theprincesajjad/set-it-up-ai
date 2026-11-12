@@ -56,7 +56,7 @@ export function DeliveriesTab({ goRoutes, gate }: { goRoutes: () => void; gate: 
     if (!ids.length) return;
     const r = await act.run(() => api.tiffin.sendDriverLinks(ids, "whatsapp", date));
     if (!r) return;
-    const why = r.skipped[0]?.reason === "quiet_hours" ? "It's quiet hours (9 pm to 8 am), so nothing was sent." : "Add a driver phone on the Routes tab to send it.";
+    const why = r.skipped[0]?.reason === "quiet_hours" ? "It's quiet hours (9 p.m. to 8 a.m.), so nothing was sent." : "Add a driver phone on the Routes tab to send it.";
     toast({ message: r.sent.length ? `Sent ${r.sent.length} driver ${r.sent.length === 1 ? "link" : "links"}${r.skipped.length ? `, ${r.skipped.length} skipped` : ""}` : why, tone: r.sent.length ? "success" : "neutral" });
   };
 

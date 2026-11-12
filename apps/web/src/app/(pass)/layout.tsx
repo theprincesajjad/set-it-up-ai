@@ -1,3 +1,4 @@
+import { OfflineSupport } from "@/components/pass/OfflineSupport";
 import { PassFooter } from "@/components/site/PassFooter";
 import { LiquidGlassLens } from "@/components/ui/LiquidGlassLens";
 import { preloadInter } from "@/lib/fonts/inter";
@@ -16,6 +17,7 @@ export default function PassLayout({ children }: { children: React.ReactNode }) 
       </main>
       <PassFooter />
       <LiquidGlassLens />
+      <OfflineSupport />
     </div>
   );
 }

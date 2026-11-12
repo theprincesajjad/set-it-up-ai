@@ -199,6 +199,8 @@ export interface DrawResult {
   drawnAt: string;
   /** First name and masked phone only. */
   winner: { firstName: string | null; maskedPhone: string | null };
+  /** Set on a redraw: who was replaced, so the page can show it. */
+  previousWinner?: { firstName: string | null; maskedPhone: string | null } | null;
 }
 
 export interface NeighbourhoodManager {

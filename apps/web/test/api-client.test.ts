@@ -30,6 +30,18 @@ describe("createApiClient", () => {
     expect(h["idempotency-key"]).toBe("k-123");
   });
 
+  it("raises the session-ended event only when the session is gone, not for a wrong staff PIN", async () => {
+    const ended = vi.fn();
+    const fetch = vi.fn(async (url: string) =>
+      url.endsWith("/staff-pin/verify") ? json(401, { error: { code: "invalid_pin", message: "That PIN is not right." } }) : json(401, { error: { code: "unauthorized", message: "Session expired. Sign in again." } }),
+    );
+    const c = createApiClient({ baseUrl: "http://api", fetch: fetch as unknown as typeof globalThis.fetch, onSessionEnded: ended });
+    await expect(c.post("/v1/merchants/m/staff-pin/verify", { pin: "1111" })).rejects.toBeTruthy();
+    expect(ended).not.toHaveBeenCalled();
+    await expect(c.get("/v1/me")).rejects.toBeTruthy();
+    expect(ended).toHaveBeenCalledTimes(1);
+  });
+
   it("omits the token for anonymous calls", async () => {
     const fetch = vi.fn(async () => json(200, {}));
     const c = createApiClient({ baseUrl: "http://api", getAccessToken: () => "tok", fetch });
@@ -52,7 +64,7 @@ describe("createApiClient", () => {
     const err = (await c.get("/v1/x").catch((e) => e)) as ApiError;
     expect(err.status).toBe(502);
     expect(err.code).toBe("server_error");
-    expect(errorMessage(err)).toMatch(/on our end/);
+    expect(errorMessage(err)).toBe("Something went wrong on our side. Try again in a minute.");
     await expect(c.delete("/v1/me", { confirm: "DELETE" })).resolves.toBeUndefined();
   });
 
@@ -60,7 +72,7 @@ describe("createApiClient", () => {
     const c = createApiClient({ baseUrl: "http://api", fetch: vi.fn(async () => Promise.reject(new TypeError("fetch failed"))) });
     const err = (await c.get("/v1/x").catch((e) => e)) as ApiError;
     expect(err.isNetwork).toBe(true);
-    expect(errorMessage(err)).toBe("Can't connect right now. Check your connection and try again.");
+    expect(errorMessage(err)).toBe("We couldn’t reach Local Loyalty. Check your connection and try again.");
   });
 
   it("refreshes once on 401 and retries with the new token", async () => {

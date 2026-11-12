@@ -224,7 +224,7 @@ export function applyItemOptions(item: Pick<typeof catalogItems.$inferSelect, "n
 }
 
 /** Price an order from the catalog. Throws 400 for unknown/unavailable items or modifiers. */
-export async function priceItems(db: DbOrTx, merchantId: string, input: z.infer<typeof commerceApi.placeOrderBody>["items"]): Promise<PricedLine[]> {
+export async function priceItems(db: DbOrTx, merchantId: string, input: z.infer<typeof commerceApi.placeOrderBody>["items"], now: Date = new Date()): Promise<PricedLine[]> {
   const ids = [...new Set(input.map((i) => i.catalogItemId))];
   const rows = await db.select().from(catalogItems).where(and(eq(catalogItems.merchantId, merchantId), inArray(catalogItems.id, ids)));
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -235,7 +235,7 @@ export async function priceItems(db: DbOrTx, merchantId: string, input: z.infer<
     if (!item) throw badRequest("An item in your order isn't on this menu");
     if (!item.available || !item.orderable) throw new HttpError(409, "item_unavailable", `${item.name} isn't available right now`, { catalogItemId: item.id });
     // 86 button (kitchen): sold out until a set time.
-    if (item.soldOutUntil && item.soldOutUntil.getTime() > Date.now()) throw new HttpError(409, "item_sold_out", `${item.name} is sold out right now`, { catalogItemId: item.id, soldOutUntil: item.soldOutUntil.toISOString() });
+    if (item.soldOutUntil && item.soldOutUntil.getTime() > now.getTime()) throw new HttpError(409, "item_sold_out", `${item.name} is sold out right now`, { catalogItemId: item.id, soldOutUntil: item.soldOutUntil.toISOString() });
     const seen = new Set<string>();
     const mods = line.modifiers.map((sel) => {
       const group = item.modifiers.find((g) => g.name.toLowerCase() === sel.name.toLowerCase());
@@ -403,7 +403,7 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
   // Busy mode: an ASAP order gets the longer quoted pickup time while the kitchen is busy.
   if (!isPreorder && !body.slotId && !pickupAt && busyActive(merchant, now)) pickupAt = new Date(now.getTime() + quotedWaitMinutes(merchant, now) * 60_000);
 
-  const lines = await priceItems(ctx.db, merchant.id, body.items);
+  const lines = await priceItems(ctx.db, merchant.id, body.items, ctx.now());
   const subtotal = lines.reduce((s, l) => s + l.lineTotalCents, 0);
 
   let potsRequested = 0;

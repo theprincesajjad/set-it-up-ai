@@ -24,7 +24,7 @@ import {
   visits,
   type DbOrTx,
 } from "@ll/db";
-import { PLANS, isStopKeyword, messagingApi, normalizeReplyWord, promosApi } from "@ll/shared";
+import { BRAND, PLANS, isStopKeyword, messagingApi, normalizeReplyWord, promosApi } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import { hmacSha256, safeEqual } from "../lib/crypto.js";
@@ -1024,7 +1024,7 @@ export interface InboundSmsResult {
 export async function handleInboundSms(ctx: AppContext, fromPhone: string, body: string): Promise<InboundSmsResult> {
   const word = normalizeReplyWord(body);
   if (word === "HELP" || word === "INFO" || word === "AIDE") {
-    return { action: "help", merchantsAffected: 0, reply: "Local Loyalty: shop rewards messages. Reply STOP to opt out of all shops. Help: hello@localloyalty.example" };
+    return { action: "help", merchantsAffected: 0, reply: `Local Loyalty: shop rewards messages. Reply STOP to opt out of all shops. Help: ${BRAND.supportEmail}` };
   }
   if (!isStopKeyword(body)) {
     // phase-solo D: anything else (not START, which integrations-sms handles) is a reply: it lands in the sender's inbox thread.
@@ -1169,7 +1169,8 @@ export async function listPromoTemplates(ctx: AppContext, merchant: Merchant, lo
   const { promoTemplates } = await import("@ll/db");
   const today = localDate(ctx.now(), merchant.timezone || "America/Toronto");
   const t = translator(locale);
-  const fill = (s: string) => s.replaceAll("{shop}", merchant.name);
+  // A shop name that ends in a full stop ("Pinecone Coffee Co.") must not double it when the template's sentence ends right after {shop}.
+  const fill = (s: string) => (merchant.name.endsWith(".") ? s.replaceAll("{shop}.", merchant.name) : s).replaceAll("{shop}", merchant.name);
   const builtIn = seasonalPromoTemplates(merchant.vertical, today).map((x) => ({ key: x.key, season: x.season, title: fill(t(x.titleKey as never)), body: fill(t(x.bodyKey as never)), start: x.start, end: x.end, inSeason: x.inSeason, daysAway: x.daysAway }));
   // Templates an admin added (promo_templates), when their key is not a built-in one.
   const extra = await ctx.db.select().from(promoTemplates).where(and(eq(promoTemplates.trade, promoTradeFor(merchant.vertical)), eq(promoTemplates.active, true)));

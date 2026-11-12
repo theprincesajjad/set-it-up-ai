@@ -81,8 +81,9 @@ test.describe("sign in", () => {
     await expect(page.getByText("Use at least 8 characters for your new password.")).toBeVisible();
     await page.getByLabel("New password").fill("second-password-2");
     await page.getByRole("button", { name: "Set password and sign in" }).click();
-    // A brand-new account with no shop lands on the sign-up entry, signed in.
-    await expect(page).toHaveURL(/\/signup/);
+    // A brand-new account with no shop lands on /signed-in, which says so and offers to set up a shop.
+    await expect(page).toHaveURL(/\/signed-in/);
+    await expect(page.getByRole("link", { name: "Set up a shop" })).toBeVisible();
     const ok = await fetch(`${API}/v1/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password: "second-password-2" }) });
     expect(ok.status).toBe(200);
   });

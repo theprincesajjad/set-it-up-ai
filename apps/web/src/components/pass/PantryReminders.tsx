@@ -8,12 +8,13 @@ import { useState } from "react";
 import type { groceryApi } from "@ll/shared";
 import { SwitchControl } from "@/components/ui/Switch";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { PANTRY_LEAD_DAYS } from "@ll/shared";
 import { useFmt } from "@/components/restaurant/ui";
 import { ConsentNeeded, isNoConsent } from "./ConsentNeeded";
 
 export function PantryReminders({ items: initial }: { items: groceryApi.MyPantryResponse["items"] }) {
+  const errText = useErrorText();
   const { t } = useFmt();
   const [items, setItems] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export function PantryReminders({ items: initial }: { items: groceryApi.MyPantry
       setItems((xs) => xs.map((x) => (x.entryId === entryId ? r : x)));
     } catch (e) {
       if (isNoConsent(e)) setNoConsent(items.find((x) => x.entryId === entryId)?.shop.name ?? "");
-      else setError(errorMessage(e));
+      else setError(errText(e));
     } finally {
       setBusy(null);
     }

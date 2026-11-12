@@ -2,6 +2,7 @@ import { Check, Coffee, Croissant, Flower2, MessageCircle, Scissors, Smartphone,
 import { QrCode } from "@/components/ui/QrCode";
 import { copy } from "@/copy/en-CA";
 import "./product.css";
+import { demoQrUrl } from "@/lib/marketing/demo-qr";
 
 /**
  * The landing page's product moments (wave U, live on the home page since wave V), drawn in code: a wallet pass in Apple Wallet's
@@ -82,7 +83,7 @@ export function WalletPass({ data, className, fill = false, newest = false, qr }
       </div>
       <div className="wu-pass-code">
         <span className="wu-pass-qr">
-          <QrCode value={qr ?? `https://localloyalty.ca/c/${data.code.replace(" ", "")}`} size={120} ecc="L" label={W.memberCode} />
+          <QrCode value={qr ?? demoQrUrl()} size={120} ecc="L" label={W.memberCode} />
           <small>{data.code}</small>
         </span>
       </div>

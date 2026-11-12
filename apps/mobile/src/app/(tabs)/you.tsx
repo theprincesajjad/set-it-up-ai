@@ -1,4 +1,5 @@
 import { BRAND } from "@ll/shared";
+import { SUPPORT_EMAIL } from "../../config";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -73,7 +74,7 @@ export default function You() {
         <ListRow leadingIcon={Bell} title={t("sh.set.notifications")} chevron onPress={() => router.push("/settings/notifications")} />
         <ListRow leadingIcon={Store} title={t("sh.you.shopsMessages")} chevron onPress={() => router.push("/settings/shops")} />
         <ListRow leadingIcon={Shield} title={t("sh.you.privacy")} chevron onPress={() => router.push("/settings/privacy")} />
-        <ListRow leadingIcon={CircleHelp} title={t("sh.you.help")} chevron onPress={() => Linking.openURL(`mailto:${BRAND.supportEmail}`)} divider={merchants.length > 0} />
+        {SUPPORT_EMAIL ? <ListRow leadingIcon={CircleHelp} title={t("sh.you.help")} chevron onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)} divider={merchants.length > 0} /> : null}
         {merchants.length > 0 ? (
           <ListRow
             leadingIcon={Tablet}

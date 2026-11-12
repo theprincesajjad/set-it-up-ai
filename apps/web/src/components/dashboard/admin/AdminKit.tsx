@@ -82,7 +82,7 @@ export function DeltaChip({ delta, className }: { delta: KpiDelta; className?: s
  * One KPI: label, a rolling number, a delta chip or caption, and an optional area sparkline. The whole tile is the link. With `dl` the tile
  * is a description-list group (label in a <dt>, the rest in <dd>s) and the link stretches from inside the <dt>.
  */
-export function KpiTile({ item, loading, size = "md", dl }: { item: KpiItem; loading?: boolean; size?: "md" | "sm"; dl?: boolean }) {
+export function KpiTile({ item, loading, size = "md", dl, className }: { item: KpiItem; loading?: boolean; size?: "md" | "sm"; dl?: boolean; className?: string }) {
   const s = item;
   const L = dl ? "dt" : "span";
   const V = dl ? "dd" : "span";
@@ -122,6 +122,7 @@ export function KpiTile({ item, loading, size = "md", dl }: { item: KpiItem; loa
     s.href && "transition-[background-color,box-shadow] hover:bg-accent/40",
     s.href && !dl && "focus-visible:focus-ring",
     s.active && "bg-accent/40 shadow-[inset_0_0_0_2px_var(--trade),var(--ll-shadow-card)]",
+    className,
   );
   return s.href && !dl ? (
     <Link href={s.href} className={cls} aria-current={s.active ? "true" : undefined}>
@@ -138,12 +139,18 @@ export function KpiTile({ item, loading, size = "md", dl }: { item: KpiItem; loa
  */
 export function KpiGrid({ items, label, loading, cols = 4, size, className, dl }: { items: KpiItem[]; label: string; loading?: boolean; cols?: 2 | 3 | 4 | 5; size?: "md" | "sm"; className?: string; dl?: boolean }) {
   const lg = { 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4", 5: "lg:grid-cols-5" }[cols];
-  const cells = items.map((s, i) => (
-    // An odd last tile spans both phone columns so the grid has no hole.
-    <div key={s.label} className={cn("flex min-w-0 [&>*]:flex-1", i === items.length - 1 && items.length % 2 === 1 && "col-span-2 lg:col-span-1")}>
-      <KpiTile item={s} loading={loading} size={size} dl={dl} />
-    </div>
-  ));
+  // An odd last tile spans both phone columns so the grid has no hole.
+  const cells = items.map((s, i) => {
+    const span = i === items.length - 1 && items.length % 2 === 1 && "col-span-2 lg:col-span-1";
+    // In a description list the tile is itself the dt/dd group, a direct child of the <dl> (a wrapper div would break the list semantics).
+    return dl ? (
+      <KpiTile key={s.label} item={s} loading={loading} size={size} dl className={cn("min-w-0", span)} />
+    ) : (
+      <div key={s.label} className={cn("flex min-w-0 [&>*]:flex-1", span)}>
+        <KpiTile item={s} loading={loading} size={size} />
+      </div>
+    );
+  });
   const cls = cn("grid grid-cols-2 gap-3 md:gap-4", lg, className);
   return dl ? (
     <dl aria-label={label} aria-busy={loading || undefined} className={cls}>

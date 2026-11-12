@@ -295,7 +295,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         <Action tone="peach" icon={DirectionsGlyph} label={tr("shop.directions").toLowerCase()} onPress={directions} disabled={!loc} />
         <Action tone="mint" icon={CallGlyph} label={tr("shop.call").toLowerCase()} onPress={() => Linking.openURL(`tel:${s.merchant.phone ?? loc?.phone}`)} disabled={!(s.merchant.phone || loc?.phone)} />
         <Action tone="butter" icon={WebsiteGlyph} label={tr("shop.website").toLowerCase()} onPress={() => Linking.openURL(s.merchant.website!)} disabled={!s.merchant.website} />
-        <Action tone="lilac" icon={ShareGlyph} label={tr("ms.share").toLowerCase()} onPress={() => Share.share({ message: `${s.merchant.name}: https://local.example/s/${s.merchant.slug}` })} />
+        <Action tone="lilac" icon={ShareGlyph} label={tr("ms.share").toLowerCase()} onPress={() => Share.share({ message: `${s.merchant.name}: ${WEB_URL}/s/${s.merchant.slug}` })} />
       </View>
 
       <WarmCard style={{ marginTop: 24 }}>

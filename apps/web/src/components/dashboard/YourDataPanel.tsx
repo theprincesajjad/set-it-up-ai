@@ -1,7 +1,7 @@
 "use client";
 import { Download, FileArchive } from "lucide-react";
 import { useEffect, useState } from "react";
-import { MERCHANT_EXPORTS, RETENTION } from "@ll/shared";
+import { BRAND, MERCHANT_EXPORTS, RETENTION } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { BFF_BASE } from "@/lib/api/browser";
 import { useMerchant } from "./MerchantContext";
@@ -28,7 +28,7 @@ export function YourDataPanel() {
         <p className="text-meta text-fg">
           Downloads of your customers, orders, bookings, reviews and messages come with a paid plan. If you close your shop or move back to Free, you keep a free export of all of it for {RETENTION.leaverExportDays} days.
         </p>
-        <p className="mt-3 text-meta text-fg">Need a copy now? Email help@localloyalty.example and we&apos;ll send it within 30 days.</p>
+        <p className="mt-3 text-meta text-fg">Need a copy now? Email {BRAND.supportEmail} and we&apos;ll send it within 30 days.</p>
         <p className="mt-3 text-meta text-fg-muted">We keep balance and purchase history for 7 years for tax and dispute reasons. Phone numbers stay hidden in lists.</p>
       </Panel>
     );

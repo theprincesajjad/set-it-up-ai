@@ -10,6 +10,7 @@ import { Platform } from "react-native";
 import { api } from "../state/api";
 import { KEYS, setJson } from "../state/storage";
 import { openDeepLink } from "./deepLinks";
+import { savedTranslator } from "./pushText";
 
 export { openDeepLink };
 
@@ -26,7 +27,8 @@ export type PushResult = "registered" | "denied" | "unavailable";
 export async function registerForPush(): Promise<PushResult> {
   if (!Device.isDevice) return "unavailable";
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", { name: "Points and orders", importance: Notifications.AndroidImportance.DEFAULT });
+    const tr = await savedTranslator();
+    await Notifications.setNotificationChannelAsync("default", { name: tr("mf.push.channel"), importance: Notifications.AndroidImportance.DEFAULT });
   }
   const existing = await Notifications.getPermissionsAsync();
   let granted = existing.granted;

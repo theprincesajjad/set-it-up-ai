@@ -20,7 +20,9 @@ const bricolage = Bricolage_Grotesque({ subsets: ["latin"], axes: ["opsz", "wdth
 
 /**
  * Hindi, Urdu and Punjabi (packages/shared locales.ts `fonts`). Only the CSS variables are set here, on <html>; a face downloads when a glyph of its
- * script is drawn (`preload: false`, unicode-range subsets), so an English visitor fetches none of them. globals.css picks the stack by `[lang]`.
+ * script is drawn in that face (`preload: false`, unicode-range subsets). An English page must therefore draw no hi, ur or pa glyph in
+ * these stacks: the footer's three language names use system fonts for that reason (SiteFooter), and test/marketing-footer-fonts.test.ts
+ * holds it. globals.css picks the stack by `[lang]`.
  */
 const notoDeva = Noto_Sans_Devanagari({ subsets: ["devanagari"], variable: "--font-noto-deva", display: "swap", preload: false });
 const notoGuru = Noto_Sans_Gurmukhi({ subsets: ["gurmukhi"], variable: "--font-noto-guru", display: "swap", preload: false });
@@ -31,7 +33,7 @@ const notoNaskh = Noto_Naskh_Arabic({ subsets: ["arabic"], variable: "--font-not
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
   title: { default: `${BRAND.name} · ${BRAND.tagline}`, template: `%s · ${BRAND.name}` },
-  description: "A free loyalty program for independent shops, shared with every shop on the street. Free forever, no fee on loyalty, unlimited locations.",
+  description: "A free digital stamp card for local shops, kept in your customers’ Apple Wallet or Google Wallet and stamped from any phone. Free forever for loyalty, with no fee on it.",
   applicationName: BRAND.name,
   openGraph: { siteName: BRAND.name, type: "website", locale: "en_CA" },
   twitter: { card: "summary_large_image" },

@@ -11,7 +11,8 @@ import { TextField } from "@/components/ui/TextField";
 import { Timeline, ticketSteps } from "@/components/ui/Timeline";
 import { BigNumber, FactList, Heading, Section, useFmt } from "@/components/restaurant/ui";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { PaymentBox, pollUntil } from "./PaymentBox";
 
@@ -30,6 +31,7 @@ function itemTitle(t: serviceApi.PublicQuoteResponse["ticket"]) {
  * holds the date. In English, Hindi, Urdu and Punjabi, with the cap line in every one.
  */
 export function QuoteView({ token, initial, preview = false }: { token: string; initial: serviceApi.PublicQuoteResponse; preview?: boolean }) {
+  const errText = useErrorText();
   const { t, moneyExact: money, date, number, percent, locale } = useFmt();
   const [data, setData] = useState(initial);
   const [deposit, setDeposit] = useState<serviceApi.DepositPaymentDto | null>(null);
@@ -73,7 +75,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
       setNotice(r.deposit ? null : t(ev ? "sv.q.noticeEvent" : "sv.q.noticeApproved", { shop: shopName }));
     } catch (e) {
       if (isApiError(e) && e.status === 409) await reload().catch(() => undefined);
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setBusy(null);
     }
@@ -89,7 +91,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
       setNotice(t("sv.q.noticeDeclined", { shop: shopName }));
       setDeclineOpen(false);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setBusy(null);
     }
@@ -102,7 +104,7 @@ export function QuoteView({ token, initial, preview = false }: { token: string; 
       setDeposit(r.deposit);
       if (!r.deposit) await reload();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setResuming(false);
     }

@@ -7,8 +7,10 @@ import type { staffApi } from "@ll/shared";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
 import { Linking, Pressable, StyleSheet, View } from "react-native";
-import { cameInText, carryOverLine, formatPts, initials, matchesHeading, maskedRow, stampsLeft, visitThisMonth, AUTO_RETURN_SECONDS, SCAN_UNDO_SECONDS, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
-import { rewardInSentence } from "../../lib/format";
+import { maskedRow, AUTO_RETURN_SECONDS, SCAN_UNDO_SECONDS, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
+import { cameInTextL, carryOverLineL, matchesHeadingL, visitThisMonthL } from "../../lib/counterText";
+import { formatPtsL, rewardInSentenceL, termWordL } from "../../lib/formatL";
+import { useLocale } from "../../lib/i18n";
 import { disp, ui, useTheme } from "../../theme";
 import { Avatar, Button, CountUp, Text, haptic } from "../../ui";
 
@@ -17,11 +19,12 @@ const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"] as c
 /** Black viewfinder: reticle, "Hold the card up", the camera behind it when permission is granted. */
 export function ScanViewfinder({ onScan, hint, lastScanGuardMs = 4000 }: { onScan: (data: string) => void; hint: string; lastScanGuardMs?: number }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const [permission, request] = useCameraPermissions();
   const last = useRef({ data: "", at: 0 });
   const granted = !!permission?.granted;
   return (
-    <View accessibilityLabel="Scan a card" style={[styles.finder, { backgroundColor: c.fg }]}>
+    <View accessibilityLabel={t("counter.scan.panel")} style={[styles.finder, { backgroundColor: c.fg }]}>
       {granted ? (
         <CameraView
           style={StyleSheet.absoluteFill}
@@ -40,7 +43,7 @@ export function ScanViewfinder({ onScan, hint, lastScanGuardMs = 4000 }: { onSca
       <View pointerEvents="none" style={[styles.reticle, { borderColor: c.bg }]} />
       <View style={styles.finderText} pointerEvents="box-none">
         <Text style={[disp(24, 800, 28), { textAlign: "center" }]} rawColor={c.bg}>
-          Hold the card up
+          {t("counter.scan.hold")}
         </Text>
         <Text style={[ui(13, 400, 18), { marginTop: 6, textAlign: "center" }]} rawColor={c.fgSubtle}>
           {hint}
@@ -52,7 +55,7 @@ export function ScanViewfinder({ onScan, hint, lastScanGuardMs = 4000 }: { onSca
             style={{ marginTop: 10, minHeight: 36, justifyContent: "center" }}
           >
             <Text style={[ui(13, 600, 18), { textDecorationLine: "underline" }]} rawColor={c.bg}>
-              {permission.canAskAgain ? "Turn on the camera" : "Open settings to turn on the camera"}
+              {permission.canAskAgain ? t("mc.cam.turnOn") : t("mc.cam.openSettings")}
             </Text>
           </Pressable>
         ) : null}
@@ -64,8 +67,9 @@ export function ScanViewfinder({ onScan, hint, lastScanGuardMs = 4000 }: { onSca
 /** Four boxes for the last 4 digits; the next empty one is outlined black. */
 export function DigitBoxes({ digits, boxWidth = 62 }: { digits: string; boxWidth?: number }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
-    <View accessible accessibilityLabel={digits ? `Entered ${digits.split("").join(" ")}` : "Enter the last 4 digits"} style={styles.boxes}>
+    <View accessible accessibilityLabel={digits ? t("mc.entered", { digits: digits.split("").join(" ") }) : t("counter.digits.group")} style={styles.boxes}>
       {[0, 1, 2, 3].map((i) => (
         <View key={i} style={[styles.box, { width: boxWidth, borderColor: i === digits.length ? c.fg : c.line, backgroundColor: c.bg }]}>
           <Text style={[ui(28, 500, 34), { fontVariant: ["tabular-nums"] }]}>{digits[i] ?? ""}</Text>
@@ -78,6 +82,7 @@ export function DigitBoxes({ digits, boxWidth = 62 }: { digits: string; boxWidth
 /** 1 to 9, a gap, 0 and Del (the layout on the frames). */
 export function ScanKeypad({ onKey, disabled }: { onKey: (k: "back" | string) => void; disabled?: boolean }) {
   const { c, r, x, isClear } = useTheme();
+  const { t } = useLocale();
   // Clear keys (audit #22): 56 tall, radius 12, white with a hairline ring and the card elevation; Delete is a bare text key.
   const clearKey = (back: boolean, pressed: boolean) =>
     back
@@ -92,7 +97,7 @@ export function ScanKeypad({ onKey, disabled }: { onKey: (k: "back" | string) =>
           <Pressable
             key={k}
             accessibilityRole="keyboardkey"
-            accessibilityLabel={k === "back" ? "Delete" : k}
+            accessibilityLabel={k === "back" ? t("mc.delete") : k}
             disabled={disabled}
             onPress={() => {
               haptic.select();
@@ -102,7 +107,7 @@ export function ScanKeypad({ onKey, disabled }: { onKey: (k: "back" | string) =>
             style={({ pressed }) => [styles.padKey, { backgroundColor: pressed ? c.bgMuted : c.bgSubtle, opacity: disabled ? 0.5 : 1 }, isClear ? clearKey(k === "back", pressed) : null]}
           >
             <Text style={k === "back" ? [ui(15, 500, 20)] : [ui(26, 400, 32), { fontVariant: ["tabular-nums"] }, isClear ? { fontSize: 24, lineHeight: 32, letterSpacing: -0.24 } : null]} rawColor={k === "back" ? c.fgMuted : c.fg}>
-              {k === "back" ? "Del" : k}
+              {k === "back" ? t("mc.del") : k}
             </Text>
           </Pressable>
         ),
@@ -114,8 +119,9 @@ export function ScanKeypad({ onKey, disabled }: { onKey: (k: "back" | string) =>
 /** A row of stamp circles: accent when earned, a hairline ring when empty. */
 export function StampRow({ goal, filled, size = 28 }: { goal: number; filled: number; size?: number }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
-    <View accessible accessibilityRole="image" accessibilityLabel={`${Math.min(filled, goal)} of ${goal} stamps`} style={styles.stamps}>
+    <View accessible accessibilityRole="image" accessibilityLabel={t("mc.stampsOf", { n: Math.min(filled, goal), goal })} style={styles.stamps}>
       {Array.from({ length: goal }, (_, i) => {
         const on = i < filled;
         return (
@@ -131,15 +137,17 @@ export function StampRow({ goal, filled, size = 28 }: { goal: number; filled: nu
 /** Two or more members end in the typed digits: tap one and the stamp is added at once. */
 export function MatchList({ digits, items, program, now, onPick, onNew }: { digits: string; items: staffApi.MemberSummaryDto[]; program: CounterProgram | null; now: Date; onPick: (m: staffApi.MemberSummaryDto) => void; onNew: () => void }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const auto = !!program?.counterAutoStamp && program.earnType !== "per_dollar";
   return (
     <View style={{ gap: 14 }}>
       <View style={{ gap: 4 }}>
         <Text style={disp(22, 800, 28)} accessibilityRole="header">
-          {matchesHeading(items.length, digits)}
+          {matchesHeadingL(L, items.length, digits)}
         </Text>
         <Text style={ui(14, 400, 20)} rawColor={c.fgMuted}>
-          {auto ? "Tap one. Stamp is added immediately." : "Tap one to open their card."}
+          {auto ? t("counter.pick.tapStamp") : t("counter.pick.tapOpen")}
         </Text>
       </View>
       <DigitBoxes digits={digits} />
@@ -149,25 +157,25 @@ export function MatchList({ digits, items, program, now, onPick, onNew }: { digi
             <Avatar name={m.name} id={m.memberId} size={40} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={ui(17, 600, 22)} numberOfLines={1}>
-                {m.name ?? "Member"}
+                {m.name ?? t("counter.member")}
               </Text>
               <Text style={[ui(14, 400, 19), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted}>
                 {maskedRow(m.maskedPhone)}
               </Text>
               <Text style={ui(13, 400, 18)} rawColor={c.fgMuted}>
-                {program?.earnType === "stamps" && program.stampGoal ? `${Math.min(m.balance, program.stampGoal)} of ${program.stampGoal}` : formatPts(m.balance, m.terminology)} · {cameInText(m.lastVisitAt, now)}
+                {program?.earnType === "stamps" && program.stampGoal ? t("counter.ofGoal", { n: Math.min(m.balance, program.stampGoal), goal: program.stampGoal }) : formatPtsL(L, m.balance, m.terminology)} · {cameInTextL(L, m.lastVisitAt, now)}
               </Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={`${auto ? "Stamp" : "Open"} ${m.name ?? "member"}`} onPress={() => onPick(m)} style={({ pressed }) => [styles.pill, { backgroundColor: c.brand, opacity: pressed ? 0.85 : 1 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t(auto ? "counter.stampName" : "counter.openName", { name: m.name ?? t("mc.memberFallback") })} onPress={() => onPick(m)} style={({ pressed }) => [styles.pill, { backgroundColor: c.brand, opacity: pressed ? 0.85 : 1 }]}>
               <Text style={ui(14, 600, 18)} rawColor={c.bg}>
-                {auto ? "Stamp" : "Open"}
+                {auto ? t("counter.pick.stampBtn") : t("counter.pick.openBtn")}
               </Text>
             </Pressable>
           </View>
         ))}
       </View>
       <Pressable accessibilityRole="button" onPress={onNew} style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}>
-        <Text style={ui(14, 500, 19)}>Not here? Add them as a new customer with their number</Text>
+        <Text style={ui(14, 500, 19)}>{t("counter.pick.notHere")}</Text>
       </Pressable>
     </View>
   );
@@ -176,12 +184,13 @@ export function MatchList({ digits, items, program, now, onPick, onNew }: { digi
 /** Four digits that match nobody. */
 export function NoMatch({ digits, onTryAgain, onNew }: { digits: string; onTryAgain: () => void; onNew: () => void }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
     <View style={{ gap: 14 }}>
-      <Text style={disp(22, 800, 28)} accessibilityRole="header">{`No one ends in ${digits}`}</Text>
-      <Text style={ui(14, 400, 20)} rawColor={c.fgMuted}>Check the digits, or add them as a new customer with their number.</Text>
-      <Button size="lg" variant="secondary" onPress={onTryAgain}>Try again</Button>
-      <Button size="lg" onPress={onNew}>Add as a new customer</Button>
+      <Text style={disp(22, 800, 28)} accessibilityRole="header">{t("counter.nomatch.title", { digits })}</Text>
+      <Text style={ui(14, 400, 20)} rawColor={c.fgMuted}>{t("counter.nomatch.body")}</Text>
+      <Button size="lg" variant="secondary" onPress={onTryAgain}>{t("counter.tryAgain")}</Button>
+      <Button size="lg" onPress={onNew}>{t("counter.addNew")}</Button>
     </View>
   );
 }
@@ -189,6 +198,7 @@ export function NoMatch({ digits, onTryAgain, onNew }: { digits: string; onTryAg
 /** Black bar: "Stamp added · 8:02 am" and Undo with its seconds. It stays after the screen returns to scan. */
 export function UndoToast({ at, name, time, onUndo, busy }: { at: number; name?: string | null; time: string; onUndo: () => void; busy?: boolean }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
@@ -199,11 +209,11 @@ export function UndoToast({ at, name, time, onUndo, busy }: { at: number; name?:
   return (
     <View accessibilityLiveRegion="polite" style={[styles.toast, { backgroundColor: c.fg }]}>
       <Text style={[ui(13, 500, 18), { flex: 1 }]} rawColor={c.bg} numberOfLines={1}>
-        {`${name ? `${name.split(/\s+/)[0]} · ` : ""}Stamp added · ${time}`}
+        {`${name ? `${name.split(/\s+/)[0]} · ` : ""}${t("mc.stampAdded", { time })}`}
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Undo, ${left} seconds left`} disabled={busy} onPress={onUndo} style={{ minHeight: 36, justifyContent: "center", paddingLeft: 12, opacity: busy ? 0.6 : 1 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t("mc.undoLeft", { n: left })} disabled={busy} onPress={onUndo} style={{ minHeight: 36, justifyContent: "center", paddingLeft: 12, opacity: busy ? 0.6 : 1 }}>
         <Text style={[ui(13, 700, 18), { fontVariant: ["tabular-nums"] }]} rawColor={c.bg}>
-          {`Undo ${left}s`}
+          {t("counter.undoSecs", { n: left })}
         </Text>
       </Pressable>
     </View>
@@ -213,15 +223,17 @@ export function UndoToast({ at, name, time, onUndo, busy }: { at: number; name?:
 /** Stamped: one big number, the stamp row, what is left, then back to scan on its own. */
 export function StampedScreen({ view, program, onNext }: { view: SuccessView; program: CounterProgram; onNext: () => void }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const stamps = program.earnType === "stamps" && program.stampGoal > 0 && view.balance != null;
   const goal = program.stampGoal;
   const n = view.balance ?? 0;
   return (
     <View accessible accessibilityLiveRegion="assertive" accessibilityLabel={view.announcement} style={{ alignItems: "center", gap: 10, paddingTop: 8 }}>
       <Avatar name={view.name ?? null} size={64} />
-      <Text style={disp(24, 800, 30)} center>{view.name ?? "Customer"}</Text>
+      <Text style={disp(24, 800, 30)} center>{view.name ?? t("counter.customer")}</Text>
       <Text style={ui(13, 400, 18)} rawColor={c.fgMuted} center>
-        {view.offline ? "Saved on this phone. It sends when you're back online." : view.visitsThisMonth ? visitThisMonth(view.visitsThisMonth) : " "}
+        {view.offline ? t("counter.queued.body") : view.visitsThisMonth ? visitThisMonthL(L, view.visitsThisMonth) : " "}
       </Text>
       {stamps ? (
         <Text style={[disp(112, 800, 120), { fontVariant: ["tabular-nums"], marginTop: 8 }]} rawColor={c.accent} center>
@@ -239,8 +251,8 @@ export function StampedScreen({ view, program, onNext }: { view: SuccessView; pr
         <Text key={m} variant="bodyStrong" color="accentText" center>{m}</Text>
       ))}
       <View style={{ alignSelf: "stretch", marginTop: 16, gap: 8 }}>
-        <Button size="counter" onPress={onNext}>Next customer</Button>
-        <Text style={ui(12, 400, 16)} rawColor={c.fgMuted} center>{`Returns to scan in ${AUTO_RETURN_SECONDS} seconds`}</Text>
+        <Button size="counter" onPress={onNext}>{t("counter.next")}</Button>
+        <Text style={ui(12, 400, 16)} rawColor={c.fgMuted} center>{t("counter.returnsIn", { n: AUTO_RETURN_SECONDS })}</Text>
       </View>
     </View>
   );
@@ -249,28 +261,30 @@ export function StampedScreen({ view, program, onNext }: { view: SuccessView; pr
 /** Goal reached: orange Redeem, or stamp on purpose and keep the reward. */
 export function RewardReadyScreen({ member, program, busy, onRedeem, onStamp, onBack }: { member: staffApi.MemberSummaryDto; program: CounterProgram; busy: boolean; onRedeem: () => void; onStamp: () => void; onBack: () => void }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const reward = member.rewardsAffordable[0] ?? null;
-  const rewardName = reward?.name ?? member.nextReward?.name ?? "Free drink";
+  const rewardName = reward?.name ?? member.nextReward?.name ?? t("counter.defaultReward");
   const cost = reward?.pointsCost ?? program.stampGoal ?? member.balance;
   return (
     <View style={{ alignItems: "center", gap: 10, paddingTop: 8 }}>
       <Avatar name={member.name} size={64} />
-      <Text style={disp(22, 800, 28)} center>{member.name ?? "Member"}</Text>
+      <Text style={disp(22, 800, 28)} center>{member.name ?? t("counter.member")}</Text>
       <View style={[styles.readyPill, { backgroundColor: c.accentSoft }]}>
-        <Text style={ui(13, 600, 17)} rawColor={c.accentText}>Reward ready</Text>
+        <Text style={ui(13, 600, 17)} rawColor={c.accentText}>{t("counter.rewardReady")}</Text>
       </View>
       <Text style={[disp(54, 800, 56), { marginTop: 4 }]} center accessibilityRole="header">{rewardName}</Text>
       {program.earnType === "stamps" && program.stampGoal ? <StampRow goal={program.stampGoal} filled={program.stampGoal} /> : null}
-      <Text style={ui(13, 400, 18)} rawColor={c.fgMuted} center>{carryOverLine(member.name, member.balance, cost, member.terminology)}</Text>
+      <Text style={ui(13, 400, 18)} rawColor={c.fgMuted} center>{carryOverLineL(L, member.name, member.balance, cost, member.terminology)}</Text>
       <View style={{ alignSelf: "stretch", marginTop: 24, gap: 10 }}>
         <Pressable accessibilityRole="button" disabled={busy} onPress={onRedeem} style={({ pressed }) => [styles.redeem, { backgroundColor: c.accent, opacity: busy ? 0.6 : pressed ? 0.9 : 1 }]}>
-          <Text style={ui(16, 600, 20)} rawColor={c.onAccent}>{`Redeem ${rewardInSentence(rewardName)}`}</Text>
+          <Text style={ui(16, 600, 20)} rawColor={c.onAccent}>{t("counter.redeemReward", { reward: rewardInSentenceL(L, rewardName) })}</Text>
         </Pressable>
         <Pressable accessibilityRole="button" disabled={busy} onPress={onStamp} style={({ pressed }) => [styles.stampInstead, { borderColor: c.line, backgroundColor: pressed ? c.bgSubtle : c.bg, opacity: busy ? 0.6 : 1 }]}>
-          <Text style={ui(15, 500, 20)}>Stamp instead, keep the reward</Text>
+          <Text style={ui(15, 500, 20)}>{t("counter.stampInstead")}</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={onBack} style={{ minHeight: 40, alignItems: "center", justifyContent: "center" }}>
-          <Text style={ui(13, 500, 18)} rawColor={c.fgMuted}>Not them? Back to scan</Text>
+          <Text style={ui(13, 500, 18)} rawColor={c.fgMuted}>{t("counter.notThem")}</Text>
         </Pressable>
       </View>
     </View>
@@ -280,14 +294,16 @@ export function RewardReadyScreen({ member, program, busy, onRedeem, onStamp, on
 /** Footer under the keypad: "Online · 94 stamps today" and "Redeem a code". */
 export function ScanFooter({ online, stampsToday, terminology, onCode }: { online: boolean; stampsToday: number | null; terminology: string; onCode: () => void }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   return (
     <View style={styles.footer}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: online ? c.positive : c.negative }} />
-        <Text style={ui(13, 400, 18)} rawColor={c.fgMuted}>{`${online ? "Online" : "Offline"}${stampsToday != null ? ` · ${stampsToday} ${terminology} today` : ""}`}</Text>
+        <Text style={ui(13, 400, 18)} rawColor={c.fgMuted}>{`${online ? t("counter.status.online") : t("counter.status.offline")}${stampsToday != null ? ` · ${t("counter.today", { points: `${stampsToday} ${termWordL(L, terminology)}` })}` : ""}`}</Text>
       </View>
       <Pressable accessibilityRole="button" onPress={onCode} style={{ minHeight: 44, justifyContent: "center" }}>
-        <Text style={ui(14, 600, 19)}>Redeem a code</Text>
+        <Text style={ui(14, 600, 19)}>{t("counter.redeemCode")}</Text>
       </Pressable>
     </View>
   );

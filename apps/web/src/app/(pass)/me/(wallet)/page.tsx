@@ -62,7 +62,7 @@ export default async function MePage({ searchParams }: Props) {
   const data = await Promise.all([api.me.profile(), api.me.memberships(), api.me.card().catch(() => null), api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[]), api.me.pantry().then((r) => r.items).catch(() => [] as groceryApi.MyPantryResponse["items"]), api.me.myPets().then((r) => r.items.length).catch(() => 0), api.me.myFoodCards().then((r) => r.items.length).catch(() => 0), api.me.myVehicles().then((r) => r.vehicles.length).catch(() => 0), serverRestaurantApi().then((r) => r.tiffin.mine()).then((r) => r.items).catch(() => [] as tiffinApi.MySubscriptionDto[]), api.me.appointments().then((r) => r.items).catch(() => [] as appointmentsApi.MyAppointmentDto[])]).catch(() => null);
   if (!data) {
     const t = await getT(sp);
-    return <ErrorState title={t("wp.err.card")} description={t("auth.err.network")} action={<Button variant="secondary" href="/me">{t("rc.tryAgain")}</Button>} />;
+    return <ErrorState title={t("wp.err.card")} description={t("rc.error.body")} action={<Button variant="secondary" href="/me">{t("rc.tryAgain")}</Button>} />;
   }
   const [profile, wallet, card, campaigns, pantry, petCount, foodCount, vehicleCount, tiffin, visits] = data;
   // Your next visit.

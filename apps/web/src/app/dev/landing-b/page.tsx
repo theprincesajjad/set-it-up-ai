@@ -8,6 +8,7 @@ import { TILE_PHOTO, TopBar, UPHOTOS, devOnly } from "../_landing/shared";
 import { marketingFontVars } from "@/lib/marketing/fonts";
 import { marketingSerifVar } from "@/lib/marketing/serif";
 import "./b.css";
+import { demoQrUrl } from "@/lib/marketing/demo-qr";
 
 export const metadata: Metadata = { title: "Landing B: warm", robots: { index: false, follow: false } };
 
@@ -80,7 +81,7 @@ export default async function LandingB() {
                     <span className="wb-tent-logo">{P.mono}</span>
                     <span className="wb-tent-t">Collect stamps at {P.name}</span>
                     <span className="wb-tent-qr">
-                      <QrCode value="https://localloyalty.ca/j/little-oven" size={140} ecc="L" label="Join code" />
+                      <QrCode value={demoQrUrl()} size={140} ecc="L" label="Join code" />
                     </span>
                     <span className="wb-tent-s">Point your camera here</span>
                   </div>

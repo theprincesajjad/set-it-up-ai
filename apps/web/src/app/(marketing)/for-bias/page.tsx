@@ -8,7 +8,7 @@ import { MHeading, MSection } from "@/components/marketing/Section";
 import { Button } from "@/components/ui/Button";
 import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
-import { fill, moneyShort } from "@/lib/marketing/text";
+import { fill, moneyShort, sentenceCase } from "@/lib/marketing/text";
 import { BRAND } from "@ll/shared";
 import { preloadInter } from "@/lib/fonts/inter";
 
@@ -47,10 +47,11 @@ export default function BiaPage() {
     <>
       {/* 1. Hero with the labelled sample board report. */}
       <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-14 md:px-8 md:pt-24 md:pb-20">
-        <div className="grid items-center gap-12 md:grid-cols-[1fr_1fr] md:gap-14">
+        {/* Two columns only from 1024px: at tablet widths the report was squeezed to about 250px and its numbers were cut. */}
+        <div className="grid items-center gap-12 lg:grid-cols-[1fr_1fr] lg:gap-14">
           <div>
             <p className="text-meta-strong text-muted-foreground">{B.eyebrow}</p>
-            <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{B.heroTitle}</h1>
+            <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{sentenceCase(B.heroTitle)}</h1>
             <p className="mt-6 max-w-xl text-[18px] leading-[1.55] text-muted-foreground">{B.heroSub}</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" href="/for-bias/sample-report">
@@ -62,7 +63,7 @@ export default function BiaPage() {
             </div>
             <p className="mt-5 text-meta text-muted-foreground">From {moneyShort(cheapest)} · we sign up and train your shops · aggregates only, no customer lists</p>
           </div>
-          <SampleReportCard />
+          <SampleReportCard className="mx-auto w-full max-w-[640px] lg:max-w-none" />
         </div>
       </section>
 

@@ -72,7 +72,7 @@ export default function RepToday() {
                     <li key={`${c.merchantId}-${c.day}`} className="flex flex-wrap items-center gap-3 px-4 py-3">
                       <div className="min-w-0 flex-1">
                         <Link href={`/rep/merchants/${c.merchantId}`} className="block truncate text-body font-medium text-fg hover:underline">{c.name}</Link>
-                        <p className="truncate text-meta text-fg-muted">Day {c.day} call · {c.activeMembers} of {c.target} members · signed {c.daysSinceSignup} days ago</p>
+                        <p className="truncate text-meta text-fg-muted">Day {c.day} call · {c.activeMembers} {c.activeMembers === 1 ? "member" : "members"} (goal {c.target}) · signed {c.daysSinceSignup} days ago</p>
                       </div>
                       <Button size="sm" variant="secondary" onClick={() => setLog(c)}>Log call</Button>
                     </li>

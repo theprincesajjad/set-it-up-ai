@@ -153,7 +153,7 @@ test("driver: the link shows only the route, a stop is marked delivered, running
   await expect(page.getByText(/Told \d+ stops?\./)).toBeVisible();
   // A made-up token is a dead end, not a leak.
   await page.goto("/d/not-a-real-token-at-all-0000");
-  await expect(page.getByText("This link has expired")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "We can’t find this link" })).toBeVisible();
 });
 
 test("catering: the customer pays the deposit by e-transfer and the caterer records it in the ledger", async ({ browser }) => {

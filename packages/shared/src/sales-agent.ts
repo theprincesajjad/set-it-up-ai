@@ -110,15 +110,15 @@ const brand = BRAND.name;
 export const AGENT_TEXTS: Record<AgentLang, AgentTexts> = {
   en: {
     disclosure: ({ whatsapp }) =>
-      `Hi, I'm ${brand}'s AI assistant. I can answer questions about pricing, fees, how it works and set-up, and I can start your sign-up. I can be wrong, so for anything important a person from the team can step in at any time: type HUMAN. ${whatsapp ? "Reply STOP to stop messages." : "Chats are saved so the team can follow up."}`,
+      `Hi, I’m ${brand}’s AI assistant. I can answer questions about pricing, fees, how it works and set-up, and I can start your sign-up. I can be wrong, so for anything important a person from the team can step in at any time: type HUMAN. ${whatsapp ? "Reply STOP to stop messages." : "Chats are saved so the team can follow up."}`,
     stopped: `You will not get WhatsApp messages from ${brand} any more. Reply START to turn them back on.`,
     started: "Welcome back. Ask me anything about pricing or set-up, or type HUMAN for a person.",
     offline: "Our assistant is not available right now. I have passed your message to the team and a person will reply here.",
-    handoff: "I'll check with the team. A person will reply in this chat. Until then I will not answer new questions.",
+    handoff: "I’ll check with the team. A person will reply in this chat. Until then I will not answer new questions.",
     humanJoined: "A person from the team has joined this chat.",
     rateLimited: "You are sending messages very quickly. Please wait a few minutes and try again, or type HUMAN.",
     tooLong: "That message is too long for me. Please send a shorter one.",
-    guardrail: "I'm not able to confirm that, so I'll check with the team. A person will reply in this chat.",
+    guardrail: "I’m not able to confirm that, so I’ll check with the team. A person will reply in this chat.",
     unsupported: "I can only read text messages. Please type your question, or type HUMAN for a person.",
     otpSms: (code) => `${code} is your ${brand} code to check it's you in our chat. It expires in 10 minutes. Don't share it.`,
   },
@@ -190,17 +190,22 @@ export interface WidgetTexts {
   privacy: string;
   human: string;
   assistant: string;
+  /** A message did not send. `{email}` is where the support address goes (the widget draws it as a mailto link). */
   error: string;
+  /** The browser reports no connection: the typed message is still in the box. */
+  offline: string;
+  /** The button beside the error that sends the same message again. */
+  retry: string;
   typing: string;
 }
 
 const days = RETENTION.salesAgentDays;
 export const WIDGET_TEXTS: Record<AgentLang, WidgetTexts> = {
-  en: { launcher: "Ask us", title: "Ask us anything", subtitle: "AI assistant. A person can join.", placeholder: "Type your question", send: "Send", close: "Close chat", chips: ["What does it cost?", "Do I need a POS?", "Who owns my data?"], whatsapp: "Continue on WhatsApp", retention: `Chats are kept ${days} days.`, privacy: "Privacy", human: "Team", assistant: "AI assistant", error: "Something went wrong. Please try again, or email us.", typing: "Typing" },
-  fr: { launcher: "Posez-nous une question", title: "Posez-nous vos questions", subtitle: "Assistant IA. Une personne peut se joindre.", placeholder: "Écrivez votre question", send: "Envoyer", close: "Fermer le clavardage", chips: ["Combien ça coûte?", "Faut-il une caisse?", "À qui appartiennent mes données?"], whatsapp: "Continuer sur WhatsApp", retention: `Les clavardages sont conservés ${days} jours.`, privacy: "Confidentialité", human: "Équipe", assistant: "Assistant IA", error: "Une erreur s’est produite. Réessayez ou écrivez-nous par courriel.", typing: "En train d’écrire" },
-  hi: { launcher: "हमसे पूछें", title: "कुछ भी पूछें", subtitle: "AI सहायक। कोई व्यक्ति जुड़ सकता है।", placeholder: "अपना सवाल लिखें", send: "भेजें", close: "चैट बंद करें", chips: ["इसकी क़ीमत क्या है?", "क्या POS चाहिए?", "मेरा डेटा किसका है?"], whatsapp: "WhatsApp पर जारी रखें", retention: `चैट ${days} दिन रखी जाती है।`, privacy: "गोपनीयता", human: "टीम", assistant: "AI सहायक", error: "कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें, या हमें ईमेल करें।", typing: "लिख रहा है" },
-  ur: { launcher: "ہم سے پوچھیں", title: "کچھ بھی پوچھیں", subtitle: "AI معاون۔ کوئی فرد شامل ہو سکتا ہے۔", placeholder: "اپنا سوال لکھیں", send: "بھیجیں", close: "چیٹ بند کریں", chips: ["اس کی قیمت کیا ہے؟", "کیا POS چاہیے؟", "میرا ڈیٹا کس کا ہے؟"], whatsapp: "WhatsApp پر جاری رکھیں", retention: `چیٹ ${days} دن رکھی جاتی ہے۔`, privacy: "رازداری", human: "ٹیم", assistant: "AI معاون", error: "کچھ گڑبڑ ہو گئی۔ براہِ کرم دوبارہ کوشش کریں، یا ہمیں ای میل کریں۔", typing: "لکھ رہا ہے" },
-  pa: { launcher: "ਸਾਨੂੰ ਪੁੱਛੋ", title: "ਕੁਝ ਵੀ ਪੁੱਛੋ", subtitle: "AI ਸਹਾਇਕ। ਕੋਈ ਵਿਅਕਤੀ ਜੁੜ ਸਕਦਾ ਹੈ।", placeholder: "ਆਪਣਾ ਸਵਾਲ ਲਿਖੋ", send: "ਭੇਜੋ", close: "ਚੈਟ ਬੰਦ ਕਰੋ", chips: ["ਇਸਦੀ ਕੀਮਤ ਕੀ ਹੈ?", "ਕੀ POS ਚਾਹੀਦਾ ਹੈ?", "ਮੇਰਾ ਡੇਟਾ ਕਿਸਦਾ ਹੈ?"], whatsapp: "WhatsApp ਤੇ ਜਾਰੀ ਰੱਖੋ", retention: `ਚੈਟ ${days} ਦਿਨ ਰੱਖੀ ਜਾਂਦੀ ਹੈ।`, privacy: "ਗੋਪਨੀਯਤਾ", human: "ਟੀਮ", assistant: "AI ਸਹਾਇਕ", error: "ਕੁਝ ਗੜਬੜ ਹੋ ਗਈ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ, ਜਾਂ ਸਾਨੂੰ ਈਮੇਲ ਕਰੋ।", typing: "ਲਿਖ ਰਿਹਾ ਹੈ" },
+  en: { launcher: "Ask us", title: "Ask us anything", subtitle: "AI assistant. A person can join.", placeholder: "Type your question", send: "Send", close: "Close chat", chips: ["What does it cost?", "Do I need a POS?", "Who owns my data?"], whatsapp: "Continue on WhatsApp", retention: `Chats are kept ${days} days.`, privacy: "Privacy", human: "Team", assistant: "AI assistant", error: "That didn’t send. Check your connection and try again, or email {email}.", offline: "You’re offline. Your message is still here; send it when you’re back.", retry: "Try again", typing: "Typing" },
+  fr: { launcher: "Posez-nous une question", title: "Posez-nous vos questions", subtitle: "Assistant IA. Une personne peut se joindre.", placeholder: "Écrivez votre question", send: "Envoyer", close: "Fermer le clavardage", chips: ["Combien ça coûte?", "Faut-il une caisse?", "À qui appartiennent mes données?"], whatsapp: "Continuer sur WhatsApp", retention: `Les clavardages sont conservés ${days} jours.`, privacy: "Confidentialité", human: "Équipe", assistant: "Assistant IA", error: "Le message n’est pas parti. Vérifiez votre connexion et réessayez, ou écrivez à {email}.", offline: "Vous êtes hors ligne. Votre message est toujours là; envoyez-le à votre retour.", retry: "Réessayer", typing: "En train d’écrire" },
+  hi: { launcher: "हमसे पूछें", title: "कुछ भी पूछें", subtitle: "AI सहायक। कोई व्यक्ति जुड़ सकता है।", placeholder: "अपना सवाल लिखें", send: "भेजें", close: "चैट बंद करें", chips: ["इसकी क़ीमत क्या है?", "क्या POS चाहिए?", "मेरा डेटा किसका है?"], whatsapp: "WhatsApp पर जारी रखें", retention: `चैट ${days} दिन रखी जाती है।`, privacy: "गोपनीयता", human: "टीम", assistant: "AI सहायक", error: "संदेश नहीं गया। अपना कनेक्शन जाँचें और दोबारा कोशिश करें, या {email} पर ईमेल करें।", offline: "आप ऑफ़लाइन हैं। आपका संदेश यहीं है; कनेक्शन आने पर भेज दें।", retry: "दोबारा कोशिश करें", typing: "लिख रहा है" },
+  ur: { launcher: "ہم سے پوچھیں", title: "کچھ بھی پوچھیں", subtitle: "AI معاون۔ کوئی فرد شامل ہو سکتا ہے۔", placeholder: "اپنا سوال لکھیں", send: "بھیجیں", close: "چیٹ بند کریں", chips: ["اس کی قیمت کیا ہے؟", "کیا POS چاہیے؟", "میرا ڈیٹا کس کا ہے؟"], whatsapp: "WhatsApp پر جاری رکھیں", retention: `چیٹ ${days} دن رکھی جاتی ہے۔`, privacy: "رازداری", human: "ٹیم", assistant: "AI معاون", error: "پیغام نہیں گیا۔ اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں، یا {email} پر ای میل کریں۔", offline: "آپ آف لائن ہیں۔ آپ کا پیغام یہیں ہے؛ کنکشن آنے پر بھیج دیں۔", retry: "دوبارہ کوشش کریں", typing: "لکھ رہا ہے" },
+  pa: { launcher: "ਸਾਨੂੰ ਪੁੱਛੋ", title: "ਕੁਝ ਵੀ ਪੁੱਛੋ", subtitle: "AI ਸਹਾਇਕ। ਕੋਈ ਵਿਅਕਤੀ ਜੁੜ ਸਕਦਾ ਹੈ।", placeholder: "ਆਪਣਾ ਸਵਾਲ ਲਿਖੋ", send: "ਭੇਜੋ", close: "ਚੈਟ ਬੰਦ ਕਰੋ", chips: ["ਇਸਦੀ ਕੀਮਤ ਕੀ ਹੈ?", "ਕੀ POS ਚਾਹੀਦਾ ਹੈ?", "ਮੇਰਾ ਡੇਟਾ ਕਿਸਦਾ ਹੈ?"], whatsapp: "WhatsApp ਤੇ ਜਾਰੀ ਰੱਖੋ", retention: `ਚੈਟ ${days} ਦਿਨ ਰੱਖੀ ਜਾਂਦੀ ਹੈ।`, privacy: "ਗੋਪਨੀਯਤਾ", human: "ਟੀਮ", assistant: "AI ਸਹਾਇਕ", error: "ਸੁਨੇਹਾ ਨਹੀਂ ਗਿਆ। ਆਪਣਾ ਕਨੈਕਸ਼ਨ ਚੈੱਕ ਕਰੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ, ਜਾਂ {email} ਤੇ ਈਮੇਲ ਕਰੋ।", offline: "ਤੁਸੀਂ ਆਫ਼ਲਾਈਨ ਹੋ। ਤੁਹਾਡਾ ਸੁਨੇਹਾ ਇੱਥੇ ਹੀ ਹੈ; ਕਨੈਕਸ਼ਨ ਆਉਣ ਤੇ ਭੇਜ ਦਿਓ।", retry: "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ", typing: "ਲਿਖ ਰਿਹਾ ਹੈ" },
 };
 
 /** Limits shared by the API and the widget. */

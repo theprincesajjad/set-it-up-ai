@@ -206,3 +206,32 @@ describe("api client", () => {
     expect(await api.hasSession()).toBe(false);
   });
 });
+
+describe("errorMessage by status", () => {
+  const copy = { network: "N", server: "S" };
+  const tr = (key: string, vars?: Record<string, string | number>) => `${key}${vars ? JSON.stringify(vars) : ""}`;
+  it("never shows the server's English text", async () => {
+    const { setApiErrorTranslator } = await import("./client");
+    setApiErrorTranslator(tr as never);
+    const bad = new ApiError(400, "bad_request", "Some of what you entered isn't right.", [{ path: "phone", message: "Too small" }]);
+    expect(errorMessage(bad, copy)).toBe("err.validation.line");
+    expect(errorMessage(new ApiError(401, "unauthorized", "x"), copy)).toBe("err.session.line");
+    expect(errorMessage(new ApiError(403, "forbidden", "x"), copy)).toBe("err.forbidden.line");
+    expect(errorMessage(new ApiError(404, "not_found", "x"), copy)).toBe("err.notFound.line");
+    expect(errorMessage(new ApiError(409, "conflict", "x"), copy)).toBe("err.conflict.line");
+    expect(errorMessage(new ApiError(418, "teapot", "I am a teapot"), copy)).toBe("err.generic.line");
+    expect(errorMessage(new ApiError(503, "internal", "x"), copy)).toBe("S");
+    setApiErrorTranslator(null);
+  });
+  it("says when to retry on a 429 with Retry-After", async () => {
+    const { setApiErrorTranslator } = await import("./client");
+    setApiErrorTranslator(tr as never);
+    const fn = (async () => new Response(JSON.stringify({ error: { code: "rate_limited", message: "Slow down" } }), { status: 429, headers: { "retry-after": "120" } })) as unknown as typeof fetch;
+    const api = createApiClient({ baseUrl: "http://api", tokenStore: memoryStore(null), fetch: fn });
+    const err = (await api.get("/v1/x", { auth: "none" }).catch((e) => e)) as ApiError;
+    expect(err.retryAfterSeconds).toBe(120);
+    expect(errorMessage(err, copy)).toBe('err.rate.line{"wait":"err.wait.minutes{\\"n\\":2}"}');
+    expect(errorMessage(new ApiError(429, "rate_limited", "x"), copy)).toBe("err.rate.lineNoWait");
+    setApiErrorTranslator(null);
+  });
+});

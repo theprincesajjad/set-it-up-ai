@@ -2,7 +2,7 @@
 # (copy .env.example to .env and fill in the required block). See docs/engineering/deploy.md.
 #
 #   docker compose up -d --build                    # postgres, migrate (runs once), api, web
-#   docker compose --profile seed run --rm seed     # optional: demo data (never on a real production database)
+#   (demo data is not part of this file: it creates admin logins with public passwords. Seed a separate demo database from a dev machine.)
 #   docker compose logs -f api
 #
 # NEXT_PUBLIC_* values are compiled into the web image: after changing one, run `docker compose build web`.
@@ -79,6 +79,8 @@ services:
         NEXT_PUBLIC_WHATSAPP_NUMBER: ${NEXT_PUBLIC_WHATSAPP_NUMBER:-}
         NEXT_PUBLIC_MAP_STYLE_URL: ${NEXT_PUBLIC_MAP_STYLE_URL:-}
         NEXT_PUBLIC_WALLET_BADGES: ${NEXT_PUBLIC_WALLET_BADGES:-}
+        NEXT_PUBLIC_SUPPORT_EMAIL: ${NEXT_PUBLIC_SUPPORT_EMAIL:-${SUPPORT_EMAIL:-}}
+        NEXT_PUBLIC_LEGAL_ENTITY_NAME: ${NEXT_PUBLIC_LEGAL_ENTITY_NAME:-${LEGAL_ENTITY_NAME:-}}
     image: local-loyalty/web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -92,21 +94,6 @@ services:
     depends_on:
       api:
         condition: service_healthy
-
-  # Optional demo data: `docker compose --profile seed run --rm seed`. Skips itself if the demo already exists.
-  seed:
-    <<: *api-image
-    profiles: ["seed"]
-    restart: "no"
-    working_dir: /app/apps/api
-    command: ["tsx", "src/seed.ts"]
-    env_file: ${ENV_FILE:-.env}
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: *database-url
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
 
 volumes:
   pgdata:

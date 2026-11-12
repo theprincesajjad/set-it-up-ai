@@ -7,6 +7,7 @@
  * a development process makes an in-memory pair, so the PWA can subscribe locally; tests never reach the network (the transport
  * records into `webPushOutbox`). A 404 or 410 from the push service means the subscription is gone and it is deleted.
  */
+import { assertPublicTarget, pinnedPost } from "./webhooks-out.js";
 import { createECDH, createHmac, createCipheriv, createPrivateKey, randomBytes, sign } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { webPushSubscriptions } from "@ll/db";
@@ -107,8 +108,11 @@ export function setWebPushTransport(t: Transport | null) {
   transport = t;
 }
 
-const fetchTransport: Transport = async ({ endpoint, headers, body }) => {
-  const r = await fetch(endpoint, { method: "POST", headers, body: new Uint8Array(body) });
+/** The endpoint is supplied by the browser, so it gets the same address check as an owner's webhook: public addresses only, connecting to the address that was checked. */
+const fetchTransport = (ctx: AppContext): Transport => async ({ endpoint, headers, body }) => {
+  const address = await assertPublicTarget(ctx, endpoint);
+  if (address) return pinnedPost(new URL(endpoint), address, headers, body.toString("latin1"), 10_000, body);
+  const r = await fetch(endpoint, { method: "POST", headers, body: new Uint8Array(body), redirect: "manual" });
   return { status: r.status };
 };
 
@@ -127,7 +131,7 @@ export async function sendWebPush(ctx: AppContext, userId: string, payload: WebP
     const subs = await ctx.db.select().from(webPushSubscriptions).where(eq(webPushSubscriptions.userId, userId));
     if (!subs.length) return 0;
     const now = ctx.now();
-    const send = transport ?? (ctx.config.env === "test" ? null : fetchTransport);
+    const send = transport ?? (ctx.config.env === "test" ? null : fetchTransport(ctx));
     const plaintext = Buffer.from(JSON.stringify(payload));
     let ok = 0;
     const dead: string[] = [];

@@ -39,8 +39,19 @@ export function Capsules<T extends string>({ options, value, onChange, label, cl
 
 /** Compact segmented switch for ranges and views (h-8, muted track). */
 export function Segmented<T extends string>({ options, value, onChange, label, className }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // A narrow track scrolls sideways; keep the chosen option inside the visible part so the current value is always readable.
+  useEffect(() => {
+    const box = ref.current;
+    const on = box?.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (!box || !on || box.scrollWidth <= box.clientWidth) return;
+    const l = box.getBoundingClientRect();
+    const r = on.getBoundingClientRect();
+    if (r.right > l.right) box.scrollLeft += r.right - l.right + 4;
+    else if (r.left < l.left) box.scrollLeft += r.left - l.left - 4;
+  }, [value]);
   return (
-    <div role="radiogroup" aria-label={label} className={cn("kit-seg inline-flex min-h-8 max-w-full items-stretch rounded-input bg-bg-subtle p-0.5", className)}>
+    <div ref={ref} role="radiogroup" aria-label={label} className={cn("kit-seg inline-flex min-h-8 max-w-full items-stretch rounded-input bg-bg-subtle p-0.5", className)}>
       {options.map((o) => (
         <button
           key={o.value}

@@ -379,7 +379,7 @@ export function NewHoldSheet({ halls, onClose, onCreated }: { halls: restaurantA
           <TextField label="Phone" type="tel" placeholder="(905) 555-0123" value={phone} onChange={(e) => setPhone(e.target.value)} error={errors.phone} />
         </FormGrid>
         {cateringOn && linkable.length ? <Select label="Catering event" value={eventId} onChange={(e) => setEventId(e.target.value)} placeholder="Not linked" options={linkable.map((x) => ({ value: x.id, label: `#${x.number} ${EVENT_TYPE_LABEL[x.eventType]}${x.customer?.name ? `, ${x.customer.name}` : ""}` }))} hint="Optional. Link the food order now or later." /> : null}
-        <TextField type="textarea" label="Notes" optionalLabel className="min-h-20" placeholder="Separate seating, nikah at 5 pm, dinner at 7" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <TextField type="textarea" label="Notes" optionalLabel className="min-h-20" placeholder="Separate seating, nikah at 5 p.m., dinner at 7" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
     </Sheet>
   );

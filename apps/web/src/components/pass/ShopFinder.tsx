@@ -9,7 +9,7 @@ import { ChevronDown, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { placeKindLabel, type MessageKey, type networkApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { distanceL } from "@/lib/i18n/formatL";
@@ -69,6 +69,7 @@ export interface FinderState {
 }
 
 export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood }: ShopFinderProps) {
+  const errText = useErrorText();
   const { t } = useLocaleOrEnglish();
   const [items, setItems] = useState(initial);
   const [q, setQ] = useState("");
@@ -97,7 +98,7 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
         const r = await browserApi.network.shops({ q: q.trim() || undefined, neighbourhood: coords ? undefined : hood ?? undefined, lat: coords?.lat, lng: coords?.lng, limit: 100 });
         setItems(r.items);
       } catch (e) {
-        setError(errorMessage(e));
+        setError(errText(e));
       } finally {
         setLoading(false);
       }

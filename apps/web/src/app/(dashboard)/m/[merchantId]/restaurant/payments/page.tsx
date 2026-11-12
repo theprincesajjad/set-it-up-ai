@@ -15,29 +15,37 @@ import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
-import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { useAction, useApi, type ApiState } from "@/lib/dashboard/useApi";
+import { ErrorPanel } from "@/components/errors";
 import { TaxStatus } from "@/components/dashboard/TaxStatus";
 import { Loader, NumberField, todayISO } from "@/components/dashboard/restaurant/common";
 
 export default function PaymentsSettingsPage() {
   const { role } = useMerchant();
+  const { api } = useMerchant();
   const owner = role === "owner";
+  const payment = useApi(() => api.settings.payment(), [api]);
+  // Nothing loaded: one failure block INSTEAD of three sections (which would each repeat the same error, or draw empty forms).
+  const failed = !!payment.error && !payment.data;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader flush title="How you get paid" description="Choose how tiffin subscribers, caterers' customers and hall bookings can pay you. Payments you record by hand carry no platform fee." />
       {!owner ? <Banner tone="info">Only the shop owner can change these. You can see what is set.</Banner> : null}
-      <div className="grid max-w-[880px] gap-6">
-        <PaymentMethods owner={owner} />
-        <TaxStatus owner={owner} />
-        <FoodSafety owner={owner} />
-      </div>
+      {failed ? (
+        <div className="max-w-[880px]"><ErrorPanel error={payment.cause ?? payment.error} what="your payment settings" onRetry={() => void payment.reload()} /></div>
+      ) : (
+        <div className="grid max-w-[880px] gap-6">
+          <PaymentMethods owner={owner} state={payment} />
+          <TaxStatus owner={owner} />
+          <FoodSafety owner={owner} />
+        </div>
+      )}
     </div>
   );
 }
 
-function PaymentMethods({ owner }: { owner: boolean }) {
+function PaymentMethods({ owner, state }: { owner: boolean; state: ApiState<paymentsManualApi.PaymentSettingsDto> }) {
   const { api } = useMerchant();
-  const state = useApi(() => api.settings.payment(), [api]);
   return <Loader state={state} rows={4}>{(d) => <MethodsForm d={d} owner={owner} reload={() => void state.reload()} api={api} />}</Loader>;
 }
 

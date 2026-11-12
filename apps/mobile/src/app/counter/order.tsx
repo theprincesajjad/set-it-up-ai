@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { isApiError } from "../../api/client";
+import { errorMessage } from "../../api/client";
 import { TenderChoice } from "../../features/counter/tender";
 import { tenderPrices } from "../../lib/kitchen";
 import { newIdempotencyKey as newKey } from "../../lib/ids";
@@ -42,7 +42,7 @@ export default function RingUp() {
       key.current = newKey();
       router.back();
     } catch (e) {
-      setError(isApiError(e) ? e.message : "Can't connect right now. Check your connection and try again.");
+      setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(false);
     }
@@ -61,7 +61,7 @@ export default function RingUp() {
       {error ? <Banner variant="danger">{error}</Banner> : null}
       <TenderChoice subtotalCents={subtotal} cashDiscountBps={bps} value={tender} onChange={setTender} />
       <Text variant="meta" color="fgMuted">
-        Before tax{bps > 0 ? `. Cash price is ${bps / 100}% off the card price.` : "."}
+        {bps > 0 ? t("mc.order.beforeTaxCash", { pct: bps / 100 }) : t("mc.order.beforeTax")}
       </Text>
       <Section title={t("tender.addItems")}>
         {menu.isLoading ? (
@@ -77,11 +77,11 @@ export default function RingUp() {
                 subtitle={money(i.priceCents)}
                 trailing={
                   <View style={styles.stepper}>
-                    <IconButton variant="secondary" icon={Minus} label={`Remove one ${i.name}`} onPress={() => set(i, -1)} disabled={!(qty[i.id] ?? 0)} />
+                    <IconButton variant="secondary" icon={Minus} label={t("mc.order.remove", { name: i.name })} onPress={() => set(i, -1)} disabled={!(qty[i.id] ?? 0)} />
                     <Text variant="bodyStrong" tabular style={{ minWidth: 22, textAlign: "center" }}>
                       {qty[i.id] ?? 0}
                     </Text>
-                    <IconButton variant="secondary" icon={Plus} label={`Add one ${i.name}`} onPress={() => set(i, 1)} />
+                    <IconButton variant="secondary" icon={Plus} label={t("mc.order.add", { name: i.name })} onPress={() => set(i, 1)} />
                   </View>
                 }
               />

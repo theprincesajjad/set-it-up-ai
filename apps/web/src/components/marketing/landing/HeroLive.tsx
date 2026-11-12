@@ -52,7 +52,7 @@ export function LivePhone() {
               <i />
             </span>
           </div>
-          <WalletPass data={FIRST} qr="https://localloyalty.ca/c/44712208" />
+          <WalletPass data={FIRST} />
           <span className="wu-wallet-stack">
             {STACK.map((o) => (
               <span key={o} className="wu-wallet-sliver" data-shop={o}>
@@ -64,7 +64,8 @@ export function LivePhone() {
         </div>
         <video className="lp-live-video" width={HERO_VIDEO.width} height={HERO_VIDEO.height} muted loop playsInline preload="none" aria-hidden tabIndex={-1} suppressHydrationWarning>
           {HERO_VIDEO.sources.map((s) => (
-            <source key={s.src} data-src={s.src} type={s.type} />
+            // VIDEO_SCRIPT sets src on these, sometimes before React hydrates: not a mismatch to report.
+            <source key={s.src} data-src={s.src} type={s.type} suppressHydrationWarning />
           ))}
         </video>
       </Phone>

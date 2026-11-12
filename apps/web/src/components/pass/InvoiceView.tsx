@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { BigNumber, Heading, useFmt } from "@/components/restaurant/ui";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import type { MessageKey } from "@ll/shared";
 import { PaymentBox, pollUntil } from "./PaymentBox";
@@ -18,6 +18,7 @@ const TZ = "America/Toronto";
 
 /** /i/<token>: invoice view and pay. Salon-type shops add a tip picker; the points line says tax and tips do not earn. */
 export function InvoiceView({ token, initial }: { token: string; initial: serviceApi.PublicInvoiceResponse }) {
+  const errText = useErrorText();
   const { t, moneyExact: money, date, number } = useFmt();
   const [data, setData] = useState(initial);
   const [payment, setPayment] = useState<serviceApi.PayInvoiceResponse["payment"]>(null);
@@ -45,7 +46,7 @@ export function InvoiceView({ token, initial }: { token: string; initial: servic
       setPayment(r.payment);
       if (!r.payment) await reload();
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setBusy(false);
     }

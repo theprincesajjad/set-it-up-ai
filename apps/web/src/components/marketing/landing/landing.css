@@ -93,6 +93,9 @@
 .lp-btn-white:hover { background: var(--mkt-grey-hover); }
 .lp-link { display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; font-weight: 600; color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 6px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); transition: text-decoration-color 160ms var(--mkt-ease); }
 .lp-link:hover { text-decoration-color: currentColor; }
+/* Beside a button the link stays in one piece: when the row is too narrow it moves under the button whole (at 1024 to 1180px it used
+   to break in two with its arrow left alone on the second line). */
+.lp-actions .lp-link, .lp-hero-try { white-space: nowrap; }
 .lp-link svg { inline-size: 18px; block-size: 18px; transition: transform 200ms var(--mkt-ease); }
 /* A focus ring that shows on every surface: black on the white and grey bands, white on the black ones and on the black plan card. */
 .lp :is(.lp-btn, .lp-link, .lp-tile-go, .lp-also-row a, .lp-chip, .lp-swatch, .lp-input):focus-visible,
@@ -146,6 +149,9 @@
 @media (min-width: 1024px) { .lp-hero .lp-lede { font-size: 24px; } }
 .lp-hero .lp-ask { gap: 6px; margin-block-start: 4px; }
 @media (min-width: 640px) { .lp-hero .lp-ask { grid-template-columns: auto auto; align-items: center; column-gap: 28px; } .lp-hero .lp-reassure { grid-column: 1 / -1; } }
+/* 1024 to 1239px: the copy column is too narrow for the button and the link side by side (the link broke in two, its arrow alone on the
+   second line), so the link sits under the button, whole. */
+@media (min-width: 1024px) and (max-width: 1239.98px) { .lp-hero .lp-ask { grid-template-columns: auto; } }
 .lp-hero-try { justify-content: center; min-block-size: 44px; }
 .lp-hero-try svg { inline-size: 17px; block-size: 17px; }
 @media (hover: hover) { .lp .lp-hero-try:hover svg { transform: translateY(3px); } }
@@ -192,9 +198,8 @@
 @media (prefers-reduced-motion: reduce) { .lp-live-video { display: none; } }
 /* Wave Z2: the video's pause button (WCAG 2.2.2), beside the phone: at its top end on phones and tablets (the phone's foot is cut off
    there), at its foot on desktop. VIDEO_SCRIPT unhides it once the video plays and swaps the icon with data-held. */
-.lp-live-toggle { position: absolute; z-index: 4; inset-block-start: 4%; inset-inline-start: calc(100% + 8px); display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 50%; background: var(--mkt-paper); color: var(--mkt-black); box-shadow: 0 0 0 1px var(--mkt-rule), 0 4px 12px -4px rgb(0 0 0 / 0.18); cursor: pointer; transition: background-color 160ms var(--mkt-ease); }
+.lp-live-toggle { position: absolute; z-index: 4; inset-block-start: 4%; inset-inline-start: calc(100% + 8px); display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 50%; background: var(--mkt-paper); color: var(--mkt-black); box-shadow: 0 0 0 1px var(--mkt-rule), 0 4px 12px -4px rgb(0 0 0 / 0.18); cursor: pointer; transition: background-color 160ms var(--mkt-ease); }
 .lp-live-toggle[hidden] { display: none; }
-.lp-live-toggle::before { content: ""; position: absolute; inset: -4px; }
 .lp-live-toggle:hover { background: var(--mkt-grey); }
 .lp .lp-live-toggle:focus-visible { outline: 3px solid var(--mkt-black); outline-offset: 2px; }
 .lp-live-toggle svg { inline-size: 16px; block-size: 16px; fill: currentColor; }
@@ -343,6 +348,9 @@ legend.lp-label { margin-block-end: 10px; }
 @media (max-width: 639.98px) { .lp-gets + .lp-dots + .lp-caption { margin-block-start: 20px; } }
 .lp-gets-end { margin-block-start: 32px; }
 /* After the shop tiles: the next step, centred, up to the card maker. */
+/* The note that the photos are not customers: quiet, centred, between the tiles and the button. */
+.lp-tiles-note { margin-block: 20px 0; text-align: center; }
+@media (min-width: 640px) { .lp-tiles-note { margin-block: 0 40px; } }
 .lp-shops-next { justify-items: center; margin-block-start: 48px; text-align: center; }
 @media (min-width: 640px) { .lp-shops-next { margin-block-start: 8px; } }
 @media (min-width: 1024px) { .lp-shops-next { margin-block-start: 0; } }

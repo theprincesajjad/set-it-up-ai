@@ -16,7 +16,7 @@ export default function OnePagerPage() {
     <MSection className="md:py-16!">
       <article className="mx-auto max-w-3xl text-foreground">
         <p className="text-meta-strong text-muted-foreground print:hidden">For BIAs</p>
-        <h1 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg print:text-[32px]">a street campaign, in one page.</h1>
+        <h1 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg print:text-[32px]">A street campaign, in one page.</h1>
         <p className="mt-4 text-body text-muted-foreground">A shop-local campaign run through the loyalty app your shops already use, with a board report at the end.</p>
 
         <h2 className="mt-8 text-headline">Packages</h2>

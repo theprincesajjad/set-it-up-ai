@@ -19,7 +19,7 @@ export default function RepKitPage() {
         <BackLink href={`/rep/merchants/${merchantId}`}>Shop</BackLink>
         <PageHeader title="QR kit" description="Print on the portable printer or save as PDF." />
       </div>
-      <Async state={kit}>{(k) => <QrKitPrint kit={k} street={street} onPrinted={() => void browserApi.merchant(merchantId).completeStep("qr_kit").catch(() => undefined)} />}</Async>
+      <Async state={kit} fail={{ title: "QR kit", hasHeader: true, back: { href: "/rep/merchants", label: "Back to my shops" }, notFound: { title: "We couldn’t find that shop", description: "The link may be old or mistyped." }, forbidden: { title: "This shop isn’t on your list", description: "Shops you set up show here. Ask an admin if it should be assigned to you." } }}>{(k) => <QrKitPrint kit={k} street={street} onPrinted={() => void browserApi.merchant(merchantId).completeStep("qr_kit").catch(() => undefined)} />}</Async>
     </div>
   );
 }

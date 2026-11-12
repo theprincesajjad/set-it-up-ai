@@ -18,6 +18,10 @@ import { StatTile as ToneStatTile } from "@/components/ui/StatTile";
 import { TONES, type Tone } from "@/components/ui/tones";
 import { cn } from "@/lib/utils";
 import { QuietButton } from "./page";
+import { SignInAgainLink } from "@/components/errors/actions";
+import { errorKind, kindFromEnglishLine } from "@/lib/api/errors";
+import { LINE_KEY } from "@/lib/api/userError";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 export interface StatItem {
   label: string;
@@ -318,12 +322,20 @@ export function SkeletonRows({ rows = 4, className }: { rows?: number; className
   );
 }
 
-/** Error line with retry. */
-export function ErrorLine({ message, onRetry }: { message: string; onRetry?: () => void }) {
+/**
+ * Error line with the action that can fix it: Try again for a network, server or rate-limit failure; "Sign in again" (back to this page)
+ * when the session ended; nothing for a 404 or a 403, where retrying cannot help. Pass `cause` (the thrown error) when you have it,
+ * otherwise the message string from `errorMessage()` is recognised.
+ */
+export function ErrorLine({ message, onRetry, cause }: { message: string; onRetry?: () => void; cause?: unknown }) {
+  const { t } = useLocaleOrEnglish();
+  const kind = cause !== undefined && cause !== null ? errorKind(cause) : kindFromEnglishLine(message);
+  const known = kind && kind !== "rateLimited" ? t(LINE_KEY[kind]) : null;
+  const noRetry = kind === "session" || kind === "forbidden" || kind === "notFound" || kind === "validation";
   return (
     <div role="alert" className="kit-err flex items-center justify-between gap-3 rounded-input border border-line px-4 py-3 text-meta">
-      <Dot tone="negative">{message}</Dot>
-      {onRetry ? <QuietButton onClick={onRetry}>Try again</QuietButton> : null}
+      <Dot tone="negative">{known ?? message}</Dot>
+      {kind === "session" ? <SignInAgainLink label={t("err.session.action")} size="sm" variant="secondary" /> : onRetry && !noRetry ? <QuietButton onClick={onRetry}>{t("err.action.retry")}</QuietButton> : null}
     </div>
   );
 }

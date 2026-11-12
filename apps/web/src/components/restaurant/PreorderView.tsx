@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { defaultOptionIds, idempotencyKeyFor, preorderBill, priceDish, summaryLine, type Item } from "@/lib/restaurant/order";
@@ -30,6 +31,7 @@ type Day = restaurantApi.PreorderAvailabilityDay;
  * the bill with the deposit and the cancel rule, then the phone number as the account and the deposit by card or Apple Pay.
  */
 export function PreorderView({ shop, menu, item, availability, restaurant, signedIn, userName, devAutofill }: { shop: Shop; menu: commerceApi.PublicMenuResponse; item: Item; availability: restaurantApi.PreorderAvailabilityResponse; restaurant: restaurantWebApi.PublicRestaurantResponse | null; signedIn: boolean; userName: string; devAutofill?: boolean }) {
+  const errText = useErrorText();
   const { t, money, moneyExact, number, date, pick, locale } = useFmt();
   const router = useRouter();
   const p = pick(item);
@@ -107,7 +109,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
       if (res.payment && res.order.paymentStatus !== "authorized" && res.order.paymentStatus !== "paid") setPlaced(res);
       else router.push(`/o/${res.order.id}`);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
       if (isApiError(e) && e.code === "preorder_full") {
         setStep("choose");
         void refresh();
@@ -347,6 +349,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
 
 /** A full day: join the wait list. One message if a pot frees up; the guest ticks the consent first (CASL). */
 function WaitList({ shop, itemId, day, defaultName }: { shop: Shop; itemId: string; day: Day; defaultName: string }) {
+  const errText = useErrorText();
   const { t, date } = useFmt();
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
@@ -380,7 +383,7 @@ function WaitList({ shop, itemId, day, defaultName }: { shop: Shop; itemId: stri
               const r = await api.joinWaitlist(shop.slug, { itemId, date: day.date, phone: phone.trim(), ...(defaultName ? { name: defaultName } : {}), consent: true });
               setResult(r.message);
             } catch (err) {
-              setError(errorMessage(err));
+              setError(errText(err));
             } finally {
               setBusy(false);
             }

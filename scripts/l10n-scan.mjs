@@ -46,6 +46,9 @@ export const SCAN_TARGETS = [
   "apps/mobile/src/app/q",
   "apps/mobile/src/app/s",
   "apps/mobile/src/app/(auth)",
+  // The staff counter, kiosk and the screens around them: staff work in Hindi, Urdu and Punjabi too
+  "apps/mobile/src/app/counter",
+  "apps/mobile/src/features/counter",
   "apps/mobile/src/app/card.tsx",
   "apps/mobile/src/app/discount.tsx",
   "apps/mobile/src/app/history.tsx",
@@ -88,6 +91,8 @@ export const SCAN_TARGETS = [
   "apps/web/src/components/ui/Link.tsx",
   "apps/web/src/components/ui/Modal.tsx",
   "apps/web/src/components/ui/EmptyState.tsx",
+  // The error system (fail screens, session banner, 404s): every string through t() in four languages.
+  "apps/web/src/components/errors",
   // Wave Q kit compositions (shown on customer and owner screens)
   "apps/web/src/components/ui/AnimatedNumber.tsx",
   "apps/web/src/components/ui/Celebrate.tsx",
@@ -107,7 +112,7 @@ export const SCAN_TARGETS = [
 ];
 
 /** Staff-only screens that live inside a customer directory (the counter has its own staff-language setting). */
-export const EXCLUDE = new Set(["apps/mobile/src/app/(auth)/staff-sign-in.tsx"]);
+export const EXCLUDE = new Set([]);
 
 /** Words that are brand names or fixed tokens, never translated (case-sensitive). */
 export const BRAND_WORDS = new Set([

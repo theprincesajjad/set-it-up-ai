@@ -1,4 +1,5 @@
 import { BRAND } from "@ll/shared";
+import { SUPPORT_EMAIL } from "../../config";
 import { useState } from "react";
 import { Linking } from "react-native";
 import { useLocale } from "../../lib/i18n";
@@ -16,9 +17,9 @@ export default function Suggest() {
       footer={
         <Button
           fullWidth
-          disabled={!street.trim()}
+          disabled={!street.trim() || !SUPPORT_EMAIL}
           // l10n-ok: this email is read by the Local Loyalty team, in English
-          onPress={() => Linking.openURL(`mailto:${BRAND.supportEmail}?subject=${encodeURIComponent(`Bring ${BRAND.name} to ${street}`)}&body=${encodeURIComponent(`Street: ${street}\nShops I'd love to see: ${shops}`)}`)}
+          onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`Bring ${BRAND.name} to ${street}`)}&body=${encodeURIComponent(`Street: ${street}\nShops I’d love to see: ${shops}`)}`)}
         >
           {t("ms.suggest.send")}
         </Button>

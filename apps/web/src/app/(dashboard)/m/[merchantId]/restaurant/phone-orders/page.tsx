@@ -1,7 +1,9 @@
 "use client";
+import { clockText } from "@/lib/format";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import type { whatsappApi } from "@ll/shared";
+import { BRAND, type whatsappApi } from "@ll/shared";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { Capsules, EmptyState, ErrorLine, PageHeader, SkeletonRows } from "@/components/dashboard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { CopyButton, TierTeaser, formatPhone } from "@/components/dashboard/restaurant/shared";
@@ -26,11 +28,12 @@ export default function PhoneOrdersPage() {
 const timeOf = (iso: string) => {
   const d = new Date(iso);
   const same = d.toLocaleDateString("en-CA", { timeZone: "America/Toronto" }) === new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
-  return same ? d.toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }).replace(/\./g, "").toLowerCase() : d.toLocaleDateString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric" });
+  return same ? clockText(d) : d.toLocaleDateString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric" });
 };
 
 function PhoneOrders() {
-  const { api, merchantId, enabled } = useMerchant();
+  const { api, merchantId, enabled, detail } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   const params = useSearchParams();
   const ai = enabled("restaurant.phone_ai");
   const [filter, setFilter] = useState<Filter>("look");
@@ -70,7 +73,7 @@ function PhoneOrders() {
         <TierTeaser featureKey="restaurant.phone_ai" title="Phone assistant" description="The assistant listens in Urdu, Hindi, Punjabi or English and drafts the order for you to check." inline />
       ) : (
         <>
-          <Capsules<Filter>
+          {list.error && !list.data ? null : <Capsules<Filter>
             label="Filter calls"
             value={filter}
             onChange={(f) => setFilter(f)}
@@ -80,14 +83,26 @@ function PhoneOrders() {
               { value: "order", label: "Became an order", count: counts.order },
               { value: "missed", label: "Missed", count: counts.missed },
             ]}
-          />
+          />}
           {list.error && !list.data ? <ErrorLine message={list.error} onRetry={() => void list.reload()} /> : null}
           {list.loading && !list.data ? <SkeletonRows rows={5} /> : null}
           {list.data && !calls.length ? (
             <EmptyState
-              title="No phone orders yet"
-              description={`When a guest calls, the draft order lands here. To start, point your phone line's voice webhook at ${webhook}`}
-              action={<CopyButton text={webhook} label="Copy webhook URL" />}
+              title={t("dash.phone.empty.title")}
+              description={
+                <>
+                  {t("dash.phone.empty.body")}
+                  <details className="mt-3 text-meta">
+                    <summary className="cursor-pointer text-fg underline decoration-line underline-offset-4">{t("dash.phone.empty.advanced")}</summary>
+                    <p className="mt-2 text-fg-muted">{t("dash.phone.empty.advancedBody")}</p>
+                    <p className="mt-2 flex flex-wrap items-center gap-2">
+                      <code dir="ltr" className="break-all rounded-sm bg-bg-subtle px-2 py-1 text-caption">{webhook}</code>
+                      <CopyButton text={webhook} label="Copy" />
+                    </p>
+                  </details>
+                </>
+              }
+              action={<Button href={`mailto:${BRAND.supportEmail}?subject=${encodeURIComponent(t("dash.phone.mail.subject", { shop: detail.merchant.name }))}`}>{t("dash.phone.empty.action")}</Button>}
             />
           ) : null}
           {calls.length ? (

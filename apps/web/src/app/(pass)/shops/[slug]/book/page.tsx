@@ -54,7 +54,7 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
     if (isApiError(e) && (e.status === 402 || e.status === 404))
       return (
         <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
-          <EmptyState title={t("bk.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+          <EmptyState headingLevel={1} title={t("bk.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
         </PageFrame>
       );
     return (
@@ -86,7 +86,8 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
       ) : null}
       <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service) ?? welcome?.serviceId ?? undefined, staff: one(sp.staff) ?? welcome?.staffId ?? undefined, pet: one(sp.pet), rebook: rebook && welcome ? rebook : undefined }} meName={me?.user.name ?? null} />
       {/* slot: PoweredBy (phase-solo E): on every step of the booking flow, including the confirmation. */}
-      <PoweredBy locale={locale} vertical={shop.vertical} show={shop.poweredBy} />
+      {/* A shop with nothing to book gets no owner upsell: the customer needs a way forward, not a pitch. */}
+      <PoweredBy locale={locale} vertical={shop.vertical} show={shop.poweredBy && data.services.length > 0} />
     </PageFrame>
   );
 }

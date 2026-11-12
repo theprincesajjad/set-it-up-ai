@@ -24,7 +24,7 @@ export default function RepMerchantPage() {
   return (
     <div className="flex flex-col gap-4">
       <BackLink href="/rep/merchants">My shops</BackLink>
-      <Async state={detail}>
+      <Async state={detail} fail={{ title: "Shop", back: { href: "/rep/merchants", label: "Back to my shops" }, notFound: { title: "We couldn’t find that shop", description: "The link may be old or mistyped." }, forbidden: { title: "This shop isn’t on your list", description: "Shops you set up show here. Ask an admin if it should be assigned to you." } }}>
         {(d) => (
           <>
             <PageHeader title={d.merchant.name} description={<span className="flex flex-wrap items-center gap-2"><StatusDot domain="merchant" status={d.merchant.status} />Signed {formatDate(d.merchant.createdAt)}</span>} actions={

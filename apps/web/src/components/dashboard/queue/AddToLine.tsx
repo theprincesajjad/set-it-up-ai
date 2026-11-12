@@ -9,6 +9,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { focusFirstInvalid } from "@/lib/api/useErrorText";
 import { useAction } from "@/lib/dashboard/useApi";
 
 /** Add someone to the line from the front desk: first name, a phone for the text (optional), service and barber. */
@@ -23,7 +24,8 @@ export function AddToLine({ open, onClose, board, onAdded }: { open: boolean; on
   const [consent, setConsent] = useState(false);
   const [fieldKey, setFieldKey] = useState(0);
   const [tried, setTried] = useState(false);
-  const nameErr = tried && !name.trim() ? "Add a first name" : undefined;
+  // A 400 from the API names the field ("name"): show its sentence under it and move focus there.
+  const nameErr = tried && !name.trim() ? "Add a first name" : act.fields.name;
   return (
     <SidePanel
       open={open}
@@ -40,6 +42,7 @@ export function AddToLine({ open, onClose, board, onAdded }: { open: boolean; on
               setTried(true);
               if (!name.trim()) return;
               const r = await act.run(() => api.barber.add({ name: name.trim(), phone: phone ?? undefined, serviceId: serviceId || null, requestedStaffId: staffId || null, textConsent: consent && !!phone }));
+              if (!r) focusFirstInvalid();
               if (r) {
                 toast({ message: `${r.entry.name} is in line`, tone: "success" });
                 setName("");

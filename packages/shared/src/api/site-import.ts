@@ -99,7 +99,7 @@ export const siteImportApplyBody = z
     logo: z.boolean().optional(),
     /** Instagram imports have no logo: the owner can paste a link to one (https only). */
     logoUrl: z.url().max(2000).refine((u) => u.startsWith("https://"), { message: "Use an https link" }).optional(),
-    website: z.url().max(2000).optional(),
+    website: z.url({ protocol: /^https?$/ }).max(2000).optional(),
     phone: z.string().min(7).max(20).optional(),
     instagram: z.string().trim().max(200).optional(),
     description: z.string().trim().max(2000).optional(),

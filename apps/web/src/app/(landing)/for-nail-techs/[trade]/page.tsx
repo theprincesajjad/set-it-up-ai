@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SoloLanding } from "@/components/marketing/SoloLanding";
 import { copy } from "@/copy/en-CA";
 import { NAIL_TRADES, type NailTrade } from "@/lib/marketing/solo";
+import { soloSocial } from "@/lib/marketing/solo-og";
 
 /** The other looks of the nail page, prerendered. Public URL: /for-nail-techs?trade=<trade> (rewritten here in next.config.ts). */
 const LOOKS = NAIL_TRADES.filter((t): t is Exclude<NailTrade, "nails"> => t !== "nails");
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: PageProps<"/for-nail-techs/[t
   const { trade } = await params;
   if (!isLook(trade)) return {};
   const m = copy.solo[trade];
-  return { title: m.title, description: m.description, alternates: { canonical: `/for-nail-techs?trade=${trade}` }, openGraph: { title: m.title, description: m.description } };
+  return { title: m.title, description: m.description, alternates: { canonical: `/for-nail-techs?trade=${trade}` }, ...soloSocial("nail", { title: m.title, description: m.description, path: `/for-nail-techs?trade=${trade}` }) };
 }
 
 export default async function ForNailTechsLookPage({ params }: PageProps<"/for-nail-techs/[trade]">) {

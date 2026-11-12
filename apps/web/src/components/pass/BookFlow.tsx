@@ -21,7 +21,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StepProgress } from "@/components/ui/StepProgress";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { formatE164 } from "@/lib/phone";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { buildIcs, dayPart, DAY_PARTS, durationText, groupServices, nextDays, serviceFor, staffDoes, summarize, timesOn, totalText } from "@/lib/booking";
 import { cn } from "@/lib/cn";
 import { addOnPriceTime } from "@/lib/dashboard/add-ons"; // phase-pro: P5
@@ -41,6 +43,7 @@ const DAYS = 14;
  * The bridal row is a quote, not a slot.
  */
 export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null; terminology?: string }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: { service?: string; staff?: string; pet?: string; rebook?: string }; meName?: string | null }) {
+  const errText = useErrorText();
   const f = useFmt();
   const { t, money, date, time, pick } = f;
   const dur = (min: number) => durationText(t as never, min);
@@ -221,7 +224,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         setStep("time");
         void loadTimes();
       } else if (isApiError(e) && e.status === 402) setBanner({ tone: "info", text: t("bk.unavailable") });
-      else setBanner({ tone: "danger", text: isApiError(e) && e.isNetwork ? t("rc.error.body") : errorMessage(e) });
+      else setBanner({ tone: "danger", text: isApiError(e) && e.isNetwork ? t("rc.error.body") : errText(e) });
     } finally {
       setBusy(false);
     }
@@ -262,7 +265,12 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     return (
       <div className="flex flex-col gap-6">
         {head}
-        <Banner tone="info">{t("bk.noServices")}</Banner>
+        <h1 className="text-title text-fg">{t("bk.noOnline", { shop: shop.name })}</h1>
+        {shop.phone ? <p className="text-body text-fg">{t("bk.noOnlineCall", { shop: shop.name, phone: formatE164(shop.phone) || shop.phone })}</p> : null}
+        <div className="flex flex-col gap-2">
+          {shop.phone ? <Button variant="primary" fullWidth href={`tel:${shop.phone}`}>{t("rc.callShop", { shop: shop.name })}</Button> : null}
+          <Button variant="secondary" fullWidth href={`/shops/${encodeURIComponent(shop.slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>
+        </div>
       </div>
     );
 

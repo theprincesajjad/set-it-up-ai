@@ -2,10 +2,11 @@
 import { Languages, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { commerceApi } from "@ll/shared";
-import { Capsules, EmptyState, ErrorLine, PageHeader, Section, SkeletonRows, Tag } from "@/components/dashboard";
+import { Capsules, EmptyState, PageHeader, Section, SkeletonRows, Tag } from "@/components/dashboard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { DietChips, STATION_PRESETS, rowCertifier, sharedCertifier, stationLabel } from "@/components/dashboard/restaurant/menu";
 import { RestaurantGate } from "@/components/dashboard/restaurant/shared";
+import { ErrorPanel } from "@/components/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -114,11 +115,12 @@ function Menu() {
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      {role === "owner" ? <HalalCertification state={certState} /> : <p className="text-meta text-fg-muted">The owner manages the halal certificate. Halal claims are the owner&apos;s own.</p>}
+      {role === "owner" ? (state.error && !state.data ? null : <HalalCertification state={certState} />) : <p className="text-meta text-fg-muted">The owner manages the halal certificate. Halal claims are the owner&apos;s own.</p>}
 
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Not loaded: no search box or "All 0 / Halal 0" counts, which would read as an empty menu. */}
+          {state.error && !state.data ? null : <div className="flex flex-wrap items-center gap-3">
             <label className="relative min-w-0 flex-1 basis-56">
               <span className="sr-only">Search the menu</span>
               <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
@@ -135,7 +137,7 @@ function Menu() {
                 { value: "untagged", label: "Needs tags", count: items.filter((i) => matches(i, "untagged")).length },
               ]}
             />
-          </div>
+          </div>}
 
           {chosen.length ? (
             <div role="region" aria-label="Bulk actions" className="sticky top-2 z-raised flex flex-wrap items-center gap-2 rounded-card border border-line bg-card px-4 py-2.5 shadow-float">
@@ -170,7 +172,7 @@ function Menu() {
           ) : null}
 
           {state.error && !state.data ? (
-            <ErrorLine message={state.error} onRetry={() => void state.reload()} />
+            <ErrorPanel error={state.cause ?? state.error} what="your menu" onRetry={() => void state.reload()} />
           ) : !state.data ? (
             <SkeletonRows rows={8} />
           ) : !items.length ? (

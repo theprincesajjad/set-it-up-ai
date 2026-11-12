@@ -50,9 +50,14 @@ const LANDING_AB = /^\/for-(nail-techs|barbers|groomers)(\?|$)/;
  * in the top nav. Links are 44px tall on phones, and every trade page and sign-in are one tap away. Its own `.mkt` scope (it also closes
  * the A/B landing pages, which have no marketing wrapper). Server-rendered, no script.
  */
+/** The footer's language names: system fonts only, so no web font is fetched for them (see the note beside them). */
+const SYSTEM_FACE = { fontFamily: "system-ui, sans-serif" } as const;
+
 export function SiteFooter() {
   return (
-    <footer className={`mkt ${marketingFontVars} border-t border-mkt-rule-on-black bg-mkt-black font-mkt-sans text-mkt-on-black antialiased`}>
+    // The footer is English on every page, also on the pages shown in Hindi, Urdu or Punjabi: it says so (lang) and reads left to right
+    // (on the Urdu page it otherwise inherited right-to-left, which moved the full stops and the © to the wrong end of each line).
+    <footer lang="en-CA" dir="ltr" className={`mkt ${marketingFontVars} border-t border-mkt-rule-on-black bg-mkt-black font-mkt-sans text-mkt-on-black antialiased`}>
       <div className="mx-auto max-w-360 px-5 pt-14 md:px-10 md:pt-20 xl:px-15">
         <div className="flex flex-col gap-6 border-b border-mkt-rule-on-black pb-10 md:flex-row md:items-end md:justify-between md:pb-14">
           <div className="flex flex-col gap-3">
@@ -92,16 +97,19 @@ export function SiteFooter() {
             </div>
           ))}
         </nav>
-        <div className="flex flex-col gap-1 border-t border-mkt-rule-on-black py-6 text-sm text-mkt-on-black-muted md:flex-row md:items-center md:justify-between">
+        {/* pb-24 on phones: the chat launcher sits fixed at the bottom corner and would cover the last line here. */}
+        <div className="flex flex-col gap-1 border-t border-mkt-rule-on-black pt-6 pb-24 md:pb-6 text-sm text-mkt-on-black-muted md:flex-row md:items-center md:justify-between">
           <p>
             © {new Date().getFullYear()} {BRAND.name}, Toronto. Prices in CAD.
           </p>
           <p>
             Your customers see it in English,{" "}
-            <span lang="hi">हिन्दी</span>,{" "}
+            {/* The three names are set in the device's own fonts (every phone and desktop has these scripts): in the page's Noto stack
+                these three words made every English visitor download three script fonts, about 385 KB, on every page with this footer. */}
+            <span lang="hi" style={SYSTEM_FACE}>हिन्दी</span>,{" "}
             {/* No dir="rtl" here: the marketing pages promise no RTL region (e2e marketing language scope); bidi orders the word anyway. */}
-            <span lang="ur">اردو</span>{" "}
-            or <span lang="pa">ਪੰਜਾਬੀ</span>.
+            <span lang="ur" style={SYSTEM_FACE}>اردو</span>{" "}
+            or <span lang="pa" style={SYSTEM_FACE}>ਪੰਜਾਬੀ</span>.
           </p>
         </div>
       </div>

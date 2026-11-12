@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { useSession } from "../../state/session";
@@ -11,6 +12,7 @@ import { Avatar, Banner, Button, Card, Check, EmptyState, ListRow, MapPin, Scree
 /** Pick merchant + location; optionally lock this device to the shop's counter (shared device → PIN switcher). */
 export default function SelectCounter() {
   const fg = useTheme().c.fg;
+  const { t } = useLocale();
   const { merchants, refreshMe, user, setMode, signOut } = useSession();
   const { config, setConfig, setDeviceStaff, ready } = useCounter();
   useEffect(() => {
@@ -22,6 +24,7 @@ export default function SelectCounter() {
   useEffect(() => {
     if (ready && !merchantId && only) setConfig({ merchantId: only.merchantId, merchantName: only.name, locationId: null, locationName: null });
   }, [ready, merchantId, only, setConfig]);
+  const roleLabel = (role: string) => (role === "owner" ? t("mc.role.owner") : role === "manager" ? t("mc.role.manager") : role === "staff" ? t("mc.role.staff") : role);
   const detail = useQuery({ queryKey: ["counter", "select", merchantId ?? ""], queryFn: () => api.merchant.detail(merchantId!), enabled: !!merchantId });
   const locations = (detail.data?.locations ?? []).filter((l) => l.active);
 
@@ -38,10 +41,10 @@ export default function SelectCounter() {
   };
 
   return (
-    <Screen title="Counter mode" largeTitle>
+    <Screen title={t("mc.sel.title")} largeTitle>
       {merchants.length === 0 ? (
         <>
-          <EmptyState icon={Store} title="You're not staff at a shop yet" body="Ask the owner to add you as staff, then sign in again." />
+          <EmptyState icon={Store} title={t("mc.sel.notStaff")} body={t("mc.sel.notStaffBody")} />
           <Button
             variant="secondary"
             onPress={() => {
@@ -49,15 +52,15 @@ export default function SelectCounter() {
               router.replace("/map");
             }}
           >
-            Use the customer app
+            {t("mc.sel.useCustomer")}
           </Button>
           <Button variant="ghost" onPress={async () => { await signOut({ keepQueue: true }); router.replace("/welcome"); }}>
-            Sign out
+            {t("err.action.signOut")}
           </Button>
         </>
       ) : (
         <>
-          <Section title="Shop" rule={false}>
+          <Section title={t("mc.sel.shop")} rule={false}>
             <Card padded={false} style={{ paddingHorizontal: 16 }}>
               {merchants.map((m, i) => (
                 <ListRow
@@ -65,7 +68,7 @@ export default function SelectCounter() {
                   divider={i < merchants.length - 1}
                   leading={<ShopLogo shop={{ name: m.name, vertical: "other", logoUrl: m.logoUrl }} size={40} />}
                   title={m.name}
-                  subtitle={`${m.role}${m.status === "paused" ? " · program paused" : ""}`}
+                  subtitle={`${roleLabel(m.role)}${m.status === "paused" ? ` · ${t("mc.sel.paused")}` : ""}`}
                   // Selected = a check, like an iOS picker; a fill inside a padded card looked inset (polish-audit C2).
                   trailing={m.merchantId === merchantId ? <Check size={20} color={fg} strokeWidth={2.25} /> : null}
                   minHeight={64}
@@ -75,11 +78,11 @@ export default function SelectCounter() {
             </Card>
           </Section>
           {merchantId ? (
-            <Section title="Location" rule={false}>
+            <Section title={t("counter.location")} rule={false}>
               {detail.isLoading ? (
                 <SkeletonList rows={2} rowHeight={64} />
               ) : locations.length === 0 ? (
-                <Banner variant="warning">This shop has no active locations. Add one in the dashboard.</Banner>
+                <Banner variant="warning">{t("mc.sel.noLocations")}</Banner>
               ) : (
                 <Card padded={false} style={{ paddingHorizontal: 16 }}>
                   {locations.map((l, i) => (
@@ -91,15 +94,15 @@ export default function SelectCounter() {
           ) : null}
           <Card>
             <SwitchRow
-              label="Use this device as the shop's counter"
-              description="Staff switch with their PIN. The customer app is hidden on this device."
+              label={t("mc.sel.useDevice")}
+              description={t("mc.sel.useDeviceHint")}
               value={config.sharedDevice}
               onValueChange={(v) => setConfig({ sharedDevice: v })}
             />
           </Card>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <Avatar name={user?.name} id={user?.id} size={32} />
-            <Text variant="bodySm" color="fgMuted" style={{ flex: 1 }}>{`Signed in as ${user?.name ?? user?.email ?? "staff"}`}</Text>
+            <Text variant="bodySm" color="fgMuted" style={{ flex: 1 }}>{t("mc.sel.signedInAs", { name: user?.name ?? user?.email ?? t("mc.sel.staffFallback") })}</Text>
             {!config.sharedDevice ? (
               <Button
                 variant="ghost"
@@ -109,7 +112,7 @@ export default function SelectCounter() {
                   router.replace("/map");
                 }}
               >
-                Customer app
+                {t("mc.sel.customerApp")}
               </Button>
             ) : null}
           </View>

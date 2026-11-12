@@ -47,6 +47,16 @@ export interface DataTableProps<T> {
  * Enter or Space opens the row (`onRowClick`); the sheet it opens restores focus to the row when it closes.
  * All three states are built in: `loading` (skeleton rows of the same height), `error` (what happened and Try again), `empty` (your node).
  */
+function MobileRow({ clickable, onClick, className, children }: { clickable: boolean; onClick?: () => void; className: string; children: ReactNode }) {
+  return clickable ? (
+    <button type="button" onClick={onClick} className={className}>
+      {children}
+    </button>
+  ) : (
+    <div className={className}>{children}</div>
+  );
+}
+
 export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, onRetry, empty, onRowClick, selectedKey, hasMore, onLoadMore, loadingMore, summary, toolbar }: DataTableProps<T>) {
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const body = useRef<HTMLTableSectionElement>(null);
@@ -162,7 +172,8 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
             ))
           : sorted.map((r) => (
               <li key={rowKey(r)}>
-                <button type="button" disabled={!onRowClick} onClick={onRowClick ? () => onRowClick(r) : undefined} className="flex min-h-16 w-full items-center gap-3 py-2 text-start focus-visible:focus-ring">
+                {/* A row nobody can open is a plain block, so a control in its trailing cell is not a button inside a button. */}
+                <MobileRow clickable={!!onRowClick} onClick={onRowClick ? () => onRowClick(r) : undefined} className="flex min-h-16 w-full items-center gap-3 py-2 text-start focus-visible:focus-ring">
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-body-strong text-fg">{titleCol?.cell(r)}</div>
                     {subCols.length ? (
@@ -177,7 +188,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
                     ) : null}
                   </div>
                   {trailCol ? <div className="shrink-0 tabular-nums text-fg">{trailCol.cell(r)}</div> : null}
-                </button>
+                </MobileRow>
               </li>
             ))}
         {!loading && !error && rows.length === 0 ? <li>{empty}</li> : null}

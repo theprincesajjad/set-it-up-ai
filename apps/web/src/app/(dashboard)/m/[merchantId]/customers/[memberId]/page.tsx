@@ -1,9 +1,10 @@
 "use client";
 import { useParams } from "next/navigation";
 import { CustomerView } from "@/components/dashboard/customers/CustomerView";
-import { ErrorLine, PageHeader } from "@/components/dashboard/kit";
+import { PageHeader } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
+import { ErrorPanel } from "@/components/errors";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
@@ -14,12 +15,12 @@ export default function CustomerDetailPage() {
   const { t, date } = useLocaleOrEnglish();
   const state = useApi(() => api.customer(memberId), [api, memberId]);
   const rewards = useApi(() => api.rewards(), [api]);
-  // A failed load (a removed customer, an old link, no connection) keeps the way back to the list, not only "Try again".
+  // A failed load keeps the way back to the list. A removed customer is "gone" (no Try again: retrying cannot bring them back).
   if (state.error && !state.data)
     return (
       <>
         <PageHeader back={{ href: `${base}/customers`, label: "Customers" }} title="Customer" />
-        <ErrorLine message={state.error} onRetry={state.reload} />
+        <ErrorPanel error={state.cause ?? state.error} onRetry={state.reload} back={{ href: `${base}/customers`, label: t("err.action.customers") }} notFound={{ title: t("err.customer.gone.title"), description: t("err.customer.gone.body") }} />
       </>
     );
   return (

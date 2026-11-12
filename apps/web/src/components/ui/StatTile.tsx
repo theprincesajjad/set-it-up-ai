@@ -57,7 +57,7 @@ function ToneTile({ label, value, delta, spark, href, loading, caption, tone }: 
     <>
       <p className="text-meta-strong opacity-90 clear:text-body clear:font-[550] clear:text-muted-foreground clear:opacity-100">{label}</p>
       <div className="mt-2 flex items-end justify-between gap-2">
-        {loading ? <Skeleton className="h-10 w-20" /> : <p className="font-display text-[clamp(30px,4vw,46px)] font-extrabold leading-none tracking-[-0.02em] tabular-nums clear:text-[32px] clear:font-[650] clear:leading-9 clear:tracking-[-0.032em] clear:text-foreground lg:clear:text-4xl lg:clear:leading-10">{value ?? "–"}</p>}
+        {loading ? <Skeleton className="h-10 w-20" /> : <p className="font-display text-[clamp(24px,4vw,46px)] font-extrabold leading-none tracking-[-0.02em] tabular-nums [overflow-wrap:anywhere] clear:text-[24px] sm:clear:text-[32px] clear:font-[650] clear:leading-9 clear:tracking-[-0.032em] clear:text-foreground lg:clear:text-4xl lg:clear:leading-10">{value ?? "–"}</p>}
         {spark && !loading ? <Sparkline values={spark} className="mb-1 h-8 w-14 shrink-0 opacity-90 sm:w-20 md:w-24 clear:hidden" /> : null}
       </div>
       <p

@@ -1,4 +1,5 @@
 "use client";
+import { clockText } from "@/lib/format";
 import { nowMs } from "@/lib/restaurant/util";
 /**
  * One call in the right pane (frame 09): what we heard in the caller's language, what we understood in English, and the
@@ -102,7 +103,7 @@ export function CallDetail({ call, catalog, onChanged }: { call: whatsappApi.Pho
     }
   }
 
-  const pickupText = call.draftOrder?.pickupAt ? new Date(call.draftOrder.pickupAt).toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }).replace(/\./g, "").toLowerCase() : null;
+  const pickupText = call.draftOrder?.pickupAt ? clockText(new Date(call.draftOrder.pickupAt)) : null;
   return (
     <div className="flex min-h-0 flex-col">
       <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">

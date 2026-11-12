@@ -42,7 +42,7 @@ export function counterStaffToken(req: Request, apiPath: string): string | null 
 }
 
 const PASS_REQUEST_HEADERS = ["content-type", "accept", "idempotency-key", "user-agent", "accept-language", "x-agent-session"];
-const PASS_RESPONSE_HEADERS = ["content-type", "content-disposition", "cache-control", "last-modified", "etag"];
+const PASS_RESPONSE_HEADERS = ["content-type", "content-disposition", "cache-control", "last-modified", "etag", "retry-after"];
 
 /**
  * Forward one browser request to the API with the session's bearer token.

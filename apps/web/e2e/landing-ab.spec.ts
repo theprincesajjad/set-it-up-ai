@@ -150,7 +150,11 @@ test("assignment on the nail page: a fresh visitor gets an arm, the lash look ke
   expect(await cookie(context, "ll_v")).toBe("t1-nails-lead:yours");
 
   await page.locator("[data-landing-notice] a").click();
-  await page.waitForURL(/\/for-nail-techs$/);
+  // Back on the same page, at the line that confirms it.
+  await page.waitForURL(/\/for-nail-techs#counting-off$/);
+  await expect(page.locator("[data-landing-off]")).toHaveText("Counting is off on this browser. Nothing else changes.");
+  // The line is near the end of a long page whose sections size themselves lazily: it must end up on screen, not below the fold.
+  await expect(page.locator("[data-landing-off]")).toBeInViewport({ timeout: 10_000 });
   expect(await cookie(context, "ll_aid")).toBe("off");
   expect(await cookie(context, "ll_v")).toBeUndefined();
   const sent = beacons(page);

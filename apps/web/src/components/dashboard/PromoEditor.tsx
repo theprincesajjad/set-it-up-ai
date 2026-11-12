@@ -280,7 +280,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
               <Checkbox checked disabled onChange={() => undefined} label="Offers in the app" caption="Always on." />
               <Checkbox checked={d.channels.includes("push")} onChange={(v) => set("channels", v ? [...new Set([...d.channels, "push" as const])] : d.channels.filter((c) => c !== "push"))} label="App and browser notification" />
               <Checkbox checked={d.channels.includes("email")} onChange={(v) => set("channels", v ? [...new Set([...d.channels, "email" as const])] : d.channels.filter((c) => c !== "email"))} label="Email, when they can't get a notification" />
-              <p className="text-meta text-fg-muted">Only people who said yes to your offers get a message: at most 2 a week, never 9 pm to 8 am. Each one names your shop and has a way to stop. Offers never go by text.</p>
+              <p className="text-meta text-fg-muted">Only people who said yes to your offers get a message: at most 2 a week, never 9 p.m. to 8 a.m. Each one names your shop and has a way to stop. Offers never go by text.</p>
             </div>
           </fieldset>
         </Panel>

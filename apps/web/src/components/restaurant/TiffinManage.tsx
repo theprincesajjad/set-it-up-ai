@@ -10,7 +10,7 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Skeleton, SkeletonGroup } from "@/components/ui/Skeleton";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { addDays, dayDate, todayIso } from "@/lib/restaurant/util";
 import { ManualDue } from "./ManualDue";
@@ -90,6 +90,7 @@ export function TiffinManage() {
 }
 
 function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; reload: () => Promise<void> }) {
+  const errText = useErrorText();
   const { t, money, date, number } = useFmt();
   const [busy, setBusy] = useState<string | null>(null);
   const [allMeals, setAllMeals] = useState(false);
@@ -121,7 +122,7 @@ function SubscriptionCard({ sub, meals, reload }: { sub: Sub; meals: Meal[]; rel
       if (msg) setNote({ tone: "success", text: msg });
       await reload();
     } catch (e) {
-      setNote({ tone: "danger", text: errorMessage(e) });
+      setNote({ tone: "danger", text: errText(e) });
     } finally {
       setBusy(null);
     }

@@ -86,8 +86,8 @@ test("quote with no deposit confirms on approval; Urdu lays out right to left", 
 
 test("unknown quote links explain what to do", async ({ page }) => {
   await page.goto("/e/not-a-real-token-0000000000");
-  await expect(page.getByText("This link doesn't work anymore")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Find the shop" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "We can’t find this link" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Find shops near you" })).toBeVisible();
 });
 
 test("restaurant pages: menu filters, tiffin plans, banquet calendar, shop links", async ({ page }) => {

@@ -57,7 +57,7 @@ export default async function ShopTiffinPage({ params, searchParams }: Props) {
   if (data === "none")
     return (
       <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
-        <EmptyState title={t("rc.tf.noPlans")} description={t("rc.tf.noPlansBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+        <EmptyState headingLevel={1} title={t("rc.tf.noPlans")} description={t("rc.tf.noPlansBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       </PageFrame>
     );
   const me = await getMe();

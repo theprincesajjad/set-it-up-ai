@@ -10,7 +10,7 @@ import { appointmentsApi, type FeatureKey } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
 import { HttpError, notFound } from "../../lib/errors.js";
-import { parse } from "../../lib/validate.js";
+import { parse, parseQueryDate } from "../../lib/validate.js";
 import { requirePermission } from "../../services/commerceShared.js";
 import { requireFeature } from "../../services/features.js";
 import * as svc from "../../services/appointments.js";
@@ -77,7 +77,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/appointments/staff", async (req) => {
     const staff = await staffFor(req);
     const q = req.query as { from?: string; to?: string };
-    const all = await svc.listBookableStaff(ctx.db, staff.merchant, ctx.now(), { from: q.from ? new Date(q.from) : undefined, to: q.to ? new Date(q.to) : undefined });
+    const all = await svc.listBookableStaff(ctx.db, staff.merchant, ctx.now(), { from: parseQueryDate(q.from, "from"), to: parseQueryDate(q.to, "to") });
     // A chair renter who sees only their own clients is not shown the other barbers' names in the calendar's staff filter.
     return (await isOwnClientsOnly(ctx, staff)) ? { ...all, items: all.items.filter((i) => i.userId === staff.user.id) } : all;
   });

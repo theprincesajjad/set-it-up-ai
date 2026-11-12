@@ -1,4 +1,6 @@
-import { addDays, festivalOccurrences, type FestivalOccurrence } from "@ll/shared";
+import { addDays, festivalOccurrences, formatDate, type FestivalOccurrence, type Locale } from "@ll/shared";
+import { restaurantCopy, type RestaurantSections } from "@/copy/restaurants-locales";
+import { fill } from "@/lib/marketing/text";
 
 const fmt = (d: string, weekday: boolean) => new Intl.DateTimeFormat("en-CA", { ...(weekday ? { weekday: "short" } : {}), month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${d}T12:00:00Z`));
 
@@ -12,26 +14,34 @@ export function upcomingFestivals(today: string, days = 120, limit = 4): Festiva
     .slice(0, limit);
 }
 
-/** "Diwali · Sun, Nov 8, 2026" or, for moon-sighted dates, "Ramadan begins · about Feb 8, 2027". */
-export function festivalLine(o: FestivalOccurrence): string {
+/** The date in the page's language (the shared formatter knows the Hindi, Urdu and Punjabi month and weekday names). */
+function day(d: string, weekday: boolean, locale: Locale): string {
+  if (locale === "en") return fmt(d, weekday);
+  return formatDate(locale, `${d}T12:00:00Z`, { ...(weekday ? { weekday: "short" as const } : {}), month: "short", day: "numeric", year: "numeric" }, "UTC");
+}
+
+/** "Diwali · Sun, Nov 8, 2026" or, for moon-sighted dates, "Ramadan begins · about Feb 8, 2027", in the page's language. */
+export function festivalLine(o: FestivalOccurrence, c: RestaurantSections = restaurantCopy("en"), locale: Locale = "en"): string {
   const islamic = o.tradition === "islamic";
-  return `${o.name}${o.endDate ? " begins" : ""} · ${islamic ? `about ${fmt(o.startDate, false)}` : fmt(o.startDate, true)}`;
+  const name = c.festivalNames[o.festivalId] ?? o.name;
+  return `${o.endDate ? fill(c.festivalBegins, { name }) : name} · ${islamic ? fill(c.festivalAbout, { date: day(o.startDate, false, locale) }) : day(o.startDate, true, locale)}`;
 }
 
 /** Festival rows (the next 120 days) with the campaign draft the app would prepare. Dates come from festivals.ts; moon-based dates are marked as estimates. */
-export function FestivalList({ today }: { today: string }) {
+export function FestivalList({ today, c = restaurantCopy("en"), locale = "en" }: { today: string; c?: RestaurantSections; locale?: Locale }) {
   const rows = upcomingFestivals(today);
   if (!rows.length) return null;
   return (
     <ul className="flex flex-col gap-3">
       {rows.map((o) => {
-        const send = o.sends[0]?.label;
+        // The campaign the app would draft. Its label is English, so another language shows the festival's greeting in that language.
+        const send = locale === "en" ? o.sends[0]?.label : undefined;
         return (
           <li key={`${o.festivalId}-${o.year}`} className="rounded-card bg-card p-4 shadow-card">
-            <p className="text-body-strong text-foreground">{festivalLine(o)}</p>
+            <p className="text-body-strong text-foreground">{festivalLine(o, c, locale)}</p>
             <p className="mt-0.5 text-meta text-muted-foreground">
-              {send ?? o.greeting.en}
-              {o.tradition === "islamic" ? " (estimate)" : ""}
+              {send ?? o.greeting[locale] ?? c.festivalGreetings[o.festivalId] ?? o.greeting.en}
+              {o.tradition === "islamic" ? ` ${c.festivalEstimate}` : ""}
             </p>
           </li>
         );

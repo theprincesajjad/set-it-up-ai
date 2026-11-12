@@ -11,12 +11,14 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { publicWaitlistEndpoints } from "@/lib/api/waitlist";
 
 const api = publicWaitlistEndpoints(browserClient);
 
 export function TakeOffer({ token, initial }: { token: string; initial: waitlistApi.OfferDto | null }) {
+  const errText = useErrorText();
   const { t, date, time, money } = useFmt();
   const [offer, setOffer] = useState(initial);
   const [booked, setBooked] = useState<string | null>(initial?.state === "booked" ? initial.appointmentId : null);
@@ -27,6 +29,7 @@ export function TakeOffer({ token, initial }: { token: string; initial: waitlist
   if (gone)
     return (
       <EmptyState
+        headingLevel={1}
         icon={CalendarX2}
         title={t("wl.take.gone")}
         description={t("wl.take.goneBody")}
@@ -46,7 +49,7 @@ export function TakeOffer({ token, initial }: { token: string; initial: waitlist
       setBooked(r.appointmentId);
     } catch (e) {
       if (isApiError(e) && (e.status === 410 || e.status === 404)) setOffer((o) => (o ? { ...o, state: "taken" } : o));
-      else setError(isApiError(e) && e.isNetwork ? t("rc.error.body") : errorMessage(e));
+      else setError(isApiError(e) && e.isNetwork ? t("rc.error.body") : errText(e));
     } finally {
       setBusy(false);
     }

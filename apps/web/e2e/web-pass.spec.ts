@@ -64,7 +64,7 @@ test("/join/<code> alias renders the same page; bad codes explain what to do", a
   await page.goto(`/join/${qrCode}`);
   await expect(page.getByRole("heading", { name: "get a stamp for today’s coffee" })).toBeVisible();
   await page.goto("/j/NOPE000");
-  await expect(page.getByText("This QR code isn't active. Ask staff for help.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This QR code isn’t active. Ask staff for help." })).toBeVisible();
 });
 
 test("public shop page with rewards, promos and about tabs", async ({ page }) => {
@@ -107,7 +107,7 @@ test("marketing pages render with live data", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Your regulars, on repeat." })).toBeVisible();
   await page.screenshot({ path: shot("12-home"), fullPage: false });
   await page.goto("/pricing");
-  await expect(page.getByRole("heading", { level: 1, name: "free loyalty. flat prices for the rest." })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Free loyalty. Flat prices for the rest." })).toBeVisible();
   await page.screenshot({ path: shot("13-pricing"), fullPage: false });
   await page.goto("/neighbourhoods/roncesvalles");
   await expect(page.getByRole("heading", { name: /Welcome to Roncesvalles/ })).toBeVisible();

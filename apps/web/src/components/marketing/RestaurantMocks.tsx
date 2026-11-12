@@ -1,3 +1,4 @@
+import { LOCALES, type Locale } from "@ll/shared";
 import { LocaleScope } from "@/lib/i18n";
 import { copy } from "@/copy/en-CA";
 import { PhoneFrame } from "./Mocks";
@@ -8,8 +9,11 @@ const ITEMS = [
   { name: "Veg thali", meta: "vegetarian · Jain option", price: "$14" },
 ];
 
-/** The ordering page as a customer sees it on a phone. Static example data (aria-hidden by PhoneFrame), labelled under the phone. */
-export function RestaurantPhone() {
+/**
+ * The ordering page as a customer sees it on a phone. Static example data in English (aria-hidden by PhoneFrame), labelled under the
+ * phone in the page's language (`note`, `locale`).
+ */
+export function RestaurantPhone({ note, locale = "en" }: { note?: string; locale?: Locale } = {}) {
   const p = copy.restaurants.phone;
   return (
     <figure lang="en-CA" dir="ltr" className="flex flex-col items-center gap-3">
@@ -41,13 +45,15 @@ export function RestaurantPhone() {
           <span className="mt-auto mb-6 flex h-11 items-center justify-center rounded-full bg-primary text-[13px] font-semibold text-primary-foreground">{p.cart}</span>
         </div>
       </PhoneFrame>
-      <figcaption className="text-caption text-muted-foreground">{p.note}</figcaption>
+      <figcaption lang={LOCALES[locale].bcp47} dir={LOCALES[locale].dir} className="text-caption text-muted-foreground">
+        {note ?? p.note}
+      </figcaption>
     </figure>
   );
 }
 
 /** A kitchen ticket in Urdu, right to left. A cook sees this on the Pro kitchen display; the text is an example. */
-export function KitchenTicket() {
+export function KitchenTicket({ note = copy.restaurants.kitchenNote }: { note?: string } = {}) {
   return (
     <figure>
       <LocaleScope locale="ur" className="rounded-sheet border border-border bg-background p-5 md:p-6">
@@ -58,7 +64,7 @@ export function KitchenTicket() {
           <span className="flex h-12 items-center justify-center rounded-full bg-primary text-body-strong text-primary-foreground">تیار ہے</span>
         </div>
       </LocaleScope>
-      <figcaption className="mt-2 text-caption text-muted-foreground">{copy.restaurants.kitchenNote}</figcaption>
+      <figcaption className="mt-2 text-caption text-muted-foreground">{note}</figcaption>
     </figure>
   );
 }

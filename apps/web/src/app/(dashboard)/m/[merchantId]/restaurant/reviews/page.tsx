@@ -3,7 +3,7 @@ import { Rating } from "@/components/primitives/rating";
 import { MessageCircle, Star } from "lucide-react";
 import { useState } from "react";
 import type { commerceApi, whatsappApi } from "@ll/shared";
-import { Capsules, DataTable, DefList, Dot, EmptyState, ErrorLine, PageHeader, Panel, Row, RowList, Section, Sheet, SkeletonRows, StatBlock, type Column } from "@/components/dashboard";
+import { Capsules, DataTable, DefList, Dot, EmptyState, PageHeader, Panel, Row, RowList, Section, Sheet, SkeletonRows, StatBlock, type Column } from "@/components/dashboard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { RestaurantGate, TierTeaser, whenTor } from "@/components/dashboard/restaurant/shared";
 import { askChannelLabel, languageName, orderChannelLabel, REPLY_LANGS, replyDraft, replyLang, resultLabel, unreadCaption, type ReplyLang } from "@/components/dashboard/restaurant/reviewReply";
@@ -11,6 +11,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { ErrorPanel } from "@/components/errors";
 import { errorMessage, isApiError } from "@/lib/api/errors";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { relativeTime } from "@/lib/dashboard/time";
@@ -82,7 +83,9 @@ function Reviews() {
           </Button>
         }
       />
-      {stats.error && !s ? <ErrorLine message={stats.error} onRetry={() => void stats.reload()} /> : null}
+      {stats.error && !s ? (
+        <ErrorPanel error={stats.cause ?? stats.error} what="your review numbers" onRetry={() => void stats.reload()} />
+      ) : (
       <StatBlock tiles
         label="Review numbers"
         loading={stats.loading && !s}
@@ -93,12 +96,14 @@ function Reviews() {
           { label: "Private feedback to read", value: formatNumber(s?.privateToRead ?? 0), caption: unreadCaption(s?.privateToReadByRating) || "Nothing waiting" },
         ]}
       />
+      )}
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-w-0 flex-col gap-8">
+        {/* Nothing loaded at all: the one failure block above says so; do not repeat it in every section. */}
+        {stats.error && !s && unread.error && !unread.data && list.error && !list.data ? <div /> : <div className="flex min-w-0 flex-col gap-8">
           <Section title="Read first: private feedback" description="Guests who rated 1 to 3 stars and wrote to you. Reply in their language.">
             {unread.error && !unread.data ? (
-              <ErrorLine message={unread.error} onRetry={() => void unread.reload()} />
+              <ErrorPanel error={unread.cause ?? unread.error} what="your private feedback" onRetry={() => void unread.reload()} />
             ) : !unread.data ? (
               <SkeletonRows rows={2} />
             ) : unread.data.items.length === 0 ? (
@@ -172,7 +177,7 @@ function Reviews() {
             />
             {waiting > 0 ? <p className="mt-2 text-meta text-fg-muted">{formatNumber(waiting)} {waiting === 1 ? "ask has" : "asks have"} no answer yet. They are not listed here.</p> : null}
           </Section>
-        </div>
+        </div>}
 
         <aside className="flex min-w-0 flex-col gap-8">
           <Section title="What every guest sees" description="The same screen at 1 star or 5 stars.">
@@ -384,7 +389,7 @@ function AskForReview({ hasLink, onAsked }: { hasLink: boolean; onAsked: () => v
       {orders.loading && !orders.data ? (
         <SkeletonRows rows={3} />
       ) : orders.error ? (
-        <ErrorLine message="We couldn't load recent orders." onRetry={() => void orders.reload()} />
+        <ErrorPanel error={orders.cause ?? orders.error} what="recent orders" onRetry={() => void orders.reload()} />
       ) : items.length === 0 ? (
         <p className="text-meta text-fg-muted">Picked-up orders show up here. Ask about one as soon as the guest leaves.</p>
       ) : (

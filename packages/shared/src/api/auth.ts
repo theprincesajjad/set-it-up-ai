@@ -116,6 +116,11 @@ export interface AuthResponse extends TokenPair {
   user: AuthUserDto;
   /** True when this sign-in created the account. */
   created: boolean;
+  /**
+   * Present (true) when this emailed-code sign-in removed a password that was set when the account was made but never proven to belong to this person.
+   * They can set a new one with Forgot password.
+   */
+  passwordCleared?: boolean;
 }
 
 export interface MerchantMembershipDto {
@@ -138,6 +143,8 @@ export interface MeResponse {
   user: AuthUserDto;
   platformRole: PlatformRole;
   merchants: MerchantMembershipDto[];
+  /** True when this person manages at least one neighbourhood (BIA manager): their home is /bia. */
+  biaManager?: boolean;
 }
 
 /** POST /v1/merchants/:merchantId/staff-pin/verify */

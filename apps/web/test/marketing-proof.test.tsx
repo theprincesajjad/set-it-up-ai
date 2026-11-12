@@ -2,7 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { SAMPLE_BOARD_REPORT, type campaignsApi } from "@ll/shared";
 import { openCorridors, spotsLeft, foundingHeadline } from "@/components/marketing/FoundingStrip";
-import { upcomingFestivals, festivalLine } from "@/components/marketing/FestivalList";
+import { MAJOR_FESTIVALS, upcomingFestivals, festivalLine } from "@/components/marketing/FestivalList";
+import { restaurantCopy } from "@/copy/restaurants-locales";
 import { LIVE_PROOF_MIN_SHOPS, liveProofStats } from "@/components/marketing/LiveProof";
 import { ReportSummary, ReportTiles } from "@/components/marketing/ReportMock";
 import { SampleReportCard } from "@/components/marketing/SampleReportCard";
@@ -34,9 +35,62 @@ describe("founding spots", () => {
 describe("festival list", () => {
   it("lists the next festivals from the calendar with moon-based dates marked as estimates", () => {
     const rows = upcomingFestivals("2026-10-23");
-    expect(rows.map(festivalLine)).toEqual(["Diwali · Sun, Nov 8, 2026", "Guru Nanak Gurpurab · Tue, Nov 24, 2026", "Ramadan begins · about Feb 8, 2027"]);
+    expect(rows.map((o) => festivalLine(o))).toEqual(["Diwali · Sun, Nov 8, 2026", "Guru Nanak Gurpurab · Tue, Nov 24, 2026", "Ramadan begins · about Feb 8, 2027"]);
     expect(rows.every((r) => r.daysUntil >= 0)).toBe(true);
-    expect(upcomingFestivals("2026-10-23", 30).map(festivalLine)).toEqual(["Diwali · Sun, Nov 8, 2026"]);
+    expect(upcomingFestivals("2026-10-23", 30).map((o) => festivalLine(o))).toEqual(["Diwali · Sun, Nov 8, 2026"]);
+  });
+  it("names the festival and writes the date in the page's language", () => {
+    const rows = upcomingFestivals("2026-10-23");
+    for (const locale of ["hi", "ur", "pa"] as const) {
+      const c = restaurantCopy(locale);
+      const lines = rows.map((o) => festivalLine(o, c, locale));
+      expect(lines[0]).toContain(c.festivalNames.diwali);
+      expect(lines[2]).toContain(c.festivalNames.ramadan);
+      // No English month, weekday or connecting word is left in the line.
+      for (const line of lines) expect(line, line).not.toMatch(/[A-Za-z]{3,}/);
+      expect(lines.join(" ")).toContain("2026");
+    }
+    expect(foundingHeadline({ slug: "d", name: "Gerrard", taken: 1, total: 20 }, restaurantCopy("ur").founding.headline)).toBe("Gerrard پر پہلے سال کی پیشکش کی 20 میں سے 19 جگہیں باقی");
+  });
+});
+
+describe("the restaurant page in Hindi, Urdu and Punjabi", () => {
+  /** Every string in the sections, by path. */
+  const flat = (v: unknown, path = "", out: Record<string, string> = {}): Record<string, string> => {
+    if (typeof v === "string") out[path] = v;
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) flat(x, `${path}.${k}`, out);
+    return out;
+  };
+  const en = flat({ ...restaurantCopy("en"), festivalNames: undefined, festivalGreetings: undefined });
+  const SCRIPT = { hi: /[\u0900-\u097F]/, ur: /[\u0600-\u06FF]/, pa: /[\u0A00-\u0A7F]/ } as const;
+  /** Names that are written the same in every language. */
+  const SAME = new Set(["WhatsApp"]);
+  for (const locale of ["hi", "ur", "pa"] as const) {
+    it(`${locale}: every line is translated, in its own script, with the same placeholders`, () => {
+      const tr = flat({ ...restaurantCopy(locale), festivalNames: undefined, festivalGreetings: undefined });
+      expect(Object.keys(tr).sort()).toEqual(Object.keys(en).sort());
+      for (const [path, english] of Object.entries(en)) {
+        const text = tr[path]!;
+        if (path.endsWith(".key")) continue;
+        if (SAME.has(english)) continue;
+        expect(text, path).not.toBe(english);
+        expect(text, path).toMatch(SCRIPT[locale]);
+        expect((text.match(/\{\w+\}/g) ?? []).sort(), path).toEqual((english.match(/\{\w+\}/g) ?? []).sort());
+        // Only product, plan and currency words may stay in Latin letters.
+        const latin = text.replace(/\{\w+\}/g, "").match(/[A-Za-z]{2,}/g) ?? [];
+        for (const w of latin) expect(["WhatsApp", "DoorDash", "Canada", "Stripe", "Restaurant", "Pro"], `${path}: ${w}`).toContain(w);
+        expect(text, path).not.toMatch(/!/);
+      }
+      for (const id of ["ramadan", "eid_al_fitr", "eid_al_adha", "diwali", "vaisakhi", "gurpurab", "navratri", "holi"]) expect(restaurantCopy(locale).festivalNames[id], id).toMatch(SCRIPT[locale]);
+    });
+  }
+  it("covers every festival the page can list, with a greeting in the page's language", () => {
+    expect(Object.keys(restaurantCopy("ur").festivalNames).sort()).toEqual([...MAJOR_FESTIVALS].sort());
+    const year = upcomingFestivals("2026-01-01", 365, 50);
+    expect(new Set(year.map((o) => o.festivalId)).size).toBeGreaterThanOrEqual(6);
+    for (const locale of ["hi", "ur", "pa"] as const) {
+      for (const o of year) expect(o.greeting[locale] ?? restaurantCopy(locale).festivalGreetings[o.festivalId], `${locale} ${o.festivalId}`).toMatch(SCRIPT[locale]);
+    }
   });
 });
 

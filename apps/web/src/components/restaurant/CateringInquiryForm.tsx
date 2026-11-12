@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { TextField } from "@/components/ui/TextField";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { formatNanp, normalizeDigits, toE164, validateNanp } from "@/lib/phone";
 import { restaurantCustomerApi, type CateringInquiryReceipt } from "@/lib/restaurant/api";
 import { dayDate, eventLabel, serviceLabel, todayIso } from "@/lib/restaurant/util";
@@ -21,6 +22,7 @@ type Errors = Partial<Record<"name" | "phone" | "email" | "date" | "guests", str
 
 /** Public catering inquiry (restaurant-endpoints.md: POST /public/shops/:slug/catering/inquiries). Also used by banquet with service=banquet. */
 export function CateringInquiryForm({ shop, fromPerGuestCents = null }: { shop: Shop; /** The cheapest tray priced per guest it serves; null when the menu has none. */ fromPerGuestCents?: number | null }) {
+  const errText = useErrorText();
   const { t, date, money } = useFmt();
   const [eventType, setEventType] = useState<restaurantApi.CateringEventType>("wedding");
   const [service, setService] = useState<restaurantApi.CateringService>("delivery");
@@ -77,7 +79,7 @@ export function CateringInquiryForm({ shop, fromPerGuestCents = null }: { shop: 
       window.scrollTo?.({ top: 0 });
     } catch (err) {
       if (isApiError(err) && err.status === 402) setBanner({ tone: "info", text: t("rc.cq.unavailable", { shop: shop.name }) });
-      else setBanner({ tone: "danger", text: isApiError(err) && err.isNetwork ? t("rc.error.body") : isApiError(err) && err.status >= 500 ? t("rc.error.generic") : errorMessage(err) });
+      else setBanner({ tone: "danger", text: isApiError(err) && err.isNetwork ? t("rc.error.body") : isApiError(err) && err.status >= 500 ? t("rc.error.generic") : errText(err) });
     } finally {
       setBusy(false);
     }

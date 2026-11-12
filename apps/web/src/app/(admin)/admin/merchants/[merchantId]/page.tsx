@@ -35,7 +35,7 @@ export default function AdminMerchantPage() {
   return (
     <div className="flex flex-col gap-4">
       <BackLink href="/admin/merchants">Plans and payments</BackLink>
-      <Async state={m}>
+      <Async state={m} fail={{ title: "Shop", back: { href: "/admin/merchants", label: "Back to plans and payments" }, notFound: { title: "We couldn’t find that shop", description: "The link may be old or mistyped." } }}>
         {(d) => (
           <>
             <PageHeader title={d.name} description={<span className="flex flex-wrap items-center gap-3"><StatusDot domain="merchant" status={d.status} /><span>{d.plan[0]!.toUpperCase() + d.plan.slice(1)} plan</span>{d.betaOptIn ? <span>· Beta opt-in</span> : null}</span>} actions={

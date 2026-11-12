@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { serviceApi } from "@ll/shared";
 import { StatBlock } from "@/components/dashboard/kit";
 import { formatMoney } from "@/lib/format";
@@ -5,8 +6,9 @@ import { formatMoney } from "@/lib/format";
 const n = (c: number, one: string, many: string) => `${c} ${c === 1 ? one : many}`;
 
 /** One bordered block of five plain numbers. Accent dot only for what the shop must act on; blue for what waits on a customer. */
-export function TicketStats({ summary, loading }: { summary: serviceApi.TicketSummaryResponse | null; loading: boolean }) {
+export function TicketStats({ summary, loading, failure }: { summary: serviceApi.TicketSummaryResponse | null; loading: boolean; /** The summary could not load: shown INSTEAD of the tiles, which would read "Nothing overdue / Shelf is clear". */ failure?: ReactNode }) {
   const s = summary;
+  if (failure) return <>{failure}</>;
   return (
     <StatBlock
       label="Tickets at a glance"

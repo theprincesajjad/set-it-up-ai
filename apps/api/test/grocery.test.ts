@@ -63,6 +63,30 @@ describe("feature gating", () => {
   });
 });
 
+describe("butcher rules and caps load and save under the same check (DV-01)", () => {
+  it("a grocer with the butcher counter can read the rules it saves (it used to get 402 on the read and 200 on the save)", async () => {
+    const g = await grocer();
+    const url = `${g.url}/preorders/settings`;
+    const before = await call(env, g.ownerToken, "GET", url);
+    expect(before.status).toBe(200);
+    expect(before.body).toMatchObject({ preorderDailyCap: null, perHourCap: null });
+    const saved = await call(env, g.ownerToken, "PUT", url, { preorderDailyCap: 12, perHourCap: 4 });
+    expect(saved.status).toBe(200);
+    expect((await call(env, g.ownerToken, "GET", url)).body).toMatchObject({ preorderDailyCap: 12, perHourCap: 4 });
+    expect((await call(env, g.ownerToken, "GET", `${g.url}/preorders/cancel-rule`)).status).toBe(200);
+  });
+
+  it("a shop with neither feature is refused on read and save, so nothing can be overwritten", async () => {
+    const plain = await grocer({ features: false });
+    await setStage(env, ["grocery.counter_preorders"], "hidden");
+    const url = `${plain.url}/preorders/settings`;
+    expect((await call(env, plain.ownerToken, "GET", url)).status).toBe(402);
+    expect((await call(env, plain.ownerToken, "PUT", url, { preorderDailyCap: 5 })).status).toBe(402);
+    expect((await call(env, plain.ownerToken, "GET", `${plain.url}/preorders/cancel-rule`)).status).toBe(402);
+    expect((await call(env, plain.ownerToken, "PUT", `${plain.url}/preorders/cancel-rule`, { cancelCutoffHours: 2 })).status).toBe(402);
+  });
+});
+
 describe("weekly flyer", () => {
   const deal = (over: object = {}) => ({ title: "Desi ghee 1.6 kg", priceCents: 2199, wasPriceCents: 2499, packSizeG: 1600, startsOn: "2026-11-02", endsOn: "2026-11-08", seasonId: "diwali", ...over });
 

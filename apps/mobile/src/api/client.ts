@@ -41,6 +41,8 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly details: unknown;
+  /** Seconds the server asked us to wait (Retry-After on a 429), when it said. */
+  retryAfterSeconds: number | null = null;
   constructor(status: number, code: string, message: string, details?: unknown) {
     super(message);
     this.name = "ApiError";
@@ -56,6 +58,12 @@ export class ApiError extends Error {
   get isRetryable(): boolean {
     return this.status === 0 || this.status >= 500 || this.code === "internal";
   }
+}
+
+let requestLocale: string | null = null;
+/** The language the person chose; sent as Accept-Language on every request so the server can answer (texts, errors) in it. */
+export function setRequestLocale(locale: string | null): void {
+  requestLocale = locale;
 }
 
 export function isApiError(e: unknown): e is ApiError {
@@ -132,7 +140,10 @@ async function parseError(res: Response): Promise<ApiError> {
   } catch {
     // non-JSON body (proxy error page etc.)
   }
-  return new ApiError(res.status, code, message, details);
+  const err = new ApiError(res.status, code, message, details);
+  const wait = Number(res.headers?.get?.("retry-after"));
+  if (Number.isFinite(wait) && wait > 0) err.retryAfterSeconds = Math.ceil(wait);
+  return err;
 }
 
 function toTokens(res: authApi.AuthResponse | StoredTokens): StoredTokens {
@@ -206,7 +217,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     const timeoutMs = opts.timeoutMs ?? defaultTimeout;
 
     const attempt = async (retried: boolean): Promise<T> => {
-      const headers: Record<string, string> = { accept: "application/json", ...(opts.headers ?? {}) };
+      const headers: Record<string, string> = { accept: "application/json", ...(requestLocale ? { "accept-language": requestLocale } : {}), ...(opts.headers ?? {}) };
       if (options.userAgent) headers["x-client"] = options.userAgent;
       let usedStaffToken = false;
       if (auth !== "none") {
@@ -273,12 +284,44 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   };
 }
 
-/** Human message for any thrown value, using ux-copy error strings for network/server failures. */
+/** Catalog keys for the translated sentence per failure kind. They exist in en, hi, ur and pa (the shared "err.*" family). */
+export type ApiErrorKey = "err.validation.line" | "err.session.line" | "err.forbidden.line" | "err.notFound.line" | "err.conflict.line" | "err.rate.line" | "err.rate.lineNoWait" | "err.generic.line";
+export type ApiErrorTranslate = (key: ApiErrorKey | "err.wait.seconds" | "err.wait.minutes" | "err.wait.hours", vars?: Record<string, string | number>) => string;
+
+let translateApiError: ApiErrorTranslate | null = null;
+/** The locale provider registers its translator here, so every caller of errorMessage speaks the person's language without passing it in. */
+export function setApiErrorTranslator(fn: ApiErrorTranslate | null): void {
+  translateApiError = fn;
+}
+
+/** Which translated sentence fits a failed response. Never the server's own (English) text. */
+export function apiErrorKey(e: ApiError): ApiErrorKey {
+  if (e.status === 401) return "err.session.line";
+  if (e.status === 403) return "err.forbidden.line";
+  if (e.status === 404 || e.status === 410) return "err.notFound.line";
+  if (e.status === 409) return "err.conflict.line";
+  if (e.status === 429) return e.retryAfterSeconds ? "err.rate.line" : "err.rate.lineNoWait";
+  if (e.status === 400 || e.status === 422) return "err.validation.line";
+  return "err.generic.line";
+}
+
+function waitText(tr: ApiErrorTranslate, seconds: number): string {
+  if (seconds < 90) return tr("err.wait.seconds", { n: Math.max(1, seconds) });
+  if (seconds < 5400) return tr("err.wait.minutes", { n: Math.ceil(seconds / 60) });
+  return tr("err.wait.hours", { n: Math.ceil(seconds / 3600) });
+}
+
+/**
+ * Message for any thrown value, in the person's language: the network and server copy the caller passes, and for every other
+ * failure a translated sentence chosen by status (validation, signed out, forbidden, not found, conflict, rate limit).
+ * The server's own message is never shown: it is English and may carry codes or field paths.
+ */
 export function errorMessage(e: unknown, copy: { network: string; server: string }): string {
-  if (isApiError(e)) {
-    if (e.isNetwork) return copy.network;
-    if (e.status >= 500) return copy.server;
-    return e.message;
-  }
-  return copy.server;
+  if (!isApiError(e)) return copy.server;
+  if (e.isNetwork) return copy.network;
+  if (e.status >= 500) return copy.server;
+  const tr = translateApiError;
+  if (!tr) return copy.server;
+  const key = apiErrorKey(e);
+  return key === "err.rate.line" ? tr(key, { wait: waitText(tr, e.retryAfterSeconds!) }) : tr(key);
 }

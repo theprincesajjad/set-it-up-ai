@@ -38,8 +38,8 @@ export default async function OrderPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const [locale, t] = await Promise.all([getLocale(sp), getT(sp)]);
   const order = await (await getServerApi()).me.order(id).catch((e: unknown) => (isApiError(e) && e.status === 404 ? ("gone" as const) : ("error" as const)));
-  if (order === "gone") return <EmptyState icon={PackageSearch} title={t("wp.order.goneTitle")} description={t("wp.order.goneBody")} action={<Button variant="secondary" href="/me">{t("sh.fs.ctaCard")}</Button>} />;
-  if (order === "error") return <ErrorState title={t("wp.err.order")} description={t("auth.err.network")} action={<Button variant="secondary" href={`/o/${encodeURIComponent(id)}`}>{t("rc.tryAgain")}</Button>} />;
+  if (order === "gone") return <EmptyState headingLevel={1} icon={PackageSearch} title={t("wp.order.goneTitle")} description={t("wp.order.goneBody")} action={<Button variant="secondary" href="/me">{t("sh.fs.ctaCard")}</Button>} />;
+  if (order === "error") return <ErrorState title={t("wp.err.order")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/o/${encodeURIComponent(id)}`}>{t("rc.tryAgain")}</Button>} />;
   // A degh pre-order gets the reservation page: pickup code, share with the family, calendar, cancel rule.
   if (order.kind === "preorder") {
     return (

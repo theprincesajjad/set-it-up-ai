@@ -152,7 +152,7 @@ test.describe("security", () => {
     }
     await signIn(page, OWNER);
     await page.goto("/admin/businesses");
-    await expect(page.getByText("This area is for platform admins.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "This area is for platform admins" })).toBeVisible();
     await expect(page.getByText("Kings Cuts")).toHaveCount(0);
   });
 

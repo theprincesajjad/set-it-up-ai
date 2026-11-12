@@ -25,6 +25,12 @@ export interface ApiClientOptions {
   /** Default headers on every request. */
   headers?: Record<string, string>;
   credentials?: RequestCredentials;
+  /**
+   * Called once per response that is still 401 after the refresh attempt (the session is gone). The browser client uses it to raise
+   * the one global "session ended" banner (components/errors/SessionGuard.tsx). Not called for anonymous requests, nor for a counter
+   * staff PIN token, whose expiry is the counter's own prompt.
+   */
+  onSessionEnded?: (path: string) => void;
 }
 
 export interface RequestOptions {
@@ -139,7 +145,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
     if (opts.raw && res.ok) return res as unknown as T;
     const data = await parseBody(res);
-    if (!res.ok) throw toApiError(res.status, data);
+    if (!res.ok) {
+      // Only a lost session ends the session. A wrong staff PIN (`invalid_pin`), an expired one-time link or a bad signature is also a 401,
+      // but the person is still signed in: that screen shows its own message, and the "You've been signed out" banner would be false.
+      const code = (data as { error?: { code?: unknown } } | null)?.error?.code;
+      const sessionGone = code === undefined || code === "unauthorized";
+      if (res.status === 401 && sessionGone && !opts.anonymous && !headers["x-counter-staff-token"]) options.onSessionEnded?.(path);
+      throw toApiError(res.status, data, res.headers);
+    }
     return data as T;
   }
 

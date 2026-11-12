@@ -27,13 +27,13 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.get("/public/plans", async () => publicPlans(ctx));
 
-  /** Founding offer spots per corridor (marketing site; cacheable for five minutes). */
-  app.get("/public/restaurants/founding", async (_req, reply) => {
+  /** Offer spots per corridor (counts come from the database) (marketing site; cacheable for five minutes). */
+  app.get("/public/restaurants/corridors", async (_req, reply) => {
     reply.header("cache-control", "public, max-age=300");
     return foundingCorridors(ctx);
   });
 
   app.get<{ Params: { qrCode: string } }>("/public/join/:qrCode", async (req) => joinInfo(ctx, req.params.qrCode));
 
-  app.post<{ Params: { qrCode: string } }>("/public/join/:qrCode", async (req) => startQrJoin(ctx, req.params.qrCode, parse(networkApi.publicJoinBody, req.body)));
+  app.post<{ Params: { qrCode: string } }>("/public/join/:qrCode", async (req) => startQrJoin(ctx, req.params.qrCode, parse(networkApi.publicJoinBody, req.body), req.ip));
 }

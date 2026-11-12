@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type DependencyList } from "react";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { errorMessage, fieldErrorMap, isApiError } from "@/lib/api/errors";
 
 export interface ApiState<T> {
   data: T | null;
   error: string | null;
+  /** The thrown value behind `error` (an ApiError for a failed request): what the error screens read to choose their words. Null when there is no error. */
+  cause: unknown;
   /** HTTP status of the last error (402 = feature locked, 403 = role too low). */
   status: number | null;
   loading: boolean;
@@ -19,6 +21,7 @@ export interface ApiState<T> {
 export function useApi<T>(fn: (() => Promise<T>) | null, deps: DependencyList, opts: { pollMs?: number } = {}): ApiState<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cause, setCause] = useState<unknown>(null);
   const [status, setStatus] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(fn !== null);
   const fnRef = useRef(fn);
@@ -37,10 +40,12 @@ export function useApi<T>(fn: (() => Promise<T>) | null, deps: DependencyList, o
       if (my !== seq.current) return;
       setData(d);
       setError(null);
+      setCause(null);
       setStatus(null);
     } catch (e) {
       if (my !== seq.current) return;
       setError(errorMessage(e));
+      setCause(e);
       setStatus(isApiError(e) ? e.status : null);
     } finally {
       if (my === seq.current) setLoading(false);
@@ -59,26 +64,33 @@ export function useApi<T>(fn: (() => Promise<T>) | null, deps: DependencyList, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, opts.pollMs]);
 
-  return { data, error, status, loading, reload: () => run(true), setData: setData as ApiState<T>["setData"] };
+  return { data, error, cause, status, loading, reload: () => run(true), setData: setData as ApiState<T>["setData"] };
 }
 
 /** Wrap an async action with busy + error state (forms, buttons). */
 export function useAction() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cause, setCause] = useState<unknown>(null);
+  const [fields, setFields] = useState<Record<string, string>>({});
   const run = useCallback(async <R,>(fn: () => Promise<R>): Promise<R | undefined> => {
     setBusy(true);
     setError(null);
+    setCause(null);
+    setFields({});
     try {
       return await fn();
     } catch (e) {
       setError(errorMessage(e));
+      setCause(e);
+      setFields(fieldErrorMap(e));
       return undefined;
     } finally {
       setBusy(false);
     }
   }, []);
-  return { busy, error, setError, run };
+  /** `fields`: per-field problems from a 400 (`{ email: "Enter a valid email address." }`): show each under its field with `error={fields.email}`. */
+  return { busy, error, cause, fields, setError, run };
 }
 
 /** Current time, fixed for the component's lifetime (render-pure "now" for display math). */

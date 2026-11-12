@@ -826,4 +826,43 @@ describe("classes: fix wave (stuck payments, desk actions, instructors, mileston
 });
 
 
+describe("classes: a class that already happened (DV-02)", () => {
+  it("cannot be cancelled (nobody is refunded or texted) and nobody can be added; one that is still ahead can", async () => {
+    const s = await studio();
+    const a = await member("A");
+    await buyPack(s, a, s.pack.id);
+    const cls = await s.session(iso(2 * DAY));
+    expect((await book(a, cls.id)).status).toBe(201);
+    // Two days later the class is over.
+    await at(iso(2 * DAY + 3 * HOUR));
+    const texts = await env.db.select().from(notifications);
+    const cancel = await call(env, s.m.ownerToken, "POST", `${s.base}/sessions/${cls.id}/cancel`, { reason: "Oops" });
+    expect(cancel.status).toBe(409);
+    expect(cancel.body.error.code).toBe("class_past");
+    expect(cancel.body.error.message).toBe("This class has already happened, so it can\u2019t be cancelled.");
+    // Nothing happened: still scheduled, the credit stays used, nobody was told.
+    expect((await call(env, s.m.ownerToken, "GET", `${s.base}/sessions/${cls.id}/roster`)).body.session.status).toBe("scheduled");
+    expect((await mine(a)).passes[0].creditsLeft).toBe(9);
+    expect(await env.db.select().from(notifications)).toHaveLength(texts.length);
+    // Adding someone to it is refused with the same kind of answer.
+    const add = await call(env, s.m.ownerToken, "POST", `${s.base}/sessions/${cls.id}/bookings`, { phone: "+14165559002", customerName: "Late Guest", comp: true });
+    expect(add.status).toBe(409);
+    expect(add.body.error.code).toBe("class_past");
+    // A class that has not started can still be cancelled.
+    const ahead = await s.session(iso(2 * DAY));
+    expect((await call(env, s.m.ownerToken, "POST", `${s.base}/sessions/${ahead.id}/cancel`, {})).status).toBe(200);
+  });
+
+  it("one that is under way says it has started, and can still take a walk-in", async () => {
+    const s = await studio();
+    const cls = await s.session(iso(HOUR));
+    await at(iso(HOUR + 20 * 60_000));
+    const cancel = await call(env, s.m.ownerToken, "POST", `${s.base}/sessions/${cls.id}/cancel`, {});
+    expect(cancel.status).toBe(409);
+    expect(cancel.body.error.message).toContain("already started");
+    const walkIn = await call(env, s.m.ownerToken, "POST", `${s.base}/sessions/${cls.id}/bookings`, { phone: "+14165559003", customerName: "Walk In", comp: true });
+    expect(walkIn.status).toBe(201);
+  });
+});
+
 void classPasses;

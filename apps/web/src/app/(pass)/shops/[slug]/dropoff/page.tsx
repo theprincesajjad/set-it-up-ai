@@ -45,7 +45,7 @@ export default async function ShopDropoffPage({ params, searchParams }: Props) {
   if (!shop.features?.dropoffScheduling)
     return (
       <PageFrame locale={locale} trade={shop.merchant.vertical} brandColor={shop.merchant.brandColor}>
-        <EmptyState title={t("sv.d.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: m.name })}</Button>} />
+        <EmptyState headingLevel={1} title={t("sv.d.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: m.name })}</Button>} />
       </PageFrame>
     );
   const me = await getMe();

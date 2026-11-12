@@ -15,20 +15,19 @@ export interface SoloCompareCopy {
   foot: string;
 }
 
-const ASOF = "2026-10-28";
-
 /** Our cells: every number from PLANS and FEES, so a price change shows here without an edit. */
 function usCells(c: SoloCompareCopy): Record<SoloRow | "chairs", string> {
   const vars = { plus: moneyShort(PLANS.plus.priceCents), studio: moneyShort(PLANS.studio.priceCents), fee: String(FEES.depositInvoiceBps / 100), free: FREE_REMINDER_SMS_PER_MONTH, paid: PLANS.plus.smsPerMonth };
   return Object.fromEntries(Object.entries(c.us).map(([k, v]) => [k, fill(v, vars)])) as Record<SoloRow | "chairs", string>;
 }
 
-function Cell({ cell }: { cell: SoloCell }) {
+/** One competitor figure with the day it was read (the competitor's own `asOf`, the same on phones and in the table) and its source. */
+function Cell({ cell, asOf }: { cell: SoloCell; asOf: string }) {
   return (
     <>
       <span className="block text-body text-foreground">{cell.text}</span>
       <span className="mt-1 block text-caption text-muted-foreground">
-        {formatAsOf(ASOF)} · {cell.note}
+        {formatAsOf(asOf)} · {cell.note}
       </span>
     </>
   );
@@ -67,7 +66,7 @@ export function CompetitorTableSolo({ c, chairs, id = "compare" }: { c: SoloComp
       <div className="hidden overflow-hidden rounded-sheet bg-card shadow-card md:block">
         <table className="w-full text-start text-body">
           <caption className="sr-only">
-            {c.brand} compared with {SOLO_COMPETITORS.map((x) => x.name).join(", ")}, read {formatAsOf(ASOF)}
+            {c.brand} compared with {SOLO_COMPETITORS.map((x) => `${x.name} (read ${formatAsOf(x.asOf)})`).join(", ")}
           </caption>
           <thead className="bg-tile-mint text-meta-strong text-tile-mint-foreground">
             <tr>
@@ -96,7 +95,7 @@ export function CompetitorTableSolo({ c, chairs, id = "compare" }: { c: SoloComp
                 </td>
                 {SOLO_COMPETITORS.map((x) => (
                   <td key={x.id} className="px-5 py-4">
-                    <Cell cell={get(x, r)} />
+                    <Cell cell={get(x, r)} asOf={x.asOf} />
                   </td>
                 ))}
               </tr>

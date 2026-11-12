@@ -83,6 +83,30 @@ export async function allow(ctx: AppContext, key: string, max: number, windowMs:
   return true;
 }
 
+/** Seconds until `key` has room again (memory: its oldest hit leaves the window; postgres: the window ends). 0 when it is not counting. */
+export async function secondsUntilFree(ctx: AppContext, key: string, windowMs: number): Promise<number> {
+  if (shared(ctx)) {
+    const [r] = await ctx.db
+      .select({ expiresAt: rateLimitCounters.expiresAt })
+      .from(rateLimitCounters)
+      .where(sql`${rateLimitCounters.key} = ${key} and ${gt(rateLimitCounters.expiresAt, ctx.now())}`)
+      .limit(1);
+    return r ? Math.max(1, Math.ceil((r.expiresAt.getTime() - ctx.now().getTime()) / 1000)) : 0;
+  }
+  const now = ctx.now().getTime();
+  const recent = (store(ctx).get(key) ?? []).filter((t) => now - t < windowMs);
+  return recent.length ? Math.max(1, Math.ceil((Math.min(...recent) + windowMs - now) / 1000)) : 0;
+}
+
+/** Forget every hit for `key` (a successful sign-in clears that account's failures). */
+export async function clearHits(ctx: AppContext, key: string): Promise<void> {
+  if (shared(ctx)) {
+    await ctx.db.delete(rateLimitCounters).where(sql`${rateLimitCounters.key} = ${key}`);
+    return;
+  }
+  store(ctx).delete(key);
+}
+
 /** Delete expired windows from the shared table (job `ratelimit.sweep`). A no-op with the memory store. */
 export async function sweepRateLimits(ctx: AppContext): Promise<number> {
   if (!shared(ctx)) return 0;

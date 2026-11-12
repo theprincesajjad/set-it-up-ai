@@ -8,7 +8,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { env } from "@/lib/env";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -25,6 +25,7 @@ export interface SetupBoxProps {
 }
 
 export function SetupBox({ setupIntentId, clientSecret, label, onSaved }: SetupBoxProps) {
+  const errText = useErrorText();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (env.stripePublishableKey) return <StripeSetup publishableKey={env.stripePublishableKey} clientSecret={clientSecret} label={label} onSucceeded={onSaved} />;
@@ -46,7 +47,7 @@ export function SetupBox({ setupIntentId, clientSecret, label, onSaved }: SetupB
             await browserApi.dev.simulatePayment(setupIntentId, "succeed_setup");
             await onSaved();
           } catch (e) {
-            setError(errorMessage(e));
+            setError(errText(e));
           } finally {
             setBusy(false);
           }

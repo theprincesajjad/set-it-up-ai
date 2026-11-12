@@ -205,7 +205,7 @@ function SidebarBody({ sections, header, footer, pathname, label, sidebarLabel }
               ))}
           </nav>
         </SidebarContent>
-        {footer ? <SidebarFooter className="gap-3 p-3 group-data-[collapsible=icon]:hidden">{footer}</SidebarFooter> : null}
+        {footer ? <SidebarFooter className={cn("gap-3 p-3 group-data-[collapsible=icon]:hidden", isMobile && "pb-28")}>{footer}</SidebarFooter> : null}
       </div>
     );
   return (
@@ -225,7 +225,7 @@ function SidebarBody({ sections, header, footer, pathname, label, sidebarLabel }
             ))}
         </nav>
       </SidebarContent>
-      {footer ? <SidebarFooter className="gap-3 px-4 pb-4 group-data-[collapsible=icon]:hidden">{footer}</SidebarFooter> : null}
+      {footer ? <SidebarFooter className={cn("gap-3 px-4 pb-4 group-data-[collapsible=icon]:hidden", isMobile && "pb-28")}>{footer}</SidebarFooter> : null}
     </div>
   );
 }

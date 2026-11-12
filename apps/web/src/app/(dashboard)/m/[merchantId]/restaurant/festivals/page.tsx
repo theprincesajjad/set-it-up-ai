@@ -1,4 +1,5 @@
 "use client";
+import { clockText } from "@/lib/format";
 import { nowMs } from "@/lib/restaurant/util";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -139,7 +140,7 @@ function Planner({ data, onReload, onYear }: { data: FestivalsUpcoming; onReload
           {selected ? <Plan key={`${selected.festivalId}-${selected.year}`} o={selected} onChanged={onReload} toast={(m) => toast({ message: m, tone: "success" })} /> : null}
         </>
       )}
-      <p className="text-meta text-fg-muted">We never send between 9 pm and 8 am. Guests who replied STOP are skipped. Dates for lunar festivals are approximate: confirm with your community before sending.</p>
+      <p className="text-meta text-fg-muted">We never send between 9 p.m. and 8 a.m. Guests who replied STOP are skipped. Dates for lunar festivals are approximate: confirm with your community before sending.</p>
     </div>
   );
 }
@@ -292,7 +293,14 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
   const previewText = festivalMessage(def, template, lang, detail.merchant.name, o.startDate, channel, { preview: true });
   const sms = useApi(available.sms ? () => api.messages.audience({ channel: "sms", segment: { kind: "all" } }) : null, [api, available.sms]);
   const email = useApi(available.email ? () => api.messages.audience({ channel: "email", segment: { kind: "all" } }) : null, [api, available.email]);
-  const wa = useApi(available.whatsapp ? () => api.whatsapp.broadcast({ templateName: template.whatsappTemplateName, language: lang, segment: { kind: "all" }, dryRun: true }).catch(() => null) : null, [api, available.whatsapp, template.whatsappTemplateName, lang]);
+  // WhatsApp is only a choice once the shop has connected it: no dry-run broadcast (a 400 on every visit) and no default to it before then.
+  const waSettings = useApi(available.whatsapp ? () => api.whatsapp.settings() : null, [api, available.whatsapp]);
+  const waConnected = !!waSettings.data?.connected;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (waSettings.data && !waSettings.data.connected) setChannel((c) => (c === "whatsapp" ? (available.sms ? "sms" : available.email ? "email" : c) : c));
+  }, [waSettings.data, available.sms, available.email]);
+  const wa = useApi(available.whatsapp && waConnected ? () => api.whatsapp.broadcast({ templateName: template.whatsappTemplateName, language: lang, segment: { kind: "all" }, dryRun: true }).catch(() => null) : null, [api, available.whatsapp, waConnected, template.whatsappTemplateName, lang]);
   const reach = [wa.data ? `${formatNumber(wa.data.recipients)} on WhatsApp` : null, sms.data ? `${formatNumber(sms.data.recipients)} SMS` : null, email.data ? `${formatNumber(email.data.recipients)} email` : null].filter(Boolean).join(" · ");
   const past = new Date(`${when}:00`).getTime() <= nowMs();
   const quiet = (() => {
@@ -311,7 +319,8 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
       const r = await api.festivals.testSend(o.festivalId, { templateId: template.id, year: o.year, channel: channel === "email" ? "email" : channel, ...(lang === "en" ? {} : { body: text }) });
       setTestNote(`Test sent to ${r.to.join(", ")}${r.smsCreditsUsed ? " (used 1 text)" : ""}. Nothing went to your guests. ${r.testsRemainingToday} tests left today.`);
     } catch (e) {
-      setTestError(errorMessage(e));
+      const msg = errorMessage(e);
+      setTestError(/phone number/i.test(msg) ? "Add your mobile number to your account in Settings to get a test." : msg);
     } finally {
       setTesting(false);
     }
@@ -386,7 +395,7 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
           <label className="inline-flex items-center gap-2 text-meta text-fg-muted">
             Send as
             <select value={channel} onChange={(e) => setChannel(e.target.value as typeof channel)} className="h-9 rounded-input border border-line bg-bg px-2 text-meta text-fg focus-visible:focus-ring">
-              <option value="whatsapp">{available.whatsapp ? "WhatsApp" : "WhatsApp (Restaurant Growth)"}</option>
+              <option value="whatsapp">{!available.whatsapp ? "WhatsApp (Restaurant Growth)" : waSettings.data && !waConnected ? "WhatsApp (not connected)" : "WhatsApp"}</option>
               <option value="sms">{available.sms ? "Text message" : "Text message (Pro)"}</option>
               <option value="email">{available.email ? "Email" : "Email (Pro)"}</option>
             </select>
@@ -402,12 +411,17 @@ function Composer({ o, template, templates, onTemplate, onChanged, toast }: { o:
             <Button variant="secondary" size="md" disabled={!available[channel]} loading={act.busy} onClick={() => void saveDraft()}>Save as draft</Button>
           ) : null}
           <Button size="md" disabled={!available[channel] || (channel !== "whatsapp" && (past || quiet))} loading={act.busy} onClick={() => void schedule()}>
-            {channel === "whatsapp" ? "Open in broadcast" : `Schedule for ${short(when.slice(0, 10))}, ${new Date(`${when}:00`).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" }).replace(/\./g, "").toLowerCase()}`}
+            {channel === "whatsapp" ? "Open in broadcast" : `Schedule for ${short(when.slice(0, 10))}, ${clockText(new Date(`${when}:00`), undefined)}`}
           </Button>
         </div>
-        {channel !== "whatsapp" && (past || quiet) ? <p role="alert" className="border-t border-line px-5 py-2 text-meta text-negative">{quiet ? "We never send between 9 pm and 8 am. Pick a time between 8 am and 9 pm." : "Pick a time in the future."}</p> : null}
+        {channel !== "whatsapp" && (past || quiet) ? <p role="alert" className="border-t border-line px-5 py-2 text-meta text-negative">{quiet ? "We never send between 9 p.m. and 8 a.m. Pick a time between 8 a.m. and 9 p.m." : "Pick a time in the future."}</p> : null}
         {act.error ? <p role="alert" className="border-t border-line px-5 py-2 text-meta text-negative">{act.error}</p> : null}
-        {testError ? <p role="alert" className="border-t border-line px-5 py-2 text-meta text-negative">{testError}</p> : null}
+        {testError ? (
+          <p role="alert" className="border-t border-line px-5 py-2 text-meta text-negative">
+            {testError}
+            {/Settings/.test(testError) ? <> <Link href={`${base}/settings`} className="underline underline-offset-4">Open Settings</Link></> : null}
+          </p>
+        ) : null}
         {testNote ? <p role="status" className="border-t border-line px-5 py-2 text-meta text-fg">{testNote}</p> : null}
       </div>
       <p className="mt-2 text-caption text-fg-muted">Schedule makes a draft with a send time. It never sends at once, and you can change it under Messages.</p>

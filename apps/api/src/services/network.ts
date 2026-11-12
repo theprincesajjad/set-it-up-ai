@@ -572,9 +572,9 @@ export async function joinInfo(ctx: AppContext, qrCode: string): Promise<network
   };
 }
 
-export async function startQrJoin(ctx: AppContext, qrCode: string, body: networkApi.PublicJoinBody): Promise<networkApi.PublicJoinResponse> {
+export async function startQrJoin(ctx: AppContext, qrCode: string, body: networkApi.PublicJoinBody, ip?: string | null): Promise<networkApi.PublicJoinResponse> {
   const { merchant, location } = await resolveQr(ctx.db, qrCode);
-  const otp = await startPhoneOtp(ctx, body.phone, { context: merchant.name });
+  const otp = await startPhoneOtp(ctx, body.phone, { context: merchant.name, ip });
   return {
     ...otp,
     next: { verify: "POST /v1/auth/otp/verify", join: "POST /v1/me/memberships", locationQrCode: location.qrCode },

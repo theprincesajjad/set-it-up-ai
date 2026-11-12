@@ -6,9 +6,10 @@ import type { barberApi } from "@ll/shared";
 import { AddToLine } from "@/components/dashboard/queue/AddToLine";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { Dot, PageHeader, StatBlock } from "@/components/dashboard/kit";
-import { ListError, ListLoading } from "@/components/dashboard/ListStates";
+import { Dot, ErrorLine, PageHeader, StatBlock } from "@/components/dashboard/kit";
+import { ListLoading } from "@/components/dashboard/ListStates";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
+import { ErrorPanel } from "@/components/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -67,6 +68,7 @@ function Board() {
   }
   const callFor = (entry: barberApi.QueueEntryDto, staffId: string) => run(() => api.barber.call(entry.id, staffId), `${entry.name} was texted if they asked`);
   const myChair = b?.chairs.find((c) => c.staffId === myId);
+  const failed = !!state.error && !b;
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,7 +77,7 @@ function Board() {
         title="Walk-in line"
         description="Clients join from their phone or the tablet at the door. You pick who is next."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          failed ? null : <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant={open ? "secondary" : "primary"} onClick={() => run(() => api.barber.saveSettings({ open: !open }), open ? "The line is closed to new people" : "The line is open")}>
               {open ? "Close the line" : "Open the line"}
             </Button>
@@ -85,8 +87,11 @@ function Board() {
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      {state.error && !b ? <ListError title="Couldn't load the line." detail={state.error} onRetry={state.reload} /> : null}
-      <StatBlock tiles
+      {/* Not loaded: one failure block INSTEAD of the board. The page never says "Nobody waiting" or "Open the line" about a line it could not read. */}
+      {failed ? <ErrorPanel error={state.cause ?? state.error} what="the line" onRetry={() => void state.reload()} /> : null}
+      {/* Loaded earlier but the latest refresh failed: the board below may be out of date. */}
+      {state.error && b ? <ErrorLine message={state.error} cause={state.cause} onRetry={() => void state.reload()} /> : null}
+      {failed ? null : <StatBlock tiles
         label="The line now"
         loading={!b}
         items={[
@@ -95,8 +100,8 @@ function Board() {
           { label: "Chairs taking walk-ins", value: b ? `${b.stats.chairsTaking} of ${b.stats.chairsTotal}` : "", caption: "Set who takes walk-ins in Staff" },
           { label: "Served today", value: b?.stats.servedToday ?? 0, caption: `${b?.stats.noShowsToday ?? 0} no-show${b?.stats.noShowsToday === 1 ? "" : "s"}` },
         ]}
-      />
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      />}
+      {failed ? null : <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section aria-label="Waiting" className="overflow-hidden rounded-card bg-card shadow-card">
           <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
             <h2 className="text-body-strong text-fg">Waiting</h2>
@@ -123,7 +128,7 @@ function Board() {
               {b.waiting.map((e) => (
                 <li key={e.id} className={cn("flex flex-wrap items-center gap-3 px-5 py-3.5", e.position === 1 && "bg-points-soft")}>
                   <span className={cn("w-6 text-[20px] font-semibold tabular", e.position === 1 ? "text-points-text" : "text-fg-muted")}>{e.position}</span>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-[60%] flex-1 sm:min-w-0">
                     <p className="text-meta-strong text-fg">{e.name}{e.skips ? <span className="font-normal text-fg-muted"> · skipped once</span> : null}</p>
                     <p className="text-meta text-fg-muted">{entryMeta(e)}</p>
                   </div>
@@ -173,7 +178,7 @@ function Board() {
             <p className="mt-1 text-meta text-fg-muted">Called and no answer after {b?.settings.callHoldMinutes ?? 5} minutes: Skip puts them back 2 places and texts them again. A second skip takes them off. Skip only works on someone you have called. No fee, no card needed.</p>
           </div>
         </section>
-      </div>
+      </div>}
       <ConfirmDialog
         open={!!confirmSkip}
         onClose={() => setConfirmSkip(null)}

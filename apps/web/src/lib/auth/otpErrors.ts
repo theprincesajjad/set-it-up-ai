@@ -1,5 +1,6 @@
 import type { Locale, MessageKey, Vars } from "@ll/shared";
 import { isApiError } from "@/lib/api/errors";
+import { waitText } from "@/lib/api/userError";
 
 type T = (key: MessageKey, vars?: Vars) => string;
 
@@ -7,7 +8,14 @@ type T = (key: MessageKey, vars?: Vars) => string;
 export function otpErrorMessage(err: unknown, t: T, locale: Locale): string {
   if (isApiError(err)) {
     if (err.isNetwork) return t("auth.err.network");
-    if (err.status === 429) return t("auth.err.tooMany");
+    if (err.status === 429) {
+      // The API sends one code for both limits; its text tells them apart (the wrong-code lockout vs the hourly cap on new codes).
+      if (/wrong codes|new one/i.test(err.message)) return t("auth.err.lockedCode");
+      if (/hour|requested/i.test(err.message)) return t("auth.err.startCap");
+      // The server says when to come back (Retry-After); say that, not a guess.
+      if (err.retryAfter && err.retryAfter > 0) return t("err.rate.line", { wait: waitText(err.retryAfter, t) });
+      return t("auth.err.tooMany");
+    }
     if (err.status >= 500) return t("auth.err.server");
     if (err.code === "invalid_code") {
       if (/expire|used/i.test(err.message)) return t("auth.err.expired");

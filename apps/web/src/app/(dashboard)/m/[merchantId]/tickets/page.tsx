@@ -9,6 +9,7 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { TicketCard } from "@/components/dashboard/service/TicketCard";
 import { TicketFilters, type BoardFilter } from "@/components/dashboard/service/TicketFilters";
 import { TicketStats } from "@/components/dashboard/service/TicketStats";
+import { ErrorPanel } from "@/components/errors";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { copy } from "@/copy/en-CA";
@@ -68,8 +69,8 @@ function Board() {
           </div>
         }
       />
-      {open ? <TicketStats summary={s} loading={summary.loading} /> : null}
-      {open ? <TicketFilters value={filter} onChange={setFilter} counts={counts} /> : null}
+      {open ? <TicketStats summary={s} loading={summary.loading} failure={summary.error && !s ? (list.error && !list.data ? <></> : <ErrorPanel error={summary.cause ?? summary.error} what="your ticket numbers" onRetry={() => void summary.reload()} />) : null} /> : null}
+      {open && !(list.error && !list.data) ? <TicketFilters value={filter} onChange={setFilter} counts={counts} /> : null}
       <TextField type="search" label="Search tickets" hideLabel placeholder="Ticket #, customer, phone, device" value={q} onChange={(e) => setQ(e.target.value)} />
       {list.error && !list.data ? (
         <ListError title="Couldn't load your tickets." detail={list.error} onRetry={list.reload} />

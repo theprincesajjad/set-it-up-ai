@@ -196,7 +196,7 @@ function Calendar() {
   if (!setup.ready) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader flush title="Calendar" description="Your day, one column per stylist." />
+        <PageHeader flush title="Calendar" description="Your day, one column per team member." />
         <EmptyState
           title="Add your services and hours to open booking"
           description={`${setup.services ? "Services are set up. " : "No services yet. "}${setup.staffWithHours ? "Hours are set." : "No one has working hours yet."} The calendar opens once you have at least one of each.`}

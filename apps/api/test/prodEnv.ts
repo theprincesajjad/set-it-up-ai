@@ -1,0 +1,22 @@
+/** A production environment that passes every launch check (values are shaped like real ones, none is a real credential). */
+export const PROD_ENV = {
+  NODE_ENV: "production",
+  DATABASE_URL: "postgres://app:pw@db.internal/app",
+  JWT_SECRET: "j".repeat(48),
+  ENCRYPTION_KEY: "ab12".repeat(16),
+  APP_ENCRYPTION_KEY: "cd34".repeat(16),
+  PUBLIC_API_URL: "https://api.shop-loyalty.ca",
+  PUBLIC_WEB_URL: "https://shop-loyalty.ca",
+  CORS_ORIGINS: "https://shop-loyalty.ca",
+  STRIPE_SECRET_KEY: "sk_live_" + "a".repeat(24),
+  STRIPE_WEBHOOK_SECRET: "whsec_" + "b".repeat(24),
+  RESEND_API_KEY: "re_" + "c".repeat(20),
+  EMAIL_FROM: "Local Loyalty <hello@shop-loyalty.ca>",
+  WHATSAPP_ACCESS_TOKEN: "wa_token_value",
+  WHATSAPP_APP_SECRET: "wa_secret_value",
+  TWILIO_ACCOUNT_SID: "AC" + "1".repeat(32),
+  TWILIO_AUTH_TOKEN: "t".repeat(32),
+  TWILIO_FROM: "+14165550100",
+  SUPPORT_EMAIL: "help@shop-loyalty.ca",
+  LEGAL_ENTITY_NAME: "Shop Loyalty Inc.",
+} as Record<string, string>;

@@ -64,7 +64,8 @@ test("menu: one halal banner, no certifier per dish, Without nuts, cart and pick
   await page.goto(`/shops/${SHOP}/menu`);
   await expect(page.getByRole("heading", { name: "All meat is zabihah" })).toBeVisible();
   await expect(page.getByText("Certified by", { exact: false })).toHaveCount(1); // the banner only
-  await expect(page.getByRole("link", { name: "App Store" })).toBeVisible(); // a small footer link, not a block
+  // App store links show only once NEXT_PUBLIC_APP_STORE_URL is set (unset in this run): no dead badge.
+  await expect(page.getByRole("link", { name: "App Store" })).toHaveCount(0);
 
   // Category tabs with Degh last.
   const tabs = page.getByRole("navigation", { name: "Jump to a section" }).getByRole("link");

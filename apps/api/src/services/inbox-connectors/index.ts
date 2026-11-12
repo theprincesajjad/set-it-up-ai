@@ -40,7 +40,8 @@ export interface InboxConnector {
 
 export function instagramMode(): inboxApi.InstagramMode {
   const v = (process.env.INSTAGRAM_DM_ENABLED ?? "").trim().toLowerCase();
-  if (v === "stub") return "stub";
+  // The stub deletes threads for any posted user id with no signature: never on a production server.
+  if (v === "stub") return process.env.NODE_ENV === "production" ? "off" : "stub";
   if (v === "live" || v === "true" || v === "1") return "live";
   return "off";
 }

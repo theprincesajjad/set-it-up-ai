@@ -24,7 +24,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.post("/auth/otp/start", async (req) => {
     const body = parse(authApi.otpStartBody, req.body);
-    return startPhoneOtp(ctx, body.phone);
+    return startPhoneOtp(ctx, body.phone, { ip: req.ip });
   });
 
   app.post("/auth/otp/verify", async (req) => {
@@ -34,18 +34,18 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
 
   app.post("/auth/register", async (req, reply) => {
     const body = parse(authApi.registerBody, req.body);
-    const res = await registerUser(ctx, body, ua(req.headers["user-agent"]));
+    const res = await registerUser(ctx, body, ua(req.headers["user-agent"]), req.ip);
     return reply.status(201).send(res);
   });
 
   app.post("/auth/login", async (req) => {
     const body = parse(authApi.loginBody, req.body);
-    return login(ctx, body, ua(req.headers["user-agent"]));
+    return login(ctx, body, ua(req.headers["user-agent"]), req.ip);
   });
 
   app.post("/auth/email-otp/start", async (req) => {
     const body = parse(authApi.emailOtpStartBody, req.body);
-    return startEmailOtp(ctx, body.email);
+    return startEmailOtp(ctx, body.email, { ip: req.ip });
   });
 
   app.post("/auth/email-otp/verify", async (req) => {

@@ -205,7 +205,7 @@ export function buildPassJson(config: Config, p: { passTypeId: string; teamId: s
         { key: "how", label: tr("sh.pass.howLabel"), value: tr("sh.pass.how", { brand: BRAND.name }) },
         { key: "code", label: tr("sh.pass.codeLabel"), value: s.memberCode },
         { key: "updates", label: tr("sh.pass.updatesLabel"), value: tr("sh.pass.updatesBody") },
-        { key: "terms", label: tr("sh.pass.terms"), value: `${config.publicWebUrl}/terms`, attributedValue: `<a href='${config.publicWebUrl}/terms'>${config.publicWebUrl.replace(/^https?:\/\//, "")}/terms</a>` },
+        { key: "terms", label: tr("sh.pass.terms"), value: `${config.publicWebUrl}/legal/terms`, attributedValue: `<a href='${config.publicWebUrl}/legal/terms'>${config.publicWebUrl.replace(/^https?:\/\//, "")}/legal/terms</a>` },
         { key: "help", label: tr("sh.pass.support"), value: BRAND.supportEmail, attributedValue: `<a href='mailto:${BRAND.supportEmail}'>${BRAND.supportEmail}</a>` },
       ],
     },

@@ -9,7 +9,8 @@ import { SetupBox } from "@/components/pass/SetupBox";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { buildIcs, dayPart, DAY_PARTS, durationText, nextDays, timesOn } from "@/lib/booking";
 import { shopColorProps } from "@/lib/shopColor";
 import { cn } from "@/lib/cn";
@@ -21,6 +22,7 @@ type Appt = appointmentsApi.MyAppointmentDto;
 
 /** One appointment: when, who, what it costs, the policy in words, add to calendar, change the time, cancel. */
 export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug: string; /** What a held booking still needs: the deposit to pay or the card to save. */ pay?: { deposit: { paymentIntentId: string; clientSecret: string; amountCents: number } | null; setup: { setupIntentId: string; clientSecret: string } | null } }) {
+  const errText = useErrorText();
   const { t, money, date, time } = useFmt();
   const [appt, setAppt] = useState(initial);
   const [mode, setMode] = useState<"view" | "move" | "cancel">("view");
@@ -67,7 +69,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
       setMode("view");
       setNote({ tone: "success", text: [t("bk.manage.cancelled"), r.feeCharged ? t("bk.manage.feeCharged", { fee: money(r.feeCents) }) : null, !inside && appt.depositPaidAt ? t("bk.manage.refund") : null].filter(Boolean).join(" ") });
     } catch (e) {
-      setNote({ tone: "danger", text: errorMessage(e) });
+      setNote({ tone: "danger", text: errText(e) });
     } finally {
       setBusy(false);
     }
@@ -83,7 +85,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
       setSlot(null);
       setNote({ tone: "success", text: [t("bk.manage.rescheduled", { when: when(r.appointment.startsAt) }), r.feeCharged ? t("bk.manage.feeCharged", { fee: money(r.feeCents) }) : null].filter(Boolean).join(" ") });
     } catch (e) {
-      setNote({ tone: "danger", text: isApiError(e) && e.status === 409 && e.code === "slot_taken" ? t("bk.taken") : errorMessage(e) });
+      setNote({ tone: "danger", text: isApiError(e) && e.status === 409 && e.code === "slot_taken" ? t("bk.taken") : errText(e) });
     } finally {
       setBusy(false);
     }

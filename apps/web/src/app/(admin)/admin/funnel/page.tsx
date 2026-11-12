@@ -56,7 +56,7 @@ export default function AdminFunnelPage() {
               padded={false}
             >
               {d.rows.length ? (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto focus-visible:focus-ring" tabIndex={0} role="region" aria-label={`Funnel by ${BY_OPTIONS.find((o) => o.value === by)!.label.toLowerCase()}, scrollable`}>
                   <Table label={`Funnel by ${BY_OPTIONS.find((o) => o.value === by)!.label.toLowerCase()}`} className="min-w-[760px]">
                     <thead>
                       <tr>

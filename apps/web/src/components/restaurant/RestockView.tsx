@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { SwitchControl } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { ConsentNeeded, isNoConsent } from "@/components/pass/ConsentNeeded";
 import { cn } from "@/lib/cn";
 import { restockEveryWeeks, type RestockWindow } from "@/lib/grocery";
@@ -27,6 +27,7 @@ type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: st
  * these texts sees the reminder switch and a quiet way to turn the item off.
  */
 export function RestockView({ shop, menu, item, pantry, windows, signedIn, userName, devAutofill }: { shop: Shop; menu: commerceApi.PublicMenuResponse; item: Item; pantry: groceryApi.PublicPantryItemResponse["item"]; windows: RestockWindow[]; signedIn: boolean; userName: string; devAutofill?: boolean }) {
+  const errText = useErrorText();
   const { t, money, number, date, pick } = useFmt();
   const router = useRouter();
   const p = pick(item);
@@ -71,7 +72,7 @@ export function RestockView({ shop, menu, item, pantry, windows, signedIn, userN
       setEntry(await browserApi.me.setPantry(entry.entryId, on));
     } catch (e) {
       if (isNoConsent(e)) setRemindNoConsent(true);
-      else setRemindError(errorMessage(e));
+      else setRemindError(errText(e));
     } finally {
       setRemindBusy(false);
     }
@@ -89,7 +90,7 @@ export function RestockView({ shop, menu, item, pantry, windows, signedIn, userN
       );
       router.push(`/o/${res.order.id}`);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setBusy(false);
     }

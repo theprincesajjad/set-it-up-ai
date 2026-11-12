@@ -294,7 +294,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
             {channel === "sms" ? <span className="text-[13px] text-fg-muted">Texts only go out {QUIET_HOURS_LABEL}</span> : null}
           </div>
           {when === "pick" ? <TextField type="datetime-local" label="Send at" hint="Toronto time" value={pickAt} onChange={(e) => setPickAt(e.target.value)} className="sm:max-w-64" /> : null}
-          {channel === "sms" && (pickedQuiet || (when === "now" && inQuiet(new Date(nowMs)))) ? <p className="text-[13px] text-fg-muted">That is in quiet hours, so it waits and goes out at 8 am.</p> : null}
+          {channel === "sms" && (pickedQuiet || (when === "now" && inQuiet(new Date(nowMs)))) ? <p className="text-[13px] text-fg-muted">That is in quiet hours, so it waits and goes out at 8 a.m.</p> : null}
         </div>
         {error ? <Banner tone="danger">{error}</Banner> : null}
         {testNote ? <Banner tone="success">{testNote}</Banner> : null}

@@ -6,7 +6,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { pickupCode } from "@/lib/restaurant/order";
 import { whatsappShareUrl } from "@/lib/restaurant/share";
@@ -21,6 +21,7 @@ const WINDOW_MS = 60 * 60_000;
  * WhatsApp, add to calendar, and the cancel rule. Polls while the deposit is still landing.
  */
 export function ReservedView({ initial }: { initial: commerceApi.OrderDto }) {
+  const errText = useErrorText();
   const { t, money, number, date } = useFmt();
   const [order, setOrder] = useState(initial);
   const [origin, setOrigin] = useState("");
@@ -65,7 +66,7 @@ export function ReservedView({ initial }: { initial: commerceApi.OrderDto }) {
       setOrder(await api.cancelOrder(order.id));
       setConfirm(false);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setBusy(false);
     }

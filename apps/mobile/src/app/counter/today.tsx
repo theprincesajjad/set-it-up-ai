@@ -4,10 +4,11 @@ import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../theme";
-import { isApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
-import { formatMoney, initials, shortName } from "../../lib/award";
-import { formatTime, signed } from "../../lib/format";
+import { errorMessage, isApiError } from "../../api/client";
+import { counterErrorL } from "../../lib/counterText";
+import { initials, shortName } from "../../lib/award";
+import { signed } from "../../lib/format";
+import { formatMoneyL, formatPtsL, formatTimeL, unitLabelL } from "../../lib/formatL";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
@@ -27,6 +28,8 @@ export default function Today() {
 /** Warm Today: 2x2 stats + today's activity with the staff initials; Undo where the API allows it. */
 function WarmToday() {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const { config, online, program } = useCounter();
   const unit = (program?.terminology ?? "points").toLowerCase();
   const toast = useToast();
@@ -38,17 +41,17 @@ function WarmToday() {
   const undo = async (id: string) => {
     setBusy(id);
     try {
-      const res = await api.counter.undo(mId, id, "Undo from Today");
-      toast(t("ok.counter.undone", { firstName: shortName(res.member.name), pts: `${res.member.balance} ${res.member.terminology}` }));
+      const res = await api.counter.undo(mId, id, "Undo from Today"); // l10n-ok: the audit reason sent to the server, read by the shop owner
+      toast(t("counter.undoneAnnounce", { name: shortName(res.member.name), balance: formatPtsL(L, res.member.balance, res.member.terminology) }));
       await Promise.all([today.refetch(), activity.refetch()]);
     } catch (e) {
-      toast({ tone: "error", message: isApiError(e) && e.status === 403 ? "Ask a manager to undo this one." : isApiError(e) ? e.message : t("err.network") });
+      toast({ tone: "error", message: isApiError(e) && e.status === 403 ? t("counter.err.tooLate") : errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }) });
     } finally {
       setBusy(null);
     }
   };
   return (
-    <Screen back title="Today" onRefresh={() => Promise.all([today.refetch(), activity.refetch()])} refreshing={today.isRefetching}>
+    <Screen back title={t("mc.today.title")} onRefresh={() => Promise.all([today.refetch(), activity.refetch()])} refreshing={today.isRefetching}>
       {today.isLoading ? (
         <Skeleton height={176} radius={16} />
       ) : today.data ? (
@@ -56,30 +59,30 @@ function WarmToday() {
         <View style={[styles.stats, { borderColor: c.line }]}>
           <View style={styles.statRow}>
             <View style={styles.stat}>
-              <StatTile label="Visits" value={today.data.visitCount} />
+              <StatTile label={t("mc.today.visits")} value={today.data.visitCount} />
             </View>
             <View style={[styles.vrule, { backgroundColor: c.line }]} />
             <View style={styles.stat}>
-              <StatTile label={`${unit.charAt(0).toUpperCase()}${unit.slice(1)} given`} value={today.data.pointsIssued} />
+              <StatTile label={t("mc.today.given", { unit: L.locale === "en" ? `${unit.charAt(0).toUpperCase()}${unit.slice(1)}` : unitLabelL(L, program?.terminology ?? "points", 2) })} value={today.data.pointsIssued} />
             </View>
           </View>
           <View style={[styles.hrule, { backgroundColor: c.line }]} />
           <View style={styles.statRow}>
             <View style={styles.stat}>
-              <StatTile label="Redemptions" value={today.data.redemptions} />
+              <StatTile label={t("mc.today.redemptions")} value={today.data.redemptions} />
             </View>
             <View style={[styles.vrule, { backgroundColor: c.line }]} />
             <View style={styles.stat}>
-              <StatTile label="New members" value={today.data.newMembers} />
+              <StatTile label={t("mc.today.newMembers")} value={today.data.newMembers} />
             </View>
           </View>
         </View>
       ) : (
-        <ErrorState offline={!online} message={t("err.network")} onRetry={() => today.refetch()} />
+        <ErrorState offline={!online} message={t("auth.err.network")} onRetry={() => today.refetch()} />
       )}
-      <Section title="Activity">
+      <Section title={t("mc.today.activity")}>
         {(activity.data?.items ?? []).length === 0 && !activity.isLoading ? (
-          <EmptyState icon={History} body="No visits yet today. Awards show up here as you make them." />
+          <EmptyState icon={History} body={t("mc.today.empty")} />
         ) : (
           <View>
             {(activity.data?.items ?? []).map((a, i, all) => (
@@ -90,17 +93,17 @@ function WarmToday() {
                 // The row is about the customer: their initials lead; who tapped goes in the meta line (polish-audit C13).
                 leading={<Avatar name={a.name} size={40} />}
                 title={shortName(a.name)}
-                subtitle={[formatTime(a.createdAt), a.maskedPhone ? last4Label(a.maskedPhone) : null, a.amountCents ? formatMoney(a.amountCents) : null, a.points < 0 ? "redeemed" : null, a.staffName ? `by ${a.staffName.split(" ")[0]}` : null].filter(Boolean).join(" · ")}
+                subtitle={[formatTimeL(L, a.createdAt), a.maskedPhone ? last4Label(a.maskedPhone) : null, a.amountCents ? formatMoneyL(L, a.amountCents) : null, a.points < 0 ? t("mc.today.redeemed") : null, a.staffName ? t("mc.today.by", { name: a.staffName.split(" ")[0] ?? "" }) : null].filter(Boolean).join(" · ")}
                 trailing={
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                     <Text variant="bodyStrong" tabular color={a.reversed ? "fgMuted" : a.points > 0 ? "accentText" : "fg"} style={a.reversed ? { textDecorationLine: "line-through" } : null}>
                       {signed(a.points)}
                     </Text>
                     {a.reversed ? (
-                      <Badge>Undone</Badge>
+                      <Badge>{t("mc.undone")}</Badge>
                     ) : a.canUndo ? (
                       <Button variant="secondary" size="sm" loading={busy === a.transactionId} onPress={() => undo(a.transactionId)}>
-                        Undo
+                        {t("counter.undo")}
                       </Button>
                     ) : null}
                   </View>
@@ -110,7 +113,7 @@ function WarmToday() {
           </View>
         )}
       </Section>
-      <Text variant="meta" color="fgMuted">Later corrections go through Adjust in the dashboard.</Text>
+      <Text variant="meta" color="fgMuted">{t("mc.today.later")}</Text>
     </Screen>
   );
 }
@@ -137,7 +140,9 @@ const STAT_ICONS = { users: Users, ticket: Ticket, gift: Gift, user: User } as c
 function ClearToday() {
   const theme = useTheme();
   const { c, r, x, trade } = theme;
-  const { t: tr, number, date, isRtl } = useLocale();
+  const L = useLocale();
+  const { t: tr, number, date, isRtl } = L;
+  const t = tr;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { config, online, program, staff, merchant } = useCounter();
@@ -153,11 +158,11 @@ function ClearToday() {
   const undo = async (id: string) => {
     setBusy(id);
     try {
-      const res = await api.counter.undo(mId, id, "Undo from Today");
-      toast(t("ok.counter.undone", { firstName: shortName(res.member.name), pts: `${res.member.balance} ${res.member.terminology}` }));
+      const res = await api.counter.undo(mId, id, "Undo from Today"); // l10n-ok: the audit reason sent to the server, read by the shop owner
+      toast(t("counter.undoneAnnounce", { name: shortName(res.member.name), balance: formatPtsL(L, res.member.balance, res.member.terminology) }));
       await Promise.all([today.refetch(), activity.refetch(), report.refetch()]);
     } catch (e) {
-      toast({ tone: "error", message: isApiError(e) && e.status === 403 ? "Ask a manager to undo this one." : isApiError(e) ? e.message : t("err.network") });
+      toast({ tone: "error", message: isApiError(e) && e.status === 403 ? t("counter.err.tooLate") : errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }) });
     } finally {
       setBusy(null);
     }
@@ -248,7 +253,7 @@ function ClearToday() {
             })}
           </View>
         ) : (
-          <ErrorState offline={!online} message={t("err.network")} onRetry={() => today.refetch()} />
+          <ErrorState offline={!online} message={t("auth.err.network")} onRetry={() => today.refetch()} />
         )}
 
         {rep ? (
@@ -323,12 +328,12 @@ function ClearToday() {
         <View style={clearCard(theme)}>
           <View style={clearStyles.cardHeader}>
             <Text accessibilityRole="header" style={CLEAR_CARD_TITLE}>
-              Activity
+              {t("mc.today.activity")}
             </Text>
           </View>
           {items.length === 0 && !activity.isLoading ? (
             <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-              <EmptyState icon={History} body="No visits yet today. Awards show up here as you make them." />
+              <EmptyState icon={History} body={t("mc.today.empty")} />
             </View>
           ) : (
             items.map((a) => (
@@ -340,24 +345,24 @@ function ClearToday() {
                     {shortName(a.name)}
                   </Text>
                   <Text color="fgMuted" numberOfLines={1} style={{ fontSize: 13, lineHeight: 20 }}>
-                    {[formatTime(a.createdAt), a.maskedPhone ? last4Label(a.maskedPhone) : null, a.amountCents ? formatMoney(a.amountCents) : null, a.points < 0 ? "redeemed" : null, a.staffName ? `by ${a.staffName.split(" ")[0]}` : null].filter(Boolean).join(" · ")}
+                    {[formatTimeL(L, a.createdAt), a.maskedPhone ? last4Label(a.maskedPhone) : null, a.amountCents ? formatMoneyL(L, a.amountCents) : null, a.points < 0 ? t("mc.today.redeemed") : null, a.staffName ? t("mc.today.by", { name: a.staffName.split(" ")[0] ?? "" }) : null].filter(Boolean).join(" · ")}
                   </Text>
                 </View>
                 <Text variant="bodyStrong" tabular color={a.reversed ? "fgMuted" : "fg"} style={a.reversed ? { textDecorationLine: "line-through" } : null}>
                   {signed(a.points)}
                 </Text>
                 {a.reversed ? (
-                  <Badge>Undone</Badge>
+                  <Badge>{t("mc.undone")}</Badge>
                 ) : a.canUndo ? (
                   <Button variant="secondary" size="sm" loading={busy === a.transactionId} onPress={() => undo(a.transactionId)}>
-                    Undo
+                    {t("counter.undo")}
                   </Button>
                 ) : null}
               </View>
             ))
           )}
         </View>
-        <Text variant="meta" color="fgMuted" style={{ paddingHorizontal: 16 }}>Later corrections go through Adjust in the dashboard.</Text>
+        <Text variant="meta" color="fgMuted" style={{ paddingHorizontal: 16 }}>{t("mc.today.later")}</Text>
       </ScrollView>
 
       <ScrollEdge edge="top" offset={insets.top} />

@@ -13,6 +13,7 @@ import { LogoMark } from "@/components/site/Brand";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import { alsoEarningT, joinHeadlineT, joinIntroT, stampsToGoT, unitText } from "@/lib/joinCopy";
 import { placeKind } from "@/lib/place";
+import { saveOfflineCard } from "@/lib/offlineCard";
 import { ArrowUpRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
@@ -28,7 +29,8 @@ import { isApiError } from "@/lib/api/errors";
 import { firstName, formatNumber, formatPoints, unitFor, withArticle } from "@/lib/format";
 import { unitCaption } from "@/lib/units";
 import { formatE164, toE164, validateNanp } from "@/lib/phone";
-import { howYouEarn } from "@/lib/program";
+import { expiryLineL, howYouEarnL } from "@/lib/i18n/formatL";
+import { formatCurrency } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { ConsentCheckbox } from "@/components/ui/Checkbox";
@@ -92,8 +94,9 @@ export interface JoinFlowProps {
   showHeader?: boolean;
   autoFocus?: boolean;
   deps?: JoinDeps;
-  appStoreUrl?: string;
-  playStoreUrl?: string;
+  /** Listing links; a store whose link is not configured shows no button (a store's front page has nothing to install). */
+  appStoreUrl?: string | null;
+  playStoreUrl?: string | null;
   /** The shop's street and how many shops take the card there ("Your card works at 16 shops on Roncesvalles"). */
   street?: { name: string; shopCount: number } | null;
   /** Nearby shops of other kinds for the "Also earning here…" footer (canvas Join). */
@@ -386,7 +389,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           <Button type="submit" variant="shop" size="lg" fullWidth loading={busy || step === "joining"}>
             {t("auth.join.joinShop", { shop })}
           </Button>
-          {program ? <p className="text-meta text-fg-muted" {...(locale === "en" ? {} : { lang: "en", dir: "ltr" as const })}>{howYouEarn(program)} {program.expiryDisclosure}</p> : null}
+          {program ? <p dir="auto" className="text-meta text-fg-muted">{endSentence(locale, howYouEarnL({ locale, t }, program, formatCurrency(locale, 100)))} {expiryLineL({ locale, t }, { expiryDisclosure: program.expiryDisclosure, terminology: program.terminology, program })}</p> : null}
         </form>
       ) : null}
     </div>
@@ -395,6 +398,12 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
 
 function formatPhone(d: string) {
   return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : d;
+}
+
+/** The earn line in hi, ur and pa has no closing stop (the shop page shows it alone); add the script\u2019s own before the next sentence. */
+function endSentence(locale: string, text: string): string {
+  if (/[.\u0964\u06D4!?]$/.test(text)) return text;
+  return text + (locale === "ur" ? "\u06D4" : locale === "hi" || locale === "pa" ? "\u0964" : ".");
 }
 
 export function platform(): "ios" | "android" | "other" {
@@ -406,7 +415,7 @@ export function platform(): "ios" | "android" | "other" {
 }
 
 /** Step 4: show the counter. Balance, member QR, wallet pass, the app, nearby network shops. */
-function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info: networkApi.JoinInfoResponse; result: customerApi.JoinResponse; name: string | null; deps: JoinDeps; appStoreUrl?: string; playStoreUrl?: string }) {
+function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info: networkApi.JoinInfoResponse; result: customerApi.JoinResponse; name: string | null; deps: JoinDeps; appStoreUrl?: string | null; playStoreUrl?: string | null }) {
   const { t, locale } = useLocaleOrEnglish();
   const m = result.membership;
   const program = m.program;
@@ -414,11 +423,19 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
   const [nearby, setNearby] = useState<networkApi.ShopListItemDto[]>([]);
   // Only rendered after the join completes (never server-rendered), so reading the UA here is safe.
   const [os] = useState<"ios" | "android" | "other">(platform);
+  // Only a store with a configured listing gets a button; with none configured the whole "Get the app" label goes too.
+  const showApp = (!!appStoreUrl && os !== "android") || (!!playStoreUrl && os !== "ios");
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     headingRef.current?.focus();
-    deps.card().then(setCard).catch(() => undefined);
+    deps
+      .card()
+      .then((c) => {
+        setCard(c);
+        saveOfflineCard({ code: c.memberCode, qrSvg: c.qrSvg });
+      })
+      .catch(() => undefined);
     const { lat, lng } = info.location;
     if (lat != null && lng != null)
       deps
@@ -485,7 +502,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
             </div>
           )}
         </BrandPassCard>
-        <p className="px-1 text-meta text-fg-muted" {...(locale === "en" ? {} : { lang: "en", dir: "ltr" as const })}>{m.expiryDisclosure}</p>
+        <p dir="auto" className="px-1 text-meta text-fg-muted">{expiryLineL({ locale, t }, { expiryDisclosure: m.expiryDisclosure, terminology: m.terminology, program })}</p>
       </div>
 
       {/* On a phone the wallet button comes right under the card, above the fold: it is the one thing to do here. A computer keeps it
@@ -504,18 +521,18 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
       <div className="flex flex-col gap-2">
         {os === "other" ? wallet : null}
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta">
-          <span className="text-fg-muted">{t("auth.joined.getApp")}</span>
-          {os !== "android" ? (
-            <a className="inline-flex items-center gap-0.5 font-semibold text-fg" href={appStoreUrl} rel="noopener noreferrer">
+          {showApp ? <span className="text-fg-muted">{t("auth.joined.getApp")}</span> : null}
+          {appStoreUrl && os !== "android" ? (
+            <a className="inline-flex min-h-11 items-center gap-0.5 font-semibold text-fg" href={appStoreUrl} rel="noopener noreferrer">
               App Store <ArrowUpRight aria-hidden className="size-3.5" />
             </a>
           ) : null}
-          {os !== "ios" ? (
-            <a className="inline-flex items-center gap-0.5 font-semibold text-fg" href={playStoreUrl} rel="noopener noreferrer">
+          {playStoreUrl && os !== "ios" ? (
+            <a className="inline-flex min-h-11 items-center gap-0.5 font-semibold text-fg" href={playStoreUrl} rel="noopener noreferrer">
               Google Play <ArrowUpRight aria-hidden className="size-3.5" />
             </a>
           ) : null}
-          <Link className="font-semibold text-fg" href="/me">
+          <Link className="inline-flex min-h-11 items-center font-semibold text-fg" href="/me">
             {t("auth.joined.myCard")}
           </Link>
         </div>

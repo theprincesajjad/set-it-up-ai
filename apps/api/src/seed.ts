@@ -35,6 +35,11 @@ async function settleOutbox(ctx: AppContext): Promise<number> {
 }
 
 async function main() {
+  // The demo data includes platform-admin logins with passwords that are public in this repository.
+  if (process.env.NODE_ENV === "production" && process.env.I_UNDERSTAND_THIS_CREATES_DEMO_ADMINS !== "1") {
+    console.error("Refusing to seed: NODE_ENV=production. The demo creates admin and owner accounts with publicly known passwords. Run it against a separate demo database.");
+    process.exit(1);
+  }
   const config = loadConfig();
   const db = await connect(config.databaseUrl);
   try {

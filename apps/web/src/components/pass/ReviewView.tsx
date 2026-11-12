@@ -8,7 +8,7 @@ import { Button, buttonClasses } from "@/components/ui/Button";
 import { ShopLogo } from "@/components/ui/ShopTile";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
-import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
@@ -21,6 +21,7 @@ const restaurantApi = restaurantCustomerApi(browserClient);
  */
 export function ReviewView({ token, initial }: { token: string; initial: whatsappApi.PublicReviewView }) {
   const { number, t, rich } = useLocaleOrEnglish();
+  const errText = useErrorText();
   const shop = initial.merchant;
   const [rating, setRating] = useState<number>(initial.rating ?? 0);
   const [feedback, setFeedback] = useState("");
@@ -38,7 +39,7 @@ export function ReviewView({ token, initial }: { token: string; initial: whatsap
     try {
       setDone(await browserApi.public.submitReview(token, { rating, ...(feedback.trim() ? { feedback: feedback.trim() } : {}) }));
     } catch (e) {
-      setError(isApiError(e) && !e.isNetwork && e.status < 500 && e.status !== 404 ? e.message : t("review.error"));
+      setError(errText(e, { notFound: t("review.error"), fallback: t("review.error") }));
     } finally {
       setBusy(false);
     }

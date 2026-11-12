@@ -4,7 +4,8 @@ import { TICKET_LINK_DAYS_AFTER_CLOSE, translator } from "@ll/shared";
 import { TicketStatusView } from "@/components/pass/TicketStatusView";
 import { PageFrame } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
-import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LinkProblem, linkKind } from "@/components/errors/server";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { getLocale, getT } from "@/lib/i18n/server";
@@ -32,7 +33,7 @@ export default async function TicketStatusPage({ params, searchParams }: Props) 
     .public.ticketStatus(token)
     .catch((e: unknown) => {
       if (isApiError(e) && e.status === 410) return { expired: expiredShop(e.details) };
-      return isApiError(e) && (e.status === 404 || e.status === 402) ? ("gone" as const) : ("error" as const);
+      return linkKind(e);
     });
   if (typeof data === "object" && "expired" in data) {
     const shop = data.expired;
@@ -40,6 +41,7 @@ export default async function TicketStatusPage({ params, searchParams }: Props) 
       <PageFrame locale={locale}>
         <EmptyState
           icon={Link2Off}
+          headingLevel={1}
           title={t("sv.t.expiredTitle")}
           description={t("sv.t.expiredBody", { days: TICKET_LINK_DAYS_AFTER_CLOSE, shop: shop.name ?? t("sh.priv.m.theShop") })}
           action={shop.phone ? <Button variant="secondary" href={`tel:${shop.phone}`}>{`${t("shop.call")} ${shop.name ?? ""}`.trim()}</Button> : <Button variant="secondary" href="/map">{t("rc.findShop")}</Button>}
@@ -50,13 +52,13 @@ export default async function TicketStatusPage({ params, searchParams }: Props) 
   if (data === "gone")
     return (
       <PageFrame locale={locale}>
-        <EmptyState icon={Link2Off} title={t("rc.ca.goneTitle")} description={t("sv.t.goneBody")} action={<Button variant="secondary" href="/map">{t("rc.findShop")}</Button>} />
+        <LinkProblem kind="gone" retryHref={`/t/${encodeURIComponent(token)}`} />
       </PageFrame>
     );
-  if (data === "error")
+  if (data === "error" || data === "rate" || data === "expired")
     return (
       <PageFrame locale={locale}>
-        <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/t/${encodeURIComponent(token)}`}>{t("rc.tryAgain")}</Button>} />
+        <LinkProblem kind={data} retryHref={`/t/${encodeURIComponent(token)}`} />
       </PageFrame>
     );
   return (

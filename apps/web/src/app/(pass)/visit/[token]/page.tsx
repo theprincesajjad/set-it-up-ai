@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { formatDate, translator } from "@ll/shared";
 import { ReportCardPage } from "@/components/pass/ReportCardPage";
 import { PageFrame } from "@/components/restaurant/PageFrame";
-import { Button } from "@/components/ui/Button";
-import { ErrorState } from "@/components/ui/EmptyState";
-import { isApiError } from "@/lib/api/errors";
+import { LinkProblem, linkKind } from "@/components/errors/server";
 import { publicServerApi } from "@/lib/api/server";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { loadShopBrief } from "@/lib/restaurant/server";
@@ -28,17 +25,9 @@ export default async function VisitPage({ params, searchParams }: Props) {
   try {
     v = await publicServerApi().public.visit(token);
   } catch (e) {
-    if (isApiError(e) && e.status === 404) notFound();
-    if (isApiError(e) && e.status === 410) {
-      return (
-        <PageFrame locale={locale}>
-          <ErrorState title={t("pet.visit.expired")} action={<Button variant="secondary" href="/">{t("pet.back")}</Button>} />
-        </PageFrame>
-      );
-    }
     return (
       <PageFrame locale={locale}>
-        <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/visit/${encodeURIComponent(token)}`}>{t("rc.tryAgain")}</Button>} />
+        <LinkProblem kind={linkKind(e)} retryHref={`/visit/${encodeURIComponent(token)}`} />
       </PageFrame>
     );
   }

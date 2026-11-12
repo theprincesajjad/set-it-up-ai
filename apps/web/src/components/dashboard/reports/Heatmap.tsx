@@ -32,7 +32,7 @@ export function Heatmap({ data, note }: { data: reportsApi.HeatmapReport; note?:
       </div>
       <p className="mt-4 text-[12px] text-fg-muted">
         Darker is busier.{note ? ` ${note}` : ""}
-        {outside > 0 ? ` ${outside} ${outside === 1 ? "visit" : "visits"} outside 7 am to 7 pm are not shown.` : ""}
+        {outside > 0 ? ` ${outside} ${outside === 1 ? "visit" : "visits"} outside 7 a.m. to 7 p.m. are not shown.` : ""}
       </p>
       <div className="sr-only">
         <table>
@@ -41,7 +41,7 @@ export function Heatmap({ data, note }: { data: reportsApi.HeatmapReport; note?:
           <tr>
             <th scope="col">Day</th>
             {HEAT_HOURS.map((h) => (
-              <th key={h} scope="col">{h > 12 ? `${h - 12} pm` : h === 12 ? "12 pm" : `${h} am`}</th>
+              <th key={h} scope="col">{h > 12 ? `${h - 12} p.m.` : h === 12 ? "12 p.m." : `${h} a.m.`}</th>
             ))}
           </tr>
         </thead>

@@ -88,7 +88,7 @@ them who belong to two or more active shops; `network.liveStreets` = pilot or li
 Counts only, never ids. The marketing landing page (`LiveProof`) shows them only when `activeMerchants >= 10`, so tiny numbers
 are never presented as proof.
 
-## GET /v1/public/restaurants/founding
+## GET /v1/public/restaurants/corridors
 Founding-offer spots per corridor, no auth, `Cache-Control: public, max-age=300`. `200` → `{ corridors: [{ slug, name, taken, total }] }`:
 one entry per pilot or live neighbourhood that has restaurant-pack shops (`merchants.restaurantTier` set, or `foundingOffer` true),
 `taken` = non-closed shops with `merchants.foundingOffer` (capped at `total`), `total` = `FOUNDING_OFFER.slotsPerCorridor` (20).

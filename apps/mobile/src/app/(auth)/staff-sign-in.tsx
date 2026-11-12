@@ -3,8 +3,8 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
 import { IS_DEV } from "../../config";
+import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { useSession } from "../../state/session";
 import { Banner, Button, OtpField, Screen, SegmentedControl, Text, TextField } from "../../ui";
@@ -12,6 +12,7 @@ import { Banner, Button, OtpField, Screen, SegmentedControl, Text, TextField } f
 /** Staff sign-in for counter mode: email + password, or a 6-digit email code. */
 export default function StaffSignIn() {
   const { signIn, prefs } = useSession();
+  const { t } = useLocale();
   const [method, setMethod] = useState<"password" | "code">("password");
   const [email, setEmail] = useState(prefs.lastEmail ?? "");
   const [password, setPassword] = useState("");
@@ -32,10 +33,10 @@ export default function StaffSignIn() {
     try {
       await fn();
     } catch (e) {
-      if (isApiError(e) && e.status === 401) setError(method === "password" ? "Email or password is incorrect." : t("err.otp.wrong"));
-      else if (isApiError(e) && e.status === 429) setError(t("err.otp.tooMany"));
-      else if (isApiError(e) && e.code === "invalid_code") setError(t("err.otp.wrong"));
-      else setError(errorMessage(e, { network: t("err.network"), server: t("err.server") }));
+      if (isApiError(e) && e.status === 401) setError(method === "password" ? t("mc.si.badLogin") : t("auth.err.wrong"));
+      else if (isApiError(e) && e.status === 429) setError(t("auth.err.tooMany"));
+      else if (isApiError(e) && e.code === "invalid_code") setError(t("auth.err.wrong"));
+      else setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
       setBusy(false);
     }
@@ -46,12 +47,12 @@ export default function StaffSignIn() {
   return (
     <Screen back>
       <Text variant="largeTitle" accessibilityRole="header">
-        Sign in to your shop
+        {t("mc.si.title")}
       </Text>
       <SegmentedControl
         options={[
-          { value: "password", label: "Password" },
-          { value: "code", label: "Email me a code" },
+          { value: "password", label: t("mc.si.password") },
+          { value: "code", label: t("mc.si.emailCode") },
         ]}
         value={method}
         onChange={(v) => {
@@ -59,20 +60,20 @@ export default function StaffSignIn() {
           setError(null);
         }}
       />
-      <TextField label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" />
+      <TextField label={t("mc.si.email")} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" />
       {method === "password" ? (
         <>
-          <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={() => run(async () => done(await api.auth.login({ email: email.trim(), password })))} />
+          <TextField label={t("mc.si.password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={() => run(async () => done(await api.auth.login({ email: email.trim(), password })))} />
           {error ? <Banner variant="danger">{error}</Banner> : null}
           <Button size="lg" fullWidth loading={busy} onPress={() => run(async () => done(await api.auth.login({ email: email.trim(), password })))}>
-            Sign in
+            {t("mc.si.signIn")}
           </Button>
         </>
       ) : (
         <>
           {codeSent ? (
             <View style={{ gap: 12 }}>
-              <Text color="fgMuted">{`We emailed a 6-digit code to ${email.trim()}.`}</Text>
+              <Text color="fgMuted">{t("mc.si.sentTo", { email: email.trim() })}</Text>
               <OtpField autoFocus value={code} onChange={setCode} onComplete={verifyCode} error={!!error} />
             </View>
           ) : null}
@@ -95,12 +96,12 @@ export default function StaffSignIn() {
                   })
             }
           >
-            {codeSent ? "Sign in" : "Send code"}
+            {codeSent ? t("mc.si.signIn") : t("mc.si.sendCode")}
           </Button>
         </>
       )}
       <Text variant="meta" color="fgMuted">
-        Staff on a shared shop tablet: sign in once with the owner or manager account, then switch with your PIN.
+        {t("mc.si.hint")}
       </Text>
     </Screen>
   );

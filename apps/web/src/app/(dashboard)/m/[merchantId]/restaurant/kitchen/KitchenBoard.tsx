@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { LOCALES, translator, type MessageKey, type restaurantApi } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Tag } from "@/components/dashboard/kit";
+import { ErrorPanel } from "@/components/errors";
 import { stationLabel } from "@/components/dashboard/restaurant/menu";
 import { cn } from "@/lib/cn";
 import { errorMessage } from "@/lib/api/errors";
@@ -102,6 +103,8 @@ export function KitchenBoard() {
   }, []);
 
   const data = state.data?.res ?? null;
+  /** Never loaded: the header must not say "0 open", nor the board look like a quiet kitchen. */
+  const failed = !!state.error && !state.data;
   const fetchedAt = state.data?.at ?? tick;
   const shownLang: Lang = lang ?? data?.lang ?? "en";
   const dir = LOCALES[shownLang].dir;
@@ -160,8 +163,8 @@ export function KitchenBoard() {
         <div className="min-w-0">
           <h1 className={cn("truncate text-headline leading-tight text-fg", shownLang === "en" && "display")}>{shownLang === "en" ? "kitchen" : tr("kitchen.title")}</h1>
           <p className="truncate text-caption text-fg-muted">
-            <bdi>{detail.merchant.name}</bdi> · {tr("kitchen.openN", { n: iso(shownLang, tickets.length) })}
-            {lateCount ? ` · ${tr("kitchen.lateN", { n: iso(shownLang, lateCount) })}` : ""}
+            <bdi>{detail.merchant.name}</bdi>{failed ? "" : <> · {tr("kitchen.openN", { n: iso(shownLang, tickets.length) })}</>}
+            {!failed && lateCount ? ` · ${tr("kitchen.lateN", { n: iso(shownLang, lateCount) })}` : ""}
           </p>
         </div>
 
@@ -183,14 +186,14 @@ export function KitchenBoard() {
         </nav>
 
         <div className="ms-auto flex items-center gap-2">
-          <button
+          {failed ? null : <button
             type="button"
             onClick={() => setSoldOutOpen(true)}
             aria-haspopup="dialog"
             className="inline-flex h-[38px] items-center rounded-full border border-line bg-bg px-4 text-meta-strong text-fg hover:bg-bg-subtle focus-visible:focus-ring"
           >
             {tr("kitchen.soldOutN", { n: iso(shownLang, soldOutCount) })}
-          </button>
+          </button>}
           <div role="group" aria-label="Ticket language" className="flex h-[46px] items-center gap-0.5 rounded-full border border-line bg-bg p-1">
             {MENU_LANGS.map((l) => (
               <button
@@ -218,7 +221,7 @@ export function KitchenBoard() {
         </div>
       </header>
 
-      {error || (state.error && !state.data) ? (
+      {error || (state.error && state.data) ? (
         <div role="alert" className="flex items-center justify-between gap-3 border-b border-line bg-bg px-4 py-2 text-meta md:px-6">
           <span className="text-negative">{error ?? state.error}</span>
           <button type="button" onClick={() => { setError(null); void state.reload(); }} className="h-9 rounded-full px-3 text-meta-strong hover:bg-bg-subtle focus-visible:focus-ring">
@@ -229,7 +232,14 @@ export function KitchenBoard() {
 
       <main className="min-h-0 flex-1 overflow-y-auto md:overflow-hidden">
         {!data ? (
-          <p className="p-6 text-body text-fg-muted">{state.error ? "" : tr("kitchen.loading")}</p>
+          failed ? (
+            <div className="mx-auto flex max-w-xl flex-col gap-3 p-6">
+              <ErrorPanel error={state.cause ?? state.error} heading="We couldn’t load the kitchen tickets" onRetry={() => { setError(null); void state.reload(); }} />
+              <p className="text-meta text-fg-muted">Tickets may be missing. Check with the front before you rely on this screen.</p>
+            </div>
+          ) : (
+            <p className="p-6 text-body text-fg-muted">{tr("kitchen.loading")}</p>
+          )
         ) : !tickets.length ? (
           <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 p-6 text-center">
             <ChefHat aria-hidden className="size-10 text-fg-subtle" strokeWidth={1.5} />

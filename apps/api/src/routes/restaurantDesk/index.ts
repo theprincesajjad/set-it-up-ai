@@ -17,6 +17,7 @@ import { requireAnyFeature, PREORDER_FEATURES } from "../../services/features.js
 import { busyState, setBusy } from "../../services/busyMode.js";
 import { joinWaitlist, listWaitlist, remindBalance } from "../../services/preorderWaitlist.js";
 import { requireAnyRestaurantFeature, restaurantBadges, restaurantHome } from "../../services/restaurantHome.js";
+import { localDate } from "../../services/messaging.js";
 import { memberByPhone, usualFor } from "../../services/usual.js";
 import { rejectMalformedIds } from "../merchant/params.js";
 
@@ -66,7 +67,7 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
     app.get<{ Params: MerchantParams; Querystring: { from?: string; to?: string } }>("/merchants/:merchantId/preorders/waitlist", async (req) => {
       const staff = await staffFor(req, "staff");
       const q = parse(restaurantApi.preordersQuery, req.query);
-      const from = q.from ?? ctx.now().toISOString().slice(0, 10);
+      const from = q.from ?? localDate(ctx.now(), staff.merchant.timezone);
       const to = q.to ?? new Date(Date.parse(`${from}T12:00:00Z`) + 60 * 86_400_000).toISOString().slice(0, 10);
       return { items: await listWaitlist(ctx, staff.merchant, from, to) };
     });

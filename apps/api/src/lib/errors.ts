@@ -21,7 +21,9 @@ export const conflict = (message: string) => new HttpError(409, "conflict", mess
 /** Feature exists but isn't on this merchant's plan or isn't rolled out yet. */
 export const featureLocked = (feature: string, reason: "plan" | "rollout") =>
   new HttpError(402, "feature_locked", reason === "plan" ? `${feature} isn't on your plan yet.` : `${feature} isn't available yet.`, { feature, reason });
-export const tooMany = (message: string) => new HttpError(429, "rate_limited", message);
+/** 429. `retryAfterSec` (when known) goes out as the Retry-After header and in `details.retryAfterSec`, so the web can say WHEN to try again. */
+export const tooMany = (message: string, retryAfterSec?: number, extra?: Record<string, unknown>) =>
+  new HttpError(429, "rate_limited", message, retryAfterSec || extra ? { ...(retryAfterSec ? { retryAfterSec: Math.ceil(retryAfterSec) } : {}), ...extra } : undefined);
 /** An admin or rep tried to change something inside a shop without an active, reasoned support session. */
 export const supportSessionRequired = (merchantId: string) =>
   new HttpError(403, "support_session_required", "Start a support session and give a reason before you change this shop.", { merchantId });

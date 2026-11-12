@@ -100,8 +100,8 @@ export function llApi(c: ApiClient) {
       // phase-solo A: the founding solo price and the spots left (pricing and landing pages).
       // phase-pro P1: the first-year price of annual Pro (no spots count: it stays internal).
       firstYearPrice: () => c.get<billingApi.FirstYearPriceDto>("/v1/billing/first-year-price", { anonymous: true, next: { revalidate: 300 } }),
-      /** Founding offer spots per corridor (restaurants page and pricing). */
-      foundingRestaurants: () => c.get<networkApi.FoundingResponse>("/v1/public/restaurants/founding", { anonymous: true, next: { revalidate: 300 } }),
+      /** Offer spots per corridor (counts come from the database) (restaurants page and pricing). */
+      foundingRestaurants: () => c.get<networkApi.FoundingResponse>("/v1/public/restaurants/corridors", { anonymous: true, next: { revalidate: 300 } }),
       lead: (body: repApi.PublicLeadBody) => c.post<repApi.PublicLeadResponse>("/v1/public/leads", body, { anonymous: true }),
       // Restaurant pack: review page (/r/:token) and WhatsApp order pay page (/pay/order/:orderId)
       review: (token: string) => c.get<whatsappApi.PublicReviewView>(`/v1/public/reviews/${enc(token)}`, { anonymous: true }),

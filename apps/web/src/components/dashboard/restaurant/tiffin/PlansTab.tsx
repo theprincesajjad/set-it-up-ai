@@ -184,7 +184,7 @@ function PlanSheet({ plan, onClose, onSaved }: { plan: tiffinApi.PlanDto | null;
           <FormGrid cols={3}>
             <NumberField label="Meals per day" value={meals} onChange={setMeals} />
             <NumberField label="Most servings" value={maxServings} onChange={setMaxServings} />
-            <NumberField label="Skip cutoff" suffix="hours" value={cutoff} onChange={setCutoff} hint="Before 8:00 am that day" />
+            <NumberField label="Skip cutoff" suffix="hours" value={cutoff} onChange={setCutoff} hint="Before 8:00 a.m. that day" />
           </FormGrid>
           <div>
             <Switch label="Delivery" description="Driver drops it at the door" checked={delivery} onChange={setDelivery} />

@@ -20,11 +20,19 @@ export function hoursFromDraft(d: HoursDraft): merchantApi.Hours {
   return out;
 }
 
+/** "09:00" to "9 a.m.", "17:30" to "5:30 p.m." (the dashboard's one time style). */
+export function clock12(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (h == null || Number.isNaN(h)) return hhmm;
+  const mins = m ? `:${String(m).padStart(2, "0")}` : "";
+  return `${h % 12 === 0 ? 12 : h % 12}${mins} ${h < 12 ? "a.m." : "p.m."}`;
+}
+
 export function hoursSummary(h: merchantApi.Hours | null | undefined): string {
   if (!h) return "Hours not set";
   const open = DAY_ORDER.filter((d) => h[d]?.length);
   if (!open.length) return "Closed all week";
   const first = h[open[0]!]![0]!;
   const same = open.every((d) => h[d]![0]![0] === first[0] && h[d]![0]![1] === first[1]);
-  return same ? `${open.length === 7 ? "Every day" : `${open.length} days a week`} · ${first[0]}–${first[1]}` : `${open.length} days a week`;
+  return same ? `${open.length === 7 ? "Every day" : `${open.length} days a week`} · ${clock12(first[0])} to ${clock12(first[1])}` : `${open.length} days a week`;
 }

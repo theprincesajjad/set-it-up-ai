@@ -10,7 +10,7 @@ import { paymentsManualApi, restaurantApi } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
 import { badRequest, notFound } from "../../lib/errors.js";
-import { parse } from "../../lib/validate.js";
+import { parse, parseQueryDate } from "../../lib/validate.js";
 import { loadMerchant } from "../../services/commerceShared.js";
 import { requireFeature } from "../../services/features.js";
 import { findOrCreateCustomerByPhone } from "../../services/ledger.js";
@@ -60,7 +60,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/banquet/availability", async (req) => {
     const staff = await staffFor(req);
     const q = parse(restaurantApi.hallAvailabilityQuery, req.query);
-    return svc.availability(ctx, staff.merchant.id, { from: new Date(q.from), to: new Date(q.to), hallId: q.hallId, detail: true });
+    return svc.availability(ctx, staff.merchant.id, { from: parseQueryDate(q.from, "from") ?? ctx.now(), to: parseQueryDate(q.to, "to") ?? new Date(ctx.now().getTime() + 31 * 86_400_000), hallId: q.hallId, detail: true });
   });
 
   // ---------------------------------------------------------------- bookings (staff)
@@ -168,7 +168,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const m = await shop(req.params.slug);
     const q = parse(restaurantApi.hallAvailabilityQuery, req.query);
     // Busy windows only (no customer detail) — the response has none.
-    return svc.availability(ctx, m.id, { from: new Date(q.from), to: new Date(q.to), hallId: q.hallId, activeOnly: true });
+    return svc.availability(ctx, m.id, { from: parseQueryDate(q.from, "from") ?? ctx.now(), to: parseQueryDate(q.to, "to") ?? new Date(ctx.now().getTime() + 31 * 86_400_000), hallId: q.hallId, activeOnly: true });
   });
 }
 
