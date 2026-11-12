@@ -9,6 +9,7 @@ export * from "./Checkbox";
 export * from "./Chip";
 export * from "./DiscountCard";
 export * from "./EmptyState";
+export * from "./FailView";
 export * from "./IconButton";
 export * from "./Keypad";
 export * from "./ListRow";

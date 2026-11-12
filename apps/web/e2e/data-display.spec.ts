@@ -43,7 +43,7 @@ test("customers: loading, error with Try again, and empty", async ({ page }) => 
   // error
   await page.route(LIST, (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { code: "internal", message: "boom" } }) }));
   await page.goto(`/m/${id}/customers`);
-  await expect(page.getByText("Couldn't load your customers.")).toBeVisible();
+  await expect(page.getByText("Couldn’t load your customers.")).toBeVisible();
   await page.unroute(LIST);
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("table", { name: "Customers" })).toBeVisible();

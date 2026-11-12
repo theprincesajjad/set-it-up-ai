@@ -7,35 +7,29 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type Rea
 import { AccessibilityInfo, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isApiError, type ApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
 import { AmountDisplay, AwardButton, CounterHeader, CounterSecondary, CustomerCard, EntryDisplay, NoticeCard, QuantityChips, QueueSheet, RecentStrip, RewardPicker, SuccessCard } from "../../features/counter/components";
 import { DigitBoxes, MatchList, NoMatch, RewardReadyScreen, ScanFooter, ScanKeypad, ScanViewfinder, StampedScreen, UndoToast } from "../../features/counter/ScanFirst";
 import { scanBus } from "../../features/scanBus";
 import {
   activeMultiplier,
   AUTO_RETURN_SECONDS,
-  awardButtonLabel,
   awardQuantity,
   quantityChips,
-  awardErrorMessage,
   awardRef,
   classifyScan,
-  cooldownWarning,
   counterReducer,
   entryDisplay,
   estimatePoints,
   firstName,
-  formatPts,
   initialCounterState,
   normalizeRedeemInput,
   shortName,
   shouldQueueAward,
-  termWord,
-  successView,
   type CounterCustomer,
   type SuccessView,
 } from "../../lib/award";
-import { formatTime } from "../../lib/format";
+import { awardButtonLabelL, cameInTextL, cooldownWarningL, counterErrorL, successViewL } from "../../lib/counterText";
+import { formatMoneyL, formatPtsL, formatTimeL, termWordL } from "../../lib/formatL";
 import { newIdempotencyKey } from "../../lib/ids";
 import { last4, toE164 } from "../../lib/phone";
 import { api } from "../../state/api";
@@ -52,7 +46,9 @@ export default function Counter() {
   const { c, isClear } = useTheme();
   const { width } = useWindowDimensions();
   const toast = useToast();
-  const { t: tr } = useLocale();
+  const L = useLocale();
+  const { t } = L;
+  const tr = t;
   const ctx = useCounter();
   const { config, merchant, program, programPaused, staff, online, queue, queueState, flush, recent, addRecent, markUndone, touch, cacheMembers, cachedMember } = ctx;
   const merchantId = config.merchantId ?? "";
@@ -116,8 +112,8 @@ export default function Counter() {
         const cached = cachedMember(query);
         if (cached) dispatch({ type: "pick", member: cached });
         else if (isPhone) dispatch({ type: "lookupOffline", phone: query, label: `•• ${last4(query)}` });
-        else if (query.startsWith("LL:") || /^[A-Z0-9]{8}$/.test(query)) dispatch({ type: "lookupOffline", memberCode: query, label: "Member card" });
-        else dispatch({ type: "lookupError", message: "Last-4 search needs internet. Type the full number." });
+        else if (query.startsWith("LL:") || /^[A-Z0-9]{8}$/.test(query)) dispatch({ type: "lookupOffline", memberCode: query, label: t("mc.memberCard") });
+        else dispatch({ type: "lookupError", message: t("mc.last4Offline") });
         return;
       }
       try {
@@ -128,14 +124,14 @@ export default function Counter() {
         const err = e as ApiError;
         if (isApiError(err) && err.isRetryable) {
           if (isPhone) dispatch({ type: "lookupOffline", phone: query, label: `•• ${last4(query)}` });
-          else if (query.startsWith("LL:")) dispatch({ type: "lookupOffline", memberCode: query, label: "Member card" });
-          else dispatch({ type: "lookupError", message: t("err.network") });
+          else if (query.startsWith("LL:")) dispatch({ type: "lookupOffline", memberCode: query, label: t("mc.memberCard") });
+          else dispatch({ type: "lookupError", message: t("auth.err.network") });
         } else if (isApiError(err) && err.status === 404) {
-          dispatch({ type: "lookupError", message: t("err.qr.invalid") });
-        } else dispatch({ type: "lookupError", message: isApiError(err) ? err.message : t("err.server") });
+          dispatch({ type: "lookupError", message: t("auth.err.qrInvalid") });
+        } else dispatch({ type: "lookupError", message: counterErrorL(L, isApiError(err) ? err : null) });
       }
     },
-    [online, merchantId, cacheMembers, cachedMember, program],
+    [online, merchantId, cacheMembers, cachedMember, program, L],
   );
 
   useEffect(() => {
@@ -158,7 +154,7 @@ export default function Counter() {
       const value = normalizeRedeemInput(raw);
       if (value.length < 4) return;
       if (!online) {
-        setCodeError(t("err.redeem.offline"));
+        setCodeError(t("counter.err.redeemOffline"));
         return;
       }
       setCodeBusy(true);
@@ -169,10 +165,7 @@ export default function Counter() {
         setCode("");
         showRedeemSuccess(res);
       } catch (e) {
-        if (isApiError(e) && e.status === 404) setCodeError("No reward code like that at this shop. Check the code, or ask them to tap Redeem again.");
-        else if (isApiError(e) && e.code === "already_used") setCodeError(e.message || "Already redeemed.");
-        else if (isApiError(e) && e.code === "void") setCodeError("This code was cancelled. Ask them to tap Redeem again.");
-        else setCodeError(isApiError(e) ? e.message : t("err.server"));
+        setCodeError(isApiError(e) && e.isNetwork ? t("counter.err.verifyOffline") : counterErrorL(L, isApiError(e) ? e : null));
         setCodeOpen(true);
       } finally {
         setCodeBusy(false);
@@ -199,7 +192,7 @@ export default function Counter() {
       } else if (s.kind === "redeem") {
         setCode(s.code);
         void verifyCode(s.code);
-      } else toast({ tone: "error", message: t("err.qr.invalid") });
+      } else toast({ tone: "error", message: t("auth.err.qrInvalid") });
     },
     [toast, verifyCode, touch],
   );
@@ -211,8 +204,10 @@ export default function Counter() {
   const perDollar = program?.earnType === "per_dollar";
   const noEarn = !!categoryId;
   const estimate = program ? estimatePoints({ program, amountCents: state.step === "customer" ? state.amountCents : 0, noEarn, multiplier, vipMultiplierPct: member?.vip?.multiplierPct }) : 0;
-  const label = program ? awardButtonLabel(program, { points: estimate, noEarn, multiplier, newCustomer: customer?.kind === "new" }) : "Award";
-  const cooldown = member && program ? cooldownWarning(member, program, Date.now()) : null;
+  const label = program ? awardButtonLabelL(L, program, { points: estimate, noEarn, multiplier, newCustomer: customer?.kind === "new" }) : t("mc.awardWord");
+  const cooldown = member && program ? cooldownWarningL(L, member, program, Date.now()) : null;
+  /** A failed call in words: offline reads as offline (not as a saved award), everything else by status and code, never the server text. */
+  const failText = (e: unknown) => (isApiError(e) ? (e.isNetwork ? t("auth.err.network") : counterErrorL(L, e)) : t("counter.err.server"));
 
   const who = (cust: CounterCustomer) => (cust.kind === "member" ? `${shortName(cust.member.name)} ${cust.member.maskedPhone ? `•• ${last4(cust.member.maskedPhone)}` : ""}`.trim() : cust.kind === "new" ? `•• ${cust.digits.slice(-4)}` : cust.label);
 
@@ -231,7 +226,7 @@ export default function Counter() {
     const qty = awardQuantity(program, quantity);
     const unitEstimate = estimatePoints({ program, amountCents: amount, noEarn, multiplier, vipMultiplierPct: cust.kind === "member" ? cust.member.vip?.multiplierPct : undefined });
     const estimated = unitEstimate * (qty.quantity ?? 1);
-    const tapLabel = awardButtonLabel(program, { points: estimated, noEarn, multiplier, newCustomer: cust.kind === "new" });
+    const tapLabel = awardButtonLabelL(L, program, { points: estimated, noEarn, multiplier, newCustomer: cust.kind === "new" });
     const key = newIdempotencyKey();
     const amountCents = perDollar ? amount : undefined;
     const body = {
@@ -245,7 +240,7 @@ export default function Counter() {
       idempotencyKey: key,
     };
     const baseBalance = cust.kind === "member" ? cust.member.balance : null;
-    const optimistic = successView({
+    const optimistic = successViewL(L, {
       program,
       pointsEarned: estimated,
       balance: baseBalance === null ? null : baseBalance + estimated,
@@ -267,15 +262,15 @@ export default function Counter() {
     setNewName("");
     if (!online) {
       await enqueue();
-      AccessibilityInfo.announceForAccessibility(`${optimistic.title}. ${t("ok.counter.offlineSaved")}`);
+      AccessibilityInfo.announceForAccessibility(t("counter.announce.queued", { label: optimistic.title }));
       scheduleReturn();
       return;
     }
     try {
       const res = await api.counter.award(merchantId, body);
       // Title = what staff added ("Added 2 stamps"); bonuses (promo, passport) are listed under it, and the balance includes them.
-      const bonus = res.extraPoints > 0 ? [`Plus ${formatPts(res.extraPoints, program.terminology)} bonus`] : [];
-      const view = successView({ program, pointsEarned: res.pointsEarned, balance: res.balance, nextReward: res.member.nextReward, rewardsAvailable: res.rewardsAvailable, messages: [...bonus, ...res.messages], firstName: firstName(res.member.name), fullName: res.member.name, visitsThisMonth: res.visitsThisMonth });
+      const bonus = res.extraPoints > 0 ? [t("mc.bonus", { amount: formatPtsL(L, res.extraPoints, program.terminology) })] : [];
+      const view = successViewL(L, { program, pointsEarned: res.pointsEarned, balance: res.balance, nextReward: res.member.nextReward, rewardsAvailable: res.rewardsAvailable, messages: [...bonus, ...res.messages], firstName: firstName(res.member.name), fullName: res.member.name, visitsThisMonth: res.visitsThisMonth });
       dispatch({ type: "awarded", view, customer: { kind: "member", member: res.member }, transactionId: res.transactionId, queuedKey: null, at: Date.now() });
       setLastStamp({ at: Date.now(), name: res.member.name, transactionId: res.transactionId, queuedKey: null, key });
       addRecent({ key, transactionId: res.transactionId, label: view.title, who: who({ kind: "member", member: res.member }), at: Date.now() });
@@ -286,11 +281,11 @@ export default function Counter() {
       if (shouldQueueAward(e)) {
         await enqueue();
         dispatch({ type: "awarded", view: { ...optimistic, offline: true, hero: optimistic.hero.startsWith("~") ? optimistic.hero : `~${optimistic.hero}` }, customer: cust, transactionId: null, queuedKey: key, at: Date.now() });
-        toast("Saved on this device. We'll send it when you're back online.");
+        toast(t("counter.queued.body"));
         scheduleReturn();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-        const message = awardErrorMessage(isApiError(e) ? e : {}, { last4: cust.kind === "member" ? last4(cust.member.maskedPhone) : undefined, terminology: program.terminology });
+        const message = counterErrorL(L, isApiError(e) ? e : null, { last4: cust.kind === "member" ? last4(cust.member.maskedPhone) : undefined, terminology: program.terminology, firstName: cust.kind === "member" ? firstName(cust.member.name) : null });
         if (opts.fromScan) {
           // Stamped on scan and refused (cooldown, paused): say so and go back to scan. Never a second stamp.
           dispatch({ type: "notice", tone: "danger", message });
@@ -323,17 +318,17 @@ export default function Counter() {
       if (target.queuedKey && queue.has(target.queuedKey)) {
         await queue.remove(target.queuedKey);
         markUndone(target.queuedKey);
-        dispatch({ type: "notice", tone: "neutral", message: "Undone. Nothing was sent." });
+        dispatch({ type: "notice", tone: "neutral", message: t("mc.undoneNotSent") });
       } else if (target.transactionId) {
         const res = await api.counter.undo(merchantId, target.transactionId);
         if (target.key) markUndone(target.key);
-        dispatch({ type: "notice", tone: "neutral", message: t("ok.counter.undone", { firstName: firstName(res.member.name) ?? "They", pts: formatPts(res.member.balance, res.member.terminology) }) });
+        dispatch({ type: "notice", tone: "neutral", message: t("counter.undoneAnnounce", { name: firstName(res.member.name) ?? t("counter.who"), balance: formatPtsL(L, res.member.balance, res.member.terminology) }) });
       } else {
-        dispatch({ type: "notice", tone: "neutral", message: "Still sending. Undo it from Today once it's sent." });
+        dispatch({ type: "notice", tone: "neutral", message: t("mc.stillSending") });
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
     } catch (e) {
-      dispatch({ type: "notice", tone: "danger", message: isApiError(e) && e.status === 403 ? "Too late to undo here. Ask a manager to adjust it." : isApiError(e) ? e.message : t("err.network") });
+      dispatch({ type: "notice", tone: "danger", message: isApiError(e) && e.status === 403 ? t("counter.err.tooLate") : failText(e) });
     } finally {
       setUndoBusy(false);
       setPanel(null);
@@ -353,17 +348,17 @@ export default function Counter() {
   const showRedeemSuccess = (res: staffApi.CounterRedemptionResponse) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     const view: SuccessView = {
-      title: t("ok.counter.redeemed", { reward: res.redemption.reward.name }),
-      hero: program?.earnType === "stamps" && program.stampGoal && res.member.balance <= program.stampGoal ? `${res.member.balance} / ${program.stampGoal}` : formatPts(res.member.balance, res.member.terminology),
-      next: `${shortName(res.member.name)} has ${formatPts(res.member.balance, res.member.terminology)} left`,
+      title: t("counter.redeemed.title", { reward: res.redemption.reward.name }),
+      hero: program?.earnType === "stamps" && program.stampGoal && res.member.balance <= program.stampGoal ? `${res.member.balance} / ${program.stampGoal}` : formatPtsL(L, res.member.balance, res.member.terminology),
+      next: t("counter.hasLeft", { name: shortName(res.member.name), balance: formatPtsL(L, res.member.balance, res.member.terminology) }),
       rewardReady: false,
       offline: false,
-      messages: res.redemption.discountCents ? [`Discount ${(res.redemption.discountCents / 100).toFixed(2)}`] : [],
-      announcement: `${res.redemption.reward.name} redeemed. Hand it over.`,
+      messages: res.redemption.discountCents ? [t("counter.discount", { amount: formatMoneyL(L, res.redemption.discountCents) })] : [],
+      announcement: t("counter.redeemed.announce", { reward: res.redemption.reward.name }),
     };
     AccessibilityInfo.announceForAccessibility(view.announcement);
     setPanel({ kind: "redeemSuccess", view, transactionId: res.redemption.transactionId, startedAt: Date.now() });
-    addRecent({ key: res.redemption.id, transactionId: res.redemption.transactionId, label: `Redeemed ${res.redemption.reward.name}`, who: shortName(res.member.name), at: Date.now() });
+    addRecent({ key: res.redemption.id, transactionId: res.redemption.transactionId, label: t("mc.redeemedLabel", { reward: res.redemption.reward.name }), who: shortName(res.member.name), at: Date.now() });
     scheduleReturn();
   };
 
@@ -378,7 +373,7 @@ export default function Counter() {
       setRedeemOpen(false);
       showRedeemSuccess(res);
     } catch (e) {
-      setRedeemError(isApiError(e) && e.code === "insufficient_points" ? "Not enough yet for that reward." : isApiError(e) ? e.message : t("err.network"));
+      setRedeemError(failText(e));
     } finally {
       setRedeemBusy(false);
     }
@@ -417,7 +412,7 @@ export default function Counter() {
   const showKeypad = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" || (state.step === "customer" && perDollar);
   const digits = state.step === "entry" || state.step === "pick" || state.step === "lookingUp" ? state.digits : "";
 
-  const autoHint = program?.counterAutoStamp && !perDollar ? "Wallet pass, app, or printed QR. A scan adds it for you." : "Wallet pass, app, or printed QR.";
+  const autoHint = program?.counterAutoStamp && !perDollar ? t("counter.scan.hintAuto") : t("counter.scan.hint");
   const onScanKey = (k: string) => {
     touch();
     if (k === "clear") dispatch({ type: "key", key: "clear" });
@@ -428,7 +423,7 @@ export default function Counter() {
     <View style={{ gap: 14, flexGrow: 1 }}>
       <ScanViewfinder onScan={handleScan} hint={autoHint} />
       <Text style={{ textAlign: "center", fontSize: 14, lineHeight: 19 }} rawColor={c.fgMuted}>
-        or type the last 4 digits of their phone
+        {t("counter.scan.type4")}
       </Text>
       <DigitBoxes digits={digits} />
       {state.step === "entry" && state.error ? (
@@ -452,13 +447,13 @@ export default function Counter() {
       <View style={{ gap: 12 }}>
         {phoneMode ? (
           <Button variant="ghost" size="lg" onPress={() => { setPhoneMode(false); dispatch({ type: "toEntry" }); }}>
-            Back to scan
+            {t("counter.backToScan")}
           </Button>
         ) : null}
         {state.step === "customer" && perDollar ? (
           <AmountDisplay cents={state.amountCents} />
         ) : (
-          <EntryDisplay text={entryDisplay(digits)} placeholder={t("counter.placeholder")} error={state.step === "entry" ? state.error : null} />
+          <EntryDisplay text={entryDisplay(digits)} placeholder={t("mc.placeholder")} error={state.step === "entry" ? state.error : null} />
         )}
         {state.step !== "customer" ? (
           <View style={styles.row}>
@@ -472,7 +467,7 @@ export default function Counter() {
         ) : null}
         {state.step === "entry" && digits.length === 4 ? (
           <View style={{ alignItems: "center" }}>
-            <Chip large icon={Search} label={t("counter.searchLast4")} onPress={() => dispatch({ type: "lookup", query: digits })} />
+            <Chip large icon={Search} label={t("mc.searchLast4")} onPress={() => dispatch({ type: "lookup", query: digits })} />
           </View>
         ) : null}
       </View>
@@ -488,7 +483,7 @@ export default function Counter() {
       return (
         <View style={{ alignItems: "center", gap: 12, paddingVertical: 48 }} accessibilityLiveRegion="polite">
           <Text variant="title" center>
-            {`Adding a ${program ? termWord(program.terminology, 1) : "stamp"} for ${firstName(state.member.name) ?? "them"}`}
+            {t("mc.adding", { unit: program ? termWordL(L, program.terminology, 1) : t("counter.word.stamps"), name: firstName(state.member.name) ?? t("counter.theCustomer") })}
           </Text>
         </View>
       );
@@ -498,7 +493,7 @@ export default function Counter() {
     }
     // Redeeming from the reward screen leaves the step on "reward", so the success card has to win over it.
     if (panel?.kind === "redeemSuccess") {
-      return <SuccessCard tone="accent" view={panel.view} startedAt={panel.startedAt} undoLabel="Undo redeem" undoBusy={undoBusy} onUndo={panel.transactionId ? () => undo({ transactionId: panel.transactionId, queuedKey: null }) : undefined} onNext={nextCustomer} />;
+      return <SuccessCard tone="accent" view={panel.view} startedAt={panel.startedAt} undoLabel={t("counter.undoRedeem")} undoBusy={undoBusy} onUndo={panel.transactionId ? () => undo({ transactionId: panel.transactionId, queuedKey: null }) : undefined} onNext={nextCustomer} />;
     }
     if (state.step === "reward") {
       const m = state.member;
@@ -541,13 +536,13 @@ export default function Counter() {
     if (state.step === "pick") {
       return (
         <View style={{ gap: 4 }}>
-          <Text variant="metaStrong" color="fgMuted" tabular>{`numbers ending in ${state.digits}`}</Text>
+          <Text variant="metaStrong" color="fgMuted" tabular>{t("mc.endingIn", { digits: state.digits })}</Text>
           {state.matches.map((m) => (
             <ListRow
               key={m.memberId}
               leading={<Avatar name={m.name} id={m.memberId} size={40} />}
               title={`${shortName(m.name)} · ${m.maskedPhone ?? ""}`}
-              subtitle={m.lastVisitAt ? `Visited ${new Date(m.lastVisitAt).toDateString().slice(0, 10)}` : "New here"}
+              subtitle={cameInTextL(L, m.lastVisitAt, new Date())}
               minHeight={64}
               onPress={() => dispatch({ type: "pick", member: m })}
             />
@@ -567,8 +562,10 @@ export default function Counter() {
       // "Add 1 stamp" / "Add 3 stamps" (canvas), visits "Add visit (+30 pts)", per-dollar "Award 24 pts".
       const mainLabel = program
         ? stamps && state.customer.kind !== "new"
-          ? awardButtonLabel(program, { points: estimate * q, multiplier, newCustomer: false }).replace(/^Add ([a-z])/i, "Add 1 $1")
-          : awardButtonLabel(program, { points: estimate * q, noEarn, multiplier, newCustomer: state.customer.kind === "new" })
+          ? L.locale === "en"
+            ? awardButtonLabelL(L, program, { points: estimate * q, multiplier, newCustomer: false }).replace(/^Add ([a-z])/i, "Add 1 $1")
+            : awardButtonLabelL(L, program, { points: estimate * q, multiplier, newCustomer: false })
+          : awardButtonLabelL(L, program, { points: estimate * q, noEarn, multiplier, newCustomer: state.customer.kind === "new" })
         : label;
       const canRedeem = !!member && member.rewardsAffordable.length > 0 && activeRewards.length > 0;
       const needs = member?.nextReward?.pointsCost ?? program?.stampGoal ?? null;
@@ -577,24 +574,24 @@ export default function Counter() {
           <CustomerCard customer={state.customer} program={program} vertical={vertical} cooldown={cooldown} onRedeem={() => setRedeemOpen(true)} onCode={() => setCodeOpen(true)} onClear={reset} />
           {state.customer.kind === "new" ? (
             <View style={[styles.nameField, { borderColor: c.lineStrong, backgroundColor: c.bg, marginTop: 16 }]}>
-              <TextInput value={newName} onChangeText={setNewName} placeholder="Ask for their name (optional)" placeholderTextColor={c.fgSubtle} accessibilityLabel="Customer's first name, optional" autoCapitalize="words" style={[typo("bodyLg"), { color: c.fg, flex: 1, minWidth: 0 }]} />
+              <TextInput value={newName} onChangeText={setNewName} placeholder={t("counter.new.name")} placeholderTextColor={c.fgSubtle} accessibilityLabel={t("counter.new.name")} autoCapitalize="words" style={[typo("bodyLg"), { color: c.fg, flex: 1, minWidth: 0 }]} />
             </View>
           ) : null}
           {perDollar && noEarnCategories.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ marginTop: 16 }}>
-              <Chip large label="Front store" selected={!categoryId} onPress={() => setCategoryId(null)} />
+              <Chip large label={t("mc.frontStore")} selected={!categoryId} onPress={() => setCategoryId(null)} />
               {noEarnCategories.map((cat) => (
                 <Chip key={cat.id} large label={cat.name} selected={categoryId === cat.id} onPress={() => setCategoryId(cat.id)} />
               ))}
             </ScrollView>
           ) : null}
-          {categoryId ? <View style={{ marginTop: 12 }}><Banner variant="info">{`${noEarnCategories.find((x) => x.id === categoryId)?.name ?? "This category"} doesn't earn ${program?.terminology ?? "points"}.`}</Banner></View> : null}
+          {categoryId ? <View style={{ marginTop: 12 }}><Banner variant="info">{t("mc.noEarnCat", { name: noEarnCategories.find((x) => x.id === categoryId)?.name ?? t("mc.thisCategory"), unit: termWordL(L, program?.terminology) })}</Banner></View> : null}
           {chipsFor.length > 0 ? (
             <View style={{ marginTop: 36 }}>
               {/* Canvas: +1 / +2 / +3 pick how many for this visit; the big button awards them in one tap. */}
               <QuantityChips values={[1, ...chipsFor]} value={q} onChange={setQty} unit={program?.terminology ?? "stamps"} />
               <Text style={{ fontSize: 12, lineHeight: 16, marginTop: 10, textAlign: "center" }} rawColor={c.fgSubtle}>
-                {stamps ? "One per drink in this order" : "One per item in this order"}
+                {stamps ? t("counter.onePerDrink") : t("counter.onePerItem")}
               </Text>
             </View>
           ) : null}
@@ -605,15 +602,15 @@ export default function Counter() {
               <>
                 {member ? (
                   <CounterSecondary
-                    label={canRedeem ? "Redeem" : needs ? `Redeem · needs ${needs}` : "Redeem"}
-                    accessibilityLabel={canRedeem ? "Redeem" : `Redeem, needs ${needs ?? ""}`}
+                    label={canRedeem ? t("counter.redeem") : needs ? t("counter.redeemNeeds", { n: needs }) : t("counter.redeem")}
+                    accessibilityLabel={canRedeem ? t("counter.redeem") : t("mc.redeemNeedsA11y", { n: needs ?? "" })}
                     disabled={!canRedeem}
                     onPress={() => setRedeemOpen(true)}
                   />
                 ) : (
-                  <CounterSecondary label="Cancel" onPress={reset} />
+                  <CounterSecondary label={t("counter.cancel")} onPress={reset} />
                 )}
-                <CounterSecondary label="Enter code" onPress={() => setCodeOpen(true)} />
+                <CounterSecondary label={t("counter.enterCode")} onPress={() => setCodeOpen(true)} />
               </>
             );
             if (dock) {
@@ -635,7 +632,7 @@ export default function Counter() {
         </View>
       );
     }
-    return wide ? <EmptyState icon={Search} title={t("empty.counter")} /> : null;
+    return wide ? <EmptyState icon={Search} title={t("mc.empty")} /> : null;
   })();
 
   // The dock appears only when it holds an action (phone entry's Find customer, or a customer's award row); the idle scan pane keeps
@@ -647,11 +644,11 @@ export default function Counter() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg }} edges={["top", "bottom"]} onTouchStart={touch}>
       <CounterHeader
-        title={config.merchantName ?? config.locationName ?? "Counter"}
+        title={config.merchantName ?? config.locationName ?? t("counter.title")}
         subtitle={(() => {
           // "counter · 412 Roncesvalles" (canvas): the street address without its "Ave", else the location's name.
           const where = config.locationAddress?.replace(/\s+(Ave|Avenue|St|Street|Rd|Road|Blvd)\.?$/i, "") ?? (config.locationName !== config.merchantName ? config.locationName : null);
-          return where ? `counter · ${where}` : "counter";
+          return where ? t("mc.hdrCounterAt", { where }) : t("mc.hdrCounter");
         })()}
         staff={staff}
         canSwitch={config.sharedDevice}
@@ -662,10 +659,10 @@ export default function Counter() {
       <View style={styles.banners}>
         <OfflineBanner mode="counter" online={online} pending={queuedForCount} sentJustNow={ctx.sentJustNow} stale={queueState.stale} retrying={queueState.flushing} onPress={() => setQueueOpen(true)} />
         {queueState.failedCount > 0 ? (
-          <Banner variant="danger" onPress={() => setQueueOpen(true)}>{`${queueState.failedCount} ${queueState.failedCount === 1 ? "award needs" : "awards need"} attention. Tap to see.`}</Banner>
+          <Banner variant="danger" onPress={() => setQueueOpen(true)}>{t("mc.needAttention", { n: queueState.failedCount })}</Banner>
         ) : null}
-        {programPaused ? <Banner variant="neutral">{t("err.award.programPaused")}</Banner> : null}
-        {lastStamp ? <UndoToast at={lastStamp.at} name={lastStamp.name} time={formatTime(lastStamp.at)} busy={undoBusy} onUndo={() => void undoLast()} /> : null}
+        {programPaused ? <Banner variant="neutral">{t("counter.err.paused")}</Banner> : null}
+        {lastStamp ? <UndoToast at={lastStamp.at} name={lastStamp.name} time={formatTimeL(L, lastStamp.at)} busy={undoBusy} onUndo={() => void undoLast()} /> : null}
       </View>
 
       {wide ? (
@@ -709,14 +706,14 @@ export default function Counter() {
           setCodeOpen(false);
           setCodeError(null);
         }}
-        title="Customer's reward code"
+        title={t("mc.rewardCodeTitle")}
         footer={
           <Button size="counter" loading={codeBusy} disabled={normalizeRedeemInput(code).length < 4 || !online} onPress={() => verifyCode(code)}>
-            Confirm
+            {t("mc.confirm")}
           </Button>
         }
       >
-        {!online ? <Banner variant="warning">{t("err.redeem.offline")}</Banner> : null}
+        {!online ? <Banner variant="warning">{t("counter.err.redeemOffline")}</Banner> : null}
         <View style={[styles.codeField, { borderColor: codeError ? c.negative : c.lineStrong, backgroundColor: c.bg }]}>
           <TextInput
             value={code}
@@ -725,26 +722,26 @@ export default function Counter() {
             autoCorrect={false}
             autoFocus
             maxLength={8}
-            placeholder="K7Q2XM"
+            placeholder="K7Q2XM" // l10n-ok: a sample code, not a sentence
             placeholderTextColor={c.fgSubtle}
-            accessibilityLabel="Reward code"
+            accessibilityLabel={t("counter.verify.label")}
             onSubmitEditing={() => verifyCode(code)}
             style={[typo("code"), { color: c.fg, textAlign: "center", flex: 1, minWidth: 0 }]}
           />
         </View>
         {codeError ? <Banner variant="danger">{codeError}</Banner> : null}
         <Button variant="ghost" iconStart={Camera} onPress={() => { setCodeOpen(false); router.push("/counter/scan"); }}>
-          Scan the code instead
+          {t("mc.scanCodeInstead")}
         </Button>
       </Sheet>
-      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Counter">
-        <ListRow title="Today" subtitle="Visits, points and redemptions" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/today"); }} />
-        <ListRow title="Waiting to send" subtitle={queueState.pendingCount === 0 ? "Everything's sent" : `${queueState.pendingCount} ${queueState.pendingCount === 1 ? "award" : "awards"} saved on this phone`} chevron minHeight={64} onPress={() => { setMenuOpen(false); setQueueOpen(true); }} />
-        {restaurantTools.kds ? <ListRow title="Kitchen" subtitle="Orders by station. Tap to move one along." chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/kitchen"); }} /> : null}
-        {restaurantTools.order ? <ListRow title="Take payment" subtitle="Ring up an order, cash or card" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/order"); }} /> : null}
-        <ListRow title="Counter settings" subtitle="Theme, kiosk, scanner" chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/settings"); }} />
-        <ListRow title="Switch location" subtitle={config.locationName ?? "Pick the shop and location"} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/select"); }} />
-        {config.sharedDevice ? <ListRow title="Lock (switch staff)" chevron minHeight={64} divider={false} onPress={() => { setMenuOpen(false); ctx.lockStaff(); router.replace("/counter/pin"); }} /> : null}
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={t("counter.title")}>
+        <ListRow title={t("mc.menu.today")} subtitle={t("mc.menu.todaySub")} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/today"); }} />
+        <ListRow title={t("mc.menu.queue")} subtitle={queueState.pendingCount === 0 ? t("mc.menu.queueEmpty") : t("mc.menu.queueN", { n: queueState.pendingCount })} chevron minHeight={64} onPress={() => { setMenuOpen(false); setQueueOpen(true); }} />
+        {restaurantTools.kds ? <ListRow title={t("mc.menu.kitchen")} subtitle={t("mc.menu.kitchenSub")} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/kitchen"); }} /> : null}
+        {restaurantTools.order ? <ListRow title={t("mc.menu.order")} subtitle={t("mc.menu.orderSub")} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/order"); }} /> : null}
+        <ListRow title={t("mc.menu.settings")} subtitle={t("mc.menu.settingsSub")} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/settings"); }} />
+        <ListRow title={t("mc.menu.switchLoc")} subtitle={config.locationName ?? t("mc.menu.switchLocSub")} chevron minHeight={64} onPress={() => { setMenuOpen(false); router.push("/counter/select"); }} />
+        {config.sharedDevice ? <ListRow title={t("mc.menu.lock")} chevron minHeight={64} divider={false} onPress={() => { setMenuOpen(false); ctx.lockStaff(); router.replace("/counter/pin"); }} /> : null}
       </Sheet>
     </SafeAreaView>
   );

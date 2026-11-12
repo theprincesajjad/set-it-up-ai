@@ -323,6 +323,10 @@ export async function cancelSession(ctx: AppContext, merchant: Merchant, id: str
   const cur = await loadSession(ctx.db, merchant.id, id);
   if (cur.status === "cancelled") throw conflict("This class is already cancelled");
   const now = ctx.now();
+  // Cancelling gives credits back, refunds drop-ins and texts everyone "cancelled by the studio": none of that is true for a class that already ran.
+  if (cur.startsAt.getTime() <= now.getTime()) {
+    throw new HttpError(409, "class_past", cur.endsAt.getTime() <= now.getTime() ? "This class has already happened, so it can\u2019t be cancelled." : "This class has already started, so it can\u2019t be cancelled.");
+  }
   const [row] = await ctx.db.update(classSessions).set({ status: "cancelled", cancelledAt: now, cancelReason: reason ?? null, updatedAt: now }).where(eq(classSessions.id, id)).returning();
   const live = await ctx.db.select().from(classBookings).where(and(eq(classBookings.sessionId, id), inArray(classBookings.status, ["held", "booked", "waitlisted"])));
   for (const b of live) {
@@ -609,7 +613,7 @@ async function bookCore(ctx: AppContext, b: BookInput): Promise<BookResult> {
   const now = ctx.now();
   if (s.status !== "scheduled") throw conflict("This class was cancelled");
   if (s.startsAt.getTime() <= now.getTime() && b.source === "customer") throw conflict("This class has started");
-  if (s.endsAt.getTime() <= now.getTime()) throw conflict("This class is over");
+  if (s.endsAt.getTime() <= now.getTime()) throw new HttpError(409, "class_past", "This class has already happened, so nobody can be added to it.");
   await expireHoldsFor(ctx, s.id);
   const st = await getSettings(ctx.db, merchant.id);
 

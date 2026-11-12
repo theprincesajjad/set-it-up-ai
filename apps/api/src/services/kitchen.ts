@@ -302,7 +302,7 @@ export async function placeCounterOrder(ctx: AppContext, staff: StaffContext, bo
   } else if (body.pickupAt) pickupAt = new Date(body.pickupAt);
   if (pickupAt && pickupAt.getTime() < now.getTime() - 60_000) throw badRequest("Pickup time is in the past");
 
-  const lines = await ordersSvc.priceItems(ctx.db, merchant.id, body.items);
+  const lines = await ordersSvc.priceItems(ctx.db, merchant.id, body.items, ctx.now());
   const po = lines.find((l) => l.preorderOnly);
   if (po && !isPreorder) throw new HttpError(409, "preorder_only", `${po.name} is pre-order only`, { catalogItemId: po.catalogItemId });
   let pots = 0;

@@ -6,7 +6,7 @@ import { PageFrame } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
-import { env } from "@/lib/env";
+import { storeLinks } from "@/lib/marketing/store-links";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { loadShopBrief, publicRestaurantApi } from "@/lib/restaurant/server";
 
@@ -54,9 +54,9 @@ export default async function ShopMenuPage({ params, searchParams }: Props) {
       {menu === "error" ? (
         <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}/menu`}>{t("rc.tryAgain")}</Button>} />
       ) : menu === "none" ? (
-        <EmptyState title={t("rc.mn.noMenu")} description={t("rc.mn.noMenuBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+        <EmptyState headingLevel={1} title={t("rc.mn.noMenu")} description={t("rc.mn.noMenuBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       ) : (
-        <MenuBrowser shop={shop} menu={menu} restaurant={restaurant} appStoreUrl={env.appStoreUrl} playStoreUrl={env.playStoreUrl} />
+        <MenuBrowser shop={shop} menu={menu} restaurant={restaurant} appStoreUrl={storeLinks().appStore} playStoreUrl={storeLinks().playStore} />
       )}
     </PageFrame>
   );

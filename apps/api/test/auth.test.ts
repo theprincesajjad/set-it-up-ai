@@ -75,6 +75,7 @@ describe("phone OTP", () => {
   it("expires codes after 10 minutes and only the newest code works", async () => {
     const phone = nextPhone();
     const first = (await call("POST", "/v1/auth/otp/start", { phone })).json().devCode;
+    env.clock.now = new Date(env.clock.now.getTime() + 31_000); // past the 30 second cooldown
     const second = (await call("POST", "/v1/auth/otp/start", { phone })).json().devCode;
     if (first !== second) expect((await call("POST", "/v1/auth/otp/verify", { phone, code: first })).statusCode).toBe(400);
     env.clock.now = new Date(env.clock.now.getTime() + 11 * 60_000);
@@ -83,11 +84,15 @@ describe("phone OTP", () => {
     expect(late.json().error.code).toBe("invalid_code");
   });
 
-  it("rate-limits to 5 codes per phone per hour", async () => {
+  it("rate-limits to 5 codes per phone per hour (a sliding window, with a cooldown between codes)", async () => {
     const phone = nextPhone();
-    for (let i = 0; i < 5; i++) expect((await call("POST", "/v1/auth/otp/start", { phone })).statusCode).toBe(200);
+    for (let i = 0; i < 5; i++) {
+      expect((await call("POST", "/v1/auth/otp/start", { phone })).statusCode).toBe(200);
+      env.clock.now = new Date(env.clock.now.getTime() + 31_000);
+    }
     const sixth = await call("POST", "/v1/auth/otp/start", { phone });
     expect(sixth.statusCode).toBe(429);
+    expect(sixth.headers["retry-after"]).toBeTruthy();
     expect((await call("POST", "/v1/auth/otp/start", { phone: nextPhone() })).statusCode).toBe(200);
     env.clock.now = new Date(env.clock.now.getTime() + 61 * 60_000);
     expect((await call("POST", "/v1/auth/otp/start", { phone })).statusCode).toBe(200);
@@ -164,6 +169,16 @@ describe("email + password", () => {
     expect(none.statusCode).toBe(400);
     expect(none.json().error.code).toBe("no_account");
     expect(await env.db.select().from(users).where(eq(users.email, "nobody@ll.ca"))).toHaveLength(0);
+    // A mistyped email does not burn the code: the same code still works for the address it was sent to.
+    const typo = await call("POST", "/v1/auth/password-reset", { email: "nobody@ll.ca", code: s2.json().devCode, password: "new-password-2" });
+    expect(typo.json().error.code).toBe("no_account");
+  });
+
+  it("tells the web app when someone manages a neighbourhood (BIA manager)", async () => {
+    const owner = await call("POST", "/v1/auth/email-otp/start", { email: "bia-flag@ll.ca" });
+    const verified = await call("POST", "/v1/auth/email-otp/verify", { email: "bia-flag@ll.ca", code: owner.json().devCode });
+    const me = await call("GET", "/v1/auth/me", undefined, verified.json().accessToken);
+    expect(me.json().biaManager).toBe(false);
   });
 });
 

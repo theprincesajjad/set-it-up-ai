@@ -1,3 +1,4 @@
+import { CountingOff } from "@/components/marketing/landing-ab/CountingOff";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { preloadInter } from "@/lib/fonts/inter";
 import { marketingSkipLinkCss } from "@/lib/marketing/fonts";
@@ -15,6 +16,8 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
         {marketingSkipLinkCss}
       </style>
       {children}
+      {/* Shown only after "Turn it off" (the URL's #counting-off target). */}
+      <CountingOff />
       <SiteFooter />
     </div>
   );

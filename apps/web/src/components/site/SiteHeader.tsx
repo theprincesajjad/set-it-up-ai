@@ -2,7 +2,7 @@
 import { ArrowRight, ChevronDown, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type SyntheticEvent } from "react";
 import { LOCALES, LOCALE_LIST, normalizeLocale, type Locale } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
@@ -18,6 +18,9 @@ export interface HeaderLabels {
   login: string;
   getStarted: string;
   language: string;
+  /** The shopper page's own header actions: its visitors are customers, not shop owners. */
+  findShops: string;
+  myCard: string;
 }
 export type HeaderLabelsByLocale = Record<Locale, HeaderLabels>;
 
@@ -46,13 +49,67 @@ function rememberLocale(locale: Locale) {
 
 const subscribeNever = () => () => undefined;
 
+/**
+ * A <details> menu that behaves like a menu: it closes when a link inside it is tapped, when the route changes (the header stays mounted
+ * across pages, so an open panel would sit on top of the next one), on Escape (focus goes back to its button) and on a tap outside.
+ * Without JS it is still a plain <details> that opens and closes.
+ */
+function useMenu(pathname: string) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  const [open, setOpen] = useState(false);
+  // A menu opened before this script loaded (the <details> works on its own) is already open: pick that up, or Escape and a tap
+  // outside would not close it and the button would announce "collapsed".
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the DOM's own state, readable only after mount
+    if (ref.current?.open) setOpen(true);
+  }, []);
+  // Close when the route changes. Not on mount: a menu the visitor opened before the script loaded stays open.
+  const was = useRef(pathname);
+  useEffect(() => {
+    if (was.current === pathname) return;
+    was.current = pathname;
+    if (ref.current) ref.current.open = false;
+  }, [pathname]);
+  // Listening from mount, not only while React knows the menu is open: the <details> opens by itself, and a tap that follows at once
+  // must still close it.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || !el.open) return;
+      el.open = false;
+      el.querySelector("summary")?.focus();
+    };
+    const onDown = (e: PointerEvent) => {
+      if (el.open && e.target instanceof Node && !el.contains(e.target)) el.open = false;
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, []);
+  return {
+    open,
+    props: {
+      ref,
+      onToggle: (e: SyntheticEvent<HTMLDetailsElement>) => setOpen(e.currentTarget.open),
+      onClick: (e: MouseEvent<HTMLDetailsElement>) => {
+        if (ref.current && e.target instanceof Element && e.target.closest("a")) ref.current.open = false;
+      },
+    },
+  };
+}
+
 const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
 /**
  * Marketing top nav (wave T; wave V restyled it to direction B): white, a hairline, the black wordmark in the marketing text face (Halden since wave Y), plain
- * text links that underline on hover (the current page keeps the line), "Log in" as a text link and one black pill button. Its own `.mkt` scope, so the tokens resolve on every marketing page. Mobile menu uses <details> (no JS). The language menu and
+ * text links that underline on hover (the current page keeps the line), "Sign in" as a text link and one black pill button. Its own `.mkt` scope, so the tokens resolve on every marketing page. The phone menu and the language menu are <details> that `useMenu` closes. The language menu and
  * translated labels appear only on /for-restaurants and /for-shoppers, the pages that have translated content (docs/research/landing-and-network.md 7.3).
- * On /for-bias the sign-in link and the black button become "BIA log in" and "Plan a campaign".
+ * On /for-bias the sign-in link and the black button become "BIA sign in" and "Plan a campaign"; on /for-shoppers, whose visitors are
+ * customers, they become "My card" (/me) and "Find shops near me" (/map), the same two actions as that page's hero.
  */
 export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
   const pathname = usePathname() ?? "/";
@@ -68,12 +125,14 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
   const info = LOCALES[locale];
   const nav = copy.nav.items.map((n) => ({ ...n, label: translated && locale !== "en" ? (labels[locale].nav[n.href] ?? n.label) : n.label }));
   const other = translated && locale !== "en";
-  const login = bia ? { href: "/login?next=%2Fbia", label: copy.nav.biaLogin } : { href: "/login", label: other ? labels[locale].login : copy.nav.login };
-  const cta = bia ? { href: "/for-bias#talk", label: copy.nav.planCampaign } : { href: "/signup", label: other ? labels[locale].getStarted : copy.nav.getStarted };
+  const login = bia ? { href: "/login?next=%2Fbia", label: copy.nav.biaLogin } : shoppers ? { href: "/me", label: labels[locale].myCard } : { href: "/login", label: other ? labels[locale].login : copy.nav.login };
+  const cta = bia ? { href: "/for-bias#talk", label: copy.nav.planCampaign } : shoppers ? { href: "/map", label: labels[locale].findShops } : { href: "/signup", label: other ? labels[locale].getStarted : copy.nav.getStarted };
+  const langMenu = useMenu(pathname);
+  const phoneMenu = useMenu(pathname);
 
   const switcher = translated ? (
-    <details className="group relative">
-      <summary className="flex h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-body text-mkt-body hover:bg-mkt-grey hover:text-mkt-black focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
+    <details className="group relative" {...langMenu.props}>
+      <summary aria-expanded={langMenu.open} className="flex h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-body text-mkt-body hover:bg-mkt-grey hover:text-mkt-black focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
         <span className="sr-only">{labels[locale].language}: </span>
         <span lang={info.bcp47}>{info.name}</span>
         <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" strokeWidth={1.5} />
@@ -125,8 +184,8 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
             {cta.label}
           </Link>
         </div>
-        <details className="group relative lg:hidden">
-          <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full bg-mkt-grey hover:bg-mkt-grey focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
+        <details className="group relative lg:hidden" {...phoneMenu.props}>
+          <summary aria-expanded={phoneMenu.open} className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full bg-mkt-grey hover:bg-mkt-grey focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
             <Menu aria-hidden className="size-5" strokeWidth={1.5} />
           </summary>
           <div className="absolute end-0 top-14 w-[min(88vw,320px)] rounded-r7 border border-mkt-rule bg-mkt-paper p-2 shadow-mkt-float">

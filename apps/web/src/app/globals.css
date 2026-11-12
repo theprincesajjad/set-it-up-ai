@@ -201,6 +201,36 @@
   line-height: 40px;
 }
 
+/* Urdu display headings on the marketing pages (the text-mkt-* sizes). The fixed 40px and 28px leading above is for app titles; at 36 to 72px
+   two Nastaliq lines printed over each other and over the chip and the paragraph beside them. Leading is relative here, the Latin tracking
+   and balancing are off (tracking breaks the joins), the size drops one step, and block padding keeps the flourishes clear of neighbours. */
+:root:is([data-theme-style], :not([data-theme-style])) [lang^="ur"] :is(h1, h2, h3)[class*="text-mkt-"] {
+  line-height: 1.95;
+  letter-spacing: 0;
+  text-wrap: wrap;
+  padding-block: 0.12em;
+}
+[lang^="ur"] :is(h1, h2, h3).text-mkt-xl { font-size: var(--text-mkt-lg); }
+[lang^="ur"] :is(h1, h2, h3).text-mkt-lg { font-size: var(--text-mkt-md); }
+[lang^="ur"] :is(h1, h2, h3).text-mkt-md { font-size: var(--text-mkt-sm); }
+@media (min-width: 48rem) {
+  [lang^="ur"] :is(h1, h2, h3).md\:text-mkt-xl { font-size: var(--text-mkt-lg); }
+  [lang^="ur"] :is(h1, h2, h3).md\:text-mkt-lg { font-size: var(--text-mkt-md); }
+  [lang^="ur"] :is(h1, h2, h3).md\:text-mkt-md { font-size: var(--text-mkt-sm); }
+}
+
+/* English set inside an Urdu page (the restaurant page's untranslated sections, marked lang="en-CA" dir="ltr"): every Nastaliq rule above
+   matches by ancestor, so English headings took the doubled leading and the smaller size. Hand each property back to the type scale
+   (`:not(#urdu-rules)` only raises this rule above every Urdu rule; no element has that id). Urdu nested inside the English part, like the
+   sample kitchen ticket, keeps its Nastaliq leading. */
+[lang^="ur"] [lang^="en"]:not(#urdu-rules) :is(h1, h2, h3, p, li, dd, dt, label, legend, [class*="text-"]):not([lang^="en"] [lang^="ur"] *, [lang^="en"] [lang^="ur"]) {
+  line-height: revert-layer;
+  letter-spacing: revert-layer;
+  font-size: revert-layer;
+  text-wrap: revert-layer;
+  padding-block: revert-layer;
+}
+
 /* ===== Kit (wave Q): Magic UI marquee keyframes (components/primitives/marquee.tsx). The RTL pair runs the other way so Urdu has no gap. */
 @theme {
   --animate-marquee: marquee var(--duration) infinite linear;

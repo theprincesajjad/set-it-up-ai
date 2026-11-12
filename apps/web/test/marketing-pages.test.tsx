@@ -5,14 +5,16 @@ import { describe, expect, it } from "vitest";
 import { campaignsApi, PLANS } from "@ll/shared";
 import BiaPage from "@/app/(marketing)/for-bias/page";
 import { FreeCard, PaidCard } from "@/app/(marketing)/pricing/PlanCards";
-import { moneyShort } from "@/lib/marketing/text";
+import { marketingPlans } from "@/lib/marketing/plan-copy";
+import { moneyShort, sentenceCase } from "@/lib/marketing/text";
 
 describe("pricing cards", () => {
   const firstYear = { shown: true, priceCents: 19900, listPriceCents: PLANS.plus.annualPriceCents, eligible: false, taken: false };
-  it("shows Pro's real price in the normal text colour, the trial and the first-year price struck through, never named", () => {
+  it("shows Pro's real price in the page's text colour, the trial and the first-year price struck through, never named", () => {
     const html = renderToStaticMarkup(<PaidCard id="plus" firstYear={firstYear} />);
     expect(html).toContain(`>${moneyShort(PLANS.plus.priceCents)}<`);
-    expect(html).toMatch(/text-primary-text[^>]*>\$29</); // the price wears terracotta text, never a subdued grey
+    expect(html).toMatch(/text-foreground[^>]*>\$29</); // the price is black like the home page's, never an accent colour or a subdued grey
+    expect(html).not.toContain("text-primary-text");
     expect(html).not.toContain("text-fg-subtle");
     expect(html).not.toContain("early access");
     expect(html).toContain('href="/signup"'); // the trial needs no card: signup, not checkout
@@ -21,6 +23,8 @@ describe("pricing cards", () => {
     expect(html).toContain("first year");
     expect(html).toContain("14 days of Pro free, no card.");
     expect(html.toLowerCase()).not.toContain("founding");
+    // Nothing backs "Most popular", so no plan carries it.
+    expect(html).not.toContain("Most popular");
   });
   it("shows the plain yearly price when the first-year price is off", () => {
     const html = renderToStaticMarkup(<PaidCard id="plus" firstYear={null} />);
@@ -31,13 +35,31 @@ describe("pricing cards", () => {
     const html = renderToStaticMarkup(<PaidCard id="studio" firstYear={firstYear} />);
     expect(html).toContain(`>${moneyShort(PLANS.studio.priceCents)}<`);
     expect(html).toContain('href="/signup?plan=studio"');
-    expect(html).toContain("Start Studio");
     expect(html).not.toMatch(/<s[ >]/);
   });
-  it("keeps the free card to five plain lines", () => {
-    const html = renderToStaticMarkup(<FreeCard />);
-    expect(html).toContain(">$0<");
+  it("describes the plans to a shop in the home page's own words, with the home page's button labels", () => {
+    const [free, pro, studio] = marketingPlans("shop");
+    const freeHtml = renderToStaticMarkup(<FreeCard />);
+    expect(freeHtml).toContain(">$0<");
+    expect(freeHtml).toContain(free!.tagline);
+    for (const line of free!.features) expect(freeHtml).toContain(line);
+    expect(freeHtml).toContain(`>${free!.cta}</`);
+    expect(freeHtml).not.toMatch(/bookable calendar|[Dd]eposits/);
+    const proHtml = renderToStaticMarkup(<PaidCard id="plus" firstYear={firstYear} />);
+    expect(proHtml).toContain(pro!.tagline);
+    expect(proHtml).toContain(`>${pro!.cta}</`);
+    expect(proHtml).not.toContain("bookable calendars");
+    const studioHtml = renderToStaticMarkup(<PaidCard id="studio" firstYear={firstYear} />);
+    expect(studioHtml).toContain(studio!.tagline);
+    expect(studioHtml).toContain(`>${studio!.cta}</`);
+    expect(studioHtml).not.toMatch(/chair/);
+  });
+  it("keeps the booking wording for people who take bookings: five plain lines on Free, calendars and chairs on the paid cards", () => {
+    const html = renderToStaticMarkup(<FreeCard audience="solo" />);
     expect((html.match(/<li /g) ?? []).length).toBe(5);
+    expect(html).toContain("1 bookable calendar with online booking");
+    expect(renderToStaticMarkup(<PaidCard id="plus" firstYear={firstYear} audience="solo" />)).toContain("2 bookable calendars");
+    expect(renderToStaticMarkup(<PaidCard id="studio" firstYear={firstYear} audience="solo" />)).toContain("no per-chair charge");
   });
 });
 
@@ -59,5 +81,16 @@ describe("one component for the sample and the real report", () => {
     expect(read("components/marketing/SampleReportCard.tsx")).toContain("<ReportSummary");
     expect(read("components/dashboard/campaigns/CampaignViews.tsx")).toContain("<ReportSummary");
     expect(read("components/dashboard/bia/PrintReport.tsx")).toContain("<ReportTiles");
+  });
+});
+
+describe("sentence-case headlines", () => {
+  it("capitalises the first letter of each sentence and leaves the rest alone", () => {
+    expect(sentenceCase("free loyalty. flat prices for the rest.")).toBe("Free loyalty. Flat prices for the rest.");
+    expect(sentenceCase("built for how a Desi kitchen runs.")).toBe("Built for how a Desi kitchen runs.");
+    expect(sentenceCase("Your regulars, on repeat.")).toBe("Your regulars, on repeat.");
+    expect(sentenceCase("what do I pay? nothing for loyalty.")).toBe("What do I pay? Nothing for loyalty.");
+    expect(sentenceCase("$0 to start.")).toBe("$0 to start.");
+    expect(sentenceCase("پورا آرڈر اپنے پاس رکھیں۔")).toBe("پورا آرڈر اپنے پاس رکھیں۔");
   });
 });

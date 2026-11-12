@@ -49,7 +49,7 @@ export default async function ShopClassesPage({ params, searchParams }: Props) {
     if (isApiError(e) && (e.status === 402 || e.status === 404))
       return (
         <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
-          <EmptyState title={t("cl.ui.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+          <EmptyState headingLevel={1} title={t("cl.ui.unavailable")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
         </PageFrame>
       );
     return (

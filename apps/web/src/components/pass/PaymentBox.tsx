@@ -9,7 +9,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { env } from "@/lib/env";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { formatMoney } from "@/lib/format";
@@ -29,6 +29,7 @@ export interface PaymentBoxProps {
 }
 
 export function PaymentBox({ paymentIntentId, clientSecret, amountCents, label, onPaid }: PaymentBoxProps) {
+  const errText = useErrorText();
   const { t } = useLocaleOrEnglish();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export function PaymentBox({ paymentIntentId, clientSecret, amountCents, label, 
             await browserApi.dev.simulatePayment(paymentIntentId, "succeed_payment");
             await onPaid();
           } catch (e) {
-            setError(errorMessage(e));
+            setError(errText(e));
           } finally {
             setBusy(false);
           }

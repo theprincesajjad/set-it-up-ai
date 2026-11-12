@@ -267,7 +267,7 @@ Phase 1 rules: nothing here has been implemented. Names below are proposals the 
 All under `/v1`, contracts in `packages/shared/src/api/`. Docs go in `docs/engineering/api/public.md`, `campaigns.md`, `network.md`.
 
 1. **`GET /v1/public/plans`** (exists): extend `network` with `members: number`, `multiShopMemberPct: number`, `liveStreets: number`. The web hides `LiveProof` when `activeMerchants < 10`.
-2. **`GET /v1/public/restaurants/founding`** → `{ corridors: [{ slug, name, taken, total: 20 }] }`, from `merchants.foundingOffer`. Used by `FoundingStrip` and the pricing founding line. Cache 300 s.
+2. **`GET /v1/public/restaurants/corridors`** → `{ corridors: [{ slug, name, taken, total: 20 }] }`, from `merchants.foundingOffer`. Used by `FoundingStrip` and the pricing founding line. Cache 300 s.
 3. **`GET /v1/neighbourhoods/:id/overview?from&to`** (neighbourhood manager or admin, same checks as `GET /v1/admin/neighbourhoods/:id/merchants`):
    ```
    { period:{from,to}, prior:{from,to},

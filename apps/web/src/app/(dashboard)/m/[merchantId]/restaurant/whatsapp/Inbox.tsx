@@ -4,6 +4,7 @@
  * card and the pay link), a reply box that follows the 24-hour window, "Take over" to stop the assistant on this chat, and
  * the guest panel (visits, usual, points, notes, consent, language).
  */
+import { clockText } from "@/lib/format";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { restaurantApi, whatsappApi } from "@ll/shared";
@@ -19,7 +20,7 @@ import { formatMoney } from "@/lib/format";
 import { useAction, useApi, useNow } from "@/lib/dashboard/useApi";
 import { chatStatus, initials, languageLabel, windowHoursLeft } from "@/lib/restaurant/inbox";
 
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }).replace(/\./g, "").toLowerCase();
+const timeOf = (iso: string) => clockText(new Date(iso));
 
 export function Inbox({ sessions, connected, onSetup, onTemplates }: { sessions: { data: { items: whatsappApi.WhatsappSession[] } | null; error: string | null; loading: boolean; reload: () => Promise<void> }; connected: boolean; onSetup: () => void; onTemplates: () => void }) {
   const items = sessions.data?.items ?? [];
@@ -246,7 +247,7 @@ function GuestPanel({ guest, session, onOrder, onChanged }: { guest: restaurantA
           {row("Usual", guest.usual.length ? guest.usual.map((u) => `${u.quantity} ${u.name}`).join(", ") : "No usual yet")}
           {guest.points != null ? row("Points", `${guest.points}`) : null}
           {guest.notes ? row("Notes", guest.notes) : null}
-          {row("Consent", guest.consent.optedIn ? `Opted in${guest.consent.optedInAt ? ` ${whenTor(guest.consent.optedInAt).split(",")[0]}` : ""}. Messages after 9 pm are held.` : "Not opted in to offers. Order updates only.")}
+          {row("Consent", guest.consent.optedIn ? `Opted in${guest.consent.optedInAt ? ` ${whenTor(guest.consent.optedInAt).split(",")[0]}` : ""}. Messages after 9 p.m. are held.` : "Not opted in to offers. Order updates only.")}
           {row("Language", languageLabel(guest.language))}
         </dl>
       ) : null}

@@ -1,4 +1,6 @@
 /** Web counter (staff-counter.md, staff.md): keypad money entry, lookup hints, award labels, scan-first rules. */
+import { ApiError } from "@/lib/api/errors";
+import { userMessage } from "@/lib/api/userError";
 import { t as translate, type Locale, type MessageKey, type staffApi, type Vars } from "@ll/shared";
 import { formatNumber, formatPoints } from "@/lib/format";
 
@@ -131,9 +133,12 @@ export function counterErrorMessage(e: { code?: string; status?: number; message
       return ct.t("counter.err.paused");
     default:
       if (e.status === 404) return ct.t("counter.err.notFound");
-      if (e.status === 409 && e.message) return e.message;
+      // The session ended: say so (the banner above the counter has the Sign in button; the customer stays on screen).
+      if (e.status === 401) return ct.t("err.session.counter");
       if (e.status && e.status >= 500) return ct.t("counter.err.server");
-      return e.message || ct.t("counter.err.generic");
+      // Any other failure in the staff member's language (the API's own sentence only when it is English).
+      if (e.status) return userMessage(new ApiError(e.status, e.code ?? "http_error", e.message ?? ""), ct.t, ct.locale);
+      return ct.t("counter.err.generic");
   }
 }
 

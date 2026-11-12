@@ -8,7 +8,7 @@ import { copy } from "@/copy/en-CA";
 import { pv } from "./PlanCards";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
-import { fill, moneyShort } from "@/lib/marketing/text";
+import { fill, moneyShort, sentenceCase } from "@/lib/marketing/text";
 
 const P = copy.pricing;
 const pct = (bps: number) => `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
@@ -66,8 +66,8 @@ export function RestaurantPricing() {
   return (
     <>
       <MSection id="restaurants" tone="peach" className="scroll-mt-20 md:py-24!">
-        <p className="text-meta-strong text-primary-text">For restaurants</p>
-        <h2 className="display mt-4 max-w-3xl text-mkt-md text-balance md:text-mkt-lg">{P.restaurantTitle}</h2>
+        <p className="text-meta-strong text-muted-foreground">For restaurants</p>
+        <h2 className="display mt-4 max-w-3xl text-mkt-md text-balance md:text-mkt-lg">{sentenceCase(P.restaurantTitle)}</h2>
         <p className="mt-5 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{pv(copy.proPricing.restaurantSub)}</p>
         <div className="mt-10 grid items-stretch gap-4 lg:grid-cols-3">
           {RESTAURANT_TIERS.map((t) => (
@@ -88,8 +88,8 @@ export function RestaurantPricing() {
       </MSection>
 
       <MSection id="math" className="md:py-24!">
-        <p className="text-meta-strong text-primary-text">{P.math.eyebrow}</p>
-        <h2 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{P.math.title}</h2>
+        <p className="text-meta-strong text-muted-foreground">{P.math.eyebrow}</p>
+        <h2 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{sentenceCase(P.math.title)}</h2>
         <p className="mt-4 max-w-2xl text-body text-muted-foreground">{P.math.sub}</p>
         <div className="mt-8">
           <SavingsCalculator planName={growth.name} planPriceCents={growth.priceCents} />
@@ -107,7 +107,7 @@ export function RestaurantPricing() {
       <MSection tone="mint">
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
           <div>
-            <h2 className="display text-mkt-md md:text-mkt-lg">{P.addOnsTitle}</h2>
+            <h2 className="display text-mkt-md md:text-mkt-lg">{sentenceCase(P.addOnsTitle)}</h2>
             <p className="mt-4 text-body text-muted-foreground">{P.addOnsSub}</p>
           </div>
           <ul className="flex flex-col divide-y divide-border border-y border-border">

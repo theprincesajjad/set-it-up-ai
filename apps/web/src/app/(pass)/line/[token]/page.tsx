@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { translator } from "@ll/shared";
 import { LineStatus } from "@/components/pass/LineStatus";
 import { PageFrame } from "@/components/restaurant/PageFrame";
-import { Button } from "@/components/ui/Button";
-import { ErrorState } from "@/components/ui/EmptyState";
+import { LinkProblem, linkKind } from "@/components/errors/server";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { getLocale, getT } from "@/lib/i18n/server";
@@ -23,7 +21,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function LinePage({ params, searchParams }: Props) {
   const [{ token }, sp] = await Promise.all([params, searchParams]);
   const locale = await getLocale(sp);
-  const t = translator(locale);
   let status;
   try {
     status = await publicServerApi().public.queueStatus(token);
@@ -31,7 +28,7 @@ export default async function LinePage({ params, searchParams }: Props) {
     if (isApiError(e) && e.status === 404) notFound();
     return (
       <PageFrame locale={locale}>
-        <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/line/${encodeURIComponent(token)}`}>{t("rc.tryAgain")}</Button>} />
+        <LinkProblem kind={linkKind(e)} retryHref={`/line/${encodeURIComponent(token)}`} />
       </PageFrame>
     );
   }

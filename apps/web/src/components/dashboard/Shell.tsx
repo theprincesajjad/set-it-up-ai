@@ -6,6 +6,7 @@
  */
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AppShell, type NavItem, type NavSectionDef } from "@/components/ui/AppShell";
 import { useThemeStyle } from "@/components/ui/ThemeStyle";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
@@ -77,10 +78,14 @@ export function Shell({ sections, header, footer, notice, mobileTitle, location,
           <>
             {footer}
             {/* The top bar's language, help and account do not fit on a phone: they sit at the foot of the menu sheet. */}
-            <div className="flex items-center gap-1 border-t border-border pt-3 md:hidden">
-              <LanguageMenu />
-              <HelpLink label={t("shell.help")} />
-              <span className="ms-auto">{account}</span>
+            <div className="flex flex-col gap-2 border-t border-border pt-3 md:hidden">
+              <div className="flex items-center gap-1">
+                <LanguageMenu />
+                <HelpLink label={t("shell.help")} />
+                <span className="ms-auto">{account}</span>
+              </div>
+              {/* A plain Sign out row: the account menu alone was too easy to miss on a shared phone or counter tablet. */}
+              <SignOutButton variant="secondary" fullWidth />
             </div>
           </>
         }

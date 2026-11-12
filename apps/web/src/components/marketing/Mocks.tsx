@@ -17,6 +17,7 @@ import { QrCode } from "@/components/ui/QrCode";
 import { ShopLogo, ShopTile } from "@/components/ui/ShopTile";
 import { StampCard } from "@/components/ui/StampCard";
 import { cn } from "@/lib/cn";
+import { demoQrUrl } from "@/lib/marketing/demo-qr";
 
 const noop = () => undefined;
 
@@ -215,7 +216,7 @@ export function CardScreen() {
         <span className="display self-start text-[22px] leading-7 text-foreground">my card</span>
         <span className="-mt-3 self-start text-[13px] text-muted-foreground">Sam Rivera · 2 rewards ready</span>
         <MemberQr memberCode="LL4K7Q2M" size={190} caption="Works at every shop on the network">
-          <QrCode value="https://localloyalty.example/c/LL4K7Q2M" size={190} />
+          <QrCode value={demoQrUrl("shopper")} size={190} />
         </MemberQr>
         <span className="mt-auto mb-8 flex h-12 w-full items-center justify-center rounded-full bg-primary text-[14px] font-semibold text-primary-foreground">Add to Apple Wallet</span>
       </div>

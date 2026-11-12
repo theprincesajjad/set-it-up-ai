@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Panel } from "@/components/dashboard";
+import { ErrorLine, Panel } from "@/components/dashboard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { bpsToPct } from "@/components/dashboard/restaurant/common";
 import { TierTeaser } from "@/components/dashboard/restaurant/shared";
@@ -33,6 +33,7 @@ export function DualPricing({ sampleCents }: { sampleCents: number }) {
   const card = sampleCents;
   const cash = Math.round(card * (1 - bps / 10_000));
   const dirty = bps !== saved;
+  const failed = !!state.error && !state.data;
 
   if (!on) {
     return (
@@ -49,11 +50,11 @@ export function DualPricing({ sampleCents }: { sampleCents: number }) {
       footer={
         <div className="flex items-center justify-between gap-3">
           <p className="text-meta text-fg-muted" aria-live="polite">
-            {saved > 0 ? `On: ${bpsToPct(saved)} off for cash` : "Off"}
+            {failed ? "Couldn’t load" : saved > 0 ? `On: ${bpsToPct(saved)} off for cash` : "Off"}
           </p>
           <Button
             size="sm"
-            disabled={!canEdit || !dirty}
+            disabled={!canEdit || !dirty || failed}
             loading={act.busy}
             onClick={async () => {
               const r = await act.run(() => api.menuSettings.saveDualPricing(bps));
@@ -69,6 +70,7 @@ export function DualPricing({ sampleCents }: { sampleCents: number }) {
       }
     >
       <div className="flex flex-col gap-5">
+        {failed ? <ErrorLine message={state.error ?? ""} cause={state.cause} onRetry={() => void state.reload()} /> : null}
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         <div>
           <div className="flex items-baseline justify-between">
@@ -86,7 +88,7 @@ export function DualPricing({ sampleCents }: { sampleCents: number }) {
             max={1000}
             step={50}
             value={bps}
-            disabled={!canEdit}
+            disabled={!canEdit || failed}
             onChange={(e) => setBps(Number(e.target.value))}
             aria-valuetext={`${bpsToPct(bps)} off for cash`}
             className="mt-3 h-6 w-full cursor-pointer accent-[var(--ll-color-fg)] disabled:cursor-not-allowed disabled:opacity-50"

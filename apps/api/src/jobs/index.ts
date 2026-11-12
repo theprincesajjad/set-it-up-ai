@@ -3,8 +3,8 @@ import type { AppContext } from "../context.js";
 /**
  * Background jobs (scheduled messages, automations, birthday bonuses, booking
  * reminders, ad budget pacing...). Each job is a function that does one pass;
- * the scheduler runs them on an interval. In production run a single API
- * instance with JOBS=1 (or a dedicated worker) so jobs don't double-run.
+ * the scheduler runs them on an interval. They are on unless JOBS=0: run them on exactly one
+ * API instance (or a dedicated worker) so jobs don't double-run.
  */
 export interface Job {
   name: string;
@@ -42,14 +42,55 @@ jobs.push(...weeklyReportJobs); // phase-pro: p6
 jobs.push(...billingTrialJobs); // phase-pro: p1
 jobs.push(...waitlistJobs); // phase-pro: p2
 
-export function startJobs(ctx: AppContext): () => void {
-  if (process.env.JOBS === "0" || ctx.config.env === "test") return () => {};
-  const timers = jobs.map((job) =>
-    setInterval(() => {
-      job.run(ctx).catch((err) => console.error(`[job ${job.name}]`, err));
-    }, job.everyMs),
-  );
-  return () => timers.forEach(clearInterval);
+/** What each job last did, for /ready and the logs: a slow or failing job shows up here instead of only in the console. */
+interface JobState {
+  running: boolean;
+  lastOkAt?: string;
+  lastFailAt?: string;
+  consecutiveFailures: number;
+}
+const state = new Map<string, JobState>();
+const inFlight = new Set<Promise<void>>();
+/** After this many failed passes in a row a job is reported as failing (an alert hook can watch for the log line). */
+const FAIL_ALERT_AFTER = 5;
+
+export function jobsStatus(): { enabled: boolean; failing: string[] } {
+  return { enabled: state.size > 0, failing: [...state].filter(([, s]) => s.consecutiveFailures >= FAIL_ALERT_AFTER).map(([n]) => n) };
+}
+
+/** Starts every job on its interval. Returns `stop`, which stops the timers and resolves once passes already running have finished (or `timeoutMs` passed). */
+export function startJobs(ctx: AppContext): (timeoutMs?: number) => Promise<void> {
+  // On unless JOBS=0 (and never in tests). Run them on exactly one instance: see docs/engineering/deploy.md.
+  if (process.env.JOBS === "0" || ctx.config.env === "test") return async () => {};
+  const timers = jobs.map((job) => {
+    const st: JobState = { running: false, consecutiveFailures: 0 };
+    state.set(job.name, st);
+    return setInterval(() => {
+      // A slow pass must not overlap its own next tick.
+      if (st.running) return;
+      st.running = true;
+      const pass = job
+        .run(ctx)
+        .then(() => {
+          st.consecutiveFailures = 0;
+          st.lastOkAt = new Date().toISOString();
+        })
+        .catch((err) => {
+          st.consecutiveFailures += 1;
+          st.lastFailAt = new Date().toISOString();
+          console.error(`[job ${job.name}] failed (${st.consecutiveFailures} in a row${st.consecutiveFailures === FAIL_ALERT_AFTER ? ", ALERT" : ""})`, err);
+        })
+        .finally(() => {
+          st.running = false;
+          inFlight.delete(pass);
+        });
+      inFlight.add(pass);
+    }, job.everyMs);
+  });
+  return async (timeoutMs = 20_000) => {
+    timers.forEach(clearInterval);
+    await Promise.race([Promise.allSettled([...inFlight]), new Promise((r) => setTimeout(r, timeoutMs).unref())]);
+  };
 }
 
 // ---- wave N: admin cockpit ----

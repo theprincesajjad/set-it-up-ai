@@ -245,10 +245,15 @@ describe("locations + team", () => {
     expect(r.statusCode).toBe(201);
     expect(r.json()).toMatchObject({ role: "staff", name: "Bea", hasPin: false });
     expect(env.ctx.providers.outbox.email.at(-1)?.to).toBe("Barista@Example.com");
+    // The email invite opens "email me a code" with the address filled in (the invitee has no password).
+    expect(env.ctx.providers.outbox.email.at(-1)?.text).toMatch(/\/login\?mode=code&email=Barista%40Example\.com/);
+    expect(env.ctx.providers.outbox.email.at(-1)?.text).toContain("6-digit code");
     expect((await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/team`, headers: auth(ownerToken), payload: invite })).statusCode).toBe(409);
     const phoneInvite = await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/team`, headers: auth(ownerToken), payload: { phone: "416 555 7777", role: "manager" } });
     expect(phoneInvite.json().phone).toBe("+14165557777");
     expect(env.ctx.providers.outbox.sms.at(-1)?.to).toBe("+14165557777");
+    // The phone invite opens the phone tab (/login?as=customer) and says what to do.
+    expect(env.ctx.providers.outbox.sms.at(-1)?.body).toMatch(/added you to their team .* Sign in with this phone number.*\/login\?as=customer/);
     const bea = r.json().userId;
 
     // PIN: hashed, unique per shop, owner can set others', staff only their own.

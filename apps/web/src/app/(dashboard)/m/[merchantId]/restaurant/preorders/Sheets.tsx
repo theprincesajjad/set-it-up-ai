@@ -26,10 +26,12 @@ interface OverrideDraft {
 }
 
 /** Rules and caps. `draft` pre-fills an override (the festival checklist links here with Eid's dates). */
-export function RulesSheet({ rules, cancelHours, canEdit, draft, onClose, onSaved }: { rules: restaurantApi.PreorderRulesResponse; cancelHours: number | null; canEdit: boolean; draft?: Partial<OverrideDraft> | null; onClose: () => void; onSaved: () => void }) {
+export function RulesSheet({ rules, cancelHours, canEdit, draft, grocery, onClose, onSaved }: { grocery?: boolean; rules: restaurantApi.PreorderRulesResponse; cancelHours: number | null; canEdit: boolean; draft?: Partial<OverrideDraft> | null; onClose: () => void; onSaved: () => void }) {
   const { api } = useMerchant();
   const toast = useToast();
   const act = useAction();
+  // A grocer's counter takes orders by weight, not pots: same rules, the grocer's words.
+  const unit = grocery ? "orders" : "pots";
   const [daily, setDaily] = useState(rules.preorderDailyCap == null ? "" : String(rules.preorderDailyCap));
   const [byDay, setByDay] = useState<Record<string, string>>(() => Object.fromEntries(restaurantApi.WEEKDAYS.map((d) => [d, rules.capByWeekday[d] == null ? "" : String(rules.capByWeekday[d])])));
   const [hour, setHour] = useState(rules.perHourCap == null ? "" : String(rules.perHourCap));
@@ -65,7 +67,7 @@ export function RulesSheet({ rules, cancelHours, canEdit, draft, onClose, onSave
       open
       onClose={onClose}
       title="Rules and caps"
-      subtitle="How many pots you take, and when."
+      subtitle={grocery ? "How many pre-orders you take, and when." : "How many pots you take, and when."}
       label="Pre-order rules"
       width={520}
       footer={
@@ -79,8 +81,8 @@ export function RulesSheet({ rules, cancelHours, canEdit, draft, onClose, onSave
         {!canEdit ? <Banner tone="neutral">Only owners and managers can change these rules.</Banner> : null}
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         <section className="flex flex-col gap-3">
-          <h3 className="text-meta-strong text-fg">Pots per day</h3>
-          <TextField label="Every day, unless a weekday below says otherwise" suffix="pots" inputMode="numeric" value={daily} onChange={(e) => setDaily(digits(e.target.value))} disabled={!canEdit} hint="Leave empty for no limit." />
+          <h3 className="text-meta-strong text-fg">{grocery ? "Orders per day" : "Pots per day"}</h3>
+          <TextField label="Every day, unless a weekday below says otherwise" suffix={unit} inputMode="numeric" value={daily} onChange={(e) => setDaily(digits(e.target.value))} disabled={!canEdit} hint="Leave empty for no limit." />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {restaurantApi.WEEKDAYS.map((d) => (
               <TextField key={d} label={DAY_LABEL[d]} inputMode="numeric" value={byDay[d] ?? ""} onChange={(e) => setByDay({ ...byDay, [d]: digits(e.target.value) })} disabled={!canEdit} placeholder={daily || "none"} />
@@ -89,7 +91,7 @@ export function RulesSheet({ rules, cancelHours, canEdit, draft, onClose, onSave
         </section>
         <section className="flex flex-col gap-3">
           <h3 className="text-meta-strong text-fg">Pickup crowding</h3>
-          <TextField label="Most pots in one pickup hour" suffix="pots" inputMode="numeric" value={hour} onChange={(e) => setHour(digits(e.target.value))} disabled={!canEdit} hint="Stops six families arriving for pots at 6 pm. Leave empty for no limit." />
+          <TextField label={grocery ? "Most orders in one pickup hour" : "Most pots in one pickup hour"} suffix={unit} inputMode="numeric" value={hour} onChange={(e) => setHour(digits(e.target.value))} disabled={!canEdit} hint={`${grocery ? "Stops six families arriving for their orders at 6 p.m." : "Stops six families arriving for pots at 6 p.m."} Leave empty for no limit.`} />
         </section>
         <section className="flex flex-col gap-3">
           <h3 className="text-meta-strong text-fg">Cancelling</h3>
@@ -105,7 +107,7 @@ export function RulesSheet({ rules, cancelHours, canEdit, draft, onClose, onSave
           {overrides.map((o, i) => (
             <div key={i} className="grid gap-3 rounded-card bg-card shadow-card p-4 sm:grid-cols-2">
               <TextField label="Name" value={o.label} onChange={(e) => set(i, { label: e.target.value })} disabled={!canEdit} placeholder="Eid al-Fitr" maxLength={60} />
-              <TextField label="Pots per day" inputMode="numeric" value={o.cap} onChange={(e) => set(i, { cap: digits(e.target.value) })} disabled={!canEdit} />
+              <TextField label={grocery ? "Orders per day" : "Pots per day"} inputMode="numeric" value={o.cap} onChange={(e) => set(i, { cap: digits(e.target.value) })} disabled={!canEdit} />
               <TextField label="From" type="date" value={o.from} onChange={(e) => set(i, { from: e.target.value, to: o.to && o.to >= e.target.value ? o.to : e.target.value })} disabled={!canEdit} />
               <TextField label="To" type="date" value={o.to} min={o.from} onChange={(e) => set(i, { to: e.target.value })} disabled={!canEdit} error={o.to && o.from && o.to < o.from ? "The end date is before the start date." : null} />
               <TextField label="Notice (cut-off)" suffix="hours" inputMode="numeric" value={o.leadHours} onChange={(e) => set(i, { leadHours: digits(e.target.value) })} disabled={!canEdit} optionalLabel />

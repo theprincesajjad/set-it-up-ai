@@ -23,6 +23,7 @@ import { apiClient } from "../../state/api";
 import { tiffinRoute } from "../../lib/restaurant";
 import { openDeepLink } from "../deepLinks";
 import { registerForPush, type PushResult } from "../push";
+import { savedTranslator } from "../pushText";
 
 const IMPORTANCE = {
   low: Notifications.AndroidImportance.LOW,
@@ -33,9 +34,11 @@ const IMPORTANCE = {
 /** Create the Android notification channels (no-op elsewhere). Safe to call repeatedly. */
 export async function setupNotificationChannels(): Promise<void> {
   if (Platform.OS !== "android") return;
+  const tr = await savedTranslator();
+  const names = { points: tr("mf.ch.points"), orders: tr("mf.ch.orders"), offers: tr("mf.ch.offers") } as const;
   for (const [id, c] of Object.entries(customerApi.ANDROID_CHANNELS)) {
     await Notifications.setNotificationChannelAsync(id, {
-      name: c.name,
+      name: names[id as keyof typeof names] ?? c.name,
       importance: IMPORTANCE[c.importance],
       ...(id === "offers" ? { sound: null, vibrationPattern: null, enableVibrate: false } : {}),
     });

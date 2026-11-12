@@ -1,13 +1,13 @@
 import { touchTargets } from "@ll/design-tokens";
-import { customerApi } from "@ll/shared";
+import { BRAND, customerApi, t as translate } from "@ll/shared";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isApiError } from "../../api/client";
-import { t } from "../../copy/en-CA";
 import { managerBus } from "../../features/scanBus";
-import { formatPts } from "../../lib/award";
+import { formatPtsL } from "../../lib/formatL";
+import { useLocale } from "../../lib/i18n";
 import { newIdempotencyKey } from "../../lib/ids";
 import { formatNanp, toE164 } from "../../lib/phone";
 import { api } from "../../state/api";
@@ -36,6 +36,8 @@ export default function Kiosk() {
 
 function KioskInner() {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t, locale } = L;
   const { width } = useWindowDimensions();
   const { config, merchant, setConfig, online } = useCounter();
   const [digits, setDigits] = useState("");
@@ -49,7 +51,8 @@ function KioskInner() {
   const taps = useRef<number[]>([]);
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shopName = merchant?.merchant.name ?? config.merchantName ?? "";
-  const consentText = customerApi.marketingConsentText(shopName);
+  // The customer reads, and we store, the same sentence: the English text in English, its translation otherwise.
+  const consentText = locale === "en" ? customerApi.marketingConsentText(shopName) : translate(locale, "auth.consent.merchantApp", { shop: shopName, brand: BRAND.name });
 
   const reset = () => {
     setDigits("");
@@ -93,7 +96,7 @@ function KioskInner() {
   const checkIn = async (withConsent: boolean) => {
     const phone = toE164(digits);
     if (!phone || !config.merchantId || !config.locationId) {
-      setError(t("err.phone.incomplete"));
+      setError(t("mc.k.phoneIncomplete"));
       return;
     }
     setBusy(true);
@@ -113,14 +116,14 @@ function KioskInner() {
         ...(withConsent ? { consent: { text: consentText } } : {}),
         idempotencyKey: newIdempotencyKey(),
       });
-      const name = res.firstName ? `, ${res.firstName}` : "";
+      const who = res.firstName ?? null;
       setResult({
-        title: res.outcome === "visit" ? `You're checked in${name}.` : `Welcome${name}. Staff will add your points at the till.`,
-        sub: [`You have ${formatPts(res.balance, res.terminology)}.`, res.rewardsAvailable[0] ? `Reward ready: ${res.rewardsAvailable[0].name}` : res.nextReward ? `${formatPts(res.nextReward.pointsNeeded, res.terminology)} to ${res.nextReward.name}` : ""].filter(Boolean).join(" "),
+        title: res.outcome === "visit" ? (who ? t("mc.k.checkedInName", { name: who }) : t("mc.k.checkedIn")) : who ? t("mc.k.welcomeName", { name: who }) : t("mc.k.welcome"),
+        sub: [t("mc.k.youHave", { balance: formatPtsL(L, res.balance, res.terminology) }), res.rewardsAvailable[0] ? t("mc.rewardReadyName", { reward: res.rewardsAvailable[0].name }) : res.nextReward ? t("counter.toReward", { n: formatPtsL(L, res.nextReward.pointsNeeded, res.terminology), reward: res.nextReward.name }) : ""].filter(Boolean).join(" "),
       });
       setStep("done");
     } catch (e) {
-      setError(isApiError(e) && e.code === "cooldown" ? "You've already checked in today. See you next time." : isApiError(e) && e.isNetwork ? "We can't connect right now. Ask staff to add your visit." : isApiError(e) ? e.message : t("err.server"));
+      setError(isApiError(e) && e.code === "cooldown" ? t("mc.k.already") : isApiError(e) && e.isNetwork ? t("mc.k.offlineErr") : isApiError(e) && e.status === 429 ? t("err.rate.lineNoWait") : t("auth.err.server"));
     } finally {
       setBusy(false);
     }
@@ -132,22 +135,22 @@ function KioskInner() {
   const compactKeyH = Math.max(touchTargets.keypad, Math.min(touchTargets.kiosk, Math.floor((padArea - 3 * KEY_GAP) / 4)));
   if (step === "attract") {
     return (
-      <Pressable style={[styles.full, { backgroundColor: c.fg }]} onPress={reset} accessibilityRole="button" accessibilityLabel="Tap to check in">
+      <Pressable style={[styles.full, { backgroundColor: c.fg }]} onPress={reset} accessibilityRole="button" accessibilityLabel={t("mc.k.tapToCheckIn")}>
         <Text variant="headline" rawColor={c.bg} center style={{ opacity: 0.7 }}>
           {shopName}
         </Text>
         <Text variant="displayNumber" rawColor={c.bg} center style={{ fontSize: 56, lineHeight: 60 }}>
-          check in and earn
+          {t("mc.k.headline")}
         </Text>
         <Text variant="headline" rawColor={c.bg} center style={{ fontWeight: "400", opacity: 0.7 }}>
-          Tap anywhere to start
+          {t("mc.k.tapAnywhere")}
         </Text>
       </Pressable>
     );
   }
   if (step === "done" && result) {
     return (
-      <Pressable style={[styles.full, { backgroundColor: c.bg }]} onPress={reset} accessibilityRole="button" accessibilityLabel={`${result.title} ${result.sub}. Tap to finish`}>
+      <Pressable style={[styles.full, { backgroundColor: c.bg }]} onPress={reset} accessibilityRole="button" accessibilityLabel={`${result.title} ${result.sub}. ${t("mc.k.tapToFinish")}`}>
         <CircleCheck size={80} color={c.positive} strokeWidth={1.5} />
         <Text variant="displayNumber" center style={{ fontSize: 44 * scale, lineHeight: 50 * scale }}>
           {result.title}
@@ -163,25 +166,25 @@ function KioskInner() {
     setDigits((d) => (k === "back" ? d.slice(0, -1) : k === "clear" ? "" : d.length < 10 ? d + k : d));
   };
   const logoEl = (size: number) => (
-    <Pressable onPress={onLogoTap} accessibilityLabel={`${shopName} logo`} accessible>
+    <Pressable onPress={onLogoTap} accessibilityLabel={t("mc.k.logo", { shop: shopName })} accessible>
       <ShopLogo shop={{ name: shopName, vertical: merchant?.merchant.vertical ?? "other", logoUrl: merchant?.merchant.logoUrl, brandColor: merchant?.merchant.brandColor }} size={size} />
     </Pressable>
   );
   const consentBlock = (
     <View style={{ gap: 24 }}>
-      <ConsentCheckbox large text={consentText} checked={consent} onChange={setConsent} caption={t("consent.merchant.caption.v1", { shop: shopName })} />
+      <ConsentCheckbox large text={consentText} checked={consent} onChange={setConsent} caption={t("auth.consent.caption", { sender: shopName, brand: BRAND.name })} />
       <Button size="kiosk" loading={busy} onPress={() => checkIn(consent)}>
-        Join and check in
+        {t("mc.k.join")}
       </Button>
       <Button variant="ghost" size="kiosk" onPress={reset}>
-        Start over
+        {t("mc.k.startOver")}
       </Button>
     </View>
   );
-  const subtitle = step === "consent" ? "You're new here. One question first." : "Type your mobile number";
+  const subtitle = step === "consent" ? t("mc.k.newHere") : t("mc.k.typeNumber");
   const bigTextToggle = (
     <Button variant="ghost" size={wide ? "md" : "sm"} style={{ alignSelf: "flex-start", paddingHorizontal: 0 }} onPress={() => setBigText((b) => !b)}>
-      {bigText ? "Normal text" : "Bigger text"}
+      {bigText ? t("mc.k.normalText") : t("mc.k.biggerText")}
     </Button>
   );
 
@@ -192,7 +195,7 @@ function KioskInner() {
           <View style={styles.compactHeader}>
             {logoEl(56)}
             <Text variant="largeTitle" style={{ flex: 1, fontSize: 30 * scale, lineHeight: 34 * scale }}>
-              check in and earn
+              {t("mc.k.headline")}
             </Text>
           </View>
           <View style={styles.compactSub}>
@@ -201,7 +204,7 @@ function KioskInner() {
             </Text>
             {bigTextToggle}
           </View>
-          {!online ? <Banner variant="warning">Offline. Ask staff to add your visit.</Banner> : null}
+          {!online ? <Banner variant="warning">{t("mc.k.offline")}</Banner> : null}
           {step === "consent" ? (
             consentBlock
           ) : (
@@ -217,7 +220,7 @@ function KioskInner() {
                 </View>
               </View>
               <Button size="kiosk" loading={busy} disabled={digits.length !== 10 || !online} onPress={() => checkIn(false)} style={{ minHeight: touchTargets.keypad, height: Math.max(touchTargets.keypad, compactKeyH) }}>
-                Check in
+                {t("mc.k.checkIn")}
               </Button>
             </>
           )}
@@ -232,13 +235,13 @@ function KioskInner() {
         <View style={[styles.left, wide ? { flex: 45 } : null]}>
           {logoEl(96)}
           <Text variant="largeTitle" style={{ fontSize: 48 * scale, lineHeight: 52 * scale }}>
-            check in and earn
+            {t("mc.k.headline")}
           </Text>
           <Text variant="bodyLg" color="fgMuted" style={{ fontSize: 20 * scale, lineHeight: 28 * scale }}>
             {subtitle}
           </Text>
           {bigTextToggle}
-          {!online ? <Banner variant="warning">Offline. Ask staff to add your visit.</Banner> : null}
+          {!online ? <Banner variant="warning">{t("mc.k.offline")}</Banner> : null}
         </View>
         <View style={[styles.right, wide ? { flex: 55 } : null]}>
           {step === "consent" ? (
@@ -251,7 +254,7 @@ function KioskInner() {
               {error ? <Banner variant="danger">{error}</Banner> : null}
               <Keypad size="kiosk" onKey={onKey} />
               <Button size="kiosk" loading={busy} disabled={digits.length !== 10 || !online} onPress={() => checkIn(false)} style={{ minHeight: touchTargets.kiosk }}>
-                Check in
+                {t("mc.k.checkIn")}
               </Button>
             </>
           )}

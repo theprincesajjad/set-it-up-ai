@@ -23,3 +23,7 @@ Wave W2 replaced the Unsplash barber and florist tiles with two more AI-generate
 barber, nail, repair and florist tiles are one set: smiling owners with their customers in warm window light.
 The wallet pass, the counter's "Stamp added", the win-back nudge and the weekly card on the page are drawn in code
 (components/marketing/landing/Product.tsx) with sample shops and people; the page captions them as sample data.
+
+The home page says, under the shop tiles, "Photos on this page are illustrative, not customers." (copy.landing.shops.photosNote): none
+of the people shown is a customer of Local Loyalty. Before launch, either replace the stock photos of recognisable people (the Unsplash
+licence carries no model release for advertising) with released or commissioned photos, or have counsel confirm the current use.

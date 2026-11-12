@@ -80,7 +80,7 @@ export const connectBody = z
     shop: z.string().max(255).optional(),
     restaurantGuid: z.string().max(64).optional(),
     placeId: z.string().max(300).optional(),
-    listingUrl: z.url().max(2000).optional(),
+    listingUrl: z.url({ protocol: /^https?$/ }).max(2000).optional(),
   })
   .default({});
 export type ConnectBody = z.infer<typeof connectBody>;
@@ -99,7 +99,7 @@ export const updateSettingsBody = z.object({
   categoryMap: z.record(z.string().min(1).max(200), z.uuid().nullable()).optional(),
   audienceId: z.string().max(100).nullable().optional(),
   placeId: z.string().max(300).nullable().optional(),
-  listingUrl: z.url().max(2000).nullable().optional(),
+  listingUrl: z.url({ protocol: /^https?$/ }).max(2000).nullable().optional(),
 });
 export type UpdateSettingsBody = z.infer<typeof updateSettingsBody>;
 

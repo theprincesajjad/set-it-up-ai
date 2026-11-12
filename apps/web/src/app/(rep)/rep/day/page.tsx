@@ -7,6 +7,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { repApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Sheet } from "@/components/dashboard";
+import { ErrorPanel } from "@/components/errors";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -34,7 +35,7 @@ function StreetDay() {
   const toast = useToast();
   const areaParam = useSearchParams().get("area") ?? undefined;
   const [day, setDay] = useState<repApi.StreetDay | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const [online, setOnline] = useState(true);
   const [queue, setQueue] = useState<QueuedOutcome[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -65,7 +66,7 @@ function StreetDay() {
     } catch (e) {
       const cached = cachedDay();
       if (cached) setDay((cur) => cur ?? cached);
-      else setError(e instanceof Error ? e.message : "Could not load the street day");
+      else setError(e ?? new Error("street day"));
     }
   }, [areaParam]);
 
@@ -161,7 +162,7 @@ function StreetDay() {
     );
   }
 
-  if (error && !day) return <EmptyState title="Could not load the street day" description={error} action={<Button onClick={() => void load()}>Try again</Button>} />;
+  if (error && !day) return <ErrorPanel error={error} heading="We couldn’t load the street day" onRetry={() => void load()} />;
   if (!day) return <Skeleton className="h-80 rounded-card" />;
   if (!day.area)
     return (

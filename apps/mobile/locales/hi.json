@@ -1,0 +1,6 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "किसी दुकान में जुड़ने, पॉइंट पाने या काउंटर पर ग्राहक को चेक-इन करने के लिए QR कोड स्कैन करें।",
+    "NSLocationWhenInUseUsageDescription": "नक्शे पर अपने आस-पास की दुकानें देखें।"
+  }
+}

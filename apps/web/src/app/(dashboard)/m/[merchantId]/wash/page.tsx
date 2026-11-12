@@ -35,7 +35,7 @@ function Wash() {
   async function find(keepResult = false) {
     if (!keepResult) setResult(null);
     const term = q.trim();
-    if (term.length < 2) return;
+    if (term.length < 2) return void act.setError("Enter a plate, phone or member code.");
     const r = await act.run(() => api.auto.washLookup(term));
     if (r) setFound(r.items);
   }
@@ -63,7 +63,7 @@ function Wash() {
         }}
       >
         <TextField label="Plate, phone, name or member code" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ABC 123" autoComplete="off" autoFocus />
-        <Button type="submit" size="sm" className="self-start" loading={act.busy} disabled={q.trim().length < 2}>Find</Button>
+        <Button type="submit" size="sm" className="self-start" loading={act.busy}>Find</Button>
       </form>
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       {result ? <Banner tone={result.ok ? "success" : "danger"}>{result.message}</Banner> : null}

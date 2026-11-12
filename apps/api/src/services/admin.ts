@@ -3,6 +3,7 @@
  * per-merchant overrides), plan availability, neighbourhoods, network perks,
  * merchants, users, platform roles and the audit log.
  */
+import { forgetAuthCache } from "../lib/auth.js";
 import { and, asc, count, desc, eq, gte, ilike, inArray, like, lte, or, sql } from "drizzle-orm";
 import {
   auditLogs,
@@ -486,6 +487,7 @@ export async function setPlatformRole(ctx: AppContext, actorUserId: string, user
   const [cur] = await ctx.db.select({ role: users.platformRole, deletedAt: users.deletedAt }).from(users).where(eq(users.id, userId)).limit(1);
   if (!cur || cur.deletedAt) throw notFound("User");
   await ctx.db.update(users).set({ platformRole: role, updatedAt: ctx.now() }).where(eq(users.id, userId));
+  forgetAuthCache(ctx, userId); // the role is read from the database on every request, so the change applies at once
   await writeAudit(ctx.db, { actorUserId, action: "user.platform_role_changed", entity: "user", entityId: userId, data: { from: cur.role, to: role } });
   const [u] = await ctx.db.select().from(users).where(eq(users.id, userId)).limit(1);
   return { id: u!.id, platformRole: u!.platformRole };

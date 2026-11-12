@@ -14,17 +14,17 @@ const TOKEN_LOW = process.env.E2E_REVIEW_TOKEN_LOW ?? "demo-review-sarson-low";
 test.describe("review page", () => {
   test("an unknown link says so plainly, in the chosen language", async ({ page }) => {
     await page.goto("/r/not-a-real-token");
-    await expect(page.getByRole("heading", { name: "This link doesn't work anymore" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "We can’t find this link" })).toBeVisible();
     await page.getByRole("button", { name: /^Language/ }).click();
     await page.getByRole("menuitemradio", { name: "हिन्दी" }).click();
-    await expect(page.getByRole("heading", { name: "यह लिंक अब काम नहीं करता" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "यह लिंक नहीं मिल रहा" })).toBeVisible();
     // The whole page follows the language, so portals (menus, dialogs) do too.
     await expect(page.locator("html")).toHaveAttribute("lang", "hi-IN");
   });
 
   test("a pay link without its token is refused", async ({ page }) => {
     await page.goto("/pay/order/00000000-0000-4000-8000-000000000000");
-    await expect(page.getByRole("heading", { name: "This payment link doesn't work anymore" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "We can’t find this link" })).toBeVisible();
   });
 
   test("5 stars: the same two options as any other rating, then thanks", async ({ page }) => {

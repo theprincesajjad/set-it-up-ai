@@ -125,7 +125,7 @@ describe("Apple Wallet pass (v2 design)", () => {
     expect(back.memberships).toContain("Dundas West Bakery & Café: 7 stamps\nStamps expire after 12 months with no visits.");
     expect(back.memberships).toContain("Ossington Repair: 0 points");
     expect(back.expiry).toContain("Dundas West Bakery & Café: after 12 months without a visit.");
-    expect(back.terms).toBe("http://localhost:3000/terms");
+    expect(back.terms).toBe("http://localhost:3000/legal/terms");
     expect(back.help).toBe("hello@localloyalty.example");
     expect(Object.keys(back)).toEqual(["memberships", "expiry", "how", "code", "updates", "terms", "help"]);
     expect(pass.locations).toEqual(FIXED_LOCATIONS);

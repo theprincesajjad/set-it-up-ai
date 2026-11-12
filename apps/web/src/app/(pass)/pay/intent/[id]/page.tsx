@@ -34,7 +34,7 @@ export default async function PayIntentPage({ params, searchParams }: Props) {
     <LocaleScope locale={locale} trade="other" className="flex flex-col gap-6 pt-2">
       <PassTopBar className="self-stretch" />
       {data === "gone" ? (
-        <EmptyState icon={Link2Off} title={t("payIntent.gone")} description={t("payIntent.goneBody")} />
+        <EmptyState headingLevel={1} icon={Link2Off} title={t("payIntent.gone")} description={t("payIntent.goneBody")} />
       ) : data === "error" ? (
         <ErrorState title={t("payIntent.loadError")} description="" action={<Button variant="secondary" href={`/pay/intent/${encodeURIComponent(id)}?cs=${encodeURIComponent(cs)}`}>{t("payIntent.tryAgain")}</Button>} />
       ) : (

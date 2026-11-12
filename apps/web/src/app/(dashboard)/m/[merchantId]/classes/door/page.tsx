@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { classesApi } from "@ll/shared";
 import { SalePanel } from "@/components/dashboard/classes/SalePanel";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
+import { ErrorPanel } from "@/components/errors";
 import { Dot, PageHeader } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Awning } from "@/components/ui/Awning";
@@ -73,10 +74,10 @@ function Door() {
       <PageHeader
         flush
         title={t("counter.cd.title")}
-        description={s ? t("counter.cd.descOpen", { time: timeLabel(s.startsAt), name: s.name }) : t("counter.cd.descNone")}
+        description={s ? t("counter.cd.descOpen", { time: timeLabel(s.startsAt), name: s.name }) : door.error && !door.data ? undefined : t("counter.cd.descNone")}
         actions={
           <>
-            {s ? <Button variant="secondary" href={`${base}/classes/${s.id}`}>{t("counter.cd.classList")}</Button> : null}
+            <Button variant="secondary" href={s ? `${base}/classes/${s.id}` : `${base}/classes`}>{t("counter.cd.classList")}</Button>
             <Button variant="secondary" href={`${base}/classes`} iconStart={LogOut}>{t("counter.cd.exit")}</Button>
           </>
         }
@@ -96,7 +97,7 @@ function Door() {
             />
             <Button type="submit" size="lg" loading={act.busy}>{t("counter.cd.lookUp")}</Button>
           </form>
-          {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+          {act.error ? <Banner tone="danger">{/find that customer/i.test(act.error) ? t("counter.cd.notFound") : act.error}</Banner> : null}
           {last ? (
             <section aria-live="polite" className={cn("flex flex-col gap-3 rounded-card border border-border bg-card p-5 shadow-card", CARD[doorTone(last.outcome)])}>
               <Dot tone={doorTone(last.outcome) === "positive" ? "positive" : doorTone(last.outcome) === "negative" ? "negative" : "neutral"}>{last.message}</Dot>
@@ -123,7 +124,9 @@ function Door() {
           </details>
         </div>
         <section aria-label={t("counter.cd.arrived")} className="flex flex-col gap-2">
-          <h2 className="font-display text-title font-bold text-fg">{s?.booked !== undefined ? t("counter.cd.arrivedOf", { n: number(door.data?.arrivals.length ?? 0), total: number(s.booked) }) : t("counter.cd.arrivedN", { n: number(door.data?.arrivals.length ?? 0) })}</h2>
+          {/* Not loaded: say so, and do not draw "Arrived 0 / Nobody has checked in yet" as if the door were quiet. */}
+          {door.error ? <ErrorPanel error={door.cause ?? door.error} onRetry={() => void door.reload()} /> : null}
+          {door.error && !door.data ? null : <h2 className="font-display text-title font-bold text-fg">{s?.booked !== undefined ? t("counter.cd.arrivedOf", { n: number(door.data?.arrivals.length ?? 0), total: number(s.booked) }) : t("counter.cd.arrivedN", { n: number(door.data?.arrivals.length ?? 0) })}</h2>}
           {door.data && door.data.arrivals.length ? (
             <ul className="divide-y divide-line overflow-hidden rounded-card bg-card shadow-card">
               {door.data.arrivals.map((a) => (
@@ -134,7 +137,7 @@ function Door() {
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : door.error && !door.data ? null : (
             <p className="rounded-card bg-card px-4 py-4 text-meta text-fg-muted shadow-card">{t("counter.cd.nobody")}</p>
           )}
         </section>

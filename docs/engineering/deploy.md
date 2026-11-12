@@ -73,7 +73,8 @@ NEXT_PUBLIC_SITE_URL=https://app.example.com
 - `PUBLIC_API_URL`: webhook URLs, OAuth redirects, signed upload links, and what Twilio signs against. A wrong value breaks webhook signature checks.
 - `PUBLIC_WEB_URL`: links in emails, SMS and wallet passes, and Stripe return URLs.
 - `CORS_ORIGINS`: comma-separated browser origins the API accepts in production. Add the mobile-web origin if you serve one. Anything not listed is blocked by the browser.
-- `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SITE_URL` are baked into the web image (see above).
+- `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SITE_URL` are baked into the web image (see above). When `NEXT_PUBLIC_API_URL` is a real host, the production web build and server refuse to run unless `NEXT_PUBLIC_SITE_URL` is set to an https address that is not this machine: canonical links, the sitemap, robots.txt and share cards are built from it (`assertSiteUrlInProduction` in `apps/web/src/lib/env.ts`).
+- `NEXT_PUBLIC_APP_STORE_URL` and `NEXT_PUBLIC_PLAY_STORE_URL`: the app listing links on `/for-shoppers`. A link shows only when its URL is a real listing (not the store's front page); unset, the page shows no app link.
 
 ### 4. Proxy hops and the rate limit
 
@@ -104,13 +105,7 @@ docker compose ps          # postgres, api and web healthy; migrate "Exited (0)"
 
 `up` starts Postgres, runs `migrate` to completion, then starts the API, then the web app. If the migration fails the API does not start: read `docker compose logs migrate`. (Postgres prints `NOTICE ... identifier ... will be truncated` lines during the migration; they are harmless.)
 
-Optional demo data, only on a staging or demo server (it creates demo shops with publicly known passwords, see the README's demo logins):
-
-```bash
-docker compose --profile seed run --rm seed
-```
-
-It skips itself if the demo neighbourhood already exists. Never seed the production database. Create the first real admin by another route.
+Demo data is not part of the production compose file: it creates demo shops and admin logins with publicly known passwords. To try it, seed a separate demo database from a dev machine (`pnpm --filter @ll/api seed` with `DATABASE_URL` pointing at that database). The seed script refuses to run with `NODE_ENV=production` unless `I_UNDERSTAND_THIS_CREATES_DEMO_ADMINS=1`. Never seed the production database.
 
 ### 9. Smoke-test
 
@@ -212,3 +207,12 @@ Resilience:
 - No Content-Security-Policy yet; the web app sends `nosniff`, `X-Frame-Options: SAMEORIGIN`, a referrer policy and HSTS, the API `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and HSTS.
 - The web server's server-side calls to the API arrive from one address. Signed-in calls are limited per user, but anonymous server-side renders share one per-address bucket of 300 a minute; the home and marketing pages are cached for 5 minutes, which keeps this far below the limit at launch scale. Watch for 429s in `docker compose logs web` as traffic grows.
 - The API runs from TypeScript source under `tsx`; start-up takes a few seconds longer than compiled JavaScript.
+
+
+## Production boot checks, health and shutdown
+
+With `NODE_ENV=production` the API refuses to start and lists EVERY launch-critical value that is missing, a placeholder (`*.example`, localhost) or too weak: `JWT_SECRET` (32+ characters), `ENCRYPTION_KEY` (64 hex), `PUBLIC_API_URL`, `PUBLIC_WEB_URL` and `CORS_ORIGINS` (https, not localhost), `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY` and a real `EMAIL_FROM`, `WHATSAPP_ACCESS_TOKEN` + `WHATSAPP_APP_SECRET` (or `WHATSAPP_DISABLED=1`), `APP_ENCRYPTION_KEY`, Twilio, and the business facts `SUPPORT_EMAIL` and `LEGAL_ENTITY_NAME` (the web build reads `NEXT_PUBLIC_SUPPORT_EMAIL` and `NEXT_PUBLIC_LEGAL_ENTITY_NAME`; set the same values on both). A staging server may opt out one by one with `ALLOW_FAKE_PAYMENTS=1`, `ALLOW_CONSOLE_EMAIL=1`, `ALLOW_CONSOLE_SMS=1`. `NODE_ENV` must be `development`, `test` or `production`; anything else is refused.
+
+- `GET /health` is liveness (cheap, no database). `GET /ready` is readiness: it runs `select 1` and answers 503 while the database does not. Point the load balancer at `/ready`.
+- On SIGTERM the API stops taking requests, lets in-flight requests and running job passes finish, closes the database and exits; after 25 seconds it exits anyway. An uncaught exception or unhandled rejection is logged and exits non-zero.
+- Set `SITE_NOINDEX=1` on the web app of any staging or preview host.

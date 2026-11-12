@@ -188,6 +188,7 @@ describe("campaigns: passport progress, bonuses and completion", () => {
     expect(result.eligibleCount).toBe(1);
     expect(await env.db.select().from(auditLogs).where(eq(auditLogs.action, "campaign.winner_drawn"))).toHaveLength(1);
     expect(result.winner).toEqual({ firstName: "Jamie", maskedPhone: `(${phone.slice(2, 5)}) ***-${phone.slice(-4)}` });
+    expect(result.previousWinner).toBeUndefined();
     expect(draw.body).not.toContain(phone);
     expect(draw.body).not.toContain(customer.id);
     expect(draw.body).not.toContain("Rivera");

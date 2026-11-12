@@ -33,7 +33,7 @@ export default async function MapPage({ searchParams }: Props) {
       publicServerApi().network.neighbourhoods().then((r) => r.items).catch(() => []),
     ]);
   } catch {
-    return <ErrorState title={t("wp.err.shops")} description={t("auth.err.network")} action={<Button variant="secondary" href="/map">{t("rc.tryAgain")}</Button>} />;
+    return <ErrorState title={t("wp.err.shops")} description={t("rc.error.body")} action={<Button variant="secondary" href="/map">{t("rc.tryAgain")}</Button>} />;
   }
   return (
     <LocaleScope locale={locale} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>

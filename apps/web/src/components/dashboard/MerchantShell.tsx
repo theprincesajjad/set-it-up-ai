@@ -1,4 +1,5 @@
 "use client";
+import { EnglishFallback } from "./EnglishFallback";
 import {
   BarChart3, Blocks, CalendarClock, CalendarDays, Tags, ChevronsUpDown, CreditCard, Gift, Home, IdCard, Mail, Megaphone, Map as MapIcon, QrCode, SlidersHorizontal, ShoppingBag, Store, Tag, Users, UserCog,
   Globe, Wrench, Beef, Newspaper, Repeat, Flag, UtensilsCrossed, Clock, Truck, PartyPopper, Building2, ChefHat, MessageCircle, Star, Sparkles, Phone, Plus, PawPrint, Dog, Bone, Car, Droplets, Disc3, BellRing, type LucideIcon, Calculator, Check, Ticket, ScanLine, ListOrdered, Wallet, FileText, Pill,
@@ -250,7 +251,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
       }
     >
       {allowed ? (
-        children
+        <EnglishFallback base={base}>{children}</EnglishFallback>
       ) : (
         <NoAccess title={t("shell.noAccess.title")} body={t("shell.noAccess.body")} action={<Button href={`${base}/counter`}>{t("shell.noAccess.action")}</Button>} />
       )}

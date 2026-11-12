@@ -17,7 +17,7 @@ const phone = () => `+1${newPhone()}`;
 
 test("a dead shop link shows one message and one footer", async ({ page }) => {
   await page.goto("/shops/no-such-shop-xyz");
-  await expect(page.getByRole("heading", { name: "We couldn't find that page." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "We can’t find that shop" })).toBeVisible();
   await expect(page.getByText("Part of Local Loyalty")).toHaveCount(1);
   await expect(page.locator("main")).toHaveCount(1);
 });

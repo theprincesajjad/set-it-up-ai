@@ -20,7 +20,7 @@ export function DropoffGrid({ slots, tz, now, loading, title = "Next 7 days" }: 
       {!g.hours.length ? (
         <p className="py-6 text-meta text-fg-muted">{loading ? "Loading slots…" : "No slots open in the next 7 days."}</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto focus-visible:focus-ring" tabIndex={0} role="region" aria-label="Pickup slots, next 7 days">
           <table className="w-full min-w-[560px] border-separate border-spacing-1 text-center text-meta" aria-label="Drop-off slots by day and hour">
             <thead>
               <tr>

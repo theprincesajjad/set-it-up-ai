@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
+import type { authApi } from "@ll/shared";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { MerchantProvider } from "@/components/dashboard/MerchantContext";
 import { MerchantShell } from "@/components/dashboard/MerchantShell";
-import { NoAccess } from "@/components/dashboard/PageStates";
-import { Button } from "@/components/ui/Button";
-import { Container } from "@/components/ui/Layout";
+import { SessionGuard } from "@/components/errors";
+import { AccessDenied, ServiceUnreachable, accountLabel, homeFor } from "@/components/errors/server";
 import { ThemeStyle } from "@/components/ui/ThemeStyle";
 import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
-import { requireMe } from "@/lib/auth/session";
+import { currentPath, requireMeOrOutage } from "@/lib/auth/session";
 import { LocaleScope } from "@/lib/i18n";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { preloadInter } from "@/lib/fonts/inter";
 
 export const metadata: Metadata = { title: { default: "Dashboard", template: "%s · Dashboard" }, robots: { index: false, follow: false } };
@@ -24,9 +24,12 @@ export const metadata: Metadata = { title: { default: "Dashboard", template: "%s
 export default async function MerchantLayout({ children, params }: { children: ReactNode; params: Promise<{ merchantId: string }> }) {
   preloadInter();
   const { merchantId } = await params;
-  const me = await requireMe(`/m/${merchantId}`);
+  // An outage is not a sign-out: the screen below says so and offers the counter, which keeps working offline. Only a gone session goes to /login.
+  const auth = await requireMeOrOutage(await currentPath(`/m/${merchantId}`));
+  if (auth.outage) return <ServiceUnreachable audience="owner" counterHref={`/m/${merchantId}/counter`} />;
+  const me = auth.me;
   const membership = me.merchants.find((m) => m.merchantId === merchantId);
-  if (!membership && me.platformRole === "none") return <Denied />;
+  if (!membership && me.platformRole === "none") return <Denied me={me} />;
 
   const api = (await getServerApi()).merchant(merchantId);
   let detail, features;
@@ -34,7 +37,8 @@ export default async function MerchantLayout({ children, params }: { children: R
     [detail, features] = await Promise.all([api.detail(), api.features()]);
   } catch (e) {
     if (isApiError(e) && e.status === 404) notFound();
-    if (isApiError(e) && (e.status === 403 || e.status === 401)) return <Denied />;
+    if (isApiError(e) && (e.status === 403 || e.status === 401)) return <Denied me={me} />;
+    if (isApiError(e) && (e.isNetwork || e.status >= 500)) return <ServiceUnreachable audience="owner" counterHref={`/m/${merchantId}/counter`} />;
     throw e;
   }
   const locale = await getLocale();
@@ -42,6 +46,7 @@ export default async function MerchantLayout({ children, params }: { children: R
   return (
     <ThemeStyle style={detail.merchant.themeStyle} dark={detail.merchant.themeDark} merchantId={detail.merchant.id}>
       <LocaleScope locale={locale}>
+        <SessionGuard />
         <MerchantProvider me={me} initialDetail={detail} initialFeatures={features} role={detail.role} viewingAs={viewingAs}>
           <MerchantShell me={me}>{children}</MerchantShell>
         </MerchantProvider>
@@ -50,10 +55,9 @@ export default async function MerchantLayout({ children, params }: { children: R
   );
 }
 
-function Denied() {
-  return (
-    <Container size="public" className="py-16">
-      <NoAccess title="You don't have access to this shop" body="Sign in with the account the owner invited, or ask them to add you as staff." action={<Button href="/m">Go to your dashboard</Button>} />
-    </Container>
-  );
+/** Signed in, but not as staff of this shop (another shop's link, or a shop that does not exist: the same words, so ids are not leaked). */
+async function Denied({ me }: { me: authApi.MeResponse }) {
+  const t = await getT();
+  const home = homeFor(me, t);
+  return <AccessDenied title={t("err.denied.shop.title")} description={t("err.denied.shop.body", { address: accountLabel(me.user) })} goHref={home.href} goLabel={home.label} />;
 }

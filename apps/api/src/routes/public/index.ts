@@ -10,7 +10,7 @@ import { commerceApi, restaurantApi, serviceApi, tipsEnabledFor } from "@ll/shar
 import type { AppContext } from "../../context.js";
 import { HttpError, notFound } from "../../lib/errors.js";
 import { checkUploadSignature, getStorage } from "../../providers/storage.js";
-import { parse } from "../../lib/validate.js";
+import { parse, parseQueryDate } from "../../lib/validate.js";
 import { slotFeature, listSlots } from "../../services/bookings.js";
 import { publicMenu } from "../../services/catalog.js";
 import { loadMerchant, paymentsReady } from "../../services/commerceShared.js";
@@ -71,8 +71,9 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const kind = q.kind ?? "pickup";
     await requireFeature(ctx.db, m, slotFeature(kind));
     const now = ctx.now();
-    const from = q.from && new Date(q.from) > now ? new Date(q.from) : now;
-    const to = q.to ? new Date(q.to) : new Date(from.getTime() + 7 * 86_400_000);
+    const qFrom = parseQueryDate(q.from, "from");
+    const from = qFrom && qFrom > now ? qFrom : now;
+    const to = parseQueryDate(q.to, "to") ?? new Date(from.getTime() + 7 * 86_400_000);
     return { items: await listSlots(ctx.db, m.id, { kind, locationId: q.locationId, from, to, onlyAvailable: true }), nextCursor: null };
   });
 

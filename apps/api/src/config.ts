@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isPlaceholderEmail, missingBrandConfig } from "@ll/shared";
 /** Runtime configuration. Every value has a safe local-dev default. */
 export interface Config {
   env: "development" | "test" | "production";
@@ -165,30 +166,95 @@ function parseTrustProxy(v: string | undefined, isProd: boolean): boolean | numb
   return Number.isInteger(n) && n >= 0 ? n : isProd ? 1 : true;
 }
 
+const DEV_JWT_SECRET = "dev-only-jwt-secret-change-me-dev-only-jwt-secret";
+const DEV_ENCRYPTION_KEY = "0".repeat(64);
+const DEV_EMAIL_FROM = "Local Loyalty <hello@localloyalty.example>";
+
+/** An address that only exists on this machine, or a reserved/test host: never right for a launch. */
+function badPublicUrl(raw: string | undefined): string | null {
+  if (!raw?.trim()) return "is not set";
+  let u: URL;
+  try {
+    u = new URL(raw.trim());
+  } catch {
+    return `is not a web address (${raw})`;
+  }
+  const h = u.hostname.toLowerCase();
+  if (h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1" || h === "0.0.0.0" || h.endsWith(".localhost")) return `points at this machine (${raw})`;
+  if (/(^|\.)(example|invalid|test)$/.test(h) || /(^|\.)example\.(com|org|net)$/.test(h)) return `is a placeholder host (${raw})`;
+  if (u.protocol !== "https:") return `must be https (${raw})`;
+  return null;
+}
+
+/**
+ * Everything a production server needs before it takes a customer. Returns EVERY problem (not just the first) so one failed deploy
+ * names all of them. Escape hatches for a staging server that runs with NODE_ENV=production: ALLOW_CONSOLE_SMS=1, ALLOW_CONSOLE_EMAIL=1,
+ * ALLOW_FAKE_PAYMENTS=1, WHATSAPP_DISABLED=1. None of them is for a public launch.
+ */
+export function productionConfigProblems(env: NodeJS.ProcessEnv): string[] {
+  const out: string[] = [];
+  const jwt = env.JWT_SECRET ?? "";
+  if (!jwt) out.push("JWT_SECRET is not set (32+ random characters: openssl rand -base64 48)");
+  else if (jwt.length < 32 || jwt === DEV_JWT_SECRET) out.push("JWT_SECRET is too short or the development value (use 32+ random characters)");
+  const enc = env.ENCRYPTION_KEY ?? "";
+  if (!enc) out.push("ENCRYPTION_KEY is not set (64 hex characters: openssl rand -hex 32)");
+  else if (!/^[0-9a-f]{64}$/i.test(enc) || /^0+$/.test(enc)) out.push("ENCRYPTION_KEY must be 64 hex characters and not all zeros (openssl rand -hex 32)");
+  for (const name of ["PUBLIC_API_URL", "PUBLIC_WEB_URL"]) {
+    const bad = badPublicUrl(env[name]);
+    if (bad) out.push(`${name} ${bad}`);
+  }
+  if (!env.CORS_ORIGINS?.trim()) out.push("CORS_ORIGINS is not set (the web app's https origin)");
+  else
+    for (const o of env.CORS_ORIGINS.split(",").map((x) => x.trim()).filter(Boolean)) {
+      const bad = badPublicUrl(o);
+      if (bad) out.push(`CORS_ORIGINS entry ${bad}`);
+    }
+  if (env.ALLOW_FAKE_PAYMENTS !== "1") {
+    if (!env.STRIPE_SECRET_KEY) out.push("STRIPE_SECRET_KEY is not set (payments would run on the fake provider)");
+    else if (!/^(sk|rk)_/.test(env.STRIPE_SECRET_KEY)) out.push("STRIPE_SECRET_KEY does not look like a Stripe secret key (sk_... or rk_...)");
+    if (!env.STRIPE_WEBHOOK_SECRET) out.push("STRIPE_WEBHOOK_SECRET is not set (webhooks cannot be verified)");
+    else if (!/^whsec_/.test(env.STRIPE_WEBHOOK_SECRET) || /fake/i.test(env.STRIPE_WEBHOOK_SECRET)) out.push("STRIPE_WEBHOOK_SECRET does not look like a Stripe signing secret (whsec_...)");
+  }
+  if (env.ALLOW_CONSOLE_EMAIL !== "1") {
+    if (!env.RESEND_API_KEY) out.push("RESEND_API_KEY is not set (email would only be printed to the log)");
+    if (!env.EMAIL_FROM?.trim()) out.push("EMAIL_FROM is not set (e.g. Local Loyalty <hello@your-domain>)");
+    else if (isPlaceholderEmail(env.EMAIL_FROM)) out.push(`EMAIL_FROM is a placeholder (${env.EMAIL_FROM})`);
+  }
+  if (env.WHATSAPP_DISABLED !== "1") {
+    if (!env.WHATSAPP_ACCESS_TOKEN) out.push("WHATSAPP_ACCESS_TOKEN is not set (set WHATSAPP_DISABLED=1 to launch without WhatsApp)");
+    else if (!env.WHATSAPP_APP_SECRET) out.push("WHATSAPP_APP_SECRET is not set (WhatsApp webhooks cannot be verified)");
+  }
+  if (!masterKeyFrom(env.APP_ENCRYPTION_KEY)) out.push("APP_ENCRYPTION_KEY is not set or too short (64 hex characters or a 32+ character passphrase)");
+  out.push(...missingBrandConfig(env));
+  return out;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const nodeEnv = (env.NODE_ENV as Config["env"]) ?? "development";
+  // Unset means a developer's machine. Anything else must be one of the three names: "staging" or a typo would otherwise run as
+  // development (open CORS, sign-in codes in responses), so it is refused rather than guessed.
+  const rawEnv = env.NODE_ENV?.trim() || "development";
+  if (rawEnv !== "development" && rawEnv !== "test" && rawEnv !== "production") throw new Error(`NODE_ENV must be development, test or production (got "${rawEnv}"). A staging server runs production with the ALLOW_* escape hatches.`);
+  const nodeEnv: Config["env"] = rawEnv;
   const isProd = nodeEnv === "production";
-  const required = (name: string, devDefault: string) => {
-    const v = env[name];
-    if (!v && isProd) throw new Error(`Missing required env var ${name}`);
-    return v ?? devDefault;
-  };
   const storageProvider = env.STORAGE_PROVIDER || (nodeEnv === "test" ? "memory" : "disk");
   if (storageProvider !== "r2" && storageProvider !== "disk" && storageProvider !== "memory") throw new Error(`STORAGE_PROVIDER must be r2, disk or memory (got "${storageProvider}")`);
   if (storageProvider === "memory" && isProd) throw new Error("STORAGE_PROVIDER=memory loses every upload on restart; use r2 or disk in production");
   const r2Missing = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"].filter((n) => !env[n]);
   if (storageProvider === "r2" && r2Missing.length) throw new Error(`STORAGE_PROVIDER=r2 needs ${r2Missing.join(", ")}`);
-  // Customers sign in with a texted code: without Twilio the code only reaches the server log and nobody can sign in.
-  // ALLOW_CONSOLE_SMS=1 is for a staging server that reads codes from its log.
-  const twilioReady = Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && (env.TWILIO_MESSAGING_SERVICE_SID || env.TWILIO_FROM));
-  if (isProd && !twilioReady && env.ALLOW_CONSOLE_SMS !== "1")
-    throw new Error("Production needs TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM (sign-in codes are texted); set ALLOW_CONSOLE_SMS=1 only on a staging server");
+  if (isProd) {
+    const problems = productionConfigProblems(env);
+    // Customers sign in with a texted code: without Twilio the code only reaches the server log and nobody can sign in.
+    const twilioReady = Boolean(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && (env.TWILIO_MESSAGING_SERVICE_SID || env.TWILIO_FROM));
+    if (!twilioReady && env.ALLOW_CONSOLE_SMS !== "1")
+      problems.push("TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM are not all set (sign-in codes are texted; ALLOW_CONSOLE_SMS=1 only on a staging server)");
+    if (problems.length) throw new Error(`Production is not launch-ready. Fix these and start again:\n${problems.map((p) => `  - ${p}`).join("\n")}`);
+  }
   return {
     env: nodeEnv,
     port: Number(env.PORT ?? 4000),
     databaseUrl: env.DATABASE_URL ?? "pglite://./.pglite/dev",
-    jwtSecret: required("JWT_SECRET", "dev-only-jwt-secret-change-me-dev-only-jwt-secret"),
-    encryptionKey: required("ENCRYPTION_KEY", "0".repeat(64)),
+    jwtSecret: env.JWT_SECRET ?? DEV_JWT_SECRET,
+    encryptionKey: env.ENCRYPTION_KEY ?? DEV_ENCRYPTION_KEY,
     publicApiUrl: env.PUBLIC_API_URL ?? "http://localhost:4000",
     publicWebUrl: env.PUBLIC_WEB_URL ?? "http://localhost:3000",
     trustProxy: parseTrustProxy(env.TRUST_PROXY_HOPS, isProd),
@@ -210,7 +276,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       twilioFrom: env.TWILIO_FROM,
       twilioMessagingServiceSid: env.TWILIO_MESSAGING_SERVICE_SID,
     },
-    email: { provider: env.RESEND_API_KEY ? "resend" : "console", resendApiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM ?? "Local Loyalty <hello@localloyalty.example>" },
+    email: { provider: env.RESEND_API_KEY ? "resend" : "console", resendApiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM ?? DEV_EMAIL_FROM },
     push: { provider: env.EXPO_ACCESS_TOKEN || env.EXPO_PUSH === "1" ? "expo" : "console", expoAccessToken: env.EXPO_ACCESS_TOKEN },
     whatsapp: {
       provider: env.WHATSAPP_ACCESS_TOKEN ? "meta" : "fake",

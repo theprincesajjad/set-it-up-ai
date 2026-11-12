@@ -6,8 +6,9 @@
  */
 import { useState } from "react";
 import type { groceryApi } from "@ll/shared";
-import { DataTable, DefList, EmptyState, ErrorLine, FeatureGate, PageHeader, Panel, Sheet, StatBlock, Tag, useMerchant, type Column } from "@/components/dashboard";
+import { DataTable, DefList, EmptyState, FeatureGate, PageHeader, Panel, Sheet, StatBlock, Tag, useMerchant, type Column } from "@/components/dashboard";
 import { NumberField } from "@/components/dashboard/restaurant/common";
+import { ErrorPanel } from "@/components/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
@@ -56,6 +57,7 @@ function Pantry() {
     { key: "act", header: "", align: "end", mobile: "hidden", cell: (x) => (canEdit && x.readyToText ? <Button size="sm" variant="secondary" disabled={act.busy} onClick={() => void send([x.entryId])}>Text now</Button> : null) },
   ];
 
+  const failed = !!state.error && !d;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -66,14 +68,13 @@ function Pantry() {
           canEdit ? (
             <>
               <Button size="md" variant="secondary" onClick={() => setSheet({ item: null })}>Add an item</Button>
-              <Button size="md" disabled={!ready.length} loading={act.busy} onClick={() => void send()}>{ready.length ? `Text the ${ready.length}` : "Nobody due"}</Button>
+              <Button size="md" disabled={!ready.length} loading={act.busy} onClick={() => void send()}>{ready.length ? `Text the ${ready.length}` : failed ? "Text members" : "Nobody due"}</Button>
             </>
           ) : null
         }
       />
-      {state.error && !d ? <ErrorLine message={state.error} onRetry={() => void state.reload()} /> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <StatBlock tiles
+      {failed ? <ErrorPanel error={state.cause ?? state.error} what="your pantry reminders" onRetry={() => void state.reload()} /> : <StatBlock tiles
         label="Pantry reminders"
         loading={state.loading && !d}
         cols={3}
@@ -82,9 +83,10 @@ function Pantry() {
           { label: "Due in the next 7 days", value: d ? String(d.due.length) : "–", caption: d ? `${ready.length} ready to text now` : undefined },
           { label: "Texts in the last 30 days", value: d ? String(d.last30.sent) : "–", caption: d ? `${d.last30.boughtWithin7Days} bought again within 7 days` : undefined },
         ]}
-      />
+      />}
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">
+          {failed ? null : <>
           <section aria-labelledby="due-h" className="flex flex-col gap-3">
             <h2 id="due-h" className="text-[15px] font-semibold text-fg">Probably running low</h2>
             <DataTable caption="Due for a reminder" columns={dueCols} rows={d?.due ?? []} rowKey={(x) => x.entryId} loading={state.loading && !d} empty={<EmptyState title="Nobody is due this week" description="When the cashier logs a bulk purchase and the customer says yes, they show up here before they run out." />} />
@@ -94,11 +96,12 @@ function Pantry() {
             <DataTable caption="Pantry items" columns={itemCols} rows={d?.items ?? []} rowKey={(i) => i.id} loading={state.loading && !d} empty={<EmptyState title="No items yet" description="Add the bags and tins people buy every few weeks: 20 lb atta, basmati rice, ghee." action={canEdit ? <Button size="md" onClick={() => setSheet({ item: null })}>Add an item</Button> : undefined} />} />
             <p className="text-caption text-fg-muted">The usual gap is your default. After three purchases it follows each household&apos;s own rhythm.</p>
           </section>
+          </>}
         </div>
         <div className="flex flex-col gap-6">
           <Panel title="The text" description="In the customer's language: English, Hindi, Urdu or Punjabi.">
             <p className="rounded-card bg-bg-subtle p-4 text-meta text-fg">Annapurna Grocers: Hi Priya, your Atta 20 lb is probably running low. Order it now and pick it up at Annapurna Grocers: [link]. Reply STOP to opt out.</p>
-            <DefList items={[{ label: "Goes out", value: "5 days before the usual date, at 10 am" }, { label: "Never", value: "Between 9 pm and 8 am" }, { label: "How often", value: "Once per purchase" }]} className="mt-3" />
+            <DefList items={[{ label: "Goes out", value: "5 days before the usual date, at 10 a.m." }, { label: "Never", value: "Between 9 p.m. and 8 a.m." }, { label: "How often", value: "Once per purchase" }]} className="mt-3" />
           </Panel>
           <Panel title="How people say yes" description="At the counter, once.">
             <p className="text-meta text-fg">{d?.askText ?? "Want a text a few days before your 20 lb atta runs out? You can reply STOP any time."}</p>

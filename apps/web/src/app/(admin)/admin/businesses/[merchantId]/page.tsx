@@ -39,7 +39,7 @@ export default function AdminBusinessPage() {
   return (
     <div className="flex flex-col gap-4">
       <BackLink href="/admin/businesses">Businesses</BackLink>
-      <Async state={s}>
+      <Async state={s} fail={{ title: "Business", back: { href: "/admin/businesses", label: "Back to businesses" }, notFound: { title: "We couldn’t find that business", description: "The link may be old or mistyped." } }}>
         {(d) => {
           const r = d.row;
           const a = d.attribution;

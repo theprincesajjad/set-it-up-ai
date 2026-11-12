@@ -50,15 +50,19 @@ export function ReportTiles({ report: r, goal, tiles = "board", compact }: Pick<
     cells.push({ value: formatNumber(r.bonusPointsIssued), label: "bonus points", caption: "Network-funded" });
   }
   return (
-    <dl aria-label="Key numbers" className={cn("grid gap-px overflow-hidden rounded-card border border-border bg-border", compact ? "grid-cols-4" : cn("grid-cols-2", cells.length > 4 ? "lg:grid-cols-3" : "lg:grid-cols-4"))}>
+    // The grid follows the width it is given, not the window: two by two until the card itself is wide enough for one row
+    // (a half-width column on a laptop used to get four cells of 100px, and "+38%" was cut by its cell).
+    <div className="@container" data-report-tiles>
+    <dl aria-label="Key numbers" className={cn("grid gap-px overflow-hidden rounded-card border border-border bg-border", compact ? "grid-cols-4" : cn("grid-cols-2", cells.length > 4 ? "@[38rem]:grid-cols-3" : "@[44rem]:grid-cols-4"))}>
       {cells.map((c) => (
-        <div key={c.label} className={cn("flex flex-col bg-background", compact ? "gap-0.5 px-3 py-2" : "gap-1 px-4 py-4 md:px-5")}>
+        <div key={c.label} className={cn("flex min-w-0 flex-col bg-background", compact ? "gap-0.5 px-3 py-2" : "gap-1 px-4 py-4 md:px-5")}>
           <dd className={cn("display tabular-nums text-foreground", c.value.startsWith("Available") ? (compact ? "text-[14px] leading-5" : "text-[18px] leading-7") : compact ? "text-[20px] leading-6" : "text-[30px] leading-9")}>{c.value}</dd>
           <dt className="text-meta-strong text-foreground">{c.label}</dt>
           <dd className="text-caption text-muted-foreground">{c.caption}</dd>
         </div>
       ))}
     </dl>
+    </div>
   );
 }
 

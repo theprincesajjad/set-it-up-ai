@@ -7,7 +7,8 @@ import { formatMoneyL, formatPtsL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
-import { Banner, Button, Card, ConfirmDialog, ErrorState, OrderTracker, Screen, Section, SkeletonList, Text } from "../../ui";
+import { LinkProblem } from "../../features/customer/LinkProblem";
+import { Banner, Button, Card, ConfirmDialog, OrderTracker, Screen, Section, SkeletonList, Text } from "../../ui";
 
 /** Order detail: tracker (polls while open), items, totals. */
 export default function OrderDetail() {
@@ -26,7 +27,7 @@ export default function OrderDetail() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   if (order.isLoading) return <Screen back><SkeletonList rows={3} /></Screen>;
-  if (!order.data) return <Screen back><ErrorState message={t("ms.order.notFound")} onRetry={() => order.refetch()} /></Screen>;
+  if (!order.data) return <LinkProblem error={order.error} onRetry={() => order.refetch()} missingTitle={t("ms.order.notFound")} />;
   const o = order.data;
   return (
     <Screen back title={t("ms.order.title", { n: o.number })} onRefresh={() => order.refetch()} refreshing={order.isRefetching}>

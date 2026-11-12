@@ -3,7 +3,7 @@ import { translator, type MessageKey } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
-import { isApiError } from "../../api/client";
+import { errorMessage, isApiError } from "../../api/client";
 import { KitchenTicket } from "../../features/counter/kitchen";
 import { KITCHEN_POLL_MS, groupTickets, isLate, liveAgeSeconds, nextItemStatus, withItemStatus, type KitchenColumn } from "../../lib/kitchen";
 import { LanguageSwitcher } from "../../lib/i18n/LanguageSwitcher";
@@ -65,7 +65,7 @@ export default function Kitchen() {
     try {
       await fn();
     } catch (e) {
-      toast({ tone: "error", message: isApiError(e) ? e.message : t("kitchen.noTickets") });
+      toast({ tone: "error", message: errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }) });
     } finally {
       setBusy((b) => {
         const n = new Set(b);
@@ -97,7 +97,7 @@ export default function Kitchen() {
     items.map((tk) => <KitchenTicket key={tk.orderId} ticket={tk} age={age(tk)} busy={busy.has(tk.orderId) || tk.items.some((i) => busy.has(i.id))} onItem={onItem} onBump={() => onBump(tk)} />);
 
   return (
-    <Screen back title="Kitchen" subtitle={`${tickets.length} · ${t("kitchen.late")} ${late}`} onRefresh={() => q.refetch()} refreshing={q.isRefetching}>
+    <Screen back title={t("mc.menu.kitchen")} subtitle={`${tickets.length} · ${t("kitchen.late")} ${late}`} onRefresh={() => q.refetch()} refreshing={q.isRefetching}>
       <LanguageSwitcher />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stations} accessibilityLabel={t("kitchen.station")}>
         {["all", ...stations].map((s) => (
@@ -105,8 +105,8 @@ export default function Kitchen() {
         ))}
       </ScrollView>
       {q.error && !q.data ? (
-        <Banner variant="danger" actionLabel="Try again" onAction={() => void q.refetch()}>
-          {isApiError(q.error) && q.error.status === 402 ? "The kitchen display comes with Restaurant Pro." : isApiError(q.error) ? q.error.message : "Can't load tickets."}
+        <Banner variant="danger" actionLabel={t("counter.tryAgain")} onAction={() => void q.refetch()}>
+          {isApiError(q.error) && q.error.status === 402 ? t("mc.kdsPro") : isApiError(q.error) && q.error.isNetwork ? t("auth.err.network") : t("mc.ticketsFail")}
         </Banner>
       ) : !q.data ? (
         <Skeleton height={220} radius={16} />

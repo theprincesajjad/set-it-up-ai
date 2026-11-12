@@ -2,6 +2,7 @@
 import { MemberQr } from "@/components/ui/MemberQr";
 import { QrCode } from "@/components/ui/QrCode";
 import { PhoneFrame } from "./Mocks";
+import { demoQrUrl } from "@/lib/marketing/demo-qr";
 
 /**
  * The one picture on /for-shoppers: what the shopper will actually hold, their card, in the page's language.
@@ -16,7 +17,7 @@ export function ShopperCardPhone({ title, headline, caption, walletLabel, classN
           <span className="display self-start text-[22px] leading-7 text-foreground">{title}</span>
           <span className="-mt-3 self-start text-[13px] text-muted-foreground">{headline}</span>
           <MemberQr memberCode="LL4K7Q2M" size={190} caption={caption}>
-            <QrCode value="https://localloyalty.example/c/LL4K7Q2M" size={190} />
+            <QrCode value={demoQrUrl("shopper")} size={190} />
           </MemberQr>
           <span className="mt-auto mb-8 flex h-12 w-full items-center justify-center rounded-full bg-primary text-[14px] font-semibold text-primary-foreground">{walletLabel}</span>
         </div>

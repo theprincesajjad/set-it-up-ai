@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { Heading, useFmt } from "./ui";
 
@@ -38,9 +39,10 @@ function writeQueue(token: string, q: Tap[]) {
 }
 
 export function DriverRun({ token }: { token: string }) {
+  const errText = useErrorText();
   const { t, date, number } = useFmt();
   const [run, setRun] = useState<Run | null>(null);
-  const [gone, setGone] = useState(false);
+  const [gone, setGone] = useState<"unknown" | "expired" | null>(null);
   const [failed, setFailed] = useState(false);
   const [queued, setQueued] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -54,7 +56,7 @@ export function DriverRun({ token }: { token: string }) {
       setRun(await api.driver.run(token));
       setFailed(false);
     } catch (e) {
-      if (isApiError(e) && (e.status === 410 || e.status === 404)) setGone(true);
+      if (isApiError(e) && (e.status === 410 || e.status === 404)) setGone(e.status === 404 ? "unknown" : "expired");
       else setFailed(true);
     }
   }, [token]);
@@ -113,15 +115,15 @@ export function DriverRun({ token }: { token: string }) {
       setNote({ tone: "success", text: t("tcb.dr.lateSent", { n: r.notified }) });
       await load();
     } catch (e) {
-      setNote({ tone: isApiError(e) && e.status === 429 ? "info" : "danger", text: isApiError(e) && e.status === 429 ? t("tcb.dr.lateWait") : errorMessage(e) });
+      setNote({ tone: isApiError(e) && e.status === 429 ? "info" : "danger", text: isApiError(e) && e.status === 429 ? t("tcb.dr.lateWait") : errText(e) });
     }
   }
 
   if (gone)
     return (
       <div className="flex flex-col gap-2 pt-6">
-        <Heading level={2}>{t("tcb.dr.expired")}</Heading>
-        <p className="text-body text-fg-muted">{t("tcb.dr.expiredBody")}</p>
+        <Heading level={1}>{t(gone === "unknown" ? "err.nf.link.title" : "tcb.dr.expired")}</Heading>
+        <p className="text-body text-fg-muted">{t(gone === "unknown" ? "err.nf.link.body" : "tcb.dr.expiredBody")}</p>
       </div>
     );
   if (!run)

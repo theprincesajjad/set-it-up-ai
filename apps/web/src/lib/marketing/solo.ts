@@ -77,7 +77,7 @@ export const SAMPLE_SERVICES: Record<NailTrade | "barber" | "groom", SoloService
   barber: [
     { name: "Cut", minutes: 30, priceCents: 3500 },
     { name: "Cut and beard", minutes: 45, priceCents: 5000 },
-    { name: "Kids' cut", minutes: 25, priceCents: 2500 },
+    { name: "Kids’ cut", minutes: 25, priceCents: 2500 },
     { name: "Beard trim", minutes: 15, priceCents: 1800 },
   ],
   groom: [

@@ -55,7 +55,7 @@ test.describe("pricing: Free, Pro, Studio", () => {
   for (const { w, h } of SIZES) {
     test(`three cards, the first-year price struck through, the trial line, the tables at ${w}`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: h });
-      await page.goto("/pricing?theme=clear");
+      await page.goto("/pricing?for=booking&theme=clear");
       const shops = page.locator("#shops");
       await expect(shops.locator("[data-plan]")).toHaveCount(4); // Free, Pro, Studio and the Service line
       await expect(shops.locator("[data-plan=free]")).toContainText("$0");
@@ -83,17 +83,17 @@ test.describe("pricing: Free, Pro, Studio", () => {
       // No horizontal page scroll at phone width.
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
       await page.screenshot({ path: shot(`pricing-${w}`), fullPage: true });
-      await page.goto("/pricing?theme=clear&compare=1#compare");
+      await page.goto("/pricing?for=booking&theme=clear&compare=1#compare");
       await expect(page.getByTestId("compare")).toContainText("Fills your book");
       await expect(page.getByTestId("compare")).toContainText("For shops");
-      await page.goto("/pricing?theme=clear&lang=ur");
+      await page.goto("/pricing?for=booking&theme=clear&lang=ur");
       await page.screenshot({ path: shot(`pricing-${w}-ur`), fullPage: true });
     });
   }
 
   test("is axe-clean", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/pricing?theme=clear");
+    await page.goto("/pricing?for=booking&theme=clear");
     expect(await axe(page, "#shops")).toEqual([]);
   });
 });

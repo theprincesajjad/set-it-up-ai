@@ -15,6 +15,8 @@ import { BusinessStatus, FlagPills, planLabel } from "@/components/dashboard/adm
 import { Button } from "@/components/ui/Button";
 import { Chip, ChipGroup } from "@/components/ui/Chip";
 import { AdminGrid, type AdminColumn } from "@/components/dashboard/admin/AdminGrid";
+import { Banner } from "@/components/ui/Banner";
+import { ErrorPanel } from "@/components/errors";
 import { PanelEmpty } from "@/components/dashboard/admin/AdminKit";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
@@ -78,6 +80,9 @@ function BusinessesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  /** The list failed to load: the grid shows the failure (with Try again), never "No business matches". */
+  const [loadErr, setLoadErr] = useState<unknown>(null);
+  const [tick, setTick] = useState(0);
   const [more, setMore] = useState(false);
   const [page, setPage] = useState({ pageIndex: 0, pageSize: PAGE });
   const filtered = !!(q || status || trade || plan || city || from || to || active || dir !== "desc");
@@ -100,15 +105,22 @@ function BusinessesList() {
           setData(r);
           setRows(r.items);
           setError(null);
+          setLoadErr(null);
         })
-        .catch((e) => live && setError(errorMessage(e)))
+        .catch((e) => {
+          if (!live) return;
+          // Rows from another filter or page would read as this one's result.
+          setRows([]);
+          setData(null);
+          setLoadErr(e);
+        })
         .finally(() => live && setLoading(false));
     }, 250);
     return () => {
       live = false;
       clearTimeout(t);
     };
-  }, [query, page]);
+  }, [query, page, tick]);
   const onSort = useCallback((x: { key: string; dir: "asc" | "desc" }) => {
     setSort(x.key as adminCockpitApi.BusinessSort);
     setDir(x.dir);
@@ -194,6 +206,7 @@ function BusinessesList() {
           </Button>
         }
       />
+      {error ? <Banner tone="danger">{error}</Banner> : null}
       <AdminGrid
         label="Businesses"
         columns={cols}
@@ -208,8 +221,8 @@ function BusinessesList() {
         onRowClick={(r) => router.push(`/admin/businesses/${r.id}`)}
         mobile={(r) => ({ title: r.name, meta: [verticalLabel(r.trade), r.mrrCents ? `${formatMoney(r.mrrCents)}/mo` : null, r.lastActiveAt ? `active ${relativeTime(r.lastActiveAt)}` : "never active"].filter(Boolean).join(" · "), trailing: <BusinessStatus status={r.status} /> })}
         empty={
-          error ? (
-            <PanelEmpty title="Couldn't load the businesses" description={error} />
+          loadErr ? (
+            <ErrorPanel error={loadErr} what="the businesses" onRetry={() => setTick((n) => n + 1)} />
           ) : (
             <PanelEmpty icon={SearchX} title="No business matches these filters" description="Try another status or clear the filters." action={filtered ? <QuietButton onClick={clearAll}>Clear filters</QuietButton> : undefined} />
           )

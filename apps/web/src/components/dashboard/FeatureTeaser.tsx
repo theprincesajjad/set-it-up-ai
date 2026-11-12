@@ -1,7 +1,7 @@
 "use client";
 import { Check, Lock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { FEATURES, PLANS, featureOffer, type FeatureKey } from "@ll/shared";
+import { BRAND, FEATURES, PLANS, VERTICAL_TEMPLATES, featureOffer, type FeatureKey } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
@@ -131,9 +131,7 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
   // A network-wide extra waits for the 100-shop gate; a trade tool is bought on its plan; anything else an admin paused is "coming soon".
   const state = offer.kind === "network" || f.stage === "hidden" ? "hidden" : f.stage === "beta" && !detail.merchant.betaOptIn ? "beta" : "plan";
   const status =
-    wrongTrade
-      ? "Built for another kind of shop"
-      : state === "hidden"
+    state === "hidden"
         ? offer.kind === "network"
           ? `Opens once ${offer.unlockAtMerchants} shops have joined${shops != null ? ` (${shops} so far)` : ""}`
           : "Coming soon"
@@ -142,7 +140,7 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
           : offer.kind === "plan" && offer.interval === "year"
             ? `With ${offer.name} paid yearly · $${offer.priceCents / 100} a year`
             : offer.kind === "plan" || offer.kind === "restaurant"
-            ? `On ${offer.name} · $${offer.priceCents / 100} a month`
+            ? `Included in ${offer.name} · $${offer.priceCents / 100} a month`
             : "Not on your plan";
   /** "Try Pro free for 14 days": only while a Free shop has never had its trial (read from the billing overview). */
   const trialButton = trialOpen ? (
@@ -166,7 +164,23 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
     </Button>
   ) : null;
   const planOffer = !wrongTrade && state === "plan" && (offer.kind === "plan" || offer.kind === "restaurant") ? offer : null;
-  const blurb = planOffer?.kind === "plan" ? PLANS[planOffer.plan].blurb : null;
+  // A trade tool for another kind of shop is not for sale: say so plainly, with a way back, no lock and no plans (a plan cannot unlock it).
+  if (wrongTrade) {
+    const yourType = (VERTICAL_TEMPLATES as Record<string, { label: string }>)[vertical]?.label ?? vertical;
+    return (
+      <div className="flex max-w-[680px] flex-col gap-6" data-testid="feature-teaser" data-wrong-trade="">
+        <PageHeader flush title={t("dash.teaser.wrong.title")} description={t("dash.teaser.wrong.body", { type: yourType.toLowerCase() })} />
+        <section className="flex flex-col gap-3 rounded-card bg-card p-5 shadow-card sm:p-6">
+          {role === "owner" ? <p className="text-meta text-fg-muted">{t("dash.teaser.wrong.fix", { email: BRAND.supportEmail })}</p> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button href={base} size="sm">
+              {t("err.action.today")}
+            </Button>
+          </div>
+        </section>
+      </div>
+    );
+  }
   return (
     // Wave P: the same page header as every other page (h1 at page size), then one white card that says what the plan adds and what
     // to tap: the free trial first when the shop can still have one, then Subscribe, then See plans. Never a bare line of links.
@@ -179,7 +193,6 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
           </span>
           <div className="min-w-0">
             <p className="text-body-strong text-fg">{status}</p>
-            {blurb ? <p className="mt-1 text-meta text-fg-muted">{blurb}</p> : null}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -22,7 +22,7 @@ export interface StripeSetupProps {
 }
 
 function Form({ label, onSucceeded }: Omit<StripeSetupProps, "publishableKey" | "clientSecret">) {
-  const { t } = useLocaleOrEnglish();
+  const { t, locale } = useLocaleOrEnglish();
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
@@ -37,7 +37,7 @@ function Form({ label, onSucceeded }: Omit<StripeSetupProps, "publishableKey" | 
         setError(null);
         const { error: err } = await stripe.confirmSetup({ elements, redirect: "if_required", confirmParams: { return_url: window.location.href } });
         if (err) {
-          setError(err.type === "card_error" || err.type === "validation_error" ? (err.message ?? t("wp.pay.declined")) : t("wp.pay.declined"));
+          setError(locale === "en" && (err.type === "card_error" || err.type === "validation_error") && err.message ? err.message : t("wp.pay.declined"));
           setBusy(false);
           return;
         }
@@ -55,8 +55,9 @@ function Form({ label, onSucceeded }: Omit<StripeSetupProps, "publishableKey" | 
 }
 
 export default function StripeSetup({ publishableKey, clientSecret, ...rest }: StripeSetupProps) {
+  const { locale } = useLocaleOrEnglish();
   return (
-    <Elements stripe={getStripe(publishableKey)} options={{ clientSecret, appearance: stripeAppearance() }}>
+    <Elements stripe={getStripe(publishableKey)} options={{ clientSecret, appearance: stripeAppearance(), locale: locale === "en" ? "en-CA" : "auto" }}>
       <Form {...rest} />
     </Elements>
   );

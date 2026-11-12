@@ -78,7 +78,7 @@ describe("GET /v1/public/plans: network stats", () => {
   });
 });
 
-describe("GET /v1/public/restaurants/founding", () => {
+describe("GET /v1/public/restaurants/corridors", () => {
   it("lists corridors with restaurants and how many of the 20 founding spots are taken, cached for 300 s", async () => {
     const hood = await createNeighbourhood(env.db, "ridgeway");
     await env.db.update(neighbourhoods).set({ name: "Ridgeway Plaza" }).where(eq(neighbourhoods.id, hood.id));
@@ -90,7 +90,7 @@ describe("GET /v1/public/restaurants/founding", () => {
     await env.db.update(merchants).set({ restaurantTier: "growth", foundingOffer: true }).where(eq(merchants.id, a.merchant.id));
     await env.db.update(merchants).set({ restaurantTier: "starter", foundingOffer: true }).where(eq(merchants.id, b.merchant.id));
     await env.db.update(merchants).set({ restaurantTier: "starter" }).where(eq(merchants.id, c.merchant.id));
-    const res = await get("/v1/public/restaurants/founding");
+    const res = await get("/v1/public/restaurants/corridors");
     expect(res.statusCode).toBe(200);
     expect(res.headers["cache-control"]).toBe("public, max-age=300");
     expect((res.json() as networkApi.FoundingResponse).corridors).toEqual([{ slug: "ridgeway", name: "Ridgeway Plaza", taken: 2, total: 20 }]);
@@ -100,7 +100,7 @@ describe("GET /v1/public/restaurants/founding", () => {
     const hood = await createNeighbourhood(env.db, "gerrard");
     const a = await createMerchant(env, { neighbourhoodId: hood.id });
     await env.db.update(merchants).set({ restaurantTier: "growth", foundingOffer: true, status: "closed" }).where(eq(merchants.id, a.merchant.id));
-    expect(((await get("/v1/public/restaurants/founding")).json() as networkApi.FoundingResponse).corridors).toEqual([]);
+    expect(((await get("/v1/public/restaurants/corridors")).json() as networkApi.FoundingResponse).corridors).toEqual([]);
   });
 });
 

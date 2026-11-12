@@ -291,7 +291,9 @@ describe("<CounterApp> scan first", () => {
     render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} queueKey="test.queue" />);
     await type4();
     expect((await screen.findAllByText(/Saved on this device/)).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Sending · 1 left/)).toBeTruthy();
+    // The browser says online but the server was not reached: the strip and the status dot say Offline, and the award is waiting on the device.
+    expect(screen.getByText(/Offline · 1 waiting to send/)).toBeTruthy();
+    expect(screen.getAllByText(/^Offline/).length).toBeGreaterThan(1);
     expect(JSON.parse(localStorage.getItem("test.queue")!)).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "Retry now" }));
     await waitFor(() => expect(api.award).toHaveBeenCalledTimes(2));

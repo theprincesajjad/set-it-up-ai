@@ -33,7 +33,7 @@ export default function LeadPage() {
   return (
     <div className="flex flex-col gap-4">
       <BackLink href="/rep/leads">Leads</BackLink>
-      <Async state={lead}>
+      <Async state={lead} fail={{ title: "Lead", back: { href: "/rep/leads", label: "Back to leads" }, notFound: { title: "We couldn’t find that lead", description: "The link may be old, or the lead was removed." }, forbidden: { title: "This lead isn’t on your list", description: "Leads you add or are given show here. Ask an admin if it should be yours." } }}>
         {(l) => (
           <>
             <PageHeader title={l.businessName} description={<span className="flex flex-wrap items-center gap-2"><Badge>{STAGE_LABEL[l.stage]}</Badge>{l.vertical ? verticalLabel(l.vertical) : null}{l.address ? ` · ${l.address}` : ""}</span>} actions={

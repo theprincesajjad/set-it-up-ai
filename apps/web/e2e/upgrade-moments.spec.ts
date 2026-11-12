@@ -173,7 +173,8 @@ test.describe("Trial shop: no locked lines, and the Today card", () => {
 
       // The money features are on: no plan line on Services (add-ons) or Settings > Reviews.
       await page.goto(`${base}/services?theme=clear`);
-      await expect(page.getByTestId("add-ons")).toBeVisible();
+      // Scoped to the visible region: while Next streams the page in, a hidden copy can exist for a moment (strict mode would trip on it).
+      await expect(page.getByRole("region", { name: "Add-ons" }).getByTestId("add-ons")).toBeVisible();
       await expect(page.getByTestId("add-ons-plan-line")).toHaveCount(0);
       await page.goto(`${base}/settings/reviews?theme=clear`);
       await expect(page.getByTestId("review-settings")).toBeVisible();

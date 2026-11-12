@@ -1,15 +1,11 @@
 import { redirect } from "next/navigation";
 import { requireMe } from "@/lib/auth/session";
-import { routes } from "@/lib/routes";
+import { staffHome } from "@/lib/auth/home";
 import { preloadInter } from "@/lib/fonts/inter";
 
-/** /m → the user's first shop (or the right console / signup). */
+/** /m → the user's first shop (or the right console, or the "not linked to a shop yet" page). */
 export default async function DashboardIndex() {
   preloadInter();
   const me = await requireMe("/m");
-  const first = me.merchants[0];
-  if (first) redirect(routes.dashboard(first.merchantId));
-  if (me.platformRole === "admin") redirect(routes.admin);
-  if (me.platformRole === "rep") redirect(routes.rep);
-  redirect(routes.signup);
+  redirect(staffHome(me));
 }

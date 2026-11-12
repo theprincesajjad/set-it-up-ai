@@ -6,13 +6,14 @@
  */
 import { Suspense, useMemo, useState } from "react";
 import { perUnitLabel, type commerceApi } from "@ll/shared";
-import { Capsules, DataTable, Dot, EmptyState, ErrorLine, FeatureGate, PageHeader, PageTabs, Tag, useMerchant, type Column } from "@/components/dashboard";
+import { Capsules, DataTable, Dot, EmptyState, FeatureGate, PageHeader, PageTabs, Tag, useMerchant, type Column } from "@/components/dashboard";
 import { EidPlan } from "@/components/dashboard/grocery/EidPlan";
 import { ItemSheet } from "@/components/dashboard/grocery/ItemSheet";
 import { WeighSheet, needsWeighing, weighedLines } from "@/components/dashboard/grocery/WeighSheet";
 import { dayLabel, todayISO, torontoDay, torontoHM, useTabParam } from "@/components/dashboard/restaurant/common";
 import { formatPhone } from "@/components/dashboard/restaurant/shared";
 import { TakeOrderSheet } from "@/components/dashboard/restaurant/TakeOrderSheet";
+import { ErrorPanel } from "@/components/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -31,7 +32,7 @@ export default function ButcherPage() {
 }
 
 const TABS = ["orders", "eid", "prices"] as const;
-const clock = (iso: string) => torontoHM(iso).replace(/^(\d{2}):(\d{2})$/, (_, h: string, m: string) => `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "pm" : "am"}`);
+const clock = (iso: string) => torontoHM(iso).replace(/^(\d{2}):(\d{2})$/, (_, h: string, m: string) => `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "p.m." : "a.m."}`);
 
 function Butcher() {
   const { api, role } = useMerchant();
@@ -41,6 +42,10 @@ function Butcher() {
   const canEdit = role === "owner" || role === "manager";
   const rulesState = useApi(canEdit ? () => api.preorders.rules() : null, [api, canEdit]);
   const cancelRule = useApi(canEdit ? () => api.preorders.cancelRule() : null, [api, canEdit]);
+  // The rules form opens only once BOTH the caps and the cancel rule have loaded: an empty form over a failed load looks like "no caps", and Save would wipe the real ones.
+  const rulesReady = !!rulesState.data && !!cancelRule.data;
+  const rulesLoading = (rulesState.loading || cancelRule.loading) && !rulesReady;
+  const rulesFailed = canEdit && !rulesReady && !rulesLoading && !!(rulesState.error || cancelRule.error);
   const orders = useApi(() => api.orders({ limit: 100, includeUnpaid: "true", status: "pending,accepted,preparing,ready" }), [api], { pollMs: 30_000 });
 
   return (
@@ -51,11 +56,22 @@ function Butcher() {
         description="Pre-orders by weight, with a deposit and a pick-up hour. Weigh at the scale, and the customer pays the real price."
         actions={
           <>
-            {canEdit ? <Button size="md" variant="secondary" onClick={() => setRules(true)}>Rules and caps</Button> : null}
+            {canEdit ? <Button size="md" variant="secondary" disabled={!rulesReady} loading={rulesLoading} onClick={() => setRules(true)}>Rules and caps</Button> : null}
             <Button size="md" onClick={() => setPhoneOrder(true)}>Take a pre-order</Button>
           </>
         }
       />
+      {/* One failure block: when the pre-orders themselves did not load, that panel (below) is the only one. */}
+      {rulesFailed && !(orders.error && !orders.data) ? (
+        <ErrorPanel
+          error={rulesState.cause ?? cancelRule.cause ?? rulesState.error ?? cancelRule.error}
+          heading="We couldn’t load your pre-order rules"
+          onRetry={() => {
+            void rulesState.reload();
+            void cancelRule.reload();
+          }}
+        />
+      ) : null}
       <PageTabs
         label="Butcher counter sections"
         value={tab}
@@ -69,7 +85,7 @@ function Butcher() {
       {tab === "orders" ? <PreorderDays state={orders} /> : null}
       {tab === "eid" ? <EidPlan canEdit={canEdit} /> : null}
       {tab === "prices" ? <PriceList canEdit={canEdit} /> : null}
-      {rules ? <RulesSheet rules={rulesState.data ?? { preorderDailyCap: null, capByWeekday: {}, perHourCap: null, overrides: [] }} canEdit={canEdit} cancelHours={cancelRule.data?.cancelCutoffHours ?? null} onClose={() => setRules(false)} onSaved={() => { void rulesState.reload(); void cancelRule.reload(); }} /> : null}
+      {rules && rulesState.data && cancelRule.data ? <RulesSheet grocery rules={rulesState.data} canEdit={canEdit} cancelHours={cancelRule.data.cancelCutoffHours} onClose={() => setRules(false)} onSaved={() => { void rulesState.reload(); void cancelRule.reload(); }} /> : null}
       <TakeOrderSheet open={phoneOrder} mode="preorder" onClose={() => setPhoneOrder(false)} onPlaced={() => void orders.reload()} />
     </div>
   );
@@ -147,9 +163,13 @@ function PreorderDays({ state }: { state: ReturnType<typeof useApi<{ items: comm
 
   return (
     <div className="flex flex-col gap-5">
-      {state.error && !state.data ? <ErrorLine message={state.error} onRetry={() => void state.reload()} /> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       {toWeigh ? <Banner tone="info">{toWeigh} {toWeigh === 1 ? "order is" : "orders are"} waiting for the scale. The deposit is paid on an estimate; weighing sets the final price.</Banner> : null}
+      {state.error && !state.data ? (
+        // Not loaded: no day chips with 0 and no "No pre-orders for this day".
+        <ErrorPanel error={state.cause ?? state.error} what="your pre-orders" onRetry={() => void state.reload()} />
+      ) : (
+      <>
       <Capsules
         label="Pick-up day"
         value={day}
@@ -164,6 +184,8 @@ function PreorderDays({ state }: { state: ReturnType<typeof useApi<{ items: comm
         loading={state.loading && !state.data}
         empty={<EmptyState title="No pre-orders for this day" description="They show up here as customers book, by phone, WhatsApp or the shop page." />}
       />
+      </>
+      )}
       {weigh ? <WeighSheet order={weigh} onClose={() => setWeigh(null)} onDone={() => void state.reload()} /> : null}
     </div>
   );

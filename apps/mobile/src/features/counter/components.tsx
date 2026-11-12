@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { hairline } from "../../ui/shadow";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatMoney, formatNumber, formatPts, initials, lockedRewardCopy, shortName, UNDO_SECONDS, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
-import { formatTime, rewardInSentence } from "../../lib/format";
+import { formatNumber, initials, shortName, UNDO_SECONDS, undoSecondsLeft, type CounterProgram, type SuccessView } from "../../lib/award";
+import { counterErrorL, visitNthL } from "../../lib/counterText";
+import { formatMoneyL, formatPtsL, formatTimeL, rewardInSentenceL, unitLabelL } from "../../lib/formatL";
+import { useLocale } from "../../lib/i18n";
 import { maskPhone } from "../../lib/phone";
 import type { QueueSnapshot } from "../../lib/offlineQueue";
 import type { ActiveStaff, RecentAward } from "../../state/counter";
@@ -41,6 +43,7 @@ import type { CounterCustomer } from "../../lib/award";
  */
 export function CounterHeader({ title, subtitle, staff, onMenu, vertical }: { title: string; subtitle?: string | null; staff: ActiveStaff | null; onStaff?: () => void; onMenu: () => void; canSwitch?: boolean; /** Clear: the shop mark's trade colour. */ vertical?: string | null }) {
   const { c, isClear, trade } = useTheme();
+  const { t } = useLocale();
   const insets = useSafeAreaInsets();
   if (isClear) {
     // Clear counter top bar (audit #21, #38): flat glass (blur only, no rim: the counter's performance budget), 64 tall, the 36 shop
@@ -64,17 +67,17 @@ export function CounterHeader({ title, subtitle, staff, onMenu, vertical }: { ti
           ) : null}
         </View>
         {staff ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`More. Signed in as ${staff.name ?? "staff"}`} onPress={onMenu} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("mc.moreSigned", { name: staff.name ?? t("counter.staff") })} onPress={onMenu} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
             <Glass radius={20} style={styles.clearStaff}>
               <View style={[styles.staffAv, { backgroundColor: c.bgSubtle }]}>
                 <Text style={ui(10, 600, 12)} rawColor={c.fgMuted}>{initials(staff.name).toUpperCase()}</Text>
               </View>
-              <Text style={ui(13, 500, 20)}>{staff.name?.split(" ")[0] ?? "Staff"}</Text>
+              <Text style={ui(13, 500, 20)}>{staff.name?.split(" ")[0] ?? t("counter.staff")}</Text>
               <ChevronDownGlyph size={12} strokeWidth={2.4} color={c.fg} />
             </Glass>
           </Pressable>
         ) : (
-          <IconButton icon={Ellipsis} label="More" variant="secondary" size={44} onPress={onMenu} />
+          <IconButton icon={Ellipsis} label={t("mc.more")} variant="secondary" size={44} onPress={onMenu} />
         )}
       </Glass>
     );
@@ -92,15 +95,15 @@ export function CounterHeader({ title, subtitle, staff, onMenu, vertical }: { ti
         ) : null}
       </View>
       {staff ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={`More. Signed in as ${staff.name ?? "staff"}`} onPress={onMenu} style={({ pressed }) => [styles.staffChip, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.8 : 1 }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t("mc.moreSigned", { name: staff.name ?? t("counter.staff") })} onPress={onMenu} style={({ pressed }) => [styles.staffChip, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.8 : 1 }]}>
           <View style={[styles.staffAv, { backgroundColor: c.bg }]}>
             <Text style={ui(11, 600, 14)}>{initials(staff.name).toLowerCase()}</Text>
           </View>
-          <Text style={ui(14, 500, 18)}>{staff.name?.split(" ")[0] ?? "Staff"}</Text>
+          <Text style={ui(14, 500, 18)}>{staff.name?.split(" ")[0] ?? t("counter.staff")}</Text>
           <ChevronDownGlyph size={12} strokeWidth={2.4} color={c.fg} />
         </Pressable>
       ) : (
-        <IconButton icon={Ellipsis} label="More" variant="secondary" size={36} onPress={onMenu} />
+        <IconButton icon={Ellipsis} label={t("mc.more")} variant="secondary" size={36} onPress={onMenu} />
       )}
     </View>
   );
@@ -109,10 +112,11 @@ export function CounterHeader({ title, subtitle, staff, onMenu, vertical }: { ti
 /** Number display: "(416) 555-01__" in keypad style, or the placeholder. */
 export function EntryDisplay({ text, placeholder, error }: { text: string; placeholder: string; error?: string | null }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
     <View style={{ gap: 6, alignItems: "center", minHeight: 72, justifyContent: "center" }} accessibilityLiveRegion="polite">
       {text ? (
-        <Text variant="keypad" tabular maxFontSizeMultiplier={1.4} style={{ fontSize: 36, lineHeight: 42, fontWeight: "500", letterSpacing: 0.5 }} accessibilityLabel={`Entered ${text.replace(/\D/g, "").split("").join(" ")}`}>
+        <Text variant="keypad" tabular maxFontSizeMultiplier={1.4} style={{ fontSize: 36, lineHeight: 42, fontWeight: "500", letterSpacing: 0.5 }} accessibilityLabel={t("mc.entered", { digits: text.replace(/\D/g, "").split("").join(" ") })}>
           {text}
         </Text>
       ) : (
@@ -129,8 +133,6 @@ export function EntryDisplay({ text, placeholder, error }: { text: string; place
   );
 }
 
-const ORD = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
-
 /**
  * Member found (canvas Counter.dc.html): 48 pt initials, name 18/600, masked phone · nth visit, a clear
  * button; then the balance as one 64 pt tabular number ("7 / 10" with the goal in grey), what's left, and
@@ -138,8 +140,10 @@ const ORD = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th"
  */
 export function CustomerCard({ customer, program, onCode, onClear, cooldown }: { customer: CounterCustomer; program: CounterProgram | null; vertical?: string; onRedeem?: () => void; onCode?: () => void; onClear?: () => void; cooldown?: string | null }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const clear = onClear ? (
-    <Pressable accessibilityRole="button" accessibilityLabel="Clear customer" onPress={onClear} style={[styles.clear, { backgroundColor: c.bgSubtle }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={t("counter.clear")} onPress={onClear} style={[styles.clear, { backgroundColor: c.bgSubtle }]}>
       <CloseGlyph size={16} color={c.fg} />
     </Pressable>
   ) : null;
@@ -151,13 +155,13 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
             <UserPlus size={22} color={c.fg} strokeWidth={1.75} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={ui(18, 600, 23)}>New customer</Text>
+            <Text style={ui(18, 600, 23)}>{t("counter.new.title")}</Text>
             <Text style={[ui(13, 400, 17), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted}>{`•• ${customer.digits.slice(-4)}`}</Text>
           </View>
           {clear}
         </View>
         <Text variant="meta" color="fgMuted">
-          They'll get a welcome text with their card and a question about offers.
+          {t("mc.newWelcome")}
         </Text>
       </View>
     );
@@ -172,7 +176,7 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
         <View style={{ flex: 1 }}>
           <Text style={[ui(18, 600, 23), { fontVariant: ["tabular-nums"] }]}>{customer.label}</Text>
           <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>
-            Balance updates when you're back online
+            {t("mc.balanceOffline")}
           </Text>
         </View>
         {clear}
@@ -185,11 +189,13 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
   const goal = stamps ? program!.stampGoal : 0;
   const shown = stamps ? Math.min(m.balance, goal) : m.balance;
   const toGo = m.nextReward ? m.nextReward.pointsNeeded : null;
+  const unitName = L.locale === "en" ? m.terminology : unitLabelL(L, m.terminology, 2);
+  const nextName = m.nextReward ? (L.locale === "en" && /^free /i.test(m.nextReward.name) ? `a ${rewardInSentenceL(L, m.nextReward.name)}` : m.nextReward.name) : "";
   const line = ready
-    ? `${m.terminology} · ${rewardInSentence(ready.name)} ready`
+    ? `${unitName} · ${t("counter.readyShort", { reward: rewardInSentenceL(L, ready.name) })}`
     : toGo != null && m.nextReward
-      ? `${m.terminology} · ${toGo} to ${/^free /i.test(m.nextReward.name) ? `a ${rewardInSentence(m.nextReward.name)}` : m.nextReward.name}`
-      : m.terminology;
+      ? `${unitName} · ${t("counter.toReward", { n: toGo, reward: nextName })}`
+      : unitName;
   return (
     <View>
       <View style={styles.row}>
@@ -198,21 +204,21 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={ui(18, 600, 23)} numberOfLines={1}>
-            {m.name ?? "Customer"}
+            {m.name ?? t("counter.customer")}
           </Text>
           <Text style={[ui(13, 400, 17), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted} numberOfLines={1}>
-            {[m.maskedPhone ? maskPhone(m.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2") : m.memberCode, `${ORD(m.visitCount + 1)} visit`].join(" · ")}
+            {[m.maskedPhone ? maskPhone(m.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2") : m.memberCode, visitNthL(L, m.visitCount + 1)].join(" · ")}
           </Text>
         </View>
         {clear}
       </View>
       {m.vip ? <View style={{ marginTop: 10 }}><Badge tone="neutral">{m.vip.name}</Badge></View> : null}
 
-      <View style={{ marginTop: 28, alignItems: "center" }} accessible accessibilityLabel={`${shown}${stamps ? ` of ${goal}` : ""} ${m.terminology}. ${line}`}>
+      <View style={{ marginTop: 28, alignItems: "center" }} accessible accessibilityLabel={`${shown}${stamps ? ` / ${goal}` : ""} ${unitName}. ${line}`}>
         <Text style={[disp(64, 800, 64, -0.02), { fontVariant: ["tabular-nums"] }]} maxFontSizeMultiplier={1.2}>
           {formatNumber(shown)}
           <Text style={disp(32, 800, 40, -0.02)} rawColor={c.fgSubtle}>
-            {stamps ? ` / ${goal}` : ` ${unitShort(m.terminology, m.balance)}`}
+            {stamps ? ` / ${goal}` : ` ${unitLabelL(L, m.terminology, m.balance)}`}
           </Text>
         </Text>
         <Text style={[ui(14, 400, 18), { marginTop: 8 }]} rawColor={ready ? c.accentText : c.fgMuted}>
@@ -228,8 +234,8 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
       </View>
       {m.openRedemptionCount > 0 ? (
         <View style={{ marginTop: 20 }}>
-          <Banner variant="info" actionLabel={onCode ? "Enter code" : undefined} onAction={onCode}>
-            They have a reward code from the app.
+          <Banner variant="info" actionLabel={onCode ? t("counter.enterCode") : undefined} onAction={onCode}>
+            {t("counter.codeWaiting")}
           </Banner>
         </View>
       ) : null}
@@ -238,19 +244,16 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
   );
 }
 
-function unitShort(term: string, n: number): string {
-  return formatPts(n, term).replace(/^[\d,]+ /, "");
-}
-
 /** +1 / +2 / +3 (canvas): grey 44 pt capsules in Bricolage 700 16, black when picked. */
 export function QuantityChips({ values, value, onChange, unit }: { values: number[]; value: number; onChange: (q: number) => void; unit: string }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
     <View style={styles.qtyRow} accessibilityRole="radiogroup">
       {values.map((q) => {
         const on = q === value;
         return (
-          <Pressable key={q} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`+${q}`} accessibilityHint={`${q} ${unit} for this visit`} onPress={() => onChange(q)} style={({ pressed }) => [styles.qty, { backgroundColor: on ? c.brand : c.bgSubtle, opacity: pressed ? 0.85 : 1 }]}>
+          <Pressable key={q} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`+${q}`} accessibilityHint={t("mc.qtyHint", { q, unit })} onPress={() => onChange(q)} style={({ pressed }) => [styles.qty, { backgroundColor: on ? c.brand : c.bgSubtle, opacity: pressed ? 0.85 : 1 }]}>
             <Text style={disp(16, 700, 20)} rawColor={on ? c.onBrand : c.fg}>{`+${q}`}</Text>
           </Pressable>
         );
@@ -284,17 +287,20 @@ export function CounterSecondary({ label, onPress, disabled, accessibilityLabel 
 
 /** Amount entry for per-dollar programs: "$11.80", cents shift in from the right. */
 export function AmountDisplay({ cents }: { cents: number }) {
+  const L = useLocale();
   return (
     <View style={{ alignItems: "center" }} accessibilityLiveRegion="polite">
       <Text variant="displayNumber" tabular maxFontSizeMultiplier={1.4} style={{ fontSize: 56, lineHeight: 62 }}>
-        {formatMoney(cents)}
+        {formatMoneyL(L, cents)}
       </Text>
     </View>
   );
 }
 
-export function UndoButton({ startedAt, onUndo, label = "Undo", busy }: { startedAt: number; onUndo: () => void; label?: string; busy?: boolean }) {
+export function UndoButton({ startedAt, onUndo, label, busy }: { startedAt: number; onUndo: () => void; label?: string; busy?: boolean }) {
   const { c } = useTheme();
+  const { t } = useLocale();
+  const text = label ?? t("counter.undo");
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
@@ -305,8 +311,8 @@ export function UndoButton({ startedAt, onUndo, label = "Undo", busy }: { starte
   // "Undo · 8s" with a bar that empties over the window (polish-audit C8).
   return (
     <View style={{ gap: 6 }}>
-      <Button variant="secondary" size="counter" iconStart={RotateCcw} onPress={onUndo} loading={busy} accessibilityLabel={`${label}, ${left} seconds left`}>
-        {`${label} · ${left}s`}
+      <Button variant="secondary" size="counter" iconStart={RotateCcw} onPress={onUndo} loading={busy} accessibilityLabel={t("mc.undoLeftLabel", { label: text, n: left })}>
+        {t("mc.undoCountdown", { label: text, n: left })}
       </Button>
       <View style={{ paddingHorizontal: 16 }}>
         <DrainBar startedAt={startedAt} ms={UNDO_SECONDS * 1000} color={c.fgMuted} track={c.bgMuted} height={2} />
@@ -341,6 +347,7 @@ export function SuccessCard({
   onNext?: () => void;
 }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   const heroColor = tone === "accent" ? c.fg : c.accent;
   // "9 / 10", "1,240 pts", "~9 / 10": count the leading number up from the balance before the award.
   const m = /^(~?)([\d,]+)(.*)$/.exec(view.hero);
@@ -370,7 +377,7 @@ export function SuccessCard({
         ) : null}
         {view.offline ? (
           <Text variant="bodyStrong" center>
-            Saved on this phone. It sends when you're back online.
+            {t("counter.queued.body")}
           </Text>
         ) : null}
         {view.messages.map((msg) => (
@@ -382,13 +389,13 @@ export function SuccessCard({
       <View style={{ gap: 8, alignSelf: "stretch" }}>
         {view.rewardReady && onRedeemNow ? (
           <Button size="counter" iconStart={Gift} onPress={onRedeemNow}>
-            Redeem now
+            {t("mc.redeemNow")}
           </Button>
         ) : null}
         {onUndo ? <UndoButton startedAt={startedAt} onUndo={onUndo} busy={undoBusy} label={undoLabel} /> : null}
         {onNext ? (
           <Button variant="ghost" size="lg" fullWidth onPress={onNext}>
-            Next customer
+            {t("counter.next")}
           </Button>
         ) : null}
       </View>
@@ -399,6 +406,7 @@ export function SuccessCard({
 /** After an undo or a failure: same frame as success (icon, one line, Next customer), no bordered card (C9). */
 export function NoticeCard({ message, tone, onNext }: { message: string; tone: "neutral" | "danger"; onNext: () => void }) {
   const { c } = useTheme();
+  const { t } = useLocale();
   return (
     <View style={[styles.success, { backgroundColor: c.bg }]}>
       <Appear style={{ alignItems: "center", gap: 12 }}>
@@ -409,7 +417,7 @@ export function NoticeCard({ message, tone, onNext }: { message: string; tone: "
       </Appear>
       <View style={{ alignSelf: "stretch" }}>
         <Button size="counter" onPress={onNext}>
-          Next customer
+          {t("counter.next")}
         </Button>
       </View>
     </View>
@@ -418,6 +426,8 @@ export function NoticeCard({ message, tone, onNext }: { message: string; tone: "
 
 export function RecentStrip({ recent, onUndo }: { recent: RecentAward[]; onUndo: (r: RecentAward) => void }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -427,7 +437,7 @@ export function RecentStrip({ recent, onUndo }: { recent: RecentAward[]; onUndo:
   return (
     <View style={{ gap: 4 }}>
       <Text variant="metaStrong" color="fgMuted">
-        recent
+        {t("mc.recent")}
       </Text>
       {recent.map((r, i) => {
         const left = undoSecondsLeft(r.at, now);
@@ -438,16 +448,16 @@ export function RecentStrip({ recent, onUndo }: { recent: RecentAward[]; onUndo:
               <Text variant="body" numberOfLines={2} style={r.undone ? { textDecorationLine: "line-through", color: c.fgMuted } : null}>
                 {r.label}
               </Text>
-              <Text variant="meta" color="fgMuted" tabular numberOfLines={1}>{`${r.who} · ${formatTime(r.at)}`}</Text>
+              <Text variant="meta" color="fgMuted" tabular numberOfLines={1}>{`${r.who} · ${formatTimeL(L, r.at)}`}</Text>
             </View>
             {r.undone ? (
-              <Badge tone="neutral">Undone</Badge>
+              <Badge tone="neutral">{t("mc.undone")}</Badge>
             ) : r.queued ? (
               <Badge tone="warning" icon={Clock3}>
-                Waiting to send
+                {t("mc.waiting")}
               </Badge>
             ) : i === 0 && left > 0 ? (
-              <Button variant="secondary" size="sm" onPress={() => onUndo(r)}>{`Undo · ${left}s`}</Button>
+              <Button variant="secondary" size="sm" onPress={() => onUndo(r)}>{t("mc.undoCountdown", { label: t("counter.undo"), n: left })}</Button>
             ) : null}
           </View>
         );
@@ -457,32 +467,34 @@ export function RecentStrip({ recent, onUndo }: { recent: RecentAward[]; onUndo:
 }
 
 export function QueueSheet({ visible, onClose, state, onRetry, onDismiss, online }: { visible: boolean; onClose: () => void; state: QueueSnapshot; onRetry: () => void; onDismiss: (id: string) => void; online: boolean }) {
+  const L = useLocale();
+  const { t } = L;
   return (
     <Sheet
       visible={visible}
       onClose={onClose}
-      title={`Waiting to send (${state.pendingCount})`}
+      title={t("mc.queueTitle", { n: state.pendingCount })}
       footer={
         <Button size="counter" onPress={onRetry} loading={state.flushing} disabled={!online && state.pendingCount === 0}>
-          Retry now
+          {t("counter.queue.retry")}
         </Button>
       }
     >
-      {state.items.length === 0 ? <Text color="fgMuted">Everything has been sent.</Text> : null}
+      {state.items.length === 0 ? <Text color="fgMuted">{t("mc.queueEmpty")}</Text> : null}
       {state.items.map((i) => (
         <View key={i.id} style={{ gap: 4, paddingVertical: 8 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Text variant="bodyStrong" style={{ flex: 1 }}>{`${formatTime(i.createdAt)} · ${i.display.who} · ${i.display.label}`}</Text>
-            <Badge tone={i.status === "failed" ? "danger" : i.status === "sending" ? "info" : "warning"}>{i.status === "failed" ? "Needs attention" : i.status === "sending" ? "Sending" : "Waiting"}</Badge>
+            <Text variant="bodyStrong" style={{ flex: 1 }}>{`${formatTimeL(L, i.createdAt)} · ${i.display.who} · ${i.display.label}`}</Text>
+            <Badge tone={i.status === "failed" ? "danger" : i.status === "sending" ? "info" : "warning"}>{i.status === "failed" ? t("mc.q.attention") : i.status === "sending" ? t("mc.q.sending") : t("mc.q.waiting")}</Badge>
           </View>
           {i.error ? (
             <Text variant="meta" color="fgMuted">
-              {i.error.code === "duplicate" ? `Couldn't add for ${i.display.who}: it was already added.` : `Couldn't add for ${i.display.who}: ${i.error.message}`}
+              {i.error.code === "duplicate" ? t("mc.q.dup", { who: i.display.who }) : t("mc.q.fail", { who: i.display.who, reason: counterErrorL(L, i.error) })}
             </Text>
           ) : null}
           {i.status === "failed" ? (
             <Button variant="ghost" size="sm" onPress={() => onDismiss(i.id)}>
-              Dismiss
+              {t("counter.dismiss")}
             </Button>
           ) : null}
         </View>
@@ -511,6 +523,8 @@ export function RewardPicker({
   online: boolean;
 }) {
   const { c } = useTheme();
+  const L = useLocale();
+  const { t } = L;
   const [picked, setPicked] = useState<string | null>(null);
   useEffect(() => {
     if (!visible) setPicked(null);
@@ -520,23 +534,23 @@ export function RewardPicker({
     <Sheet
       visible={visible}
       onClose={onClose}
-      title={reward ? reward.name : "Redeem a reward"}
+      title={reward ? reward.name : t("mc.redeemReward")}
       footer={
         reward ? (
           <>
             <Button size="counter" loading={busy} disabled={!online} onPress={() => onConfirm(reward.id)}>
-              Confirm redeem
+              {t("mc.confirmRedeem")}
             </Button>
             <Button variant="ghost" size="counter" onPress={() => setPicked(null)}>
-              Back
+              {t("mc.back")}
             </Button>
           </>
         ) : undefined
       }
     >
-      {!online ? <Banner variant="warning">Redeem needs internet. Awards still work.</Banner> : null}
+      {!online ? <Banner variant="warning">{t("counter.err.redeemOffline")}</Banner> : null}
       {member && reward ? (
-        <Text color="fgMuted">{`Uses ${formatPts(reward.pointsCost, member.terminology)}. ${shortName(member.name)} will have ${formatPts(Math.max(0, member.balance - reward.pointsCost), member.terminology)} left.`}</Text>
+        <Text color="fgMuted">{t("mc.rewardUses", { cost: formatPtsL(L, reward.pointsCost, member.terminology), name: shortName(member.name), left: formatPtsL(L, Math.max(0, member.balance - reward.pointsCost), member.terminology) })}</Text>
       ) : null}
       {member && !reward
         ? rewards.map((r) => {
@@ -554,7 +568,7 @@ export function RewardPicker({
                   {r.name}
                 </Text>
                 <Text variant="body" color="fgMuted" tabular>
-                  {ok ? formatPts(r.pointsCost, member.terminology) : lockedRewardCopy(r.pointsCost - member.balance, member.terminology)}
+                  {ok ? formatPtsL(L, r.pointsCost, member.terminology) : t("sh.wallet.toGo", { amount: formatPtsL(L, r.pointsCost - member.balance, member.terminology) })}
                 </Text>
               </Pressable>
             );

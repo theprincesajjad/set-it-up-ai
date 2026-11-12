@@ -29,12 +29,27 @@ export default async function NeighbourhoodsPage() {
     <>
       <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-12 md:px-8 md:pt-24 md:pb-16">
         <p className="text-meta-strong text-muted-foreground">Where we are</p>
-        <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">one neighbourhood at a time.</h1>
-        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">We launch street by street, with the shops and the BIA. Here&apos;s where your card works today.</p>
+        <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">One neighbourhood at a time.</h1>
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">We launch street by street, with the shops and the BIA. Here’s where your card works today.</p>
       </section>
       <section className="mx-auto max-w-[1200px] px-4 pb-16 md:px-8 md:pb-24">
         {items === null ? (
-          <ErrorState title="Can't load neighbourhoods right now" description={copy.err.network} action={<Button variant="secondary" href="/neighbourhoods">Try again</Button>} />
+          // The list failed to load: say so (never an empty list that looks real), one way to retry and one way out. The page keeps its own h1.
+          <ErrorState
+            headingLevel={2}
+            title="We couldn’t load the neighbourhoods"
+            description="Something went wrong between us and the list of streets. Nothing is lost. Try again in a minute."
+            action={
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button variant="secondary" href="/neighbourhoods">
+                  Try again
+                </Button>
+                <Button variant="ghost" href="/">
+                  Back to home
+                </Button>
+              </div>
+            }
+          />
         ) : items.length === 0 ? (
           <EmptyState headingLevel={2} icon={MapPin} title={copy.empty.noNeighbourhood.title} description={copy.empty.noNeighbourhood.body} action={<Button variant="secondary" href={`mailto:${BRAND.supportEmail}?subject=Suggest%20my%20street`}>{copy.empty.noNeighbourhood.action}</Button>} />
         ) : (
@@ -63,9 +78,11 @@ export default async function NeighbourhoodsPage() {
             ))}
           </ul>
         )}
+        {/* The invitation to suggest a street. Not under the empty state, which already says the same thing. */}
+        {items?.length === 0 ? null : (
         <div className="mt-12 grid gap-6 border-t border-border pt-10 md:grid-cols-[1fr_auto] md:items-end">
           <div>
-            <h2 className="display text-mkt-sm">{copy.empty.noNeighbourhood.title.toLowerCase()}.</h2>
+            <h2 className="display text-mkt-sm">{copy.empty.noNeighbourhood.title}.</h2>
             <p className="mt-2 text-body text-muted-foreground">{copy.empty.noNeighbourhood.body}</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -77,6 +94,7 @@ export default async function NeighbourhoodsPage() {
             </Button>
           </div>
         </div>
+        )}
       </section>
     </>
   );

@@ -56,7 +56,6 @@ export const PLAN_COPY = {
     /** With the first-year price: "or ~~$290~~ $199 first year, billed yearly". */
     or: "or",
     firstYear: "first year, billed yearly",
-    badge: "Most popular",
     cta: "Start your {trial}-day trial",
   },
   studio: {
@@ -134,7 +133,6 @@ export interface MarketingPlan {
   cta: string;
   /** The yearly price: a line, and for Pro the struck list price and the first-year price. */
   yearly?: { line: string; or?: string; was?: string; now?: string; label?: string };
-  badge?: string;
 }
 
 /**
@@ -159,7 +157,6 @@ export function marketingPlans(audience: PlanAudience, opts: { chairs?: boolean 
       features: C.pro.features[audience].map(f),
       cta: f(C.pro.cta),
       yearly: firstYearDeal ? { line: f(C.pro.yearly), or: C.pro.or, was: String(v.yearly), now: String(v.firstYear), label: C.pro.firstYear } : { line: f(C.pro.yearly) },
-      badge: C.pro.badge,
     },
     { key: "studio", name: STUDIO.name, price: String(v.studioMonthly), per: C.perMonth, tagline: chairs ? C.studio.tagline.chairs : C.studio.tagline[audience], features: (chairs ? C.studio.features.chairs : C.studio.features[audience]).map(f), cta: f(C.studio.cta), yearly: { line: f(C.studio.yearly) } },
   ];

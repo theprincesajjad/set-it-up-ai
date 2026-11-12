@@ -57,7 +57,7 @@ export default async function ShopOrderPage({ params, searchParams }: Props) {
   if (menu === "none")
     return (
       <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
-        <EmptyState title={t("rs.order.noOnline")} description={t("rs.order.noOnlineBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+        <EmptyState headingLevel={1} title={t("rs.order.noOnline")} description={t("rs.order.noOnlineBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       </PageFrame>
     );
   const [restaurant, me] = await Promise.all([publicRestaurantApi().restaurant(slug).catch(() => null), getMe()]);

@@ -5,6 +5,7 @@ import { LandingMeasure } from "@/components/marketing/landing-ab/LandingMeasure
 import { copy } from "@/copy/en-CA";
 import { variantIds } from "@/lib/marketing/landing-variants";
 import { NAIL_TRADES, type NailTrade } from "@/lib/marketing/solo";
+import { soloSocial } from "@/lib/marketing/solo-og";
 
 /**
  * Every A/B variant of every nail-page look, prerendered (ab-spec §3). Internal: the proxy (src/proxy.ts, lib/marketing/landing-assign.ts)
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: PageProps<"/for-nail-techs/[t
   const { trade } = await params;
   if (!isTrade(trade)) return {};
   const m = meta(trade);
-  return { title: m.title, description: m.description, alternates: { canonical: canonical(trade) }, openGraph: { title: m.title, description: m.description } };
+  return { title: m.title, description: m.description, alternates: { canonical: canonical(trade) }, ...soloSocial("nail", { title: m.title, description: m.description, path: canonical(trade) }) };
 }
 
 export default async function NailVariantPage({ params }: PageProps<"/for-nail-techs/[trade]/[variant]">) {

@@ -24,7 +24,7 @@ const errPct = (r: number) => `${Math.round(r * 10000) / 100}%`;
 
 function StatTable({ rows, label, keyHeader }: { rows: adminCockpitApi.RouteStat[]; label: string; keyHeader: string }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto focus-visible:focus-ring" tabIndex={0} role="region" aria-label={`${label}, scrollable`}>
       <Table label={label} className="min-w-[620px]">
         <thead>
           <tr>

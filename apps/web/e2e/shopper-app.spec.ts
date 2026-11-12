@@ -19,7 +19,7 @@ async function joinAsShopper(page: Page) {
 
 test("/for-shoppers: English, then Hindi, Urdu (right to left) and Punjabi, with one card and live street counts", async ({ page }) => {
   await page.goto("/for-shoppers");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("one card for every shop on your street.");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("One card for every shop on your street.");
   await expect(page.getByRole("heading", { name: "where your card works." })).toBeVisible();
   // The one picture is the shopper's own card, not two decorative phones.
   await expect(page.getByText("Add to Apple Wallet")).toHaveCount(1);

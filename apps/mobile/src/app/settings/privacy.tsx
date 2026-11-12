@@ -1,4 +1,5 @@
 import { BRAND } from "@ll/shared";
+import { WEB_URL } from "../../config";
 import { File, Paths } from "expo-file-system";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -76,9 +77,9 @@ export default function Privacy() {
         </Button>
       </Section>
       <View>
-        <ListRow title={lt("sh.priv.m.policy")} chevron onPress={() => Linking.openURL("https://local.example/privacy")} />
-        <ListRow title={lt("sh.priv.m.terms")} chevron onPress={() => Linking.openURL("https://local.example/terms")} />
-        <ListRow title={lt("sh.priv.m.howShops")} chevron divider={false} onPress={() => Linking.openURL("https://local.example/privacy#shops")} />
+        <ListRow title={lt("sh.priv.m.policy")} chevron onPress={() => Linking.openURL(`${WEB_URL}/privacy`)} />
+        <ListRow title={lt("sh.priv.m.terms")} chevron onPress={() => Linking.openURL(`${WEB_URL}/terms`)} />
+        <ListRow title={lt("sh.priv.m.howShops")} chevron divider={false} onPress={() => Linking.openURL(`${WEB_URL}/privacy#shops`)} />
       </View>
       <ConfirmDialog
         visible={confirm}

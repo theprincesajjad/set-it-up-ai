@@ -3,7 +3,11 @@ import { BRAND } from "@ll/shared";
 import { Container } from "@/components/ui/Layout";
 import { preloadInter } from "@/lib/fonts/inter";
 
-export const metadata: Metadata = { title: "Accessibility", alternates: { canonical: "/accessibility" } };
+export const metadata: Metadata = {
+  title: "Accessibility",
+  description: `How ${BRAND.name} is built to WCAG 2.2 AA for customers, staff and shop owners, and how to tell us when something does not work for you.`,
+  alternates: { canonical: "/accessibility" },
+};
 
 export default function AccessibilityPage() {
   preloadInter();
@@ -16,7 +20,7 @@ export default function AccessibilityPage() {
           large touch targets, visible focus, labels on every field, and screens that work with screen readers and at 200% text size.
         </p>
         <p>
-          If something doesn&apos;t work for you, tell us at <a href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a> and we&apos;ll fix it or help you another way. We follow the Accessibility for
+          If something doesn’t work for you, tell us at <a href={`mailto:${BRAND.supportEmail}`}>{BRAND.supportEmail}</a> and we’ll fix it or help you another way. We follow the Accessibility for
           Ontarians with Disabilities Act (AODA).
         </p>
       </div>

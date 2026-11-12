@@ -8,6 +8,7 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async } from "@/components/dashboard/PageStates";
 import { Button } from "@/components/ui/Button";
 import { formatDateTime, formatNumber } from "@/lib/format";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 /** Pricing v2: a paid (Plus) section. Deep links show the "Coming soon" card when it's locked. */
@@ -22,6 +23,7 @@ export default function MessagePageGated() {
 function MessagePage() {
   const { messageId } = useParams<{ messageId: string }>();
   const { api, base } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   const state = useApi(() => api.messages.get(messageId), [api, messageId]);
   const act = useAction();
   const test = useAction();
@@ -29,7 +31,7 @@ function MessagePage() {
   return (
     <div className="flex flex-col gap-4">
       <BackLink href={`${base}/messages`}>Messages</BackLink>
-      <Async state={state}>
+      <Async state={state} fail={{ title: "Message", back: { href: `${base}/messages`, label: t("dash.message.back") }, notFound: { title: t("dash.message.gone.title"), description: t("dash.message.gone.body") } }}>
         {(m) => (
           <>
             <PageHeader title={m.subject ?? `${m.channel.toUpperCase()} message`} description={<span className="flex flex-wrap items-center gap-2"><StatusDot domain="message" status={m.status} />{m.sentAt ? formatDateTime(m.sentAt) : m.scheduledAt ? `Scheduled for ${formatDateTime(m.scheduledAt)}` : "Draft"}</span>} actions={

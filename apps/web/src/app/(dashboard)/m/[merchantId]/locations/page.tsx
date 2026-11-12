@@ -15,6 +15,7 @@ import { QrCode } from "@/components/ui/QrCode";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { formatE164 } from "@/lib/phone";
+import { addressLine } from "@/lib/address";
 import { hoursDraft, hoursFromDraft, hoursSummary, type HoursDraft } from "@/lib/dashboard/hours";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
@@ -74,7 +75,7 @@ export default function LocationsPage() {
                       {l.name} {!l.active ? <Dot>Inactive</Dot> : null}
                     </h2>
                     <p className="text-meta text-fg-muted">
-                      {l.address}, {l.city}
+                      {addressLine(l.address, l.city)}
                     </p>
                     <p className="text-meta text-fg-muted">{hoursSummary(l.hours)}{l.phone ? ` · ${formatE164(l.phone)}` : ""}</p>
                     <div className="mt-3 flex max-w-[460px] items-center gap-2 rounded-input border border-line ps-3">

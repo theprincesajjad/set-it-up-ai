@@ -7,7 +7,7 @@
 import { MessageCircle, Send, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { AGENT_TEXTS, WIDGET_TEXTS, type AgentLang, type salesAgentApi } from "@ll/shared";
+import { AGENT_TEXTS, BRAND, WIDGET_TEXTS, type AgentLang, type salesAgentApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
 import { cn } from "@/lib/cn";
 import { marketingFontVars } from "@/lib/marketing/fonts";
@@ -86,7 +86,9 @@ export function SalesChat() {
   const [status, setStatus] = useState<salesAgentApi.ConversationStatus>("open");
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  /** A message that did not send: why ("offline" when the browser has no connection), and the words, to send again. */
+  const [failed, setFailed] = useState<{ why: "offline" | "failed"; text: string } | null>(null);
+  const wasOpen = useRef(false);
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
@@ -116,8 +118,20 @@ export function SalesChat() {
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
   }, [lines.length, open]);
+  // Opening puts the cursor in the box; closing (the button or Escape) gives focus back to the launcher, which is drawn again then.
   useEffect(() => {
     if (open) input.current?.focus();
+    else if (wasOpen.current) launcher.current?.focus();
+    wasOpen.current = open;
+  }, [open]);
+  // Escape closes the panel wherever focus is (a button that was just pressed may be gone, leaving focus on the page).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
   // A person has the chat: look for their replies.
@@ -140,7 +154,7 @@ export function SalesChat() {
       const body = raw.trim();
       if (!body || busy) return;
       setBusy(true);
-      setError(false);
+      setFailed(null);
       setText("");
       const mine: Line = { id: `local-${Date.now()}`, role: "user", text: body, at: new Date().toISOString() };
       setLines((cur) => [...cur, mine]);
@@ -155,7 +169,12 @@ export function SalesChat() {
           return next;
         });
       } catch {
-        setError(true);
+        // Nothing was delivered, so nothing may look delivered: the bubble comes back out of the thread (the disclosure stays first on a
+        // new chat, and sending again cannot leave two copies), the words go back in the box unless the visitor has typed something
+        // new, and the note under the thread says what happened with a way to try again and a way to reach a person.
+        setLines((cur) => cur.filter((l) => l.id !== mine.id));
+        setText((cur) => cur || body);
+        setFailed({ why: typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "failed", text: body });
       } finally {
         setBusy(false);
       }
@@ -171,6 +190,7 @@ export function SalesChat() {
   // Before the first message the panel already says what this is.
   const shown: Line[] = lines.length ? lines : [{ id: "preview-disclosure", role: "assistant", text: AGENT_TEXTS[lang].disclosure({ whatsapp: false }), at: "" }];
   const fresh = lines.length === 0;
+  const errorParts = T.error.split("{email}");
 
   return (
     <>
@@ -191,7 +211,7 @@ export function SalesChat() {
         </button>
       ) : null}
       {open ? (
-        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} onKeyDown={(e) => e.key === "Escape" && setOpen(false)} className="fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-border bg-background shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]">
+        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} className="fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-border bg-background shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]">
           <header className="flex items-center gap-3 border-b border-border px-4 py-3">
             <div className="min-w-0 flex-1">
               <h2 className="text-body font-semibold text-foreground">{T.title}</h2>
@@ -222,7 +242,34 @@ export function SalesChat() {
               </div>
             ) : null}
             {busy ? <p className="mt-2 px-1 text-caption text-muted-foreground" role="status">{T.typing}…</p> : null}
-            {error ? <p role="alert" className="mt-2 px-1 text-meta text-destructive">{T.error}</p> : null}
+            {failed ? (
+              <div role="alert" className="mt-2 flex flex-col items-start gap-2 px-1" data-chat-failed={failed.why}>
+                <p className="text-meta text-destructive">
+                  {failed.why === "offline" ? (
+                    T.offline
+                  ) : (
+                    <>
+                      {errorParts[0]}
+                      <a href={`mailto:${BRAND.supportEmail}`} dir="ltr" className="font-medium underline underline-offset-2">
+                        {BRAND.supportEmail}
+                      </a>
+                      {errorParts[1] ?? ""}
+                    </>
+                  )}
+                </p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    // This button goes away once the message is on its way: keep focus in the panel.
+                    input.current?.focus();
+                    void send(text.trim() ? text : failed.text);
+                  }}
+                  className="min-h-11 rounded-full border border-border bg-background px-4 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring disabled:opacity-40">
+                  {T.retry}
+                </button>
+              </div>
+            ) : null}
             <div ref={end} />
           </div>
           <form

@@ -276,7 +276,7 @@ export interface PublicPlansResponse {
   };
 }
 
-/** GET /v1/public/restaurants/founding: founding spots per corridor (cached 300 s). */
+/** GET /v1/public/restaurants/corridors: spots per corridor (cached 300 s). */
 export interface FoundingCorridorDto {
   slug: string;
   name: string;

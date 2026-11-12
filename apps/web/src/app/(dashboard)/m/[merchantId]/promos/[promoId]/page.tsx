@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/api/errors";
 import { formatNumber } from "@/lib/format";
 import { STATUS_ACTION, TYPE_INFO, draftFromPromo } from "@/lib/dashboard/promos";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useApi } from "@/lib/dashboard/useApi";
 import { useState } from "react";
 
@@ -35,6 +36,7 @@ function PromoPage() {
   const { api, base } = useMerchant();
   const router = useRouter();
   const toast = useToast();
+  const { t } = useLocaleOrEnglish();
   const promo = useApi(() => api.promo(promoId), [api, promoId]);
   const results = useApi(() => api.promoResults(promoId), [api, promoId]);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
@@ -42,7 +44,7 @@ function PromoPage() {
   return (
     <div className="flex flex-col gap-4">
       <BackLink href={`${base}/promos`}>Promos</BackLink>
-      <Async state={promo}>
+      <Async state={promo} fail={{ title: "Promo", back: { href: `${base}/promos`, label: t("dash.promo.back") }, notFound: { title: t("dash.promo.gone.title"), description: t("dash.promo.gone.body") } }}>
         {(p) => {
           const r = results.data;
           const running = p.status === "live" || p.status === "scheduled";

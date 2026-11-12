@@ -7,9 +7,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import type { groceryApi } from "@ll/shared";
-import { Capsules, DataTable, EmptyState, ErrorLine, FeatureGate, PageHeader, Tag, useMerchant, type Column } from "@/components/dashboard";
+import { Capsules, DataTable, EmptyState, FeatureGate, PageHeader, Tag, useMerchant, type Column } from "@/components/dashboard";
 import { DealSheet, type DealDraft } from "@/components/dashboard/grocery/DealSheet";
 import { CopyButton } from "@/components/dashboard/restaurant/shared";
+import { ErrorPanel } from "@/components/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -113,7 +114,6 @@ function Flyer() {
           ) : null
         }
       />
-      {state.error && !d ? <ErrorLine message={state.error} onRetry={() => void state.reload()} /> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
 
       {d && d.seasons.length ? (
@@ -139,6 +139,8 @@ function Flyer() {
         </section>
       ) : null}
 
+      {/* Not loaded: no "Running now 0" and no "No deals running today", which would read as an empty flyer. */}
+      {state.error && !d ? <ErrorPanel error={state.cause ?? state.error} what="your flyer" onRetry={() => void state.reload()} /> : (
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="flex min-w-0 flex-col gap-6">
       <Capsules
@@ -168,6 +170,7 @@ function Flyer() {
       </div>
       {d ? <ShopPreview deals={d.deals.filter((x) => x.state === "live" && x.active)} whatsappText={d.whatsappText} /> : null}
       </div>
+      )}
       {d && d.textable === 0 ? <p className="text-caption text-fg-muted">No members have agreed to texts yet. Ask at the counter when you add someone.</p> : null}
       {sheet ? <DealSheet deal={sheet.deal} draft={sheet.draft} today={d?.today ?? ""} onClose={() => setSheet(null)} onSaved={() => void state.reload()} /> : null}
     </div>

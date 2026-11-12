@@ -7,7 +7,7 @@ import { commerceApi, paginationQuery, type FeatureKey } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser, type StaffRole } from "../../lib/auth.js";
 import { featureLocked } from "../../lib/errors.js";
-import { parse } from "../../lib/validate.js";
+import { parse, parseQueryDate } from "../../lib/validate.js";
 import * as bookingsSvc from "../../services/bookings.js";
 import * as catalog from "../../services/catalog.js";
 import * as dropoffSvc from "../../services/dropoff.js";
@@ -114,8 +114,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const items = await bookingsSvc.listSlots(ctx.db, staff.merchant.id, {
       kind: q.kind,
       locationId: q.locationId,
-      from: q.from ? new Date(q.from) : ctx.now(),
-      to: q.to ? new Date(q.to) : undefined,
+      from: parseQueryDate(q.from, "from") ?? ctx.now(),
+      to: parseQueryDate(q.to, "to"),
     });
     return { items, nextCursor: null };
   });
@@ -131,8 +131,8 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     const staff = await staffForSlots(req, "staff", q.kind);
     const items = await bookingsSvc.listMerchantBookings(ctx.db, staff.merchant, {
       kind: q.kind,
-      from: q.from ? new Date(q.from) : new Date(ctx.now().getTime() - 86_400_000),
-      to: q.to ? new Date(q.to) : undefined,
+      from: parseQueryDate(q.from, "from") ?? new Date(ctx.now().getTime() - 86_400_000),
+      to: parseQueryDate(q.to, "to"),
     });
     return { items, nextCursor: null };
   });

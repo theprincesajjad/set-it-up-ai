@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TextField } from "@/components/ui/TextField";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { monthlyOfWeekly } from "@/lib/restaurant/tcb";
@@ -45,6 +45,7 @@ export function planPrice(p: Pick<Plan, "priceCents" | "extraServingCents">, ser
 
 /** /shops/<slug>/tiffin: plans with the upcoming menu, servings stepper with live price, subscribe. */
 export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServings, devAutofill, defaultName }: { shop: Shop; data: tiffinApi.PublicPlansResponse; signedIn: boolean; initialPlanId?: string; initialServings?: number; /** The name already on the customer's profile. */ defaultName?: string; /** Fill the sign-in code from the API in non-production. */ devAutofill?: boolean }) {
+  const errText = useErrorText();
   const { t, money, date, pick } = useFmt();
   const plans = data.plans;
   const [planId, setPlanId] = useState<string | null>(plans.some((p) => p.id === initialPlanId) ? initialPlanId! : null);
@@ -144,7 +145,7 @@ export function TiffinPlans({ shop, data, signedIn, initialPlanId, initialServin
       setResult(r);
       if (!r.payment && !r.manual) setPaid("yes");
     } catch (err) {
-      setError(errorMessage(err));
+      setError(errText(err));
     } finally {
       setBusy(false);
     }

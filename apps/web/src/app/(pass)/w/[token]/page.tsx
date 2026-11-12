@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import type { waitlistApi } from "@ll/shared";
 import { PageFrame } from "@/components/restaurant/PageFrame";
 import { TakeOffer } from "@/components/pass/TakeOffer";
-import { Button } from "@/components/ui/Button";
-import { ErrorState } from "@/components/ui/EmptyState";
+import { LinkProblem, linkKind, type LinkKind } from "@/components/errors/server";
 import { createApiClient } from "@/lib/api/client";
 import { isApiError } from "@/lib/api/errors";
 import { publicWaitlistEndpoints } from "@/lib/api/waitlist";
@@ -24,18 +23,19 @@ type Props = { params: Promise<{ token: string }>; searchParams: Promise<Record<
  */
 export default async function TakePage({ params, searchParams }: Props) {
   const [{ token }, sp] = await Promise.all([params, searchParams]);
-  const [locale, t] = await Promise.all([getLocale(sp), getT(sp)]);
+  const locale = await getLocale(sp);
   const api = publicWaitlistEndpoints(createApiClient({ baseUrl: serverApiUrl() }));
-  const data: waitlistApi.OfferDto | "gone" | "error" = await api.offer(token).catch((e: unknown) => (isApiError(e) && (e.status === 410 || e.status === 404) ? "gone" : "error"));
-  if (data === "error")
+  // 410 = the held spot was taken or the hold ran out (TakeOffer says so); 404 = no such link; anything else is a load problem.
+  const data: waitlistApi.OfferDto | "taken" | LinkKind = await api.offer(token).catch((e: unknown) => (isApiError(e) && e.status === 410 ? "taken" : linkKind(e)));
+  if (typeof data === "string" && data !== "taken")
     return (
       <PageFrame locale={locale}>
-        <ErrorState title={t("rc.error.title")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/w/${encodeURIComponent(token)}`}>{t("rc.tryAgain")}</Button>} />
+        <LinkProblem kind={data} retryHref={`/w/${encodeURIComponent(token)}`} />
       </PageFrame>
     );
   return (
-    <PageFrame locale={locale} trade={data === "gone" ? undefined : (data.merchant.vertical ?? undefined)}>
-      <TakeOffer token={token} initial={data === "gone" ? null : data} />
+    <PageFrame locale={locale} trade={data === "taken" ? undefined : (data.merchant.vertical ?? undefined)}>
+      <TakeOffer token={token} initial={data === "taken" ? null : data} />
     </PageFrame>
   );
 }

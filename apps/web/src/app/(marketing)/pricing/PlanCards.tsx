@@ -25,7 +25,7 @@ import { Card } from "@/components/ui/Card";
 import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
 import { SOLO_COMPETITORS } from "@/lib/marketing/competitors-solo";
-import { marketingPlans, planLine } from "@/lib/marketing/plan-copy";
+import { marketingPlans, type PlanAudience } from "@/lib/marketing/plan-copy";
 import { fill, moneyShort } from "@/lib/marketing/text";
 
 const P = copy.pricing;
@@ -107,13 +107,13 @@ export const soloVars = {
 };
 export const pv = (s: string) => fill(s, soloVars);
 
-/** The plan name row: the name and, when it has one, its pill ("Every shop" on Free, "Most popular" on Pro, inverted). */
-function PlanHead({ name, badge, invert }: { name: string; badge?: string | null; invert?: boolean }) {
+/** The plan name row: the name and, when it has one, its pill ("Every shop" on Free). No plan is called the most popular: nothing backs that yet. */
+function PlanHead({ name, badge }: { name: string; badge?: string | null }) {
   return (
     <div className="flex min-h-7 items-center justify-between gap-2">
       <h2 className="text-headline font-[650] text-foreground">{name}</h2>
       {badge ? (
-        <span className={cn("inline-flex h-7 items-center rounded-full px-3 text-meta-strong", invert ? "bg-foreground text-background" : "bg-success-soft text-success-text")}>{badge}</span>
+        <span className="inline-flex h-7 items-center rounded-full bg-success-soft px-3 text-meta-strong text-success-text">{badge}</span>
       ) : null}
     </div>
   );
@@ -121,8 +121,14 @@ function PlanHead({ name, badge, invert }: { name: string; badge?: string | null
 
 const CARD = "flex flex-col rounded-sheet border-0 p-6 md:p-8";
 
-/** Free (solo-pro-launch.md §3.2): one bookable calendar, deposits, reminders and the loyalty program. */
-export function FreeCard() {
+/**
+ * Free. For shops (the default, and what the home page's "Compare all plans" lands on) the words are the home page's own
+ * (lib/marketing/plan-copy.ts): a complete loyalty program. For people who take bookings (?for=booking, solo-pro-launch.md §3.2): one
+ * bookable calendar, deposits, reminders and the loyalty program.
+ */
+export function FreeCard({ audience = "shop" }: { audience?: PlanAudience }) {
+  const card = marketingPlans(audience)[0]!;
+  const lines: readonly string[] = audience === "solo" ? S.free.lines : card.features;
   return (
     <Card padding="none" className={cn(CARD, "card-clear mkt-lift")} data-plan="free">
       <PlanHead name={PLANS.free.name} badge={P.freeBadge} />
@@ -130,15 +136,15 @@ export function FreeCard() {
         <span className="display text-mkt-lg tabular-nums text-foreground">$0</span>
         <span className="text-body text-muted-foreground">{S.free.per}</span>
       </p>
-      <p className="mt-3 text-body text-foreground">{S.free.lead}</p>
+      <p className="mt-3 text-body text-foreground">{audience === "solo" ? S.free.lead : card.tagline}</p>
       <p className="mt-2 text-meta text-muted-foreground">Online orders on Free carry a {Number((FEES.orderBpsFree / 100).toFixed(2))}% fee; paid plans and restaurant plans carry none.</p>
       <Button href="/signup" variant="secondary" fullWidth size="lg" className="mt-6">
-        {S.free.cta}
+        {card.cta}
       </Button>
       <div className="mt-8 border-t border-border pt-5">
         <h3 className="text-meta-strong text-muted-foreground">Included</h3>
         <ul className="mt-1">
-          {S.free.lines.map((l) => (
+          {lines.map((l) => (
             <PlainLine key={l}>{l}</PlainLine>
           ))}
         </ul>
@@ -166,12 +172,13 @@ export function YearlyLine({ id, firstYear }: { id: "plus" | "studio"; firstYear
 
 /**
  * Pro (id "plus") and Studio (id "studio"): the words from the marketing plan copy (lib/marketing/plan-copy.ts), the numbers from
- * PLANS. Pro carries the trial line and the first-year price, and is the highlighted card (wave Q: a dark ring, the deeper shadow, the
- * inverted "Most popular" pill, and on wide screens it stands a little taller than its neighbours).
+ * PLANS. Pro carries the trial line and the first-year price, and is the highlighted card (wave Q: a dark ring, the deeper shadow, and
+ * on wide screens it stands a little taller than its neighbours). `audience` picks the words: a shop's (the home page's cards, word for
+ * word) or a booking professional's. The button labels are the same on every page; prices are in the text colour, like the home page's.
  */
-export function PaidCard({ id, firstYear }: { id: "plus" | "studio"; firstYear: billingApi.FirstYearPriceDto | null }) {
+export function PaidCard({ id, firstYear, audience = "shop" }: { id: "plus" | "studio"; firstYear: billingApi.FirstYearPriceDto | null; audience?: PlanAudience }) {
   const plan = PLANS[id];
-  const card = marketingPlans("solo").find((c) => c.key === (id === "plus" ? "monthly" : "studio"))!;
+  const card = marketingPlans(audience).find((c) => c.key === (id === "plus" ? "monthly" : "studio"))!;
   const pro = id === "plus";
   return (
     <Card
@@ -179,17 +186,17 @@ export function PaidCard({ id, firstYear }: { id: "plus" | "studio"; firstYear: 
       className={cn(CARD, pro ? "relative z-10 bg-card shadow-[0_0_0_2px_var(--foreground),var(--lg-shadow-lg)] lg:-my-4 lg:py-12" : "card-clear mkt-lift")}
       data-plan={id}
     >
-      <PlanHead name={plan.name} badge={pro ? card.badge : null} invert />
+      <PlanHead name={plan.name} />
       <p className="mt-6 flex items-baseline gap-2">
-        <span className="display text-mkt-lg tabular-nums text-primary-text">{price(id)}</span>
+        <span className="display text-mkt-lg tabular-nums text-foreground">{price(id)}</span>
         <span className="text-body text-muted-foreground">{S.monthly.per}</span>
       </p>
       <YearlyLine id={id} firstYear={firstYear} />
-      <p className="mt-2 text-meta text-muted-foreground">{pv(pro ? PP.proCalendars : PP.studioCalendars)}</p>
+      {audience === "solo" ? <p className="mt-2 text-meta text-muted-foreground">{pv(pro ? PP.proCalendars : PP.studioCalendars)}</p> : null}
       <p className="mt-3 text-body text-foreground">{card.tagline}</p>
-      {/* Pro starts as the 14-day trial (no card: it begins when the booking link goes live); Studio opens its checkout after signup. */}
+      {/* Pro starts as the 14-day trial (no card); Studio carries its plan in the link and opens its checkout after signup. */}
       <Button href={pro ? "/signup" : `/signup?plan=${id}`} variant={pro ? "primary" : "secondary"} fullWidth size="lg" className="mt-6">
-        {pro ? planLine("trialCta") : pv(PP.studioCta)}
+        {card.cta}
       </Button>
       {pro ? (
         <p className="mt-2 text-center text-meta-strong text-foreground" data-testid="trial-line">
@@ -215,7 +222,7 @@ export function ServiceLine() {
       <p className="text-body text-foreground">{pv(PP.serviceLine)}</p>
       <div className="flex shrink-0 items-center gap-4">
         <p className="flex items-baseline gap-1">
-          <span className="text-title tabular-nums text-primary-text">{price("pro")}</span>
+          <span className="text-title tabular-nums text-foreground">{price("pro")}</span>
           <span className="text-meta text-muted-foreground">{S.service.per}</span>
         </p>
         <Button href="/signup?plan=pro" variant="secondary">
@@ -276,8 +283,8 @@ const TAG_WORD = { W: S.compare.tagW, "W?": S.compare.tagWq, H: S.compare.tagH }
 
 /** Against Fresha, Booksy and Square on price, deposits and the new-client fee, every figure with its date and source. */
 export function CompareStrip() {
-  const asOf = SOLO_COMPETITORS[0]?.asOf ?? "";
-  const date = asOf ? new Date(`${asOf}T12:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "";
+  // Each competitor's own reading day, beside its name.
+  const date = (asOf: string) => new Date(`${asOf}T12:00:00Z`).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
   const rows = [
     { label: S.compare.rowPrice, us: pv(S.compare.usPrice), key: "price" },
     { label: S.compare.rowDeposit, us: S.compare.usDeposit, key: "deposit" },
@@ -285,7 +292,7 @@ export function CompareStrip() {
   ] as const;
   return (
     <div data-testid="solo-compare">
-      <p className="text-meta-strong text-primary-text">{S.compare.eyebrow}</p>
+      <p className="text-meta-strong text-muted-foreground">{S.compare.eyebrow}</p>
       <h2 className="display mt-3 text-mkt-md md:text-mkt-lg">{S.compare.title}</h2>
       <ul className="mt-8 grid gap-3 md:grid-cols-4">
         <li className="rounded-card bg-card p-5 shadow-card ring-2 ring-forest">
@@ -313,12 +320,12 @@ export function CompareStrip() {
               ))}
             </dl>
             <a href={c.sourceUrl} className="mt-3 inline-flex min-h-11 items-center text-meta text-foreground underline decoration-input/60 underline-offset-2 hover:decoration-foreground">
-              {c.host} · {date}
+              {c.host} · {date(c.asOf)}
             </a>
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-meta text-muted-foreground">{fill(S.compare.asOf, { date })}</p>
+      <p className="mt-4 text-meta text-muted-foreground">{S.compare.asOf}</p>
     </div>
   );
 }

@@ -52,7 +52,12 @@ function logFail(where: string, err: unknown) {
   console.error(`[waitlist.${where}]`, err);
 }
 
-export const offerGone = () => new HttpError(410, "offer_gone", "That spot was taken.");
+export const offerGone = (why: "taken" | "expired" | "unknown" = "taken") =>
+  why === "unknown"
+    ? new HttpError(404, "offer_not_found", "We couldn't find that offer. Open the latest text from the shop, or call them.")
+    : why === "expired"
+      ? new HttpError(410, "offer_expired", "That offer has run out. We'll text you if another spot opens.")
+      : new HttpError(410, "offer_gone", "That spot was taken.");
 
 /** The "Take it" link. */
 export const offerLink = (ctx: Ctx, token: string) => `${ctx.config.publicWebUrl}/w/${token}`;
@@ -448,7 +453,8 @@ async function take(ctx: Ctx, e: Entry): Promise<waitlistApi.TakeOfferResponse> 
     const [a] = await ctx.db.select().from(appointments).where(eq(appointments.id, e.bookedAppointmentId)).limit(1);
     if (a) return { appointmentId: a.id, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString() };
   }
-  if (e.status !== "offered" || !e.offerExpiresAt || e.offerExpiresAt <= now || !e.offeredAppointmentHoldId || !e.userId) throw offerGone();
+  if (e.status === "offered" && e.offerExpiresAt && e.offerExpiresAt <= now) throw offerGone("expired");
+  if (e.status !== "offered" || !e.offerExpiresAt || !e.offeredAppointmentHoldId || !e.userId) throw offerGone();
   const result = await ctx.db.transaction(async (tx) => {
     const [a] = await tx
       .update(appointments)
@@ -478,7 +484,7 @@ async function entryByToken(ctx: Ctx, token: string): Promise<Entry | null> {
 /** POST /public/w/:token/take: the one-tap "Take it". The token is the client's (it came by their own push, email or text). */
 export async function takeByToken(ctx: Ctx, token: string): Promise<waitlistApi.TakeOfferResponse> {
   const e = await entryByToken(ctx, token);
-  if (!e) throw offerGone();
+  if (!e) throw offerGone("unknown");
   return take(ctx, e);
 }
 
@@ -492,7 +498,8 @@ export async function takeMine(ctx: Ctx, userId: string, id: string): Promise<wa
 /** GET /public/w/:token: what the Take-it page shows. A used or lapsed link says the spot was taken. */
 export async function offerByToken(ctx: Ctx, token: string): Promise<waitlistApi.OfferDto> {
   const e = await entryByToken(ctx, token);
-  if (!e) throw offerGone();
+  // A token that never existed is "we can't find this link" (404), not "that spot was taken" (410): the page says different things.
+  if (!e) throw notFound("link");
   const [m] = await ctx.db.select().from(merchants).where(eq(merchants.id, e.merchantId)).limit(1);
   const [a] = e.offeredAppointmentHoldId ? await ctx.db.select().from(appointments).where(eq(appointments.id, e.offeredAppointmentHoldId)).limit(1) : [];
   if (!m || !a) throw offerGone();

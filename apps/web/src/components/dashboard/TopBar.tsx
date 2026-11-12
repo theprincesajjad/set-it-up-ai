@@ -6,7 +6,7 @@
 import { Bell, ChevronDown, Globe, MapPin, Search, CircleHelp } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import { LOCALE_LIST, type Locale } from "@ll/shared";
+import { BRAND, LOCALE_LIST, type Locale } from "@ll/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useNeedsYouCount } from "@/lib/dashboard/needsYou";
@@ -99,7 +99,7 @@ export function LanguageMenu() {
 
 export function HelpLink({ label }: { label: string }) {
   return (
-    <a href="mailto:help@localloyalty.example" aria-label={label} title={label} className={topIconButton}>
+    <a href={`mailto:${BRAND.supportEmail}`} aria-label={label} title={label} className={topIconButton}>
       <CircleHelp aria-hidden className="size-5" strokeWidth={1.75} />
     </a>
   );

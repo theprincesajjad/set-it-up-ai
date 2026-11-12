@@ -6,7 +6,7 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
-import { env } from "@/lib/env";
+import { storeLinks } from "@/lib/marketing/store-links";
 import { PassTopBar } from "@/components/pass/PassChrome";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
@@ -43,7 +43,7 @@ export async function JoinPage({ params, searchParams }: JoinPageProps) {
     if (isApiError(e) && e.status === 404)
       return (
         <PageFrame locale={locale}>
-          <EmptyState icon={QrIcon} title={t("auth.err.qrInvalid")} description={t("auth.join.invalidBody")} action={<Button href="/map">{t("auth.join.findShops")}</Button>} />
+          <EmptyState headingLevel={1} icon={QrIcon} title={t("auth.err.qrInvalid")} description={t("auth.join.invalidBody")} action={<Button href="/map">{t("auth.join.findShops")}</Button>} />
         </PageFrame>
       );
     return (
@@ -66,6 +66,7 @@ export async function JoinPage({ params, searchParams }: JoinPageProps) {
   const total = hood ? hood.shopCount - 1 : (near?.items.filter((x) => x.merchant.id !== info.merchant.id).length ?? 0);
   const alsoHere = others.length ? { verticals: others.map((o) => o.merchant.vertical), total } : null;
   const me = await getMe();
+  const stores = storeLinks();
   return (
     <LocaleScope locale={locale} trade={info.merchant.vertical} brandColor={info.merchant.brandColor} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
       <JoinFlow
@@ -77,8 +78,8 @@ export async function JoinPage({ params, searchParams }: JoinPageProps) {
         signedIn={!!me}
         signedInName={me?.user.name ?? null}
         devAutofill={devAutofill()}
-        appStoreUrl={env.appStoreUrl}
-        playStoreUrl={env.playStoreUrl}
+        appStoreUrl={stores.appStore}
+        playStoreUrl={stores.playStore}
       />
     </LocaleScope>
   );

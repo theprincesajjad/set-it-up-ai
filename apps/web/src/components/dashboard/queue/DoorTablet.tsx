@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { TextField } from "@/components/ui/TextField";
-import { errorMessage } from "@/lib/api/errors";
+import { errorKind } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { LOCALE_LIST } from "@ll/shared";
@@ -179,6 +180,7 @@ function Door() {
 function SetPin({ onDone }: { onDone: () => void }) {
   const { api, me } = useMerchant();
   const { t } = useLocale();
+  const errorText = useErrorText();
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -199,7 +201,7 @@ function SetPin({ onDone }: { onDone: () => void }) {
             await api.setPin(me.user.id, pin);
             onDone();
           } catch (e) {
-            setError(errorMessage(e));
+            setError(errorText(e));
           } finally {
             setBusy(false);
           }
@@ -217,6 +219,7 @@ function PinDialog({ open, onClose, onVerified }: { open: boolean; onClose: () =
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const errorText = useErrorText();
   async function go() {
     setBusy(true);
     setError(null);
@@ -225,7 +228,8 @@ function PinDialog({ open, onClose, onVerified }: { open: boolean; onClose: () =
       setPin("");
       onVerified();
     } catch (e) {
-      setError(errorMessage(e));
+      // A wrong PIN or the lockout says exactly that, in the tablet's language; anything else (offline, server) gets its own line.
+      setError(errorKind(e) === "rateLimited" ? t("counter.err.pinLocked") : errorText(e, { validation: t("counter.err.pin") }));
       setPin("");
     } finally {
       setBusy(false);

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { PLANS } from "@ll/shared";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { PlanLine } from "@/components/onboarding/PlanLine";
+import { ErrorPanel } from "@/components/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { CardHead, PageTitle, SurfaceCard } from "@/components/ui/ClearKit";
@@ -61,7 +62,7 @@ export default function ReviewSettingsPage() {
   return (
     <div className="flex max-w-215 flex-col gap-6 pb-20" data-testid="review-settings">
       <PageTitle title={t("revreq.title")} subtitle={t("revreq.sub")} />
-      {state.error && !d ? <Banner tone="danger">{t("revreq.loadError")}</Banner> : null}
+      {state.error && !d ? <ErrorPanel error={state.cause ?? state.error} onRetry={() => void state.reload()} /> : null}
       {d ? (
         <>
           <SurfaceCard as="section" aria-labelledby="rv-switch">

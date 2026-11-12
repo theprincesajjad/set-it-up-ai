@@ -482,7 +482,14 @@ export async function createLocation(ctx: AppContext, merchantId: string, actorU
 }
 
 export async function updateLocation(ctx: AppContext, merchantId: string, actorUserId: string, id: string, body: Body<typeof merchantApi.updateLocationBody>) {
-  const [l] = await ctx.db.update(locations).set(body).where(and(eq(locations.id, id), eq(locations.merchantId, merchantId))).returning();
+  // A patch with nothing in it would make an empty UPDATE (a 500): answer with the location as it is.
+  const changes = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
+  if (!Object.keys(changes).length) {
+    const [current] = await ctx.db.select().from(locations).where(and(eq(locations.id, id), eq(locations.merchantId, merchantId))).limit(1);
+    if (!current) throw notFound("Location");
+    return serializeLocation(ctx, current);
+  }
+  const [l] = await ctx.db.update(locations).set(changes).where(and(eq(locations.id, id), eq(locations.merchantId, merchantId))).returning();
   if (!l) throw notFound("Location");
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "location.updated", entity: "location", entityId: id, data: body });
   return serializeLocation(ctx, l);

@@ -3,36 +3,72 @@ import { describe, expect, it } from "vitest";
 import { PLANS, PROMOS_PER_MONTH_PLUS, showsPoweredBy } from "@ll/shared";
 import { CompetitorTableSolo } from "@/components/marketing/CompetitorTableSolo";
 import { SoloLanding } from "@/components/marketing/SoloLanding";
+import { CONTACT_PATTERN } from "@/components/marketing/solo/ContactField";
 import { PoweredBy, poweredByHref } from "@/components/pass/PoweredBy";
 import { copy } from "@/copy/en-CA";
-import { SOLO_COMPETITORS, SOLO_ROWS } from "@/lib/marketing/competitors-solo";
+import { SOLO_ASOF, SOLO_COMPETITORS, SOLO_ROWS } from "@/lib/marketing/competitors-solo";
 import { signupPrefill } from "@/lib/marketing/signupPrefill";
 import { NAIL_TRADES, SOLO_PHOTOS, nailTrade } from "@/lib/marketing/solo";
 import { landingVariant, variantIds } from "@/lib/marketing/landing-variants";
 import { PLAN_COPY, marketingPlans, planVars } from "@/lib/marketing/plan-copy";
 import { soloView } from "@/lib/marketing/solo-view";
-import { formatAsOf } from "@/lib/marketing/sources";
+import { MAX_SOURCE_AGE_DAYS, ageInDays, formatAsOf } from "@/lib/marketing/sources";
 import { moneyShort } from "@/lib/marketing/text";
 
 const C = copy.solo;
 const compare = { eyebrow: "e", title: "t", sub: "s", brand: "Local Loyalty", rows: C.compare.rows, us: C.compare.us, usSource: C.compare.usSource, foot: C.compare.foot };
 
 describe("solo competitor data", () => {
-  it("gives every cell a day, a tag and a note, and dates are not older than 90 days", () => {
-    const now = Date.parse("2026-10-29");
+  const cells = (x: (typeof SOLO_COMPETITORS)[number]) => [...SOLO_ROWS.map((r) => x.cells[r]), x.fourChairs];
+  it("gives every cell a day, a tag and a note, and no reading is older than 90 days or dated in the future", () => {
     for (const x of SOLO_COMPETITORS) {
-      expect(now - Date.parse(x.asOf)).toBeLessThan(90 * 86_400_000);
+      const age = ageInDays(x.asOf);
+      expect(age, `${x.sourceUrl} was read on ${x.asOf} (${age} days ago): read it again and update asOf`).toBeLessThanOrEqual(MAX_SOURCE_AGE_DAYS);
+      expect(age).toBeGreaterThanOrEqual(0);
+      expect(x.sourceUrl).toMatch(/^https:\/\//);
       for (const r of SOLO_ROWS) {
-        expect(["W", "W?", "H"]).toContain(x.cells[r].tag);
+        expect(["W", "W?"]).toContain(x.cells[r].tag);
         expect(x.cells[r].note.length).toBeGreaterThan(3);
       }
     }
+    expect(SOLO_ASOF).toBe([...SOLO_COMPETITORS.map((x) => x.asOf)].sort().at(-1));
   });
-  it("prints the date beside every figure and our prices from PLANS", () => {
+  it("tags a figure as the vendor's own page only when it is, and never shows our arithmetic on a competitor's numbers", () => {
+    for (const x of SOLO_COMPETITORS) {
+      for (const cell of cells(x)) {
+        expect(cell.tag).not.toBe("H");
+        expect(cell.text).not.toMatch(/=|×|\babout\b|roughly|approx/i);
+        if (/third-party|guide|copy of/i.test(cell.note)) expect(cell.tag).toBe("W?");
+        if (cell.tag === "W") expect(cell.note).toMatch(/^(vendor page|Canadian page)/);
+        // A dollar figure without a currency code in the text says that the page did not state one.
+        if (/\$\d/.test(cell.text) && !/(US|CA)\$/.test(cell.text)) expect(cell.note, cell.text).toMatch(/currency not stated/);
+      }
+    }
+  });
+  it("says every figure comes from the company's own page only while that is true", () => {
+    const lines = [C.compare.sub, C.compare.foot, copy.soloPricing.compare.asOf];
+    const otherSources = SOLO_COMPETITORS.some((x) => cells(x).some((c) => c.tag !== "W"));
+    if (otherSources) {
+      // A third-party source is cited somewhere: the page may not claim the vendors' own pages, and must say sources are named.
+      for (const line of lines) {
+        expect(line).not.toMatch(/each company[’']s own/i);
+        expect(line).toMatch(/named beside/);
+      }
+    } else {
+      for (const line of lines) expect(line).toMatch(/each company’s own pricing page|the company’s own pricing page/);
+    }
+    expect(otherSources).toBe(false); // today every cell was read on the vendor's own pricing page
+  });
+  it("prints each competitor's own reading day beside every one of its figures, and our prices from PLANS", () => {
     const html = renderToStaticMarkup(<CompetitorTableSolo c={compare} chairs />);
-    expect((html.match(new RegExp(formatAsOf("2026-10-28"), "g")) ?? []).length).toBeGreaterThanOrEqual(SOLO_COMPETITORS.length * SOLO_ROWS.length);
+    for (const x of SOLO_COMPETITORS) {
+      const same = SOLO_COMPETITORS.filter((y) => y.asOf === x.asOf).length;
+      // Once in the table and once in the phone cards, for each row and the chairs row.
+      expect((html.match(new RegExp(formatAsOf(x.asOf), "g")) ?? []).length).toBeGreaterThanOrEqual(same * SOLO_ROWS.length);
+    }
     expect(html).toContain(moneyShort(PLANS.plus.priceCents));
     expect(html).toContain("currency not stated");
+    expect(html).not.toMatch(/third-party|koalendar|PricingSaaS/);
   });
 });
 
@@ -78,7 +114,7 @@ describe("landing v2", () => {
     expect(page).toContain('href="/signup?vertical=nails&amp;src=nail-techs"');
     // The price in the hero is a link to the price block, not a second button; the comparison lives on /pricing.
     expect(page).toMatch(/class="sl-price-link[^"]*" href="#plans"/);
-    expect(page).toContain('href="/pricing#booking-apps"');
+    expect(page).toContain('href="/pricing?for=booking#booking-apps"');
     expect(page).not.toMatch(/<table/);
     expect(page).not.toMatch(/licen[cs]e|inspection|Upgrade/i);
     // Every {placeholder} in the copy is filled.
@@ -181,6 +217,21 @@ describe("short sign-up", () => {
     expect(signupPrefill({ trade: "constructor" })).toEqual({});
     // An explicit ?vertical= (the full sign-up link) wins over ?trade=.
     expect(signupPrefill({ vertical: "nails", trade: "barber" })).toEqual({ vertical: "nails" });
+  });
+  it("stops anything that is neither an email nor a 10-digit mobile at the landing form, and passes what the wizard can read", () => {
+    const ok = new RegExp(`^(?:${CONTACT_PATTERN})$`);
+    for (const good of ["mira@example.com", " dre@shop.ca ", "4165550123", "(416) 555-0123", "416-555-0123", "416.555.0123", "+1 416 555 0123", "1 (416) 555-0123"]) {
+      expect(ok.test(good), good).toBe(true);
+      const read = signupPrefill({ contact: good });
+      expect(read.email ?? read.phone, good).toBeTruthy();
+    }
+    for (const bad of ["not-an-email", "a@b", "12345", "416555012", "41655501234", "name@", "@shop.ca", "two words@shop.ca"]) {
+      expect(ok.test(bad), bad).toBe(false);
+      expect(signupPrefill({ contact: bad })).toEqual({});
+    }
+    const html = renderToStaticMarkup(<SoloLanding id="barber" />);
+    expect(html).toContain(`title="${C.start.contactError}"`);
+    expect(html).toMatch(/<input[^>]*pattern="[^"]+"[^>]*name="contact"/);
   });
 });
 

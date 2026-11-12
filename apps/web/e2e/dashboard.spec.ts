@@ -179,7 +179,7 @@ test("owner: create and publish a promo (pilot override)", async ({ page }) => {
   const id = await pineconeId();
   // Locked: the deep link names the plan and its price and offers the checkout, not the editor (trade tools self-serve).
   await signIn(page, OWNER, `/m/${id}/promos/new`);
-  await expect(page.getByText("On Pro · $29 a month")).toBeVisible();
+  await expect(page.getByText("Included in Pro · $29 a month")).toBeVisible();
   await expect(page.getByRole("button", { name: "Subscribe to Pro, $29/mo" })).toBeVisible();
   await pilot(id, ["promos.basic", "promos.double_points"], true);
   await page.reload();

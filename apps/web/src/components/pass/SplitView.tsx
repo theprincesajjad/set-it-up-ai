@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { restaurantApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n";
 import { Banner } from "@/components/ui/Banner";
@@ -15,6 +15,7 @@ type TipChoice = (typeof TIPS)[number] | "custom";
 
 /** /pay/split/<token>: a guest's share, tip picker, card payment and the paid state. */
 export function SplitView({ token, initial }: { token: string; initial: restaurantApi.PublicSplitResponse }) {
+  const errText = useErrorText();
   const { t, money, number: num } = useLocaleOrEnglish();
   const [data, setData] = useState(initial);
   const [choice, setChoice] = useState<TipChoice>(15);
@@ -36,7 +37,7 @@ export function SplitView({ token, initial }: { token: string; initial: restaura
       setData(r.split);
       setPayment(r.payment);
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setBusy(false);
     }

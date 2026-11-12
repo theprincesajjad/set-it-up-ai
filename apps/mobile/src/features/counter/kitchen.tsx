@@ -10,8 +10,8 @@ import { useLocale } from "../../lib/i18n";
 
 type Item = restaurantApi.KitchenItemDto;
 
-const KIND: Record<string, string> = { preorder: "Pre-order", tiffin: "Tiffin", catering: "Catering", banquet: "Banquet" };
-const CHANNEL: Record<string, string> = { whatsapp: "WhatsApp", phone: "Phone", counter: "Counter" };
+const KIND_KEY = { preorder: "kitchen.kind.preorder", tiffin: "mc.kind.tiffin", catering: "mc.kind.catering", banquet: "mc.kind.banquet" } as const;
+const CHANNEL_KEY = { whatsapp: "kitchen.chan.whatsapp", phone: "kitchen.chan.phone", counter: "kitchen.chan.counter" } as const;
 
 /** One ticket: big number, age (accent once late), item rows 64 pt tall, Bump at the bottom. */
 export function KitchenTicket({ ticket, age, busy, onItem, onBump }: { ticket: restaurantApi.KitchenTicketDto; age: number; busy: boolean; onItem: (i: Item) => void; onBump: () => void }) {
@@ -19,7 +19,9 @@ export function KitchenTicket({ ticket, age, busy, onItem, onBump }: { ticket: r
   const { t, dir, info } = useLocale();
   const late = isLate(age);
   const allReady = ticket.items.every((i) => i.status === "ready");
-  const tags = [KIND[ticket.kind], CHANNEL[ticket.channel]].filter(Boolean).join(" · ");
+  const kindKey = KIND_KEY[ticket.kind as keyof typeof KIND_KEY];
+  const channelKey = CHANNEL_KEY[ticket.channel as keyof typeof CHANNEL_KEY];
+  const tags = [kindKey ? t(kindKey) : null, channelKey ? t(channelKey) : null].filter(Boolean).join(" · ");
   return (
     <View accessibilityLabel={t("kitchen.ticket", { n: ticket.number })} style={[styles.card, { borderColor: late ? c.accent : c.fg, backgroundColor: c.bg }]}>
       <View style={[styles.head, { borderBottomColor: c.line }]}>
@@ -32,7 +34,7 @@ export function KitchenTicket({ ticket, age, busy, onItem, onBump }: { ticket: r
           ) : null}
         </View>
         <View style={[styles.age, { backgroundColor: late ? c.accentSoft : c.bgSubtle }]}>
-          <Text style={[ui(20, late ? 700 : 600, 24), { fontVariant: ["tabular-nums"] }]} color={late ? "accentText" : "fg"} accessibilityLabel={`${Math.floor(age / 60)} min${late ? ", late" : ""}`}>
+          <Text style={[ui(20, late ? 700 : 600, 24), { fontVariant: ["tabular-nums"] }]} color={late ? "accentText" : "fg"} accessibilityLabel={t(late ? "mc.minutesLate" : "mc.minutes", { n: Math.floor(age / 60) })}>
             {ageText(age)}
           </Text>
         </View>
@@ -45,7 +47,7 @@ export function KitchenTicket({ ticket, age, busy, onItem, onBump }: { ticket: r
             disabled={!next || busy}
             onPress={() => onItem(i)}
             accessibilityRole="button"
-            accessibilityLabel={`${i.quantity} ${i.name}, ${i.status}${next ? `. Tap to mark ${next}` : ""}`}
+            accessibilityLabel={next ? t("mc.itemTapNext", { qty: i.quantity, name: i.name, status: statusLabel(t, i.status), next: statusLabel(t, next) }) : t("mc.itemA11y", { qty: i.quantity, name: i.name, status: statusLabel(t, i.status) })}
             style={({ pressed }) => [styles.row, { borderBottomColor: c.line, backgroundColor: i.status === "ready" ? c.bgSubtle : pressed ? c.bgMuted : c.bg }]}
           >
             <Text style={[ui(24, 700, 28), { width: 44, textAlign: "center", fontVariant: ["tabular-nums"] }]} color={i.status === "ready" ? "fgMuted" : "fg"}>
@@ -82,6 +84,11 @@ export function KitchenTicket({ ticket, age, busy, onItem, onBump }: { ticket: r
       </View>
     </View>
   );
+}
+
+/** "New" / "Cooking" / "Ready" for an item status. */
+function statusLabel(t: (key: "kitchen.new" | "kitchen.cooking" | "kitchen.ready") => string, status: string): string {
+  return t(status === "queued" ? "kitchen.new" : status === "cooking" ? "kitchen.cooking" : "kitchen.ready");
 }
 
 function StatusChip({ status }: { status: Item["status"] }) {

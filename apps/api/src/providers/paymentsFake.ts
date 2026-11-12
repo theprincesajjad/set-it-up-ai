@@ -110,8 +110,11 @@ export class FakePayments implements PaymentsProvider {
   readonly refunds: { id: string; paymentIntentId: string; amountCents: number; connectedAccountId?: string }[] = [];
   readonly invoices: (ProviderInvoice & { customerId: string })[] = [];
 
-  constructor(private readonly config: Pick<Config, "publicWebUrl" | "publicApiUrl" | "stripe">) {
+  private readonly production: boolean;
+
+  constructor(private readonly config: Pick<Config, "publicWebUrl" | "publicApiUrl" | "stripe"> & { env?: Config["env"] }) {
     this.webhookSecret = config.stripe.webhookSecret ?? FAKE_WEBHOOK_SECRET;
+    this.production = config.env === "production";
   }
 
   private nextId(prefix: string): string {
@@ -515,6 +518,8 @@ export class FakePayments implements PaymentsProvider {
   }
 
   verifyWebhook(rawBody: string, signatureHeader: string | undefined): PaymentsEvent {
+    // The default signing secret is public in the repo: on a production server only a real, configured secret may verify anything.
+    if (this.production && this.webhookSecret === FAKE_WEBHOOK_SECRET) throw new Error("Webhook signing secret is not configured");
     if (!signatureHeader) throw new Error("Missing signature");
     const parts = Object.fromEntries(signatureHeader.split(",").map((p) => p.split("=", 2) as [string, string]));
     const t = Number(parts.t);

@@ -627,7 +627,9 @@ async function petsOn(db: DbOrTx, rows: Appointment[]): Promise<Map<string, appo
   const ps = await db.select().from(pets).where(inArray(pets.id, ids));
   const shop = await db.select().from(petShop).where(and(inArray(petShop.petId, ids), inArray(petShop.merchantId, merchantIds)));
   const vax = await db.select().from(petVaccines).where(inArray(petVaccines.petId, ids));
-  const today = new Date().toISOString().slice(0, 10);
+  // "Today" is the shop's day (its own time zone), not UTC: after 7 or 8 pm in Toronto the UTC date is already tomorrow.
+  const zones = await db.select({ id: merchants.id, timezone: merchants.timezone }).from(merchants).where(inArray(merchants.id, merchantIds));
+  const todayFor = (merchantId: string) => new Intl.DateTimeFormat("en-CA", { timeZone: zones.find((z) => z.id === merchantId)?.timezone ?? "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   const rank = { none: 0, current: 1, expiring: 2, expired: 3 } as const;
   for (const r of rows) {
     if (!r.petId || out.has(r.petId + r.merchantId)) continue;
@@ -636,7 +638,7 @@ async function petsOn(db: DbOrTx, rows: Appointment[]): Promise<Map<string, appo
     const sh = shop.find((x) => x.petId === p.id && x.merchantId === r.merchantId);
     let worst: "none" | "current" | "expiring" | "expired" = "none";
     for (const v of vax.filter((x) => x.petId === p.id)) {
-      const st = vaccineStatus(v.expiresOn, today).status as "current" | "expiring" | "expired";
+      const st = vaccineStatus(v.expiresOn, todayFor(r.merchantId)).status as "current" | "expiring" | "expired";
       if (rank[st] > rank[worst]) worst = st;
     }
     out.set(r.petId + r.merchantId, { id: p.id, name: p.name, species: p.species, breed: p.breed, sizeBand: p.sizeBand, coat: p.coat, handlingNote: sh?.handlingNote ?? null, vaccines: worst, groomEveryWeeks: sh?.groomEveryWeeks ?? defaultGroomWeeks(p.coat) });

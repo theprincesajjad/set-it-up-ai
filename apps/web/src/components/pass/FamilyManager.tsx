@@ -6,11 +6,12 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 
 /** /me/family: first names of the people on this card. Each needs the parent's tick; removing deletes the name. */
 export function FamilyManager() {
+  const errText = useErrorText();
   const { t } = useFmt();
   const [data, setData] = useState<barberApi.FamilyResponse | null>(null);
   const [name, setName] = useState("");
@@ -18,7 +19,7 @@ export function FamilyManager() {
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const load = () => browserApi.me.family().then(setData).catch((e) => setError(errorMessage(e)));
+  const load = () => browserApi.me.family().then(setData).catch((e) => setError(errText(e)));
   useEffect(() => {
     void load();
   }, []);
@@ -37,7 +38,7 @@ export function FamilyManager() {
                 variant="secondary"
                 size="sm"
                 onClick={async () => {
-                  await browserApi.me.removeFamily(f.id).catch((e) => setError(errorMessage(e)));
+                  await browserApi.me.removeFamily(f.id).catch((e) => setError(errText(e)));
                   await load();
                 }}
               >
@@ -67,7 +68,7 @@ export function FamilyManager() {
               setTried(false);
               await load();
             } catch (err) {
-              setError(errorMessage(err));
+              setError(errText(err));
             } finally {
               setBusy(false);
             }

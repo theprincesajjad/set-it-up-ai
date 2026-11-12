@@ -20,7 +20,8 @@ import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { PLANS, PROMOS_PER_MONTH_PLUS } from "@ll/shared";
 import { GroceryHome } from "@/components/dashboard/grocery/GroceryHome";
-import { ErrorLine, PageHeader, StatBlock } from "@/components/dashboard/kit";
+import { PageHeader, StatBlock } from "@/components/dashboard/kit";
+import { ErrorPanel } from "@/components/errors";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { BusyMode } from "@/components/dashboard/restaurant/RestaurantHome";
 import { ActivationCard } from "@/components/dashboard/onboarding/ActivationCard";
@@ -137,7 +138,11 @@ export function TodayPage() {
   let upLabel = t("shell.today.upNextSchedule");
   let numbers = loyaltyNumbers(loyaltyIn, f, now);
   let loading = false;
-  const err = today.error ?? restaurant.error ?? appts.error ?? sessions.error ?? tickets.error;
+  // The queries the family's cards cannot honestly draw without. If one of these failed and has nothing to show, Today says so INSTEAD of the cards:
+  // "Nothing needs you right now" and zero counts would read as all clear while a waiting reward or a slipping regular is hidden.
+  const primary: { error: string | null; cause: unknown; data: unknown }[] =
+    family === "restaurant" ? [restaurant] : family === "appointments" ? [apptsOn ? appts : today, today] : family === "studio" ? [sessions] : family === "service" ? [tickets] : [today];
+  const failedQ = manager ? primary.find((q) => q.error && !q.data) : counter.error && !counter.data ? counter : undefined;
   if (family === "restaurant") {
     needs = restaurantNeeds(restaurant.data);
     up = restaurantUp(restaurant.data, f);
@@ -169,13 +174,16 @@ export function TodayPage() {
     loading = (today.loading && !today.data) || (ordersOn && orders.loading && !orders.data);
   }
   // Wave P: while the setup guide is up, its next step is not repeated as a Needs you row.
+  const failed = !!failedQ;
+  const retryAll = () => { void today.reload(); void restaurant.reload(); void appts.reload(); void sessions.reload(); void tickets.reload(); void counter.reload(); };
+  const failurePanel = failedQ ? <ErrorPanel error={failedQ.cause ?? failedQ.error} onRetry={retryAll} /> : null;
   const guide = manager && showSetupGuide(onboarding.data);
   if (guide) needs = needs.filter((r) => r.key !== "setup");
 
   useEffect(() => {
     if (!manager || loading) return;
-    publishNeedsYou(needs.length);
-  }, [manager, loading, needs.length]);
+    publishNeedsYou(failed ? null : needs.length);
+  }, [manager, loading, needs.length, failed]);
   useEffect(() => () => publishNeedsYou(null), []);
 
   const can = {
@@ -275,9 +283,12 @@ export function TodayPage() {
       {manager ? <TrialCard /> : null /* phase-pro: p1 */}
       {manager ? <ThisWeekTile /> : null /* phase-pro: p6 */}
 
-      {err && !needs.length && !today.data && !restaurant.data ? <ErrorLine message={err} onRetry={() => { void today.reload(); void restaurant.reload(); }} /> : null}
-
-      {manager ? (
+      {manager && failurePanel ? (
+        <>
+          {failurePanel}
+          <QuickActionsCard actions={actions} base={base} />
+        </>
+      ) : manager ? (
         clear ? (
           <div className="grid gap-4 lg:grid-cols-8">
             {/* Needs you and Quick actions run under the glass sidebar as in the mock (`bleed-under-sidebar`: x 120, content still at 268). */}
@@ -302,7 +313,8 @@ export function TodayPage() {
         )
       ) : (
         <>
-          <StatBlock
+          {failurePanel}
+          {failurePanel ? null : <StatBlock
             label={t("shell.today.atCounter")}
             loading={counter.loading && !counter.data}
             cols={2}
@@ -310,7 +322,7 @@ export function TodayPage() {
               { label: t("shell.today.visitsSoFar"), value: counter.data ? formatNumber(counter.data.visitCount) : "–", caption: counter.data?.visitCount === 0 ? t("shell.today.nobodyYet") : undefined },
               { label: t("shell.today.newMembers"), value: counter.data ? formatNumber(counter.data.newMembers) : "–" },
             ]}
-          />
+          />}
         </>
       )}
 

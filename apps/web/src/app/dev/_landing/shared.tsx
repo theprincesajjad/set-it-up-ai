@@ -47,7 +47,7 @@ export function TopBar({ cta, prefix, onBlack = false }: { cta: string; prefix: 
         </nav>
         <div className={`${prefix}-top-end`}>
           <Link href="/login" prefetch={false} className={`${prefix}-top-login`}>
-            Log in
+            Sign in
           </Link>
           <Link href="/signup" prefetch={false} className={`${prefix}-btn ${prefix}-btn-sm`} data-cta="nav">
             {cta}

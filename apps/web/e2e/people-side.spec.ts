@@ -42,7 +42,7 @@ async function customer(first: string) {
   return { phone, token: r.accessToken, userId: r.user.id };
 }
 async function signIn(page: Page, email: string, path: string) {
-  await page.goto(`/login?lang=${LANG}`);
+  await page.goto(`/login?lang=${LANG}&switch=1`); // switch=1: a signed-in /login would redirect to the dashboard
   await page.getByLabel(/Email/).fill(email);
   await page.getByLabel(/Password/).fill(PASSWORD);
   await page.getByRole("button", { name: /Sign in/ }).click();

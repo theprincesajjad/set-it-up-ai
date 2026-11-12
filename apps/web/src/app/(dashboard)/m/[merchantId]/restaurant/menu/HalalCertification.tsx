@@ -62,7 +62,8 @@ export function HalalCertification({ state }: { state: ApiState<restaurantWebApi
   return (
     <section aria-label="Halal certification" className="flex flex-col gap-3">
       {cert ? (
-        <dl className="grid overflow-hidden rounded-card bg-card shadow-card md:grid-cols-[1fr_1fr_1fr_1.1fr] [&>div]:border-line [&>div:not(:first-child)]:border-t md:[&>div:not(:first-child)]:border-s md:[&>div:not(:first-child)]:border-t-0">
+        <>
+        <dl className="grid overflow-hidden rounded-card bg-card shadow-card md:grid-cols-3 [&>div]:border-line [&>div:not(:first-child)]:border-t md:[&>div:not(:first-child)]:border-s md:[&>div:not(:first-child)]:border-t-0">
           <div className="flex flex-col gap-1 px-5 py-4">
             <dt className="text-meta text-fg-muted">Certifier (shown to guests)</dt>
             <dd className="text-headline text-fg">{cert.certifier}</dd>
@@ -82,7 +83,9 @@ export function HalalCertification({ state }: { state: ApiState<restaurantWebApi
               {cert.expired ? "Expired. Guests see “Certificate expired, ask the restaurant” and no certifier name." : cert.daysLeft !== null && cert.daysLeft <= 60 ? `${cert.daysLeft} days left. We remind you at 60 and 30 days.` : cert.validUntil ? "We remind you 60 and 30 days before." : "Add a date and we will remind you before it ends."}
             </dd>
           </div>
-          <div className="flex flex-col items-start gap-2 px-5 py-4">
+        </dl>
+        <div className="flex flex-col gap-2 rounded-card bg-card px-5 py-4 shadow-card md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col items-start gap-2">
             <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
               Edit certification
             </Button>
@@ -91,7 +94,8 @@ export function HalalCertification({ state }: { state: ApiState<restaurantWebApi
               Guests read: {guestsRead(cert)}
             </p>
           </div>
-        </dl>
+        </div>
+        </>
       ) : (
         <div className="flex flex-col items-start gap-3 rounded-card bg-card shadow-card px-5 py-4">
           <div>

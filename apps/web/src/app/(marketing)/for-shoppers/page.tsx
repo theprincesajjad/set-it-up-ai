@@ -8,15 +8,16 @@ import { PhoneStage } from "@/components/marketing/HeroArt";
 import { MHeading, MSection } from "@/components/marketing/Section";
 import { Button } from "@/components/ui/Button";
 import { publicServerApi } from "@/lib/api/server";
-import { env } from "@/lib/env";
 import { LocaleScope } from "@/lib/i18n";
 import { LOCALE_COOKIE } from "@/lib/i18n/server";
 import { preloadInter } from "@/lib/fonts/inter";
+import { languageAlternates } from "@/lib/marketing/language-alternates";
+import { storeLinks } from "@/lib/marketing/store-links";
+import { sentenceCase } from "@/lib/marketing/text";
 
 // The language comes from ?lang= or the saved cookie, so the page renders per request; the data it shows is cached for 300 s by the API client.
 export const revalidate = 300;
 
-const BASE = { title: "For shoppers", description: "One card for every shop on your street. Earn rewards at the local places you already love. Free, and your points never expire.", alternates: { canonical: "/for-shoppers" } };
 
 /** ?lang= wins, then the language cookie. English otherwise (no Accept-Language guessing: the header and the page must agree). */
 async function pageLocale(sp: Record<string, string | string[] | undefined>): Promise<Locale> {
@@ -27,8 +28,9 @@ async function pageLocale(sp: Record<string, string | string[] | undefined>): Pr
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const t = translator(await pageLocale(await searchParams));
-  return { ...BASE, title: t("sh.fs.meta.title"), description: t("sh.fs.meta.desc") };
+  const locale = await pageLocale(await searchParams);
+  const t = translator(locale);
+  return { title: t("sh.fs.meta.title"), description: t("sh.fs.meta.desc"), alternates: languageAlternates("/for-shoppers", locale) };
 }
 
 const STEPS: [MessageKey, MessageKey][] = [
@@ -65,14 +67,15 @@ export default async function ShoppersPage({ searchParams }: Props) {
     pub.public.liveCampaigns().then((r) => r.items).catch(() => []),
   ]);
   const campaign = live[0] ?? null;
+  const stores = storeLinks();
   const endsOn = campaign ? formatDate(locale, campaign.endsAt, { month: "short", day: "numeric" }) : "";
   return (
     <LocaleScope locale={locale}>
       <section className="overflow-hidden">
-        <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-4 pt-14 pb-16 md:grid-cols-[1.05fr_1fr] md:px-8 md:pt-24 md:pb-28">
+        <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-4 pt-14 pb-16 md:px-8 md:pt-20 lg:grid-cols-[1.05fr_1fr] lg:pt-24 lg:pb-28">
           <div>
             <p className="mkt-rise inline-flex rounded-full bg-tile-peach px-4 py-2 text-meta-strong text-tile-peach-foreground">{t("sh.fs.meta.title")}</p>
-            <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{t("sh.fs.h1")}</h1>
+            <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{sentenceCase(t("sh.fs.h1"))}</h1>
             <p className="mt-6 max-w-[32rem] text-[18px] leading-[1.55] text-muted-foreground">{t("sh.fs.lead")}</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" href="/map">
@@ -82,15 +85,26 @@ export default async function ShoppersPage({ searchParams }: Props) {
                 {t("sh.fs.ctaCard")}
               </Button>
             </div>
+            {/* The app line shows only for stores whose listing URL is configured; otherwise just the QR hint. */}
             <p className="mt-5 text-meta text-muted-foreground">
-              {t("sh.fs.scanOr")}{" "}
-              <a href={env.appStoreUrl} className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
-                App Store
-              </a>{" "}
-              ·{" "}
-              <a href={env.playStoreUrl} className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
-                Google Play
-              </a>
+              {stores.appStore || stores.playStore ? t("sh.fs.scanOr") : t("sh.fs.scan")}
+              {stores.appStore ? (
+                <>
+                  {" "}
+                  <a href={stores.appStore} className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
+                    App Store
+                  </a>
+                </>
+              ) : null}
+              {stores.appStore && stores.playStore ? " ·" : null}
+              {stores.playStore ? (
+                <>
+                  {" "}
+                  <a href={stores.playStore} className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
+                    Google Play
+                  </a>
+                </>
+              ) : null}
             </p>
           </div>
           <PhoneStage arts={["coffee", "beauty"]}>
@@ -159,7 +173,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
 
       <MSection reveal>
         <div className="grid gap-12 md:grid-cols-[1fr_1.5fr]">
-          <h2 className="display text-mkt-md md:text-mkt-lg">{t("sh.fs.faqTitle")}</h2>
+          <h2 className="display text-mkt-md md:text-mkt-lg">{sentenceCase(t("sh.fs.faqTitle"))}</h2>
           <Faq items={FAQ.map(([q, a]) => ({ q: t(q), a: t(a, { brand: BRAND.name }) }))} />
         </div>
       </MSection>

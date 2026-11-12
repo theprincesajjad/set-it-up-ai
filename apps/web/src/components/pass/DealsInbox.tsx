@@ -8,7 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { promosApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { DealCard } from "./DealCard";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -23,6 +23,7 @@ export function DealsInbox() {
 }
 
 function Inbox() {
+  const errText = useErrorText();
   const { t } = useLocaleOrEnglish();
   const params = useSearchParams();
   const focus = params.get("deal");
@@ -62,7 +63,7 @@ function Inbox() {
       const r = await browserApi.me.claimDeal(d.id);
       setItems((xs) => (xs ?? []).map((x) => (x.id === d.id ? { ...x, claim: r.claim, remaining: r.remaining } : x)));
     } catch (e) {
-      setErrors((x) => ({ ...x, [d.id]: errorMessage(e) || t("deal.error") }));
+      setErrors((x) => ({ ...x, [d.id]: errText(e) || t("deal.error") }));
       void load();
     } finally {
       setBusy(null);

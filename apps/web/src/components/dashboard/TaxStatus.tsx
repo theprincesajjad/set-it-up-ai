@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 /** What "not set" means for the shop's bills, in words. */
-export const TAX_NOT_SET_NOTE = "Until you answer, tiffin plans and appointments add no tax, and catering quotes add your province's rate marked \"tax status not set\".";
+export const TAX_NOT_SET_NOTE = "Until you do, tiffin plans and bookings are priced with no tax, and catering quotes show tax as unconfirmed.";
 
 /** The saved status, loaded for one screen. `compact` drops the panel frame (setup step). */
 export function TaxStatus({ owner, compact = false, onSaved }: { owner: boolean; compact?: boolean; onSaved?: () => void }) {
@@ -59,7 +59,7 @@ function TaxForm({ d, owner, compact, reload, api }: { d: paymentsManualApi.TaxS
   );
   const body = (
     <div className="flex flex-col gap-4">
-      {d.taxRegistered === null ? <Banner tone="warning" title="Set your tax status">{TAX_NOT_SET_NOTE}</Banner> : null}
+      {d.taxRegistered === null ? <Banner tone="warning" title="Tell us if you charge HST">{TAX_NOT_SET_NOTE}</Banner> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <div role="radiogroup" aria-label="Registered for GST/HST" className="flex flex-wrap gap-2">
         {([["yes", "Yes, I'm registered"], ["no", "No, I'm a small supplier"]] as const).map(([v, label]) => (
@@ -94,9 +94,11 @@ export function TaxNotSetBanner() {
   const state = useApi(owner ? () => api.settings.tax() : null, [api, owner]);
   // The payments page carries the question itself; a second banner above it says the same thing twice.
   if (pathname.endsWith("/restaurant/payments")) return null;
+  // Only where something gets priced; reviews, festivals, WhatsApp and the kitchen board have no use for the question.
+  if (!/\/restaurant\/(preorders|catering|tiffin|banquet|menu)(\/|$)/.test(pathname)) return null;
   if (!owner || !state.data || state.data.taxRegistered !== null) return null;
   return (
-    <Banner tone="warning" title="Set your tax status">
+    <Banner tone="warning" title="Tell us if you charge HST">
       {TAX_NOT_SET_NOTE}{" "}
       <Link href={`${base}/settings?tab=tax`} className="font-medium underline underline-offset-4">Answer in Settings</Link>
     </Banner>

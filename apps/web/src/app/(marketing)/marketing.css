@@ -3,6 +3,27 @@
  * Every animation sits inside a no-preference media query, so reduced motion shows the finished frame with nothing moving.
  */
 
+/* One headline face on every marketing page: the home page's Strata at 850 (lib/marketing/serif.css; the layout preloads the file), for
+   the display-size headlines and big numbers (the text-mkt-* sizes) of the pricing, restaurant, BIA, shopper, sign-in and legal pages,
+   which used to set them in Inter and read as a different company's site. Latin text only: Strata has no Devanagari, Gurmukhi or Arabic
+   glyphs, so Hindi, Urdu and Punjabi headlines keep their own stacks. */
+.mkt-pages .display[class*="text-mkt-"]:not(:lang(hi), :lang(ur), :lang(pa)) {
+  font-family: "Strata", "Strata Fallback", var(--font-display);
+  font-weight: 850;
+  letter-spacing: -0.008em;
+}
+
+/* Urdu card and step titles (the smaller display titles, outside the text-mkt-* sizes handled in globals.css): their fixed Latin leading
+   (28 to 32px) set Nastaliq lines into the chip above and the paragraph below. Relative leading, no tracking. */
+.mkt-pages :is(h2, h3).display:lang(ur):not([class*="text-mkt-"]) {
+  line-height: 1.9;
+  letter-spacing: 0;
+}
+
+/* Room under the footer's last line for the chat launcher, which is fixed to the bottom corner: at the end of the page it used to sit on
+   top of "Your customers see it in English ...". Only while a launcher is drawn. */
+body:has([data-chat-launcher]) footer.mkt { padding-block-end: 64px; }
+
 /* Awning: one stripe across the top of the page. */
 .mkt-awning {
   background: repeating-linear-gradient(90deg, var(--primary) 0 36px, var(--card) 36px 72px);

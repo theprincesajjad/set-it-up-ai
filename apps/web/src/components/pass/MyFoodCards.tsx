@@ -11,11 +11,12 @@ import { Button } from "@/components/ui/Button";
 import { SwitchControl } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { ConsentNeeded, isNoConsent } from "./ConsentNeeded";
 import { cn } from "@/lib/cn";
 
 export function MyFoodCards() {
+  const errText = useErrorText();
   const { t, date } = useFmt();
   const [items, setItems] = useState<petApi.FoodCardDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export function MyFoodCards() {
   /** Cards whose switch the server refused for want of the shop's text consent. */
   const [needsConsent, setNeedsConsent] = useState<Record<string, boolean>>({});
   useEffect(() => {
-    void browserApi.me.myFoodCards().then((r) => setItems(r.items)).catch((e) => setError(errorMessage(e)));
+    void browserApi.me.myFoodCards().then((r) => setItems(r.items)).catch((e) => setError(errText(e)));
   }, []);
   const day = (ymd: string) => date(ymd, { month: "short", day: "numeric" }, "UTC");
   async function toggle(c: petApi.FoodCardDto, remind: boolean) {
@@ -37,7 +38,7 @@ export function MyFoodCards() {
       setItems((xs) => (xs ?? []).map((x) => (x.id === c.id ? { ...r, shop: x.shop } : x)));
     } catch (e) {
       if (isNoConsent(e)) setNeedsConsent((n) => ({ ...n, [c.id]: true }));
-      else setError(errorMessage(e));
+      else setError(errText(e));
     } finally {
       setBusy(null);
     }

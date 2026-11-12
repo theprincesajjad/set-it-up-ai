@@ -6,7 +6,8 @@ import { errorMessage } from "../../api/client";
 import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { useSession } from "../../state/session";
-import { Banner, ErrorState, QuoteApproval, Screen, SkeletonList, Text, useToast } from "../../ui";
+import { LinkProblem } from "../../features/customer/LinkProblem";
+import { Banner, QuoteApproval, Screen, SkeletonList, Text, useToast } from "../../ui";
 
 /** Quote approval opened from an SMS/push link (ll://quote/<token> or /q/<token>). */
 export default function QuoteByToken() {
@@ -18,7 +19,7 @@ export default function QuoteByToken() {
   const [busy, setBusy] = useState<"approve" | "decline" | null>(null);
   const [error, setError] = useState<string | null>(null);
   if (q.isLoading) return <Screen back><SkeletonList rows={3} /></Screen>;
-  if (!q.data) return <Screen back><ErrorState message={t("ms.quote.badLink")} /></Screen>;
+  if (!q.data) return <LinkProblem error={q.error} onRetry={() => q.refetch()} />;
   const { merchant, ticket, quote, event, taxLabel, terms, promisedAt } = q.data;
   const title = [ticket.itemDetails.make, ticket.itemDetails.model].filter(Boolean).join(" ") || ticket.issue;
   const respond = async (kind: "approve" | "decline", name?: string) => {

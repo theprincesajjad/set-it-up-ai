@@ -2,7 +2,7 @@ import { writeAudit } from "../services/admin-audit.js";
 import { and, eq } from "drizzle-orm";
 import type { FastifyRequest } from "fastify";
 import { SignJWT, jwtVerify } from "jose";
-import { merchantStaff, merchants, users } from "@ll/db";
+import { merchantStaff, merchants, sessions, users } from "@ll/db";
 import type { AppContext } from "../context.js";
 import { forbidden, notFound, supportSessionRequired, unauthorized } from "./errors.js";
 import { hasActiveSupportSession } from "./support-session.js";
@@ -26,8 +26,9 @@ const ACCESS_TTL_SECONDS = 60 * 60; // 1 hour
 
 const key = (secret: string) => new TextEncoder().encode(secret);
 
-export async function signAccessToken(ctx: AppContext, user: AuthUser): Promise<string> {
-  return new SignJWT({ role: user.platformRole })
+/** `sessionId` ties the token to the sign-in it came from, so signing out or resetting the password ends it (see `liveAuthUser`). */
+export async function signAccessToken(ctx: AppContext, user: AuthUser, sessionId?: string): Promise<string> {
+  return new SignJWT({ role: user.platformRole, ...(sessionId ? { sid: sessionId } : {}) })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
     .setIssuedAt()
@@ -35,14 +36,67 @@ export async function signAccessToken(ctx: AppContext, user: AuthUser): Promise<
     .sign(key(ctx.config.jwtSecret));
 }
 
+/**
+ * A rotated session keeps its previous access token alive for this long, so requests already in flight when the app refreshes do not
+ * fail. Rotation stamps `sessions.revokedAt` this far in the future; sign-out and "end every session" stamp it with now.
+ */
+export const ROTATION_GRACE_MS = 30_000;
+
+interface Live {
+  platformRole: PlatformRole;
+}
+const liveCache = new WeakMap<AppContext, Map<string, { at: number; live: Live | null }>>();
+const LIVE_CACHE_MS = 5_000;
+
+/** Call after anything that ends sessions, deletes an account or changes a role, so this process stops trusting its cached answer at once. */
+export function forgetAuthCache(ctx: AppContext, userId?: string): void {
+  const m = liveCache.get(ctx);
+  if (!m) return;
+  if (!userId) return m.clear();
+  for (const k of m.keys()) if (k.startsWith(`${userId}:`)) m.delete(k);
+}
+
+/**
+ * The database's current view of a signed token: the account still exists, the role is the one it has now (a demoted admin or rep is
+ * not one any more), and the session the token came from has not been ended. Tokens are otherwise stateless for an hour.
+ * Cached for a few seconds per process outside tests (other processes catch up within that time).
+ */
+async function liveAuthUser(ctx: AppContext, userId: string, sid: string | undefined): Promise<Live | null> {
+  const cacheKey = `${userId}:${sid ?? ""}`;
+  const useCache = ctx.config.env !== "test";
+  let m = liveCache.get(ctx);
+  if (useCache) {
+    if (!m) liveCache.set(ctx, (m = new Map()));
+    const hit = m.get(cacheKey);
+    if (hit && Date.now() - hit.at < LIVE_CACHE_MS) return hit.live;
+  }
+  const [u] = await ctx.db.select({ platformRole: users.platformRole, deletedAt: users.deletedAt }).from(users).where(eq(users.id, userId)).limit(1);
+  let live: Live | null = u && !u.deletedAt ? { platformRole: u.platformRole } : null;
+  if (live && sid) {
+    const [sess] = await ctx.db.select({ revokedAt: sessions.revokedAt, userId: sessions.userId }).from(sessions).where(eq(sessions.id, sid)).limit(1);
+    if (!sess || sess.userId !== userId || (sess.revokedAt && sess.revokedAt <= ctx.now())) live = null;
+  }
+  if (useCache && m) {
+    if (m.size > 5000) m.clear();
+    m.set(cacheKey, { at: Date.now(), live });
+  }
+  return live;
+}
+
 export async function verifyAccessToken(ctx: AppContext, token: string): Promise<AuthUser | null> {
+  let sub: string | undefined;
+  let sid: string | undefined;
   try {
     const { payload } = await jwtVerify(token, key(ctx.config.jwtSecret), { currentDate: ctx.now() });
-    if (!payload.sub) return null;
-    return { id: payload.sub, platformRole: (payload.role as PlatformRole) ?? "none" };
+    sub = payload.sub;
+    sid = typeof payload.sid === "string" ? payload.sid : undefined;
   } catch {
     return null;
   }
+  if (!sub) return null;
+  // A database failure here is a server error (the request fails), never a signed-out answer.
+  const live = await liveAuthUser(ctx, sub, sid);
+  return live ? { id: sub, platformRole: live.platformRole } : null;
 }
 
 export function requireUser(req: FastifyRequest): AuthUser {

@@ -24,7 +24,7 @@ export interface StripePaymentProps {
 }
 
 function Form({ amountCents, label, onSucceeded }: Omit<StripePaymentProps, "publishableKey" | "clientSecret">) {
-  const { t } = useLocaleOrEnglish();
+  const { t, locale } = useLocaleOrEnglish();
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
@@ -39,7 +39,7 @@ function Form({ amountCents, label, onSucceeded }: Omit<StripePaymentProps, "pub
         setError(null);
         const { error: err } = await stripe.confirmPayment({ elements, redirect: "if_required", confirmParams: { return_url: window.location.href } });
         if (err) {
-          setError(err.type === "card_error" ? err.message ?? t("wp.pay.declined") : t("wp.pay.declined"));
+          setError(locale === "en" && err.type === "card_error" && err.message ? err.message : t("wp.pay.declined"));
           setBusy(false);
           return;
         }
@@ -58,8 +58,9 @@ function Form({ amountCents, label, onSucceeded }: Omit<StripePaymentProps, "pub
 }
 
 export default function StripePayment({ publishableKey, clientSecret, ...rest }: StripePaymentProps) {
+  const { locale } = useLocaleOrEnglish();
   return (
-    <Elements stripe={getStripe(publishableKey)} options={{ clientSecret, appearance: stripeAppearance() }}>
+    <Elements stripe={getStripe(publishableKey)} options={{ clientSecret, appearance: stripeAppearance(), locale: locale === "en" ? "en-CA" : "auto" }}>
       <Form {...rest} />
     </Elements>
   );

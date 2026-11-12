@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
 import { relativeTime } from "@/lib/dashboard/time";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 type Ext = { id: string; name: string; detail?: string };
@@ -20,11 +21,12 @@ type Ext = { id: string; name: string; detail?: string };
 export default function IntegrationDetailPage() {
   const { provider } = useParams<{ provider: string }>();
   const { api, base } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   const state = useApi(() => api.integrations.get(provider), [api, provider]);
   return (
     <div className="flex flex-col gap-4">
       <BackLink href={`${base}/integrations`}>Integrations</BackLink>
-      <Async state={state}>{(d) => <Settings d={d} onChange={(n) => state.setData(n)} />}</Async>
+      <Async state={state} fail={{ title: "Integration", back: { href: `${base}/integrations`, label: t("dash.integration.back") }, notFound: { title: t("dash.integration.gone.title"), description: t("dash.integration.gone.body") } }}>{(d) => <Settings d={d} onChange={(n) => state.setData(n)} />}</Async>
     </div>
   );
 }

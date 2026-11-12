@@ -80,7 +80,7 @@ export default function NameStep() {
     try {
       const birthday = month && day ? `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` : undefined;
       if (!isReturning) {
-        await api.me.updateProfile({ name: [first.trim(), last.trim()].filter(Boolean).join(" "), ...(birthday ? { birthday } : {}) });
+        await api.me.updateProfile({ name: [first.trim(), last.trim()].filter(Boolean).join(" "), locale, ...(birthday ? { birthday } : {}) });
         updatePrefs({ globalConsent, platformConsent });
         void refreshMe();
       }

@@ -2,7 +2,7 @@
 import { ExternalLink } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import type { merchantApi, ThemeStyle } from "@ll/shared";
+import { BRAND, type merchantApi, type ThemeStyle } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { PageHeader, PageTabs, Panel, SaveBar } from "@/components/dashboard/kit";
@@ -297,7 +297,7 @@ function Danger() {
       <Button variant={active ? "danger" : "primary"} onClick={() => setConfirm(true)}>
         {active ? "Pause program" : "Resume program"}
       </Button>
-      <p className="mt-4 text-meta text-fg-muted">To close your shop or transfer ownership, email help@localloyalty.example. We&apos;ll give members notice and keep their history.</p>
+      <p className="mt-4 text-meta text-fg-muted">To close your shop or transfer ownership, email {BRAND.supportEmail}. We&apos;ll give members notice and keep their history.</p>
       <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} title={active ? "Pause your program?" : "Resume your program?"} body={active ? "Customers keep their points and can still redeem." : undefined} confirmLabel={active ? "Pause program" : "Resume program"} danger={active} onConfirm={async () => {
         const p = await api.updateProgram({ active: !active });
         setDetail({ ...detail, program: p });

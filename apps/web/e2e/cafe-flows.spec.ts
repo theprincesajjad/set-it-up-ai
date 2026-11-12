@@ -170,7 +170,8 @@ test("two matches show a list and nothing is stamped until one is tapped", async
 }) => {
   const { token, id } = await setup();
   const tail = String(Math.floor(1000 + Math.random() * 8999));
-  const a = await member(token, id, "Twin One", `647555${tail}`);
+  // 647-391: an exchange no other spec or seed uses, so a random tail cannot land on someone else's number (647-555 is shared).
+  const a = await member(token, id, "Twin One", `647391${tail}`);
   const b = await member(token, id, "Twin Two", `416777${tail}`);
   const beforeA = await balance(token, id, a);
   const beforeB = await balance(token, id, b);

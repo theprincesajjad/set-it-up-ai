@@ -5,10 +5,17 @@
  * It never throws and never blocks: it queues one delivery per subscribed
  * webhook; jobs/connectors.ts delivers them with retries + backoff.
  *
+ * Where a delivery may go (SSRF): in production the host is resolved, EVERY address must be public (services/site-import/net.ts
+ * `isBlockedAddress`: loopback, private, link-local and cloud metadata, carrier-grade NAT, ULA, multicast, the unspecified address, and
+ * IPv4-mapped / NAT64 forms of those), at registration AND again at every delivery, and the delivery connects to the address that was
+ * checked (never a second lookup, so DNS rebinding cannot swap it). Redirects are never followed: a 3xx counts as a failed delivery.
+ *
  * Each POST carries `X-LL-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>`.
  */
 import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
+import https from "node:https";
+import http from "node:http";
 import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { outboundWebhookDeliveries, outboundWebhooks } from "@ll/db";
 import { integrationsApi } from "@ll/shared";
@@ -16,7 +23,8 @@ import type { AppContext } from "../context.js";
 import { decrypt, encrypt, hmacSha256, randomToken, safeEqual } from "../lib/crypto.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { enabledFeaturesByMerchantId } from "./features.js";
-import { httpFor, type Fetch } from "./integrations-http.js";
+import { httpFor, httpInjected, type Fetch } from "./integrations-http.js";
+import { isBlockedAddress, siteImportNet } from "./site-import/net.js";
 
 export const OUTBOUND_EVENTS = integrationsApi.OUTBOUND_EVENTS;
 export type OutboundEvent = integrationsApi.OutboundEvent;
@@ -50,9 +58,12 @@ const secretOf = (ctx: AppContext, w: Webhook) => (w.secret.startsWith("enc:") ?
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
-const PRIVATE_V4 = [/^10\./, /^127\./, /^169\.254\./, /^192\.168\./, /^172\.(1[6-9]|2\d|3[01])\./, /^0\./, /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./];
+const LOCAL_NAME = /(^|\.)(localhost|internal|local|localdomain|home\.arpa)$/;
 
-/** Block SSRF to internal hosts; https required outside dev/test. */
+/** The host as written, lower-case, without brackets or a trailing dot ("localhost." is localhost). */
+const hostOf = (u: URL) => u.hostname.replace(/^\[|\]$/g, "").toLowerCase().replace(/\.+$/, "");
+
+/** Block SSRF to internal hosts by name or address; https required outside dev/test. Names are resolved by `assertPublicTarget`. */
 export function validateWebhookUrl(ctx: AppContext, raw: string): string {
   let u: URL;
   try {
@@ -63,18 +74,62 @@ export function validateWebhookUrl(ctx: AppContext, raw: string): string {
   const prod = ctx.config.env === "production";
   if (u.protocol !== "https:" && (prod || u.protocol !== "http:")) throw badRequest("Webhook URL must use https");
   if (u.username || u.password) throw badRequest("Webhook URL must not contain credentials");
-  const host = u.hostname.replace(/^\[|\]$/g, "").toLowerCase();
-  if (prod) {
-    const internal =
-      host === "localhost" ||
-      host.endsWith(".localhost") ||
-      host.endsWith(".internal") ||
-      host.endsWith(".local") ||
-      (isIP(host) === 4 && PRIVATE_V4.some((r) => r.test(host))) ||
-      (isIP(host) === 6 && (host === "::1" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80")));
-    if (internal) throw badRequest("Webhook URL must be a public address");
-  }
+  const host = hostOf(u);
+  if (!host) throw badRequest("Webhook URL is not a valid URL");
+  if (prod && (LOCAL_NAME.test(host) || (isIP(host) && isBlockedAddress(host)))) throw badRequest("Webhook URL must be a public address");
   return u.toString();
+}
+
+/**
+ * Production only: resolve the host and require every address to be public. Returns the address to connect to (the first one),
+ * so the caller connects to what was checked. Tests and the e2e stack resolve through `ctx.providers.siteImportNet`.
+ * Throws a 400 at registration and an Error at delivery (the caller records it as the delivery's error).
+ */
+export async function assertPublicTarget(ctx: AppContext, raw: string): Promise<string | null> {
+  if (ctx.config.env !== "production") return null;
+  const u = new URL(raw);
+  const host = hostOf(u);
+  if (LOCAL_NAME.test(host)) throw badRequest("Webhook URL must be a public address");
+  const net = siteImportNet(ctx);
+  let addrs: string[];
+  if (isIP(host)) addrs = [host];
+  else {
+    try {
+      addrs = await net.lookup(host);
+    } catch {
+      throw badRequest("We couldn't find that address. Check the webhook URL.");
+    }
+  }
+  if (!addrs.length) throw badRequest("We couldn't find that address. Check the webhook URL.");
+  if (addrs.some(isBlockedAddress)) throw badRequest("Webhook URL must be a public address");
+  return net.dial ? net.dial(addrs[0]!) : addrs[0]!;
+}
+
+/** POST to the checked address (the name is only used for the Host header and TLS name). Redirects are never followed. */
+export function pinnedPost(url: URL, address: string, headers: Record<string, string>, text: string, timeoutMs: number, raw?: Buffer): Promise<{ status: number }> {
+  const body = raw ?? Buffer.from(text);
+  const lib = url.protocol === "https:" ? https : http;
+  return new Promise((resolve, reject) => {
+    const req = lib.request(
+      {
+        host: address,
+        port: url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80,
+        method: "POST",
+        path: `${url.pathname}${url.search}`,
+        headers: { ...headers, host: url.host, "content-length": String(body.length) },
+        ...(url.protocol === "https:" && !isIP(hostOf(url)) ? { servername: hostOf(url) } : {}),
+        timeout: timeoutMs,
+      },
+      (res) => {
+        res.resume();
+        res.on("end", () => resolve({ status: res.statusCode ?? 0 }));
+        res.on("error", reject);
+      },
+    );
+    req.on("timeout", () => req.destroy(new Error("The receiver took too long to answer")));
+    req.on("error", reject);
+    req.end(body);
+  });
 }
 
 function validateEvents(events: string[]): OutboundEvent[] {
@@ -94,6 +149,7 @@ export async function createWebhook(
   input: { url: string; events: string[]; description?: string | null; createdVia?: string },
 ) {
   const url = validateWebhookUrl(ctx, input.url);
+  await assertPublicTarget(ctx, url);
   const events = validateEvents(input.events);
   const [{ n }] = (await ctx.db.select({ n: sql<number>`count(*)::int` }).from(outboundWebhooks).where(eq(outboundWebhooks.merchantId, merchantId))) as [{ n: number }];
   if (Number(n) >= MAX_WEBHOOKS_PER_MERCHANT) throw badRequest(`Up to ${MAX_WEBHOOKS_PER_MERCHANT} webhooks per business`);
@@ -119,7 +175,10 @@ async function loadWebhook(ctx: AppContext, merchantId: string, id: string) {
 export async function updateWebhook(ctx: AppContext, merchantId: string, id: string, patch: { url?: string; events?: string[]; active?: boolean; description?: string | null }) {
   await loadWebhook(ctx, merchantId, id);
   const set: Partial<typeof outboundWebhooks.$inferInsert> = {};
-  if (patch.url !== undefined) set.url = validateWebhookUrl(ctx, patch.url);
+  if (patch.url !== undefined) {
+    set.url = validateWebhookUrl(ctx, patch.url);
+    await assertPublicTarget(ctx, set.url);
+  }
   if (patch.events !== undefined) set.events = validateEvents(patch.events);
   if (patch.active !== undefined) set.active = patch.active;
   if (patch.description !== undefined) set.description = patch.description;
@@ -202,7 +261,7 @@ export async function flushMerchantEvents(): Promise<void> {
 }
 
 /** Queue + deliver a `ping` to one webhook now (dashboard "Send test"). */
-export async function sendTestWebhook(ctx: AppContext, merchantId: string, webhookId: string, fetchImpl: Fetch = httpFor(ctx)) {
+export async function sendTestWebhook(ctx: AppContext, merchantId: string, webhookId: string, fetchImpl?: Fetch) {
   await loadWebhook(ctx, merchantId, webhookId);
   await enqueue(ctx, merchantId, "ping", { message: "Test event from your loyalty dashboard" }, webhookId);
   const [d] = await ctx.db
@@ -218,7 +277,7 @@ export async function sendTestWebhook(ctx: AppContext, merchantId: string, webho
 // ---------------------------------------------------------------------------
 // Delivery
 // ---------------------------------------------------------------------------
-export async function deliverOne(ctx: AppContext, deliveryId: string, fetchImpl: Fetch = httpFor(ctx)) {
+export async function deliverOne(ctx: AppContext, deliveryId: string, fetchImpl?: Fetch) {
   const now = ctx.now();
   // Claim the delivery (lease) so two workers never send it at the same time.
   const [d] = await ctx.db
@@ -237,19 +296,20 @@ export async function deliverOne(ctx: AppContext, deliveryId: string, fetchImpl:
   let statusCode: number | null = null;
   let error: string | null = null;
   try {
-    const res = await fetchImpl(w.url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "user-agent": "LocalLoyalty-Webhooks/1.0",
-        "x-ll-event": d.event,
-        "x-ll-delivery": d.id,
-        "x-ll-signature": signWebhookBody(secretOf(ctx, w), ts, body),
-      },
-      body,
-      redirect: "manual",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    // Checked again now (not just when it was saved): a name can start pointing somewhere private later.
+    const address = await assertPublicTarget(ctx, w.url);
+    const headers = {
+      "content-type": "application/json",
+      "user-agent": "LocalLoyalty-Webhooks/1.0",
+      "x-ll-event": d.event,
+      "x-ll-delivery": d.id,
+      "x-ll-signature": signWebhookBody(secretOf(ctx, w), ts, body),
+    };
+    // Production with the real network: connect to the address that was just checked. A test's fake fetch gets the plain call.
+    const res =
+      address && !fetchImpl && !httpInjected(ctx)
+        ? await pinnedPost(new URL(w.url), address, headers, body, TIMEOUT_MS)
+        : await (fetchImpl ?? httpFor(ctx))(w.url, { method: "POST", headers, body, redirect: "manual", signal: AbortSignal.timeout(TIMEOUT_MS) });
     statusCode = res.status;
     if (res.status < 200 || res.status >= 300) error = `HTTP ${res.status}`;
   } catch (err) {
@@ -275,7 +335,7 @@ export async function deliverOne(ctx: AppContext, deliveryId: string, fetchImpl:
 }
 
 /** One pass of the delivery queue (job). */
-export async function deliverDueWebhooks(ctx: AppContext, fetchImpl: Fetch = httpFor(ctx), limit = 100) {
+export async function deliverDueWebhooks(ctx: AppContext, fetchImpl?: Fetch, limit = 100) {
   const due = await ctx.db
     .select({ id: outboundWebhookDeliveries.id })
     .from(outboundWebhookDeliveries)

@@ -573,7 +573,7 @@ export interface MyAppointmentResponse {
 // ---------------------------------------------------------------------------
 export const visitNoteBody = z.object({
   visitNote: z.string().trim().max(2000).nullable(),
-  visitPhotoUrl: z.url().max(2000).nullable().optional(),
+  visitPhotoUrl: z.url({ protocol: /^https?$/ }).max(2000).nullable().optional(),
 });
 export type VisitNoteBody = z.infer<typeof visitNoteBody>;
 

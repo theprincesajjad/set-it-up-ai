@@ -82,7 +82,7 @@ export default async function PreorderPage({ params, searchParams }: Props) {
   if (unavailable || !availability)
     return (
       <PageFrame locale={locale} trade={shop.vertical} brandColor={shop.brandColor}>
-        <EmptyState title={t("rs.pre.unavailable")} description={t(shop.vertical === "grocery" ? "gr.pre.unavailableBody" : "rs.pre.unavailableBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
+        <EmptyState headingLevel={1} title={t("rs.pre.unavailable")} description={t(shop.vertical === "grocery" ? "gr.pre.unavailableBody" : "rs.pre.unavailableBody")} action={<Button variant="secondary" href={`/shops/${encodeURIComponent(slug)}`}>{t("rc.backToShop", { shop: shop.name })}</Button>} />
       </PageFrame>
     );
   const [restaurant, me] = await Promise.all([api.restaurant(slug).catch(() => null), getMe()]);

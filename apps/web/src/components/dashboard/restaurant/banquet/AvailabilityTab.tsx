@@ -95,7 +95,7 @@ function Week({ a, start }: { a: restaurantApi.HallAvailabilityResponse; start: 
       {a.halls.map(({ hall, busy }) => (
         <section key={hall.id} aria-label={hall.name}>
           <div className="flex items-baseline justify-between border-b border-line pb-2">
-            <h3 className="text-body-strong text-fg">{hall.name}</h3>
+            <h2 className="text-body-strong text-fg">{hall.name}</h2>
             <span className="text-meta text-fg-muted">Seats {formatNumber(hall.capacity)} · {busy.length ? `${busy.length} ${busy.length === 1 ? "booking" : "bookings"} this week` : "free all week"}</span>
           </div>
           <ol className="grid sm:grid-cols-7 sm:divide-x sm:divide-line">
@@ -175,7 +175,7 @@ function Month({ a, month, sel, setSel, bookings }: { a: restaurantApi.HallAvail
             const on = selDay === day;
             return (
               <button key={day} type="button" aria-pressed={on} aria-label={`${dayLabel(day)}, ${w.length ? `${w.length} booked` : "free"}`} onClick={() => setSel(day)} className={cn("flex min-h-16 flex-col items-stretch gap-1 border-e border-b border-line p-1.5 text-start hover:bg-bg-subtle focus-visible:focus-ring sm:min-h-[92px] sm:p-2", !inMonth && "bg-bg-subtle/60", on && "bg-bg-muted")}>
-                <span className={cn("text-meta tabular", day === today ? "inline-flex size-6 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground" : inMonth ? "text-fg-muted" : "text-fg-subtle")}>{Number(day.slice(8))}</span>
+                <span className={cn("text-meta tabular", day === today ? "inline-flex size-6 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground" : "text-fg-muted")}>{Number(day.slice(8))}</span>
                 {w.map((x) => (
                   <span key={x.bookingId} className={cn("hidden rounded-[6px] px-1.5 py-1 text-caption leading-tight sm:block", x.status === "confirmed" ? "bg-primary text-primary-foreground" : "border border-location bg-location/10 text-location")}>
                     <span className="block truncate font-medium">{chip(x)}</span>
@@ -197,7 +197,7 @@ function Month({ a, month, sel, setSel, bookings }: { a: restaurantApi.HallAvail
               return (
                 <div key={x.bookingId} className="flex flex-col gap-3 border-b border-line pb-4 last:border-b-0 last:pb-0 [&:not(:first-child)]:pt-4">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-headline text-fg">{dayLabel(selDay)} · {x.hall}</h3>
+                    <h2 className="text-headline text-fg">{dayLabel(selDay)} · {x.hall}</h2>
                     <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-caption", x.status === "confirmed" ? "bg-bg-muted text-fg" : "bg-location/10 text-location")}>{x.status === "confirmed" ? "Confirmed" : "On hold"}</span>
                   </div>
                   <p className="text-meta text-fg-muted">{x.label?.replace(/ · /g, " · ")}{b?.packageName ? ` · ${b.packageName}` : ""}</p>
@@ -233,7 +233,7 @@ function Month({ a, month, sel, setSel, bookings }: { a: restaurantApi.HallAvail
             })
           ) : (
             <>
-              <h3 className="text-headline text-fg">{dayLabel(selDay)}</h3>
+              <h2 className="text-headline text-fg">{dayLabel(selDay)}</h2>
               <p className="mt-1 text-meta text-fg-muted">Free that day{a.halls.length === 1 ? ` in ${a.halls[0]!.hall.name}` : ""}.</p>
             </>
           )}

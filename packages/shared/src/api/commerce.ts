@@ -29,7 +29,7 @@ export const createCatalogItemBody = z.object({
   description: z.string().max(1000).nullish(),
   priceCents: centsSchema,
   categoryId: uuidSchema.nullish(),
-  imageUrl: z.url().nullish(),
+  imageUrl: z.url({ protocol: /^https?$/ }).nullish(),
   modifiers: z.array(modifierGroupSchema).max(20).default([]),
   available: z.boolean().default(true),
   orderable: z.boolean().default(true),

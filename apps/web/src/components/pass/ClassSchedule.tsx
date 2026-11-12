@@ -10,7 +10,8 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { withLang } from "@/lib/i18n/url";
 import { addDays, dayDate, todayIso, torontoDay } from "@/lib/restaurant/util";
@@ -34,6 +35,7 @@ const DAYS = 14;
  * Ontario agreement shown before the card, and the women-only note on every class that has it.
  */
 export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { shop: Shop; data: Data; signedIn: boolean; devAutofill?: boolean }) {
+  const errText = useErrorText();
   const f = useFmt();
   const { t, money, date, time, locale } = f;
   const [data, setData] = useState<Data>(initial);
@@ -99,7 +101,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
     } catch (e) {
       const code = isApiError(e) ? e.code : undefined;
       if (code === "no_pass" && dropIn && use === "auto") return setBanner(t("cl.ui.err.noPass"));
-      setBanner(code === "membership_past_due" ? t("cl.ui.err.pastDue") : code === "membership_frozen" ? t("cl.ui.err.frozen") : code === "month_used" ? t("cl.ui.err.monthUsed") : errorMessage(e));
+      setBanner(code === "membership_past_due" ? t("cl.ui.err.pastDue") : code === "membership_frozen" ? t("cl.ui.err.frozen") : code === "month_used" ? t("cl.ui.err.monthUsed") : errText(e));
     } finally {
       setBusy(false);
     }
@@ -113,7 +115,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
       await browserApi.me.buyPack(introFree!.id);
     } catch (e) {
       setBusy(false);
-      return setBanner(errorMessage(e));
+      return setBanner(errText(e));
     }
     setBusy(false);
     await book(s, "auto");
@@ -128,7 +130,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
         text: r.late ? t("cl.ui.done.cancelledLate", { hours: data.policy.cancelWindowHours }) + (r.feeChargedCents ? ` ${t("cl.ui.done.fee", { fee: money(r.feeChargedCents) })}` : "") : t("cl.ui.done.cancelled"),
       });
     } catch (e) {
-      setBanner(errorMessage(e));
+      setBanner(errText(e));
     } finally {
       setBusy(false);
     }
@@ -150,7 +152,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
         }
       }
     } catch (e) {
-      setBanner(errorMessage(e));
+      setBanner(errText(e));
     } finally {
       setBusy(false);
     }
@@ -163,7 +165,7 @@ export function ClassSchedule({ shop, data: initial, signedIn, devAutofill }: { 
       setFlow({ ...fl, payment: r.payment });
     } catch (e) {
       const code = isApiError(e) ? e.code : undefined;
-      setBanner(code === "agreement_changed" ? t("cl.ui.agree.changed") : errorMessage(e));
+      setBanner(code === "agreement_changed" ? t("cl.ui.agree.changed") : errText(e));
     } finally {
       setBusy(false);
     }

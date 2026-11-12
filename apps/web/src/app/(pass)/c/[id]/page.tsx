@@ -47,7 +47,7 @@ export default async function CampaignPage({ params, searchParams }: Props) {
     c = await publicServerApi().public.campaign(id);
   } catch (e) {
     if (isApiError(e) && (e.status === 404 || e.status === 400)) notFound();
-    return <ErrorState title={t("wp.err.campaign")} description={t("auth.err.network")} action={<Button variant="secondary" href={`/c/${encodeURIComponent(id)}`}>{t("rc.tryAgain")}</Button>} />;
+    return <ErrorState title={t("wp.err.campaign")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/c/${encodeURIComponent(id)}`}>{t("rc.tryAgain")}</Button>} />;
   }
   const en = locale === "en";
   const fmt = (iso: string) => (en ? `${formatDate(iso, true)}, ${formatTime(iso)}` : `${formatDateL10n(locale, iso, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`);

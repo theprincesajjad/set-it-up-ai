@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 
 const chip = (on: boolean) => cn("rounded-pill border px-4 py-2 text-meta-strong", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle");
@@ -19,6 +19,7 @@ const chip = (on: boolean) => cn("rounded-pill border px-4 py-2 text-meta-strong
  * text; a signed-in customer also gets "my barber" and the family on their card.
  */
 export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null }; data: barberApi.PublicQueueResponse; signedIn: boolean; meName?: string | null }) {
+  const errText = useErrorText();
   const { t, money } = useFmt();
   const router = useRouter();
   const [name, setName] = useState(meName?.split(" ")[0] ?? "");
@@ -67,7 +68,7 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
       if (signedIn && (staffId || null) !== mine) await browserApi.me.setMyBarber(shop.slug, staffId || null).catch(() => undefined);
       router.push(`/line/${r.token}`);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(errText(err));
       setBusy(false);
     }
   }

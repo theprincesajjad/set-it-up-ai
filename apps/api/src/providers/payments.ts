@@ -261,7 +261,10 @@ export interface PaymentsProvider {
 
 
 export function createPaymentsProvider(config: Config): PaymentsProvider {
-  return config.stripe.secretKey ? new StripePayments(config) : new FakePayments(config);
+  if (config.stripe.secretKey) return new StripePayments(config);
+  // The fake provider signs webhooks with a secret that is public in the repo: never on a production server unless a staging box asks for it.
+  if (config.env === "production" && process.env.ALLOW_FAKE_PAYMENTS !== "1") throw new Error("STRIPE_SECRET_KEY is not set: refusing to use the fake payments provider in production");
+  return new FakePayments(config);
 }
 
 const cache = new WeakMap<object, PaymentsProvider>();

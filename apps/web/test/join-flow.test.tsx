@@ -134,7 +134,7 @@ describe("<JoinFlow> (counter QR join)", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     });
-    expect(screen.getByRole("alert").textContent).toBe("That code didn't match. Try again. 3 tries left.");
+    expect(screen.getByRole("alert").textContent).toBe("That code didn’t match. Try again. 3 tries left.");
     expect((screen.getByLabelText("6-digit code") as HTMLInputElement).value).toBe("");
   });
 
@@ -154,7 +154,7 @@ describe("<JoinFlow> (counter QR join)", () => {
     const deps = makeDeps({ joinStart: vi.fn(async () => Promise.reject(new ApiError(429, "rate_limited", "Too many"))) });
     render(<JoinFlow info={info} deps={deps} />);
     await enterPhone();
-    expect(screen.getByText("Too many tries. Try again in 10 minutes.")).toBeTruthy();
+    expect(screen.getByText("Too many tries. Wait a few minutes, then try again.")).toBeTruthy();
   });
 
   it("shop page joins use phone OTP + merchantId", async () => {

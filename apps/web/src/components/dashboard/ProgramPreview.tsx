@@ -107,7 +107,7 @@ export function ProgramPreview({ model, shop, view: viewProp, onViewChange, defa
         ) : null}
         {view === "shop" ? (
           <div className="flex flex-col gap-3">
-            <ShopTile variant="list" shop={shop} subtitle="Open · closes 6 pm" />
+            <ShopTile variant="list" shop={shop} subtitle="Open · closes 6 p.m." />
             {model.welcome ? <p className="self-start rounded-full bg-points-soft px-3 py-1 text-meta-strong text-points-text">{model.welcome}</p> : null}
             <div className="border-y border-line py-3">
               <p className="text-headline text-fg">How you earn here</p>

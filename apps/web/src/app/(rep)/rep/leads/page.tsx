@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { VERTICALS, repApi, type repApi as R } from "@ll/shared";
 import { Badge } from "@/components/ui/Badge";
+import { ErrorPanel } from "@/components/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { DataTable, type Column } from "@/components/ui/DataTable";
@@ -54,8 +55,10 @@ export default function LeadsPage() {
           <TextField type="search" label="Search leads" hideLabel placeholder="Search business or contact" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </div>
-      {leads.error ? <Banner tone="danger">{leads.error}</Banner> : null}
-      {view === "board" ? (
+      {/* Failed with nothing to show: one failure block INSTEAD of empty stage columns that read "0 leads". */}
+      {leads.error && !leads.data ? <ErrorPanel error={leads.cause ?? leads.error} what="your leads" onRetry={() => void leads.reload()} /> : null}
+      {leads.error && leads.data ? <Banner tone="danger">{leads.error} The leads below may be out of date.</Banner> : null}
+      {leads.error && !leads.data ? null : view === "board" ? (
         leads.loading && !leads.data ? (
           <Skeleton className="h-60 rounded-card" />
         ) : (

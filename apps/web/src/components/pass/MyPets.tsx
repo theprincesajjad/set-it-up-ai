@@ -11,18 +11,19 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 
 type Data = { items: petApi.PetDto[]; nextGroom: Record<string, { shop: string; on: string }> };
 const SHOWN = ["rabies", "dhpp", "bordetella"] as const;
 
 export function MyPets() {
+  const errText = useErrorText();
   const { t, date } = useFmt();
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const load = () => browserApi.me.myPets().then(setData).catch((e) => setError(errorMessage(e)));
+  const load = () => browserApi.me.myPets().then(setData).catch((e) => setError(errText(e)));
   useEffect(() => {
     void load();
   }, []);
@@ -58,6 +59,7 @@ export function MyPets() {
 }
 
 function PetCard({ pet, next, day, onChanged, onError }: { pet: petApi.PetDto; next?: { shop: string; on: string }; day: (ymd: string) => string; onChanged: () => Promise<unknown>; onError: (m: string | null) => void }) {
+  const errText = useErrorText();
   const { t } = useFmt();
   const [open, setOpen] = useState<string | null>(null);
   const kinds = [...SHOWN, ...pet.vaccines.filter((v) => !(SHOWN as readonly string[]).includes(v.kind)).map((v) => v.kind)];
@@ -74,7 +76,7 @@ function PetCard({ pet, next, day, onChanged, onError }: { pet: petApi.PetDto; n
           size="sm"
           onClick={async () => {
             if (!window.confirm(`${t("pet.remove")}: ${pet.name}?`)) return;
-            await browserApi.me.removePet(pet.id).catch((e) => onError(errorMessage(e)));
+            await browserApi.me.removePet(pet.id).catch((e) => onError(errText(e)));
             await onChanged();
           }}
         >
@@ -125,6 +127,7 @@ function PetCard({ pet, next, day, onChanged, onError }: { pet: petApi.PetDto; n
 }
 
 function CertForm({ petId, kind, current, onSaved, onError }: { petId: string; kind: string; current: string; onSaved: () => Promise<unknown>; onError: (m: string | null) => void }) {
+  const errText = useErrorText();
   const { t } = useFmt();
   const file = useRef<HTMLInputElement>(null);
   const [d, setD] = useState(current);
@@ -146,7 +149,7 @@ function CertForm({ petId, kind, current, onSaved, onError }: { petId: string; k
           await browserApi.me.saveMyVaccine(petId, kind, { expiresOn: d, ...(proofUrl ? { proofUrl } : {}) });
           await onSaved();
         } catch (err) {
-          onError(errorMessage(err));
+          onError(errText(err));
         } finally {
           setBusy(false);
         }
@@ -163,6 +166,7 @@ function CertForm({ petId, kind, current, onSaved, onError }: { petId: string; k
 }
 
 function AddPet({ onDone, onCancel }: { onDone: () => Promise<unknown>; onCancel: () => void }) {
+  const errText = useErrorText();
   const { t } = useFmt();
   const [name, setName] = useState("");
   const [species, setSpecies] = useState("dog");
@@ -186,7 +190,7 @@ function AddPet({ onDone, onCancel }: { onDone: () => Promise<unknown>; onCancel
           await browserApi.me.addPet({ name: name.trim(), species: species as "dog", breed: breed.trim() || null, sizeBand: size as "small", coat: coat as "short" });
           await onDone();
         } catch (err) {
-          setError(errorMessage(err));
+          setError(errText(err));
         } finally {
           setBusy(false);
         }

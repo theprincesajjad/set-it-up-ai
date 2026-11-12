@@ -1,5 +1,6 @@
 import { palette } from "@ll/design-tokens";
 import { BRAND, placeKindLabel, type networkApi } from "@ll/shared";
+import { WEB_URL } from "../../config";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Linking, StyleSheet, View, useWindowDimensions } from "react-native";
@@ -10,15 +11,7 @@ import { api } from "../../state/api";
 import { useTheme } from "../../theme";
 import { Button, LogoMark, PlaceBubble, ShopLogo, Text } from "../../ui";
 
-/** Made-up shop names for the street still; proper names, not translated. */
-const SAMPLE_SHOPS = {
-  coffee: "Pinecone Coffee", // l10n-ok: fictional shop name
-  bakery: "Hearth & Crumb", // l10n-ok: fictional shop name
-  eat: "Nonna's Table", // l10n-ok: fictional shop name
-  beauty: "Bloom Hair", // l10n-ok: fictional shop name
-};
-
-/** A still of the product, not an illustration: a pale street with four places on it. */
+/** A still of the product, not an illustration: a pale street with four places on it. The names are generic ("Your coffee shop"), never a real or seeded shop. */
 function StreetStill({ width }: { width: number }) {
   const { isDark } = useTheme();
   const { t, locale } = useLocale();
@@ -31,16 +24,16 @@ function StreetStill({ width }: { width: number }) {
       <View style={[styles.road, { backgroundColor: road, top: -40, bottom: -40, left: width * 0.58, width: 12, transform: [{ rotate: "8deg" }] }]} />
       <View style={[styles.road, { backgroundColor: road, top: h * 0.12, left: -40, right: -40, height: 8, transform: [{ rotate: "6deg" }] }]} />
       <View style={[styles.pin, { top: h * 0.08, left: width * 0.08 }]}>
-        <PlaceBubble name={SAMPLE_SHOPS.coffee} subtitle={t("ms.stampsProgress", { n: 7, goal: 10 })} category="coffee" />
+        <PlaceBubble name={t("mf.sample.coffee")} subtitle={t("ms.stampsProgress", { n: 7, goal: 10 })} category="coffee" />
       </View>
       <View style={[styles.pin, { top: h * 0.3, left: width * 0.5 }]}>
-        <PlaceBubble name={SAMPLE_SHOPS.bakery} subtitle={t("sh.wallet.rewardReady")} accent category="bakery" />
+        <PlaceBubble name={t("mf.sample.bakery")} subtitle={t("sh.wallet.rewardReady")} accent category="bakery" />
       </View>
       <View style={[styles.pin, { top: h * 0.56, left: width * 0.12 }]}>
-        <PlaceBubble name={SAMPLE_SHOPS.eat} subtitle={placeKindLabel(locale, "restaurant")} category="eat" />
+        <PlaceBubble name={t("mf.sample.eat")} subtitle={placeKindLabel(locale, "restaurant")} category="eat" />
       </View>
       <View style={[styles.pin, { top: h * 0.76, left: width * 0.46 }]}>
-        <PlaceBubble name={SAMPLE_SHOPS.beauty} subtitle={placeKindLabel(locale, "salon")} category="beauty" />
+        <PlaceBubble name={t("mf.sample.beauty")} subtitle={placeKindLabel(locale, "salon")} category="beauty" />
       </View>
     </View>
   );
@@ -93,7 +86,7 @@ export default function Welcome() {
             .split(/\uE000(\w+)\uE001/)
             .map((part, i) =>
               i % 2 ? (
-                <Text key={i} variant="caption" color="fg" onPress={() => Linking.openURL(part === "terms" ? "https://local.example/terms" : "https://local.example/privacy")} style={{ textDecorationLine: "underline" }}>
+                <Text key={i} variant="caption" color="fg" onPress={() => Linking.openURL(part === "terms" ? `${WEB_URL}/terms` : `${WEB_URL}/privacy`)} style={{ textDecorationLine: "underline" }}>
                   {part === "terms" ? t("auth.footer.terms") : t("auth.m.privacyPolicy")}
                 </Text>
               ) : (

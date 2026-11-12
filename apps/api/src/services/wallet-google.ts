@@ -126,7 +126,7 @@ export function loyaltyObject(config: Config, issuerId: string, userId: string, 
     linksModuleData: {
       uris: [
         { id: "card", uri: `${config.publicWebUrl}/me`, description: tr("sh.pass.yourShopsAndRewards") },
-        { id: "terms", uri: `${config.publicWebUrl}/terms`, description: tr("sh.pass.terms") },
+        { id: "terms", uri: `${config.publicWebUrl}/legal/terms`, description: tr("sh.pass.terms") },
         { id: "support", uri: `mailto:${BRAND.supportEmail}`, description: tr("sh.pass.support") },
       ],
     },

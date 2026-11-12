@@ -4,8 +4,8 @@ import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { t } from "../../copy/en-CA";
 import { scanBus } from "../../features/scanBus";
+import { useLocale } from "../../lib/i18n";
 import { useCounter } from "../../state/counter";
 import { useTheme } from "../../theme";
 import { Button, Camera, EmptyState, Flashlight, IconButton, Text, X } from "../../ui";
@@ -14,6 +14,7 @@ import { Button, Camera, EmptyState, Flashlight, IconButton, Text, X } from "../
 export default function Scan() {
   const { c } = useTheme();
   const { config } = useCounter();
+  const { t } = useLocale();
   const [permission, request] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const done = useRef(false);
@@ -24,11 +25,11 @@ export default function Scan() {
       <SafeAreaView style={{ flex: 1, backgroundColor: c.bg, justifyContent: "center", padding: 16 }}>
         <EmptyState
           icon={Camera}
-          title="Camera is off"
-          body={t("err.camera.denied")}
-          actionLabel={permission.canAskAgain ? "Turn on camera" : "Open settings"}
+          title={t("mc.scan.cameraOff")}
+          body={t("mc.scan.denied")}
+          actionLabel={permission.canAskAgain ? t("mc.scan.turnOn") : t("mc.scan.openSettings")}
           onAction={() => (permission.canAskAgain ? request() : Linking.openSettings())}
-          secondaryLabel="Type number instead"
+          secondaryLabel={t("mc.scan.typeNumber")}
           onSecondary={() => router.back()}
         />
       </SafeAreaView>
@@ -51,20 +52,20 @@ export default function Scan() {
       />
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
         <View style={styles.top}>
-          <IconButton icon={X} label="Close scanner" variant="secondary" onPress={() => router.back()} />
+          <IconButton icon={X} label={t("mc.scan.close")} variant="secondary" onPress={() => router.back()} />
         </View>
-        <View style={styles.frame} accessibilityLabel="Point the camera at the card's QR code">
+        <View style={styles.frame} accessibilityLabel={t("mc.scan.point")}>
           {[styles.tl, styles.tr, styles.bl, styles.br].map((s, i) => (
             <View key={i} style={[styles.corner, s]} />
           ))}
         </View>
         <Text variant="bodyLg" rawColor="#FFFFFF" center>
-          Scan the customer card or reward code
+          {t("mc.scan.prompt")}
         </Text>
         <View style={styles.bottom}>
-          <IconButton icon={Flashlight} label={torch ? "Torch off" : "Torch on"} variant="secondary" size={64} onPress={() => setTorch((v) => !v)} />
+          <IconButton icon={Flashlight} label={torch ? t("mc.scan.torchOff") : t("mc.scan.torchOn")} variant="secondary" size={64} onPress={() => setTorch((v) => !v)} />
           <Button variant="inverse" onPress={() => router.back()}>
-            Type number instead
+            {t("mc.scan.typeNumber")}
           </Button>
         </View>
       </SafeAreaView>

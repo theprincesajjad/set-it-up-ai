@@ -76,10 +76,10 @@ Points never expire.",
         "value": "This card updates itself when your balance changes. Turn notifications for it on or off in the pass details (•••).",
       },
       {
-        "attributedValue": "<a href='http://localhost:3000/terms'>localhost:3000/terms</a>",
+        "attributedValue": "<a href='http://localhost:3000/legal/terms'>localhost:3000/legal/terms</a>",
         "key": "terms",
         "label": "Terms",
-        "value": "http://localhost:3000/terms",
+        "value": "http://localhost:3000/legal/terms",
       },
       {
         "attributedValue": "<a href='mailto:hello@localloyalty.example'>hello@localloyalty.example</a>",

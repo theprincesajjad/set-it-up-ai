@@ -7,6 +7,8 @@ import { EXPERIMENTS, experimentById, type experimentsApi, type LandingLook } fr
 import { BEACON_SCRIPT } from "@/components/marketing/landing-ab/beacon-script";
 import { liftText, lookBanner, reportCsv } from "@/lib/dashboard/experiments";
 import { assignLanding, isVariantPath, platformRoleOf, randomAid, variantPath, type AssignInput } from "@/lib/marketing/landing-assign";
+import { COUNTING_OFF_SCROLL_SCRIPT } from "@/components/marketing/landing-ab/CountingOff";
+import { COUNTING_OFF_ID, landingOffDestination } from "@/lib/marketing/landing-off";
 import { variantIds } from "@/lib/marketing/landing-variants";
 import { signupPrefill } from "@/lib/marketing/signupPrefill";
 
@@ -192,5 +194,37 @@ describe("admin page wording", () => {
     expect(lines[0]).toMatch(/^experiment,variant,exposures,start_submits/);
     expect(lines[1]).toMatch(/^t1-nails-lead,control,220,11,0.0500,5,3,/);
     expect(lines[2]).toContain(",0.5000,0.2000,,1.0000,4500,ok");
+  });
+});
+
+describe("turning the counting off", () => {
+  it("brings the confirmation line into view only on the visit that turned counting off", () => {
+    // The sections above the line size themselves lazily, so the browser's own jump to the #target lands short of it on long pages.
+    const run = (hash: string, rects: { top: number; bottom: number }[]) => {
+      let scrolled = 0;
+      const el = { getBoundingClientRect: () => rects[Math.min(scrolled, rects.length - 1)]!, scrollIntoView: () => void scrolled++ };
+      const timers: (() => void)[] = [];
+      const win = { location: { hash }, document: { readyState: "complete", getElementById: (id: string) => (id === COUNTING_OFF_ID ? el : null) }, innerHeight: 800, addEventListener: () => undefined, setTimeout: (fn: () => void) => void timers.push(fn) };
+      new Function("location", "document", "innerHeight", "addEventListener", "setTimeout", COUNTING_OFF_SCROLL_SCRIPT)(win.location, win.document, win.innerHeight, win.addEventListener, win.setTimeout);
+      for (let i = 0; i < 60 && timers.length; i++) timers.shift()!();
+      return scrolled;
+    };
+    // Below the fold twice (the page grew after the first scroll), then in view: two scrolls, then it stops.
+    expect(run(`#${COUNTING_OFF_ID}`, [{ top: 2400, bottom: 2460 }, { top: 1300, bottom: 1360 }, { top: 370, bottom: 430 }])).toBe(2);
+    // Already in view: nothing moves. Any other visit: nothing runs.
+    expect(run(`#${COUNTING_OFF_ID}`, [{ top: 300, bottom: 360 }])).toBe(0);
+    expect(run("#pricing", [{ top: 2400, bottom: 2460 }])).toBe(0);
+    expect(run("", [{ top: 2400, bottom: 2460 }])).toBe(0);
+  });
+
+  it("goes back to the page the visitor was on, at the confirmation line", () => {
+    expect(landingOffDestination("/")).toBe("/#counting-off");
+    expect(landingOffDestination("/for-barbers")).toBe("/for-barbers#counting-off");
+    expect(landingOffDestination("/for-nail-techs?trade=lashes")).toBe("/for-nail-techs?trade=lashes#counting-off");
+  });
+  it("sends anything else home, never to another site or another audience's page", () => {
+    for (const next of [null, "", "/pricing", "//evil.example", "https://evil.example/", "/for-nail-techs/../admin", "/for-barbers?trade=brows&x=1"]) {
+      expect(landingOffDestination(next)).toBe("/#counting-off");
+    }
   });
 });

@@ -14,8 +14,8 @@ export interface EmptyStateProps {
   tone?: "brand" | "danger" | "trade";
   /** A small illustration in place of the glyph (e.g. the customer wallet's fan of shop cards). */
   media?: ReactNode;
-  /** Level of the title heading, so the page's outline has no gaps (h1, then h2). Default 3 (inside a section that has an h2). */
-  headingLevel?: 2 | 3 | 4;
+  /** Level of the title heading, so the page's outline has no gaps. Default 3 (inside a section that has an h2); pass 1 when this is the whole page (a gone link, a 404, a failure): every full-page fail screen has an h1. `FailScreen` does this for you. */
+  headingLevel?: 1 | 2 | 3 | 4;
   className?: string;
 }
 
@@ -48,9 +48,9 @@ export function EmptyState({ icon: Icon, title, description, action, secondaryAc
   );
 }
 
-/** Same layout as EmptyState with a retry. */
+/** Same layout as EmptyState for a failure. A failure replaces the page, so its title is the page's h1 by default (pass `headingLevel={3}` inside a section). */
 // Server-safe (icons are passed in by server pages), so no locale hook here: customer pages always pass a translated title and
 // description; these English defaults are the shop-side (dashboard) wording.
-export function ErrorState({ title = "Something went wrong on our end", /* l10n-ok */ description = "Try again in a moment.", /* l10n-ok */ action, icon = CloudOff, headingLevel, className }: Partial<EmptyStateProps>) {
+export function ErrorState({ title = "Something went wrong on our side", /* l10n-ok */ description = "Try again in a minute.", /* l10n-ok */ action, icon = CloudOff, headingLevel = 1, className }: Partial<EmptyStateProps>) {
   return <EmptyState icon={icon} tone="danger" title={title} description={description} action={action} headingLevel={headingLevel} className={className} />;
 }

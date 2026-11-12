@@ -8,6 +8,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, REFRESH_COOKIE, accessTokenStale, clearedSessionCookies, sessionCookies } from "@/lib/auth/cookies";
 import { refreshSession } from "@/lib/auth/refresh";
 import { normalizeLocale } from "@ll/shared";
+import { env, isLocalUrl } from "@/lib/env";
+import { CUT_LINK_HEADER, NEXT_HEADER, PATH_HEADER } from "@/components/errors/notFoundCopy";
 // ---- phase-solo: G ----
 import { SITE_HOST_HEADER, isCustomSiteHost } from "@/lib/siteHost";
 // ---- end phase-solo: G ----
@@ -24,12 +26,36 @@ const LANG_HEADER = "x-ll-lang";
 function forwarded(request: NextRequest) {
   const headers = new Headers(request.headers);
   headers.delete(LANG_HEADER);
+  // The path asked for, so a 404 can say "that shop" or "this link" (components/errors/notFoundCopy.ts).
+  headers.set(PATH_HEADER, request.nextUrl.pathname);
+  // Path plus query, for /login?next= after a sign-in is needed (lib/auth/session.ts currentPath).
+  headers.set(NEXT_HEADER, request.nextUrl.pathname + request.nextUrl.search);
   const lang = normalizeLocale(request.nextUrl.searchParams.get("lang"));
   if (lang) headers.set(LANG_HEADER, lang);
   return { request: { headers } };
 }
 
+/** A path with a broken percent-escape ("%E0%A4%A": a link cut off by a text message, a QR scanner or a chat app) cannot be decoded by the router. */
+function hasBrokenEscape(pathname: string): boolean {
+  try {
+    decodeURIComponent(pathname);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export async function proxy(request: NextRequest) {
+  // A cut-off link would be a bare "Internal Server Error" from the router. Answer with the 404 page instead: "That link looks cut off".
+  if (hasBrokenEscape(request.nextUrl.pathname)) {
+    const headers = new Headers(request.headers);
+    headers.set(CUT_LINK_HEADER, "1");
+    headers.set(PATH_HEADER, "/link-cut");
+    const url = request.nextUrl.clone();
+    url.pathname = "/link-cut";
+    url.search = "";
+    return NextResponse.rewrite(url, { request: { headers } });
+  }
   // ---- phase-solo: G ---- a shop's own domain: its home page is the built-in website (app/(site)/[domain]).
   const siteHost = isCustomSiteHost(request.headers.get("host"), { siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000", appHosts: process.env.SITE_APP_HOSTS, enabled: process.env.SITE_CUSTOM_HOSTS });
   if (siteHost && request.nextUrl.pathname === "/") {
@@ -77,7 +103,7 @@ async function landingResponse(request: NextRequest): Promise<NextResponse | nul
   const { pathname } = request.nextUrl;
   if (!LANDING_RE.test(pathname)) return null;
   // Test clock (e2e only): EXPERIMENTS_TEST_CLOCK=1 lets EXPERIMENTS_NOW and the x-ll-experiments-now header move the schedule.
-  const now = experimentsNow(new Date(), { enabled: process.env.EXPERIMENTS_TEST_CLOCK === "1", env: process.env.EXPERIMENTS_NOW, header: request.headers.get(EXPERIMENTS_CLOCK_HEADER) });
+  const now = experimentsNow(new Date(), { enabled: process.env.EXPERIMENTS_TEST_CLOCK === "1" && (process.env.NODE_ENV !== "production" || isLocalUrl(env.apiUrl)), env: process.env.EXPERIMENTS_NOW, header: request.headers.get(EXPERIMENTS_CLOCK_HEADER) });
   const a = assignLanding({
     pathname,
     search: request.nextUrl.searchParams,
@@ -107,5 +133,5 @@ async function landingResponse(request: NextRequest): Promise<NextResponse | nul
 
 export const config = {
   // Pages only: API routes refresh on their own, static assets never need a session.
-  matcher: ["/((?!api|_next/static|_next/image|brand|favicon.ico|icon|robots.txt|sitemap.xml|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|webp|avif|ico|txt|xml)$).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|brand|favicon.ico|icon|apple-icon|og/|robots.txt|sitemap.xml|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|webp|avif|ico|txt|xml)$).*)"],
 };

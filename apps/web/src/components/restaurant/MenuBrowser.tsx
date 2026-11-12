@@ -23,7 +23,7 @@ type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: st
  * The customer menu (frame 11): one halal banner for the whole shop, dietary chips and "Without nuts", category tabs with Degh last,
  * one price per dish, a "+" on every dish you can order, and a sticky cart bar. Halal claims are the shop's own, printed once.
  */
-export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl }: { shop: Shop; menu: commerceApi.PublicMenuResponse; restaurant: restaurantWebApi.PublicRestaurantResponse | null; appStoreUrl: string; playStoreUrl: string }) {
+export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl }: { shop: Shop; menu: commerceApi.PublicMenuResponse; restaurant: restaurantWebApi.PublicRestaurantResponse | null; appStoreUrl: string | null; playStoreUrl: string | null }) {
   const { t, money, moneyExact, number, pick } = useFmt();
   const { cart, ready, add, setQty } = useCart(shop.slug);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
@@ -253,16 +253,22 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
             <p>{t("rs.menu.allergyNote")}</p>
             {menu.dualPricing ? <p>{t("rs.menu.cashNote", { pct: number(Math.round(menu.dualPricing.cashDiscountBps / 100)) })}</p> : null}
             {menu.tax ? <p>{hasZeroRated ? t("gr.menu.taxNote") : t("rc.mn.taxNote", { tax: menu.tax.label })}</p> : null}
-            <p>
-              {t("rs.menu.appLine")}{" "}
-              <a href={appStoreUrl} className="text-fg underline decoration-line-strong underline-offset-4">
-                {t("rc.mn.appStore")}
-              </a>
-              {" · "}
-              <a href={playStoreUrl} className="text-fg underline decoration-line-strong underline-offset-4">
-                {t("rc.mn.playStore")}
-              </a>
-            </p>
+            {appStoreUrl || playStoreUrl ? (
+              <p>
+                {t("rs.menu.appLine")}{" "}
+                {appStoreUrl ? (
+                  <a href={appStoreUrl} className="text-fg underline decoration-line-strong underline-offset-4">
+                    {t("rc.mn.appStore")}
+                  </a>
+                ) : null}
+                {appStoreUrl && playStoreUrl ? " · " : null}
+                {playStoreUrl ? (
+                  <a href={playStoreUrl} className="text-fg underline decoration-line-strong underline-offset-4">
+                    {t("rc.mn.playStore")}
+                  </a>
+                ) : null}
+              </p>
+            ) : null}
           </div>
         </>
       )}

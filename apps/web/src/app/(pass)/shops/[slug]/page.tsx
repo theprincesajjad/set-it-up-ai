@@ -25,6 +25,7 @@ import { isApiError } from "@/lib/api/errors";
 import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 import { env } from "@/lib/env";
+import { storeLinks } from "@/lib/marketing/store-links";
 import { unitsText } from "@/lib/units";
 import { withArticle } from "@/lib/format";
 import { expiryLineL, howYouEarnL, kindL, openStatusL, rewardInSentenceL, weekRowsL } from "@/lib/i18n/formatL";
@@ -84,7 +85,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
     shop = await publicServerApi().public.shop(slug);
   } catch (e) {
     if (isApiError(e) && e.status === 404) notFound();
-    return <ErrorState title={t("wp.err.shop")} description={t("auth.err.network")} action={<Button variant="secondary" href={`/shops/${slug}`}>{t("rc.tryAgain")}</Button>} />;
+    return <ErrorState title={t("wp.err.shop")} description={t("rc.error.body")} action={<Button variant="secondary" href={`/shops/${slug}`}>{t("rc.tryAgain")}</Button>} />;
   }
 
   const petInfo = shop.merchant.vertical === "pet" ? await publicServerApi().public.petInfo(slug).catch(() => null) : null;
@@ -400,7 +401,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
 
       {!membership && joinInfo ? (
         <section id="join" aria-label={t("auth.join.joinShop", { shop: m.name })} className="scroll-mt-4 rounded-sheet bg-bg-subtle p-5 clear:rounded-r6 clear:card-clear">
-          <JoinFlow info={joinInfo} merchantId={m.id} referralCode={ref} signedIn={!!me} signedInName={me?.user.name ?? null} showHeader={false} autoFocus={false} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} appStoreUrl={env.appStoreUrl} playStoreUrl={env.playStoreUrl} />
+          <JoinFlow info={joinInfo} merchantId={m.id} referralCode={ref} signedIn={!!me} signedInName={me?.user.name ?? null} showHeader={false} autoFocus={false} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} appStoreUrl={storeLinks().appStore} playStoreUrl={storeLinks().playStore} />
         </section>
       ) : null}
 

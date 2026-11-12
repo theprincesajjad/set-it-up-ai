@@ -36,11 +36,18 @@ export function formatDateYear(iso: string | Date | null | undefined): string {
   return d.toLocaleDateString("en-CA", { timeZone: TZ, month: "short", day: "numeric", year: "numeric" });
 }
 
-/** "3:30 pm". */
+/** "3:30 p.m.", "9 a.m." (the dashboard's one time style: on the hour drops the minutes). */
+export function clockText(d: Date, timeZone: string | undefined = TZ): string {
+  return d
+    .toLocaleTimeString("en-CA", { ...(timeZone ? { timeZone } : {}), hour: "numeric", minute: "2-digit" })
+    .replace(/[\u202f\u00a0]/g, " ")
+    .replace(/^(\d+):00 /, "$1 ")
+    .replace(/\b([ap])\.?m\.?$/i, (_, x: string) => `${x.toLowerCase()}.m.`);
+}
+
 export function formatTime(iso: string | Date | null | undefined): string {
   if (!iso) return "";
-  const d = typeof iso === "string" ? new Date(iso) : iso;
-  return d.toLocaleTimeString("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).replace(/\./g, "").replace("a m", "am").replace("p m", "pm");
+  return clockText(typeof iso === "string" ? new Date(iso) : iso);
 }
 
 export function formatDateTime(iso: string | Date | null | undefined): string {

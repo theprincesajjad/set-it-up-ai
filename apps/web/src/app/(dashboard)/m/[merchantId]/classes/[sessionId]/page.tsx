@@ -1,4 +1,5 @@
 "use client";
+import { nowMs } from "@/lib/restaurant/util";
 import { UserPlus } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -58,6 +59,11 @@ function Roster() {
         const booked = d.rows.filter((r) => ["held", "booked", "attended", "late_cancelled", "no_show"].includes(r.status));
         const waiting = d.rows.filter((r) => r.status === "waitlisted").sort((a, b) => (a.waitlistPosition ?? 0) - (b.waitlistPosition ?? 0));
         const cancelled = s.status === "cancelled";
+        // A class that is over cannot be cancelled, added to or checked in: only its roster remains.
+        const ended = !cancelled && new Date(s.endsAt).getTime() < nowMs();
+        const dayLabel = dayHeading(new Date(s.startsAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" }), todayOf());
+        const endedWhen = dayLabel.startsWith("Today") ? "earlier today" : `on ${dayLabel}`;
+        const attendedCount = d.rows.filter((r) => r.status === "attended").length;
         return (
           <div className="flex flex-col gap-6">
             <PageHeader
@@ -68,19 +74,27 @@ function Roster() {
               actions={
                 cancelled ? (
                   <Tag>Cancelled</Tag>
+                ) : ended ? (
+                  <Tag>Ended</Tag>
                 ) : (
                   <>
-                    {manager ? <Button variant="secondary" onClick={() => setCancelling(true)}>Cancel class</Button> : null}
+                    {manager && new Date(s.startsAt).getTime() > nowMs() ? <Button variant="secondary" onClick={() => setCancelling(true)}>Cancel class</Button> : null}
                     {desk ? <Button variant="secondary" iconStart={UserPlus} onClick={() => setAdding(true)}>Add member</Button> : null}
                     <Button href={`${base}/classes/door?session=${s.id}`}>Open check-in</Button>
                   </>
                 )
               }
             />
-            <p className="rounded-input bg-bg-subtle px-4 py-3 text-meta text-fg-muted">
-              Free to cancel until {when(d.policy.freeCancelUntil)}. After that the class is used up
-              {d.policy.lateFeeCents ? `, and members pay a ${money(d.policy.lateFeeCents)} late fee` : ""}.
-            </p>
+            {ended ? (
+              <p data-testid="class-ended" className="rounded-input bg-bg-subtle px-4 py-3 text-meta text-fg-muted">
+                This class ended {endedWhen}. {attendedCount === 1 ? "1 person attended" : `${attendedCount} people attended`}.
+              </p>
+            ) : (
+              <p className="rounded-input bg-bg-subtle px-4 py-3 text-meta text-fg-muted">
+                Free to cancel until {when(d.policy.freeCancelUntil)}. After that the class is used up
+                {d.policy.lateFeeCents ? `, and members pay a ${money(d.policy.lateFeeCents)} late fee` : ""}.
+              </p>
+            )}
             {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
               <section aria-label="Roster" className="flex flex-col gap-2">

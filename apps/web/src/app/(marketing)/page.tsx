@@ -11,6 +11,7 @@ import { PHOTOS, Photo, type PhotoSet } from "@/components/marketing/landing/Pho
 import { PASSES, StampAdded, WalletPass, WeeklyCard, WinBack } from "@/components/marketing/landing/Product";
 import { TrySection } from "@/components/marketing/landing/TrySection";
 import "@/components/marketing/landing/landing.css";
+import { CountingOff } from "@/components/marketing/landing-ab/CountingOff";
 import { LandingMeasure } from "@/components/marketing/landing-ab/LandingMeasure";
 import { QrCode } from "@/components/ui/QrCode";
 import { copy } from "@/copy/en-CA";
@@ -20,6 +21,8 @@ import { marketingPlans, planNote, planVars } from "@/lib/marketing/plan-copy";
 import { marketingSerifVar, preloadSerif } from "@/lib/marketing/serif";
 import { fill } from "@/lib/marketing/text";
 import { whatsappUrl } from "@/lib/marketing/whatsapp";
+import { demoQrUrl } from "@/lib/marketing/demo-qr";
+import { JsonLd, faqLd, organizationLd, softwareLd } from "@/lib/marketing/structured-data";
 
 export const revalidate = 300;
 
@@ -96,10 +99,11 @@ const FILL_SCRIPT = `(()=>{try{if(!("IntersectionObserver"in window)||matchMedia
 /**
  * Wave W, plain script beside the fill: (0, wave Z2) a sideways row with nothing focusable in it becomes a tab stop while it scrolls, so
  * the keyboard can scroll it (it is named by its section's heading); (1) the dots under each sideways row follow its scroll; (2) the phone's sticky button hides
- * while the hero's button, the card maker's button or the closing band's button is on screen ("data-hide"; the server markup starts
+ * while the hero's button, the card maker's button or the closing band's button is on screen, and over the site footer, which has its
+ * own "Start free" and is parsed after this script, so it is observed once the document is ready ("data-hide"; the server markup starts
  * hidden, over the hero). Without IntersectionObserver it simply shows; without script the first dot stays marked.
  */
-const SNAP_SCRIPT = `(()=>{try{var kb=function(){document.querySelectorAll("[data-snap]").forEach(function(row){if(row.querySelector("a,button"))return;row.scrollWidth>row.clientWidth+1?row.setAttribute("tabindex","0"):row.removeAttribute("tabindex")})};kb();addEventListener("resize",kb,{passive:true});document.querySelectorAll("[data-snap]").forEach(function(row){var d=row.nextElementSibling;if(!d||!d.hasAttribute("data-snap-dots"))return;var dots=d.children,t=0;row.addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;var k=row.children,w=k.length>1?k[1].offsetLeft-k[0].offsetLeft:1,max=row.scrollWidth-row.clientWidth,i=Math.abs(row.scrollLeft)>=max-4?k.length-1:Math.round(Math.abs(row.scrollLeft)/Math.abs(w||1));for(var j=0;j<dots.length;j++)j===i?dots[j].setAttribute("data-on",""):dots[j].removeAttribute("data-on")})},{passive:true})});var s=document.querySelector(".lp-sticky");if(!s)return;if(!("IntersectionObserver"in window)){s.removeAttribute("data-hide");return}var on=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?on.add(e.target):on.delete(e.target)});on.size?s.setAttribute("data-hide",""):s.removeAttribute("data-hide")});document.querySelectorAll(".lp [data-cta=hero],.lp [data-cta=tryit],.lp [data-cta=final]").forEach(function(el){io.observe(el)})}catch(e){}})()`;
+const SNAP_SCRIPT = `(()=>{try{var kb=function(){document.querySelectorAll("[data-snap]").forEach(function(row){if(row.querySelector("a,button"))return;row.scrollWidth>row.clientWidth+1?row.setAttribute("tabindex","0"):row.removeAttribute("tabindex")})};kb();addEventListener("resize",kb,{passive:true});document.querySelectorAll("[data-snap]").forEach(function(row){var d=row.nextElementSibling;if(!d||!d.hasAttribute("data-snap-dots"))return;var dots=d.children,t=0;row.addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;var k=row.children,w=k.length>1?k[1].offsetLeft-k[0].offsetLeft:1,max=row.scrollWidth-row.clientWidth,i=Math.abs(row.scrollLeft)>=max-4?k.length-1:Math.round(Math.abs(row.scrollLeft)/Math.abs(w||1));for(var j=0;j<dots.length;j++)j===i?dots[j].setAttribute("data-on",""):dots[j].removeAttribute("data-on")})},{passive:true})});var s=document.querySelector(".lp-sticky");if(!s)return;if(!("IntersectionObserver"in window)){s.removeAttribute("data-hide");return}var on=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?on.add(e.target):on.delete(e.target)});on.size?s.setAttribute("data-hide",""):s.removeAttribute("data-hide")});document.querySelectorAll(".lp [data-cta=hero],.lp [data-cta=tryit],.lp [data-cta=final]").forEach(function(el){io.observe(el)});var ft=function(){var f=document.querySelector("footer");f&&io.observe(f)};document.readyState==="loading"?addEventListener("DOMContentLoaded",ft):ft()}catch(e){}})()`;
 
 /**
  * The home page, wave V: direction B, the look the founder picked from three (dev/landing-b): Strata headlines (wave Y) with one Newsreader italic
@@ -171,7 +175,7 @@ export default function Home() {
               <Emph text={L.how.sub} />
             </p>
           </div>
-          <ol className="lp-steps lp-snap" data-snap aria-labelledby="lp-how">
+          <ol className="lp-steps lp-snap" data-snap aria-labelledby="lp-how" suppressHydrationWarning>
             <li>
               <div className="lp-panel lp-panel-pass" aria-hidden>
                 <div className="lp-panel-pass-in">
@@ -188,7 +192,7 @@ export default function Home() {
                   <span className="lp-tent-logo">{P.mono}</span>
                   <span className="lp-tent-t">{fill(L.how.tent, { name: P.name })}</span>
                   <span className="lp-tent-qr">
-                    <QrCode value="https://localloyalty.ca/j/little-oven" size={140} ecc="L" label={L.how.tentScan} />
+                    <QrCode value={demoQrUrl()} size={140} ecc="L" label={L.how.tentScan} />
                   </span>
                   <span className="lp-tent-s">{L.how.tentScan}</span>
                 </div>
@@ -228,7 +232,7 @@ export default function Home() {
             </h2>
             <p className="lp-lede">{f(O.sub)}</p>
           </div>
-          <ul className="lp-gets lp-snap" data-snap aria-labelledby="lp-product">
+          <ul className="lp-gets lp-snap" data-snap aria-labelledby="lp-product" suppressHydrationWarning>
             {O.rows.map((r) => (
               <li key={r.id} id={`outcome-${r.id}`} className="lp-get">
                 <div className={`lp-get-art lp-get-${r.id}`} aria-hidden>
@@ -289,6 +293,7 @@ export default function Home() {
             ))}
           </ul>
           <Dots n={L.shops.tiles.length} />
+          <p className="lp-caption lp-tiles-note">{L.shops.photosNote}</p>
           {/* The next step after the tiles: up to the card maker (an in-page link, not a sign-up link). */}
           <div className="lp-ask lp-shops-next">
             <a className="lp-btn lp-btn-black lp-btn-xl" href="#try" data-cta="shops">
@@ -341,7 +346,6 @@ export default function Home() {
               <div key={p.key} data-plan={p.key} className={`lp-plan lp-plan-${p.key}`}>
                 <div className="lp-plan-h">
                   <h3 className="lp-plan-name">{p.name}</h3>
-                  {p.badge ? <span className="lp-plan-badge">{p.badge}</span> : null}
                 </div>
                 <span className="lp-plan-tag">{p.tagline}</span>
                 <span className="lp-plan-price">
@@ -450,13 +454,18 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Phones: the button in reach, hidden while the hero's, the card maker's or the closing band's own button is on screen (SNAP_SCRIPT). */}
-      <div className="lp-sticky" data-hide="">
+      {/* Phones: the button in reach, hidden while the hero's, the card maker's or the closing band's own button is on screen and over
+          the footer (SNAP_SCRIPT, which may run before React hydrates: the attribute it moves is not a mismatch to report). */}
+      <div className="lp-sticky" data-hide="" suppressHydrationWarning>
         <Primary cta="sticky">{L.sticky}</Primary>
       </div>
       <script dangerouslySetInnerHTML={{ __html: FILL_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: SNAP_SCRIPT }} />
       <script dangerouslySetInnerHTML={{ __html: VIDEO_SCRIPT }} />
+      {/* For search engines: who we are, the plans and their prices, and the questions answered above (the same words). */}
+      <JsonLd data={[organizationLd(), softwareLd(L.meta.description), faqLd(L.faq.map((q) => ({ q: q.q, a: f(q.a) })))]} />
+      {/* Before the notice, so its inline script finds this line. */}
+      <CountingOff />
       <LandingMeasure path="/" />
     </div>
   );

@@ -11,7 +11,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { formatNanp, normalizeDigits, toE164, validateNanp } from "@/lib/phone";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
@@ -51,6 +52,7 @@ function dayStates(busy: Busy): Map<string, DayState> {
 
 /** /shops/<slug>/banquet: halls, packages, a month availability view, and a booking request. */
 export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn, devAutofill }: { shop: Shop; halls: Hall[]; initialBusy: Record<string, Busy> | null; initialMonth: { y: number; m: number }; signedIn: boolean; /** Fill the sign-in code from the API in non-production. */ devAutofill?: boolean }) {
+  const errText = useErrorText();
   const { t, money, date, time, number, percent } = useFmt();
   const [hallId, setHallId] = useState(halls[0]?.id ?? "");
   const [month, setMonth] = useState(initialMonth);
@@ -153,7 +155,7 @@ export function BanquetView({ shop, halls, initialBusy, initialMonth, signedIn, 
         setBanner({ tone: "danger", text: t("rc.bq.conflict") });
         void fetchMonth(month.y, month.m);
       } else if (isApiError(err) && err.status === 402) setBanner({ tone: "info", text: t("rc.cq.unavailable", { shop: shop.name }) });
-      else setBanner({ tone: "danger", text: isApiError(err) && err.isNetwork ? t("rc.error.body") : errorMessage(err) });
+      else setBanner({ tone: "danger", text: isApiError(err) && err.isNetwork ? t("rc.error.body") : errText(err) });
     } finally {
       setBusy(false);
     }

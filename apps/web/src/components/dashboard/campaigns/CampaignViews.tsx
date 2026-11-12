@@ -132,10 +132,11 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
   const [edit, setEdit] = useState(false);
   const [cancel, setCancel] = useState(false);
   const [draw, setDraw] = useState<C.DrawResult | null>(null);
+  const [redraw, setRedraw] = useState(false);
   const act = useAction();
   const now = useNow();
   return (
-    <Async state={c}>
+    <Async state={c} fail={{ title: "Campaign", back: { href: base, label: "Back to campaigns" }, notFound: { title: "We couldn’t find that campaign", description: "The link may be old, or the campaign was removed." } }}>
       {(x) => {
         const ended = new Date(x.endsAt).getTime() < now;
         const started = new Date(x.startsAt).getTime() <= now;
@@ -150,13 +151,13 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
                 {x.status === "draft" ? <Button size="sm" loading={act.busy} onClick={async () => { const n = await act.run(() => browserApi.campaigns.schedule(x.id)); if (n) { c.setData(n); toast({ message: "Scheduled", tone: "success" }); } }}>Schedule</Button> : null}
                 {editable ? <Button size="sm" variant="secondary" onClick={() => setEdit(true)}>Edit</Button> : null}
                 {isAdmin ? <Button size="sm" variant="secondary" onClick={async () => { const n = await act.run(() => browserApi.admin.markCampaignPaid(x.id, !x.paid)); if (n) c.setData(n); }}>{x.paid ? "Mark unpaid" : "Mark paid"}</Button> : null}
-                {isAdmin && ended && x.status !== "cancelled" ? <Button size="sm" variant="accent" iconStart={Trophy} onClick={async () => { const d = await act.run(() => browserApi.admin.drawCampaign(x.id, !!x.drawnAt)); if (d) setDraw(d); }}>{x.drawnAt ? "Redraw" : "Prize draw"}</Button> : null}
+                {isAdmin && ended && x.status !== "cancelled" ? <Button size="sm" variant="accent" iconStart={Trophy} onClick={async () => { if (x.drawnAt) { setRedraw(true); return; } const d = await act.run(() => browserApi.admin.drawCampaign(x.id, false)); if (d) setDraw(d); }}>{x.drawnAt ? "Redraw" : "Prize draw"}</Button> : null}
                 {x.status !== "ended" && x.status !== "cancelled" ? <Button size="sm" variant="ghost" onClick={() => setCancel(true)}>Cancel</Button> : null}
               </div>
             } />
             {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
             {x.status === "draft" && !x.paid && x.priceCents > 0 && !isAdmin ? <Banner tone="info">Price {formatMoney(x.priceCents)}. We&apos;ll invoice the BIA; you can schedule once it&apos;s paid.</Banner> : null}
-            {draw ? <Banner tone="success" title="Winner drawn">{draw.winner.firstName ?? "Customer"} · {draw.winner.maskedPhone} (from {formatNumber(draw.eligibleCount)} who completed). Contact them through the shop where they last visited.</Banner> : null}
+            {draw ? <Banner tone="success" title="Winner drawn">{draw.winner.firstName ?? "Customer"} · {draw.winner.maskedPhone} (from {formatNumber(draw.eligibleCount)} who completed). Contact them through the shop where they last visited.{draw.previousWinner ? ` Replaced: ${draw.previousWinner.firstName ?? "Customer"} · ${draw.previousWinner.maskedPhone ?? "no phone"}. Write this down if you already contacted them.` : ""}</Banner> : null}
 
             <Panel className="flex flex-col gap-4">
               <div className="flex items-start gap-3">
@@ -195,6 +196,7 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
               ) : null}
             </Panel>
             {edit ? <CampaignForm open onClose={() => setEdit(false)} neighbourhoods={neighbourhoods} isAdmin={isAdmin} onSaved={(n) => c.setData(n)} base={base} campaign={x} /> : null}
+            <ConfirmDialog open={redraw} onClose={() => setRedraw(false)} title="Draw a new winner?" body={`A winner was drawn on ${x.drawnAt ? formatDate(x.drawnAt) : "an earlier date"}. Drawing again replaces them. If they were already contacted, they will no longer be the winner. We will show who was replaced.`} confirmLabel="Draw a new winner" danger onConfirm={async () => { const d = await browserApi.admin.drawCampaign(x.id, true); setDraw(d); c.setData({ ...x, drawnAt: d.drawnAt }); }} />
             <ConfirmDialog open={cancel} onClose={() => setCancel(false)} title={`Cancel ${x.name}?`} body="Customers stop seeing it. Points already earned stay." confirmLabel="Cancel campaign" danger onConfirm={async () => { c.setData(await browserApi.campaigns.cancel(x.id)); }} />
           </div>
         );

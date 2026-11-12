@@ -4,6 +4,7 @@ import { Emph } from "@/lib/marketing/emphasis";
 import { tryColours, tryTrades } from "@/lib/marketing/try-card";
 import { Phone } from "./Product";
 import { TryControls, TryCta, TryNotice, TryPass, TryProvider, TryReady, type TryTradeData } from "./TryCard";
+import { demoQrUrl } from "@/lib/marketing/demo-qr";
 
 const T = copy.landing.tryIt;
 const P = copy.landing.product;
@@ -43,7 +44,7 @@ export function TrySection() {
                     <i />
                   </span>
                 </div>
-                <TryPass qr={<QrCode value="https://localloyalty.ca/c/44712208" size={120} ecc="L" label={T.pass.code} />} />
+                <TryPass qr={<QrCode value={demoQrUrl()} size={120} ecc="L" label={T.pass.code} />} />
                 <TryNotice />
                 <TryReady />
               </div>

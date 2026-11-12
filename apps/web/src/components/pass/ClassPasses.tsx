@@ -12,7 +12,7 @@ import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { withLang } from "@/lib/i18n/url";
 
 type Membership = classesApi.MyMembershipDto;
@@ -24,6 +24,7 @@ type Ask = { kind: "cancel" | "freeze" | "agreement" | "pay" | "card" | "cancelP
  * payment, the contract, and, inside the first 10 days, the full-refund right. Cancel is one tap in plain text.
  */
 export function ClassPasses() {
+  const errText = useErrorText();
   const f = useFmt();
   const { t, money, date, locale } = f;
   const [data, setData] = useState<classesApi.MyClassesResponse | null>(null);
@@ -58,7 +59,7 @@ export function ClassPasses() {
       if (ok) setBanner({ tone: "info", text: ok });
       setAsk(null);
     } catch (e) {
-      setBanner({ tone: "danger", text: errorMessage(e) });
+      setBanner({ tone: "danger", text: errText(e) });
     } finally {
       setBusy(false);
     }
@@ -89,21 +90,21 @@ export function ClassPasses() {
               <div><dt className="text-fg-muted">{t("cl.ui.m.contract")}</dt><dd className="text-body text-fg">{m.termMonths ? t("cl.ui.m.fixed", { n: m.termMonths, date: day(m.termEndsOn) }) : t("cl.ui.m.monthly")}</dd></div>
               {m.classesPerMonth ? <div><dd className="text-body text-fg">{t("cl.ui.m.used", { used: m.usedThisPeriod, n: m.classesPerMonth })}</dd></div> : null}
             </dl>
-            {m.status === "past_due" ? <Banner tone="danger" action={<Button size="sm" onClick={async () => { setBusy(true); try { const r = await browserApi.me.payMembership(m.id); if (r.payment) setAsk({ kind: "pay", m, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errorMessage(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.payNow", { amount: money(m.amountDueCents ?? m.totalCents) })}</Button>}>{t("cl.ui.m.pastDue")}</Banner> : null}
+            {m.status === "past_due" ? <Banner tone="danger" action={<Button size="sm" onClick={async () => { setBusy(true); try { const r = await browserApi.me.payMembership(m.id); if (r.payment) setAsk({ kind: "pay", m, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errText(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.payNow", { amount: money(m.amountDueCents ?? m.totalCents) })}</Button>}>{t("cl.ui.m.pastDue")}</Banner> : null}
             {m.status === "frozen" && m.frozenUntil ? <p className="rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg">{t("cl.ui.m.frozenUntil", { date: day(m.frozenUntil) })}</p> : null}
             {m.inCoolingOff && m.coolingOffEndsOn ? <p className="rounded-input bg-points-soft px-3 py-2 text-meta text-points-text">{t("cl.ui.m.cooling", { date: day(m.coolingOffEndsOn) })}</p> : null}
             {m.cancelEffectiveOn ? <p className="rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg">{t("cl.ui.m.ending", { date: day(new Date(new Date(`${m.cancelEffectiveOn}T12:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10)) })}</p> : null}
             {m.renewalNoticeSentAt && m.termEndsOn && !m.declineRenewal && live ? <p className="rounded-input bg-bg-subtle px-3 py-2 text-meta text-fg">{t("cl.ui.m.renewalNotice", { date: day(m.termEndsOn) })}</p> : null}
             {m.status === "pending" ? (
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" loading={busy} onClick={async () => { setBusy(true); setBanner(null); try { const r = await browserApi.me.payMembership(m.id); if (r.payment) setAsk({ kind: "pay", m, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errorMessage(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.finish")}</Button>
+                <Button size="sm" loading={busy} onClick={async () => { setBusy(true); setBanner(null); try { const r = await browserApi.me.payMembership(m.id); if (r.payment) setAsk({ kind: "pay", m, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errText(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.finish")}</Button>
                 <button type="button" className="min-h-9 px-1 text-meta-strong text-negative focus-visible:focus-ring" onClick={() => setAsk({ kind: "cancelPending", m })}>{t("cl.ui.m.cancelSignup")}</button>
               </div>
             ) : null}
             {live ? (
               <div className="flex flex-wrap gap-2">
                 {m.canFreeze ? <Button size="sm" variant="secondary" onClick={() => setAsk({ kind: "freeze", m })}>{t("cl.ui.m.freeze")}</Button> : null}
-                <Button size="sm" variant="secondary" loading={busy} onClick={async () => { setBusy(true); try { setAsk({ kind: "card", m, setup: await browserApi.me.membershipCardSetup(m.id) }); } catch (e) { setBanner({ tone: "danger", text: errorMessage(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.changeCard")}</Button>
+                <Button size="sm" variant="secondary" loading={busy} onClick={async () => { setBusy(true); try { setAsk({ kind: "card", m, setup: await browserApi.me.membershipCardSetup(m.id) }); } catch (e) { setBanner({ tone: "danger", text: errText(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.changeCard")}</Button>
                 <Button size="sm" variant="ghost" onClick={() => setAsk({ kind: "agreement", m })}>{t("cl.ui.m.agreement")}</Button>
                 {m.termEndsOn && m.renewalNoticeSentAt && !m.declineRenewal ? <Button size="sm" variant="ghost" onClick={() => run(() => browserApi.me.declineRenewal(m.id), t("cl.ui.m.declined"))}>{t("cl.ui.m.declineRenewal")}</Button> : null}
                 {m.cancelEffectiveOn ? <Button size="sm" variant="secondary" onClick={() => run(() => browserApi.me.keepMembership(m.id))}>{t("cl.ui.m.keep")}</Button> : <button type="button" className="min-h-9 px-1 text-meta-strong text-negative focus-visible:focus-ring" onClick={() => setAsk({ kind: "cancel", m })}>{t("cl.ui.m.cancel")}</button>}
@@ -127,7 +128,7 @@ export function ClassPasses() {
           <p className="text-meta text-fg-muted"><bdi>{p.merchant.name}</bdi>{p.status === "pending" ? "" : <>. {t("cl.ui.passes.useBy", { date: date(p.expiresAt, { month: "short", day: "numeric" }) })}</>}</p>
           {p.status === "pending" ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" loading={busy} onClick={async () => { setBusy(true); setBanner(null); try { const r = await browserApi.me.payPass(p.id); if (r.payment) setAsk({ kind: "payPass", m: null as never, pass: p, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errorMessage(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.finish")}</Button>
+              <Button size="sm" loading={busy} onClick={async () => { setBusy(true); setBanner(null); try { const r = await browserApi.me.payPass(p.id); if (r.payment) setAsk({ kind: "payPass", m: null as never, pass: p, payment: r.payment }); } catch (e) { setBanner({ tone: "danger", text: errText(e) }); } finally { setBusy(false); } }}>{t("cl.ui.m.finish")}</Button>
               <button type="button" className="min-h-9 px-1 text-meta-strong text-negative focus-visible:focus-ring" onClick={() => setAsk({ kind: "cancelPending", m: null as never, pass: p })}>{t("cl.ui.m.cancelSignup")}</button>
             </div>
           ) : null}

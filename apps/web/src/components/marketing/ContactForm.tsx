@@ -1,8 +1,8 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { BRAND, LOCALE_LIST, type Locale, type repApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { PhoneField } from "@/components/ui/PhoneField";
@@ -17,7 +17,72 @@ type Field = { key: string; label: string; type?: "email" | "textarea" | "date" 
 
 const FIELDS = copy.forms as unknown as Record<"visit" | "bia", Field[]>;
 
-const WRITE_TO = `You can also write to ${BRAND.supportEmail}.`;
+type Translate = ReturnType<typeof useLocaleOrEnglish>["t"];
+
+/**
+ * After a failed check has marked its fields (`aria-invalid="true"`), move focus to the first bad one, so a keyboard or screen-reader
+ * user lands on it. Waits one frame: on a first submit nothing is marked until React has painted. (The same behaviour as
+ * lib/api/useErrorText's helper, kept here so this form does not pull that module's error wording into the home page.)
+ */
+function focusFirstInvalid(root: ParentNode | null): void {
+  if (!root) return;
+  window.requestAnimationFrame(() => {
+    const el = root.querySelector<HTMLElement>('[aria-invalid="true"]');
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: "center", behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  });
+}
+
+/**
+ * What to say when a submit fails, by kind and in the page's language: offline, unreachable, our side, or "too many, try again in N
+ * minutes" (lib/api/userError). Those words are fetched only when a submit has failed, so the home page does not carry them for every
+ * visitor. If even that cannot load, the connection is the problem and the plain line says so.
+ */
+async function failureText(err: unknown, t: Translate, locale: Locale): Promise<string> {
+  try {
+    const { userMessage } = await import("@/lib/api/userError");
+    return userMessage(err, t, locale);
+  } catch {
+    return t("err.network.line");
+  }
+}
+
+/** The support address as a link people can tap. Left to right inside Urdu text. */
+function SupportEmail() {
+  return (
+    <a href={`mailto:${BRAND.supportEmail}`} dir="ltr" className="font-medium underline underline-offset-2">
+      {BRAND.supportEmail}
+    </a>
+  );
+}
+
+/** "If it keeps happening, email {address}." in the page's language, the address as a mailto link. */
+function HelpLine({ t }: { t: Translate }) {
+  const [before, after] = t("err.help.email", { address: "\u0000" }).split("\u0000");
+  return (
+    <>
+      {before}
+      <SupportEmail />
+      {after ?? ""}
+    </>
+  );
+}
+
+/**
+ * Under the submit button of every lead form: what the details are for, said where they are collected, and the privacy policy
+ * (the forms take a name and a phone number, and the BIA one an email).
+ */
+function Purpose({ children, link }: { children: ReactNode; link: string }) {
+  return (
+    <p className="text-meta text-muted-foreground" data-testid="lead-purpose">
+      {children}{" "}
+      <Link href="/legal/privacy" className="font-medium text-foreground underline decoration-input/60 underline-offset-2 hover:decoration-foreground">
+        {link}
+      </Link>
+    </p>
+  );
+}
 
 /**
  * Marketing-site lead forms, all POST /v1/public/leads (no auth, rate limited per IP; the lead lands in the rep
@@ -36,6 +101,8 @@ function StandardForm({ kind }: { kind: Exclude<Kind, "restaurant"> }) {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const form = useRef<HTMLFormElement>(null);
+  const { t, locale } = useLocaleOrEnglish();
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -48,7 +115,10 @@ function StandardForm({ kind }: { kind: Exclude<Kind, "restaurant"> }) {
     if (members !== undefined && (!Number.isInteger(members) || members < 1)) errs.memberCount = "Enter a whole number.";
     setErrors(errs);
     if (Object.keys(errs).length) {
-      document.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+      // An earlier send failure no longer describes this attempt: only the field messages show.
+      setFailed(null);
+      // After the fields have been marked invalid (the next frame), not before: on a first submit nothing is marked yet.
+      focusFirstInvalid(form.current);
       return;
     }
     const body: repApi.PublicLeadBody =
@@ -72,7 +142,8 @@ function StandardForm({ kind }: { kind: Exclude<Kind, "restaurant"> }) {
       await browserApi.public.lead(body);
       setSent(true);
     } catch (err) {
-      setFailed(errorMessage(err));
+      // By kind, in plain words: offline, unreachable, our side, or "too many, try again in N minutes".
+      setFailed(await failureText(err, t, locale));
     } finally {
       setBusy(false);
     }
@@ -81,12 +152,12 @@ function StandardForm({ kind }: { kind: Exclude<Kind, "restaurant"> }) {
   if (sent)
     return (
       <Banner tone="success" title={kind === "visit" ? copy.forms.visitSent : copy.forms.biaSent}>
-        Questions in the meantime? Write to {BRAND.supportEmail}.
+        {copy.forms.sentQuestions} <SupportEmail />.
       </Banner>
     );
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form ref={form} onSubmit={submit} noValidate className="flex flex-col gap-4">
       {FIELDS[kind].map((f) => (
         <TextField
           key={f.key}
@@ -103,12 +174,13 @@ function StandardForm({ kind }: { kind: Exclude<Kind, "restaurant"> }) {
       <PhoneField label="Phone" value={phone} onChangeDigits={setPhone} error={errors.phone} />
       {failed ? (
         <Banner tone="danger">
-          {failed} {WRITE_TO}
+          {failed} <HelpLine t={t} />
         </Banner>
       ) : null}
       <Button type="submit" size="lg" loading={busy}>
         {kind === "visit" ? copy.forms.visitSubmit : copy.forms.biaSubmit}
       </Button>
+      <Purpose link={copy.forms.privacyLink}>{kind === "visit" ? copy.forms.visitPurpose : copy.forms.biaPurpose}</Purpose>
     </form>
   );
 }
@@ -122,7 +194,8 @@ function RestaurantForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const form = useRef<HTMLFormElement>(null);
   const labels = { owner: t("mkt.rest.form.name"), restaurant: t("mkt.rest.form.restaurant") };
 
   async function submit(e: FormEvent) {
@@ -133,16 +206,17 @@ function RestaurantForm() {
     if (!e164) errs.phone = t("mkt.rest.form.phoneError");
     setErrors(errs);
     if (Object.keys(errs).length) {
-      document.querySelector<HTMLElement>("[aria-invalid=true]")?.focus();
+      setFailed(null);
+      focusFirstInvalid(form.current);
       return;
     }
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
     try {
       await browserApi.public.lead({ kind: "restaurant", businessName: values.restaurant!.trim(), contactName: values.owner!.trim(), phone: e164!, language, vertical: "restaurant" });
       setSent(true);
-    } catch {
-      setFailed(true);
+    } catch (err) {
+      setFailed(await failureText(err, t, locale));
     } finally {
       setBusy(false);
     }
@@ -151,15 +225,20 @@ function RestaurantForm() {
   if (sent) return <Banner tone="success">{t("mkt.rest.form.thanks")}</Banner>;
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+    <form ref={form} onSubmit={submit} noValidate className="flex flex-col gap-4">
       <TextField label={labels.owner} placeholder="Imran" value={values.owner ?? ""} onChange={(e) => setValues((v) => ({ ...v, owner: e.target.value }))} error={errors.owner} />
       <TextField label={labels.restaurant} placeholder="Karahi House" value={values.restaurant ?? ""} onChange={(e) => setValues((v) => ({ ...v, restaurant: e.target.value }))} error={errors.restaurant} />
       <PhoneField label={t("mkt.rest.form.phone")} value={phone} onChangeDigits={setPhone} error={errors.phone} />
       <Select label={t("mkt.rest.form.language")} value={language} onChange={(e) => setLanguage(e.target.value as Locale)} options={LOCALE_LIST.map((l) => ({ value: l.code, label: l.name }))} />
-      {failed ? <Banner tone="danger">{t("mkt.rest.form.failed")}</Banner> : null}
+      {failed ? (
+        <Banner tone="danger">
+          {failed} <HelpLine t={t} />
+        </Banner>
+      ) : null}
       <Button type="submit" size="lg" loading={busy}>
         {t("mkt.rest.form.submit")}
       </Button>
+      <Purpose link={t("su.privacyPolicy")}>{t("mkt.rest.form.purpose")}</Purpose>
     </form>
   );
 }

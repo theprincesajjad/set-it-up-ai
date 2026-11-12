@@ -9,7 +9,8 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { buildIcs } from "@/lib/booking";
 import { cn } from "@/lib/cn";
 
@@ -21,6 +22,7 @@ const ymd = (iso: string, tz: string) => new Intl.DateTimeFormat("en-CA", { time
  * the shop checks the item in and texts a quote. Signing in with a phone happens inline, after the time is chosen.
  */
 export function DropoffFlow({ shop, signedIn, devAutofill, tz, address }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null }; signedIn: boolean; devAutofill?: boolean; tz: string; address: string | null }) {
+  const errText = useErrorText();
   const { t, number, date, time } = useFmt();
   const [slots, setSlots] = useState<commerceApi.SlotDto[] | null>(null);
   const [error, setError] = useState(false);
@@ -74,7 +76,7 @@ export function DropoffFlow({ shop, signedIn, devAutofill, tz, address }: { shop
         setBanner({ tone: "info", text: t("sv.d.taken") });
         setSlot(null);
         await load();
-      } else setBanner({ tone: "danger", text: errorMessage(e) });
+      } else setBanner({ tone: "danger", text: errText(e) });
     } finally {
       setBusy(false);
     }
@@ -90,7 +92,7 @@ export function DropoffFlow({ shop, signedIn, devAutofill, tz, address }: { shop
       setSlot(null);
       await load();
     } catch (e) {
-      setBanner({ tone: "danger", text: errorMessage(e) });
+      setBanner({ tone: "danger", text: errText(e) });
     } finally {
       setBusy(false);
     }

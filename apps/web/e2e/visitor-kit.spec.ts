@@ -68,11 +68,13 @@ test.describe("home on the kit", () => {
 });
 
 test.describe("pricing on the kit", () => {
-  test("Pro is the highlighted card with the first-year price; the FAQ is an accordion", async ({ page }) => {
+  test("Pro is the highlighted card with the first-year price and no popularity badge; the FAQ is an accordion", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/pricing");
     const pro = page.locator("#shops [data-plan=plus]");
-    await expect(pro.getByText("Most popular")).toBeVisible();
+    // Nothing backs "Most popular" yet, so no plan says it, here or on the home page.
+    await expect(page.getByText("Most popular")).toHaveCount(0);
+    await expect(pro).toBeVisible();
     await expect(pro.getByTestId("first-year-price").locator("s")).toHaveText("$290");
     await expect(pro.getByTestId("first-year-price")).toContainText("$199");
     const [proH, freeH] = await Promise.all([pro.evaluate((e) => e.getBoundingClientRect().height), page.locator("#shops [data-plan=free]").evaluate((e) => e.getBoundingClientRect().height)]);

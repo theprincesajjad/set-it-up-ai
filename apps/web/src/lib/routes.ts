@@ -18,6 +18,9 @@ export const routes = {
   dashboard: (merchantId?: string) => (merchantId ? `/m/${encodeURIComponent(merchantId)}` : "/m"),
   rep: "/rep",
   admin: "/admin",
+  bia: "/bia",
+  /** Signed in, but the account has no shop, console or BIA role yet. */
+  signedIn: "/signed-in",
 } as const;
 
 /** Only allow same-site relative return paths (no open redirects). */

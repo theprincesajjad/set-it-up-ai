@@ -16,13 +16,13 @@ const SOURCES = ["O. Reg. 264/16 s. 34 (Drug and Pharmacies Regulation Act)", "O
 
 /** Pharmacy rules (docs/research/pharmacies-wellness.md frame 07): what is locked, the pharmacist-owner confirmation, how long we keep things. */
 export default function PharmacyRulesPage() {
-  const { api, detail, role } = useMerchant();
+  const { api, base, detail, role } = useMerchant();
   const rules = useApi(() => api.pharmacy.rules(), [api]);
   if (detail.merchant.vertical !== "pharmacy") {
     return (
       <div>
-        <PageHeader title="Pharmacy rules" />
-        <Banner tone="info">These rules apply to pharmacies only.</Banner>
+        <PageHeader title="Pharmacy rules" description="These rules are for pharmacies. Your shop doesn’t use them." />
+        <Button href={base}>Back to Today</Button>
       </div>
     );
   }

@@ -28,7 +28,8 @@ export const verticalSchema = z.enum(VERTICALS);
 export const staffRoleSchema = z.enum(["owner", "manager", "staff", "instructor"]);
 export type StaffRole = z.infer<typeof staffRoleSchema>;
 export const brandColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a hex colour like #1A7F5A");
-const urlSchema = z.url().max(2000);
+/** Web links only (http or https): a javascript: or data: address must never become an href on a public page. */
+const urlSchema = z.url({ protocol: /^https?$/ }).max(2000);
 const nullableText = (max: number) => z.string().trim().max(max).nullable();
 
 // ---------------------------------------------------------------------------

@@ -58,7 +58,7 @@
       },
       {
         "id": "terms",
-        "uri": "http://localhost:3000/terms",
+        "uri": "http://localhost:3000/legal/terms",
         "description": "Terms"
       },
       {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ICON3D_SCENES, ICON3D_STEP, ICON3D_TRADE } from "@ll/design-tokens";
 import { Icon3d } from "@/components/ui/Icon3d";
+import { devPagesOnly } from "@/lib/devOnly";
 
 export const metadata: Metadata = { title: "3D icon contact sheet", robots: { index: false, follow: false } };
 
@@ -11,6 +12,7 @@ const groups = [
 
 /** Every icon at 1x (48) and 2x (96) on the Clear canvas. `?theme=clear-dark` for dark, `?trade=rose` for an accent. */
 export default async function IconSheet({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  devPagesOnly();
   const sp = await searchParams;
   const trade = sp.trade ?? undefined;
   return (

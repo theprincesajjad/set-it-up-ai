@@ -11,7 +11,7 @@ import { requireStaff, type StaffRole } from "../../lib/auth.js";
 import { parse } from "../../lib/validate.js";
 import * as catalog from "../../services/catalog.js";
 import { requirePermission, type StaffPermission } from "../../services/commerceShared.js";
-import { requireFeature } from "../../services/features.js";
+import { PREORDER_FEATURES, requireAnyFeature, requireFeature } from "../../services/features.js";
 import * as kitchen from "../../services/kitchen.js";
 import * as planning from "../../services/preorderPlanning.js";
 import * as splits from "../../services/splits.js";
@@ -51,13 +51,21 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   });
 
   // ---------------------------------------------------------------- degh pre-orders
+  // The pre-order rules (daily, weekday and per-hour caps, date overrides) belong to a restaurant's pot pre-orders AND a grocer's butcher counter.
+  // Reading and saving are gated by the same check, so a shop that cannot load its rules cannot overwrite them either.
+  async function rulesStaff(req: FastifyRequest, minRole: StaffRole) {
+    const staff = await staffFor(req, minRole, []);
+    await requireAnyFeature(ctx.db, staff.merchant, PREORDER_FEATURES);
+    return staff;
+  }
+
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/preorders/settings", async (req) => {
-    const staff = await staffFor(req, "staff", ["restaurant.degh_preorders"]);
+    const staff = await rulesStaff(req, "staff");
     return planning.rulesDto(staff.merchant);
   });
 
   app.put<{ Params: MerchantParams }>("/merchants/:merchantId/preorders/settings", async (req) => {
-    const staff = await staffFor(req, "manager", []);
+    const staff = await rulesStaff(req, "manager");
     // Daily cap, weekday caps, per-hour cap and Eid-style date overrides in one body (every field optional).
     return planning.saveRules(ctx, staff.merchant, parse(restaurantApi.preorderRulesBody, req.body));
   });

@@ -20,8 +20,9 @@ import {
   type TranslationsJson,
   type Vars,
 } from "@ll/shared";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
+import { setApiErrorTranslator, setRequestLocale } from "../../api/client";
 import { api } from "../../state/api";
 import { useSession } from "../../state/session";
 import { getJson, setJson } from "../../state/storage";
@@ -89,6 +90,17 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     [signedInShopper],
   );
 
+  // A language picked before signing in (welcome screen) belongs to the new account too: push it once the account exists and differs.
+  const pushedFor = useRef<string | null>(null);
+  const accountLocale = (session.user as { locale?: string | null } | null)?.locale ?? null;
+  useEffect(() => {
+    if (!signedInShopper || !chosen || !accountLocale || accountLocale === chosen) return;
+    const key = `${session.user?.id ?? ""}:${chosen}`;
+    if (pushedFor.current === key) return;
+    pushedFor.current = key;
+    void api.me.updateProfile({ locale: chosen }).catch(() => undefined);
+  }, [signedInShopper, chosen, accountLocale, session.user?.id]);
+
   const value = useMemo<LocaleValue>(
     () => ({
       locale,
@@ -106,6 +118,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     }),
     [locale, setLocale],
   );
+  // Server calls speak the chosen language, and failures read in it (see errorMessage in api/client.ts).
+  useEffect(() => {
+    setRequestLocale(locale);
+    setApiErrorTranslator((key, vars) => value.t(key, vars));
+    return () => setApiErrorTranslator(null);
+  }, [locale, value]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

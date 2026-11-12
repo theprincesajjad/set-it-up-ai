@@ -169,8 +169,9 @@ describe("Pro: full day, join, cancel, offer, take", { timeout: 120_000 }, () =>
     expect((await entry(people[0]!.id)).status).toBe("expired");
     expect((await entry(people[1]!.id)).status).toBe("offered");
     const lateTake = await call(env, null, "POST", `/v1/public/w/${lateToken}/take`);
-    expect(lateTake.status).toBe(410);
-    expect(lateTake.body.error).toMatchObject({ code: "offer_gone", message: "That spot was taken." });
+    // The lapsed link no longer matches any offer (the token is cleared on expiry): the customer is told to look for the latest text.
+    expect(lateTake.status).toBe(404);
+    expect(lateTake.body.error).toMatchObject({ code: "offer_not_found", message: "We couldn't find that offer. Open the latest text from the shop, or call them." });
 
     // Dia removes herself before her turn; Esha is next.
     expect((await call(env, await tokenFor(env, people[2]!.user), "DELETE", `/v1/me/waitlist/${people[2]!.id}`)).status).toBe(204);
@@ -288,6 +289,6 @@ describe("access", { timeout: 120_000 }, () => {
     const strangerToken = await tokenFor(env, stranger);
     expect((await call(env, strangerToken, "GET", `${s.base}/waitlist`)).status).toBe(403);
     expect((await call(env, strangerToken, "DELETE", `/v1/me/waitlist/${jb.body.id}`)).status).toBe(404);
-    expect((await call(env, null, "POST", "/v1/public/w/not-a-real-token/take")).status).toBe(410);
+    expect((await call(env, null, "POST", "/v1/public/w/not-a-real-token/take")).status).toBe(404);
   });
 });

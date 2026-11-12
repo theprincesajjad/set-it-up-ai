@@ -16,6 +16,7 @@
  * password), so refresh and Back keep them. Kept from the one-screen form: the `?shop=` sales-assistant prefill (starts at "Is this
  * you?"), landing attribution (src, A/B variant, anonymous id), the signup_start beacon, the trial, and the terms line.
  */
+import { cityFromAddress } from "@/lib/address";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -202,7 +203,7 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
         ...(draft.work === "shop" ? { address: draft.address.trim() } : {}),
         ...(draft.work === "home" ? { postalCode: normalizePostal(draft.postal)! } : {}),
         phone: e164!,
-        city: "Toronto",
+        ...(draft.work === "shop" && cityFromAddress(draft.address) ? { city: cityFromAddress(draft.address)! } : {}),
         ...(source ? { source } : {}),
         ...landingAb(prefill?.v),
         ...(draft.vertical === "other" && draft.sells.trim() ? { description: draft.sells.trim() } : {}),

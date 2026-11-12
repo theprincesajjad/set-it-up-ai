@@ -11,7 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { unitsText } from "@/lib/units";
 
@@ -21,6 +21,7 @@ export function whatsappUrl(text: string): string {
 }
 
 export function InviteSheet({ open, onClose, membership }: { open: boolean; onClose: () => void; membership: Pick<customerApi.MembershipDto, "id" | "merchant" | "terminology"> }) {
+  const errText = useErrorText();
   const { t, locale } = useLocaleOrEnglish();
   const toast = useToast();
   const [ref, setRef] = useState<customerApi.ReferralResponse | null>(null);
@@ -35,7 +36,7 @@ export function InviteSheet({ open, onClose, membership }: { open: boolean; onCl
       .catch((e) => {
         if (!live) return;
         setFailed(true);
-        toast({ message: errorMessage(e), tone: "error" });
+        toast({ message: errText(e), tone: "error" });
       });
     return () => {
       live = false;
@@ -59,7 +60,7 @@ export function InviteSheet({ open, onClose, membership }: { open: boolean; onCl
     try {
       setRef(await browserApi.me.newReferral(membership.id));
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     }
   }
 

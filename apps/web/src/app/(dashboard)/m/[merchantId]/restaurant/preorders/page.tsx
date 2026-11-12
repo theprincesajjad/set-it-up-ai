@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import type { restaurantApi } from "@ll/shared";
-import { DataTable, Dot, ErrorLine, PageHeader, StatBlock, type Column } from "@/components/dashboard";
+import { DataTable, Dot, PageHeader, StatBlock, type Column } from "@/components/dashboard";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { DOW_SHORT, addDaysISO, dayLabel, dowOf, todayISO, torontoHM, weekStartISO } from "@/components/dashboard/restaurant/common";
 import { CopyButton, RestaurantGate, formatPhone } from "@/components/dashboard/restaurant/shared";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { cancelRuleInWords, capsInWords, channelMix, depositInWords, fireInWords, noticeInWords, pickupsInWords } from "@/lib/restaurant/preorders";
+import { ErrorPanel } from "@/components/errors";
 import { RecipeSheet, RulesSheet, WaitlistSheet } from "./Sheets";
 
 export default function PreordersPage() {
@@ -83,6 +84,11 @@ function Preorders() {
         }
       />
 
+      {/* Failed to load: say so INSTEAD of the week strip, the tiles and "No one is waiting", which would all read as zeros. */}
+      {state.error && !state.data ? (
+        <ErrorPanel error={state.cause ?? state.error} what="your pre-orders" onRetry={() => void state.reload()} />
+      ) : (
+      <>
       <section aria-label="Pick a day" className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-meta-strong text-fg tabular">{dayLabel(week).replace(/^\w+, /, "")} to {dayLabel(to).replace(/^\w+, /, "")}</p>
@@ -127,8 +133,6 @@ function Preorders() {
         </div>
       </section>
 
-      {state.error && !state.data ? <ErrorLine message={state.error} onRetry={() => void state.reload()} /> : null}
-
       <StatBlock tiles
         label={`Pots on ${dayLabel(day)}`}
         loading={state.loading && !state.data}
@@ -159,7 +163,13 @@ function Preorders() {
         </aside>
       </div>
 
-      {rulesOpen ? <RulesSheet rules={state.data?.rules ?? { preorderDailyCap: null, capByWeekday: {}, perHourCap: null, overrides: [] }} canEdit={canEdit} draft={params.get("rules") === "open" && params.get("from") ? { label: params.get("label") ?? "", from: params.get("from") ?? "", to: params.get("to") ?? params.get("from") ?? "" } : null} cancelHours={cancelRule.data?.cancelCutoffHours ?? null} onClose={() => setRulesOpen(false)} onSaved={() => { void state.reload(); void cancelRule.reload(); }} /> : null}
+      </>
+      )}
+
+      {rulesOpen && state.data && !cancelRule.data && !cancelRule.loading ? (
+        <ErrorPanel error={cancelRule.cause ?? cancelRule.error} heading="We couldn’t load your pre-order rules" onRetry={() => void cancelRule.reload()} />
+      ) : null}
+      {rulesOpen && state.data && cancelRule.data ? <RulesSheet rules={state.data.rules} canEdit={canEdit} draft={params.get("rules") === "open" && params.get("from") ? { label: params.get("label") ?? "", from: params.get("from") ?? "", to: params.get("to") ?? params.get("from") ?? "" } : null} cancelHours={cancelRule.data.cancelCutoffHours} onClose={() => setRulesOpen(false)} onSaved={() => { void state.reload(); void cancelRule.reload(); }} /> : null}
       {recipes ? <RecipeSheet onClose={() => setRecipes(false)} onSaved={() => { void state.reload(); void catalog.reload(); }} /> : null}
       {waitlist ? <WaitlistSheet from={from} to={to} onClose={() => setWaitlist(false)} /> : null}
       <TakeOrderSheet open={phoneOrder} mode="preorder" onClose={() => setPhoneOrder(false)} onPlaced={() => void state.reload()} />
@@ -287,7 +297,7 @@ function OrdersForDay({ day, orders, loading, onChanged }: { day: string; orders
   );
 }
 
-const formatClock = (iso: string) => torontoHM(iso).replace(/^(\d{2}):(\d{2})$/, (_, h: string, m: string) => `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "pm" : "am"}`);
+const formatClock = (iso: string) => torontoHM(iso).replace(/^(\d{2}):(\d{2})$/, (_, h: string, m: string) => `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "p.m." : "a.m."}`);
 
 function RulesCard({ rules, cancelHours, items, onEdit }: { rules: restaurantApi.PreorderRulesResponse | null; cancelHours: number | null | undefined; items: { name: string; leadTimeHours?: number; depositBps?: number }[]; onEdit: () => void }) {
   const rows = rules
@@ -304,7 +314,7 @@ function RulesCard({ rules, cancelHours, items, onEdit }: { rules: restaurantApi
     <section aria-labelledby="rules-h">
       <div className="mb-3 flex items-center justify-between">
         <h2 id="rules-h" className="text-[15px] font-semibold text-fg">Rules for guests</h2>
-        <button type="button" onClick={onEdit} className="text-meta font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">Edit</button>
+        <button type="button" onClick={onEdit} className="-my-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm px-2 text-meta font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">Edit</button>
       </div>
       <dl className="rounded-card bg-card shadow-card">
         {rows.length ? (

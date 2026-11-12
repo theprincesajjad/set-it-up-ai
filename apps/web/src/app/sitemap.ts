@@ -7,7 +7,7 @@ export const revalidate = 3600;
 // phase-solo E: landing pages (routes only; the address logic below belongs to B)
 const SOLO_PAGES = ["/for-nail-techs", "/for-barbers", "/for-groomers"];
 
-const STATIC = ["/", "/for-shoppers", "/for-restaurants", "/for-bias", "/pricing", "/neighbourhoods", "/signup", "/login", "/map", "/accessibility", ...SOLO_PAGES];
+const STATIC = ["/", "/for-shoppers", "/for-restaurants", "/for-bias", "/for-bias/sample-report", "/for-bias/one-pager", "/pricing", "/neighbourhoods", "/signup", "/login", "/map", "/accessibility", ...SOLO_PAGES];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();

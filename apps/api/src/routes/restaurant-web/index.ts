@@ -11,7 +11,7 @@ import type { AppContext } from "../../context.js";
 import { requireStaff } from "../../lib/auth.js";
 import { notFound } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
-import { requireFeature } from "../../services/features.js";
+import { PREORDER_FEATURES, requireAnyFeature, requireFeature } from "../../services/features.js";
 import { getCancelRule, setCancelRule } from "../../services/cancelRule.js";
 import * as halal from "../../services/halal.js";
 import { availability } from "../../services/preorderPlanning.js";
@@ -47,11 +47,13 @@ export default async function register(parent: FastifyInstance, ctx: AppContext)
     // ---------------------------------------------------------------- pre-order cancel rule
     app.get<{ Params: MerchantParams }>("/merchants/:merchantId/preorders/cancel-rule", async (req) => {
       const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
+      await requireAnyFeature(ctx.db, s.merchant, PREORDER_FEATURES);
       return getCancelRule(ctx, s.merchant);
     });
 
     app.put<{ Params: MerchantParams }>("/merchants/:merchantId/preorders/cancel-rule", async (req) => {
       const s = await requireStaff(ctx, req, req.params.merchantId, "manager");
+      await requireAnyFeature(ctx.db, s.merchant, PREORDER_FEATURES);
       return setCancelRule(ctx, s.merchant, s.user.id, parse(restaurantWebApi.cancelRuleBody, req.body));
     });
 

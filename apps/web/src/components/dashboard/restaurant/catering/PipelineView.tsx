@@ -172,7 +172,7 @@ function Tiles({ d, now }: { d: { items: restaurantApi.CateringEventDto[]; summa
       />
       <section aria-label="Next 8 weeks" className="rounded-card bg-card shadow-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-body-strong text-fg">Next 8 weeks</h3>
+          <h2 className="text-body-strong text-fg">Next 8 weeks</h2>
           <p className="flex items-center gap-4 text-meta text-fg">
             <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-1.5 rounded-full bg-trade" />Confirmed</span>
             <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-1.5 rounded-full bg-location" />Quoted or held</span>

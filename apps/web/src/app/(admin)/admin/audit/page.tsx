@@ -9,6 +9,7 @@ import type { adminApi } from "@ll/shared";
 import { PageHeader, Panel, QuietButton } from "@/components/dashboard/kit";
 import { PanelEmpty } from "@/components/dashboard/admin/AdminKit";
 import { HistoryTimeline } from "@/components/dashboard/admin/AdminTimeline";
+import { ErrorPanel } from "@/components/errors";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -70,26 +71,53 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  /** The first page failed to load: show that INSTEAD of "Nothing logged yet". */
+  const [loadErr, setLoadErr] = useState<unknown>(null);
+  const [tick, setTick] = useState(0);
   const a = custom.trim() || action;
+  /** Everything the current filter matches, not just the rows on screen: page through the log 200 at a time (capped at 50 000 rows). */
+  const exportAll = async () => {
+    setExporting(true);
+    try {
+      const all: adminApi.AuditEntry[] = [];
+      let next: string | null = null;
+      for (let i = 0; i < 250; i++) {
+        const r: { items: adminApi.AuditEntry[]; nextCursor: string | null } = await browserApi.admin.audit({ action: a || undefined, limit: 200, cursor: next ?? undefined });
+        all.push(...r.items);
+        next = r.nextCursor;
+        if (!next) break;
+      }
+      downloadCsv("audit.csv", [["time", "actor", "action", "entity", "entity_id", "merchant_id", "ip", "data"], ...all.map((r) => [r.createdAt, r.actorName ?? "", r.action, r.entity ?? "", r.entityId ?? "", r.merchantId ?? "", r.ip ?? "", JSON.stringify(r.data)])]);
+      if (next) setError("The export stopped at 50,000 rows. Narrow the filter to export the rest.");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  };
   useEffect(() => {
     let live = true;
     const t = setTimeout(() => {
       setLoading(true);
-      browserApi.admin.audit({ action: a || undefined, limit: 50 }).then((r) => { if (live) { setRows(r.items); setCursor(r.nextCursor); setError(null); } }).catch((e) => live && setError(errorMessage(e))).finally(() => live && setLoading(false));
+      browserApi.admin.audit({ action: a || undefined, limit: 50 }).then((r) => { if (live) { setRows(r.items); setCursor(r.nextCursor); setError(null); setLoadErr(null); } }).catch((e) => { if (live) setLoadErr(e); }).finally(() => live && setLoading(false));
     }, 250);
     return () => { live = false; clearTimeout(t); };
-  }, [a]);
+  }, [a, tick]);
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Audit log" description="Every admin, rep, rollout, consent and money action, newest first." actions={<Button size="sm" variant="secondary" iconStart={Download} disabled={!rows.length} onClick={() => downloadCsv("audit.csv", [["time", "actor", "action", "entity", "entity_id", "merchant_id", "ip", "data"], ...rows.map((r) => [r.createdAt, r.actorName ?? "", r.action, r.entity ?? "", r.entityId ?? "", r.merchantId ?? "", r.ip ?? "", JSON.stringify(r.data)])])}>Export CSV</Button>} />
+      <PageHeader title="Audit log" description="Every admin, rep, rollout, consent and money action, newest first." actions={<Button size="sm" variant="secondary" iconStart={Download} disabled={!rows.length || !!loadErr} loading={exporting} onClick={exportAll}>Export CSV</Button>} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Select label="Area" value={action} onChange={(e) => setAction(e.target.value)} options={PREFIXES.map((p) => ({ value: p, label: p ? (AREA_LABEL[p.slice(0, -1)] ?? p.slice(0, -1).replace(/^./, (c) => c.toUpperCase())) : "Everything" }))} />
         <TextField label="Exact action" optionalLabel placeholder="feature.stage_changed" value={custom} onChange={(e) => setCustom(e.target.value)} />
       </div>
       {error ? <Banner tone="danger">{error}</Banner> : null}
+      {loadErr && rows.length ? <Banner tone="danger">{errorMessage(loadErr)} The rows below may be out of date.</Banner> : null}
       <Panel padded={false} className={loading && rows.length ? "opacity-60 transition-opacity" : undefined}>
         {loading && !rows.length ? (
           <Skeletons />
+        ) : loadErr && !rows.length ? (
+          <div className="p-4 md:p-5"><ErrorPanel error={loadErr} what="the audit log" onRetry={() => setTick((n) => n + 1)} /></div>
         ) : rows.length ? (
           <div className="p-4 md:p-5">
             <HistoryTimeline

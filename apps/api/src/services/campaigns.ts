@@ -641,6 +641,7 @@ export async function drawWinner(ctx: AppContext, id: string, opts: { redraw: bo
     if (c.status === "cancelled" || c.status === "draft") throw conflict("This campaign didn't run");
     if (ctx.now() < c.endsAt) throw conflict("The draw happens after the campaign ends");
     if (c.winnerUserId && !opts.redraw) throw conflict("A winner was already drawn. Choose to draw again if you want a new one.");
+    const [prev] = c.winnerUserId ? await tx.select({ name: users.name, phone: users.phone }).from(users).where(eq(users.id, c.winnerUserId)).limit(1) : [];
     const conds = [eq(campaignProgress.campaignId, c.id), isNotNull(campaignProgress.completedAt), sql`${users.deletedAt} is null`];
     if (c.winnerUserId) conds.push(ne(campaignProgress.userId, c.winnerUserId));
     const eligible = await tx
@@ -658,6 +659,7 @@ export async function drawWinner(ctx: AppContext, id: string, opts: { redraw: bo
       eligibleCount: eligible.length,
       drawnAt: drawnAt.toISOString(),
       winner: { firstName: firstName(winner.name), maskedPhone: winner.phone ? maskPhone(winner.phone) : null },
+      ...(c.winnerUserId ? { previousWinner: prev ? { firstName: firstName(prev.name), maskedPhone: prev.phone ? maskPhone(prev.phone) : null } : null } : {}),
     };
   });
 }

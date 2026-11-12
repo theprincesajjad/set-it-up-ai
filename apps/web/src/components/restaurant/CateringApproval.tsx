@@ -7,7 +7,8 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { dayDate, eventLabel, serviceLabel } from "@/lib/restaurant/util";
 import { cn } from "@/lib/cn";
@@ -20,6 +21,7 @@ type Payment = { paymentIntentId: string; clientSecret: string; amountCents: num
 
 /** /e/<token>: review a catering quote, sign with a typed name, then pay the deposit. */
 export function CateringApproval({ token, initial }: { token: string; initial: restaurantApi.PublicCateringResponse }) {
+  const errText = useErrorText();
   const { t, moneyExact: money, date, time, number, percent } = useFmt();
   const [data, setData] = useState(initial);
   const [signature, setSignature] = useState("");
@@ -64,7 +66,7 @@ export function CateringApproval({ token, initial }: { token: string; initial: r
       }
     } catch (err) {
       if (isApiError(err) && err.status === 404) setError(t("rc.ca.goneBody"));
-      else setError(errorMessage(err));
+      else setError(errText(err));
     } finally {
       setBusy(false);
     }

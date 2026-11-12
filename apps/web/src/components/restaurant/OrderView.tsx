@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { cartCount, cartSubtotal, idempotencyKeyFor, pickupDays, priceDish, pruneCart, taxOf, type CartLine, type Item, type PickupDay } from "@/lib/restaurant/order";
@@ -29,6 +29,7 @@ type Shop = { name: string; slug: string; logoUrl: string | null; brandColor: st
  * (a text code, no password), then card or Apple Pay now, or pay at the counter. Prices are the server's; this page previews them.
  */
 export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutofill }: { shop: Shop; menu: commerceApi.PublicMenuResponse; restaurant: restaurantWebApi.PublicRestaurantResponse | null; signedIn: boolean; userName: string; devAutofill?: boolean }) {
+  const errText = useErrorText();
   const { t, money, number, date, locale } = useFmt();
   const router = useRouter();
   const { cart, ready, setQty: setLineQty, clear, replace } = useCart(shop.slug);
@@ -109,7 +110,7 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
         router.push(`/o/${res.order.id}`);
       }
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setBusy(false);
     }

@@ -22,12 +22,13 @@ import { cn } from "@/lib/cn";
 import { PassTabBar } from "./PassTabBar";
 import { usePassStyle } from "./useThemeStyle";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { saveOfflineCard } from "@/lib/offlineCard";
 import { type campaignsApi, type customerApi, type MessageKey, type networkApi } from "@ll/shared";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { unitCaption, unitsText } from "@/lib/units";
 import { copy } from "@/copy/en-CA"; // l10n-ok: only the recorded consent sentence (stored with the opt-in) comes from here
 import { browserApi, sessionApi } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { newIdempotencyKey } from "@/lib/api/client";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatDate, rewardInSentence, withArticle } from "@/lib/format";
@@ -82,6 +83,7 @@ type Details = Record<string, customerApi.MembershipDetailResponse>;
 const TX_KEYS = ["earn", "redeem", "adjust", "welcome_bonus", "birthday_bonus", "referral_bonus", "promo_bonus", "network_bonus", "campaign_bonus", "reversal", "expire", "import"] as const;
 
 export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {}, nextVisit, extras, nearby = [] }: WalletProps) {
+  const errText = useErrorText();
   const { t, locale } = useLocaleOrEnglish();
   const [tab, setTab] = useState<Tab>("card");
   const [wallet, setWallet] = useState(initialWallet);
@@ -119,11 +121,17 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
       const res = await Promise.all(list.map((id) => browserApi.me.membership(id, { historyLimit: 30 }).then((d) => [id, d] as const)));
       setDetails((prev) => ({ ...prev, ...Object.fromEntries(res) }));
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     } finally {
       setLoadingDetails(false);
     }
   }, [wallet.items, toast]);
+
+  // Keep this customer's member number and QR on the phone for the offline page (sw.js). A card that failed to load leaves the saved one alone;
+  // signing out removes it (sessionApi.logout).
+  useEffect(() => {
+    if (card) saveOfflineCard({ code: card.memberCode, qrSvg: card.qrSvg });
+  }, [card]);
 
   const hero = useMemo(() => heroMembership(wallet.items), [wallet.items]);
   // Clear: on the card tab the header sits on the featured shop's colour (the pass's brand field).
@@ -507,6 +515,7 @@ function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.Membership
 
 /** Rewards for one shop with redeem → code sheet. */
 function MemberRewards({ membership, detail, onChanged }: { membership: customerApi.MembershipDto; detail: customerApi.MembershipDetailResponse; onChanged: () => Promise<void> }) {
+  const errText = useErrorText();
   const [active, setActive] = useState<{ redemption: customerApi.RedemptionDto; used: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -534,7 +543,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
       const r = await browserApi.me.redeem(membership.id, rewardId, newIdempotencyKey("redeem"));
       setActive({ redemption: r.redemption, used: false });
     } catch (e) {
-      setError(errorMessage(e));
+      setError(errText(e));
     } finally {
       setBusy(null);
     }
@@ -546,7 +555,7 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
       await browserApi.me.cancelRedemption(active.redemption.id);
       toast({ message: t("sh.wallet.cancelled"), tone: "success" });
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     }
     setActive(null);
     await onChanged();
@@ -705,6 +714,7 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
 }
 
 function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.WalletResponse; profile: customerApi.ProfileDto; onMembership: (m: customerApi.MembershipDto) => void }) {
+  const errText = useErrorText();
   const { t, locale, date } = useLocaleOrEnglish();
   const router = useRouter();
   const toast = useToast();
@@ -721,7 +731,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
       await browserApi.me.updateProfile({ name: name.trim() || null, email: email.trim() || null });
       toast({ message: t("cp.ok.saved"), tone: "success" });
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -732,7 +742,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
       onMembership(await browserApi.me.setMuted(m.id, muted));
       if (muted) toast(t("cp.ok.muted", { shop: m.merchant.name, terminology: unitCaption(locale, 2, m.terminology) }));
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     }
   }
 
@@ -741,7 +751,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
       onMembership(on ? await browserApi.me.grantConsent(m.id, copy.consent.merchant(m.merchant.name)) : await browserApi.me.withdrawConsent(m.id));
       toast(on ? t("cp.ok.consentOn", { shop: m.merchant.name }) : t("cp.consent.withdrawn", { shop: m.merchant.name, terminology: unitCaption(locale, 2, m.terminology) }));
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     }
   }
 
@@ -755,7 +765,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
       a.click();
       URL.revokeObjectURL(a.href);
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     }
   }
 
@@ -773,7 +783,7 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
       router.push("/");
       router.refresh();
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
       setDeleting(false);
     }
   }

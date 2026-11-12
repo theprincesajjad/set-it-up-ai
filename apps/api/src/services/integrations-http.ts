@@ -15,3 +15,8 @@ export function setHttp(ctx: AppContext, f: Fetch): void {
 export function httpFor(ctx: AppContext): Fetch {
   return registry.get(ctx) ?? fetch;
 }
+
+/** True when a test (or an embedding) set its own fetch for this context, so delivery code does not open real connections itself. */
+export function httpInjected(ctx: AppContext): boolean {
+  return registry.has(ctx);
+}

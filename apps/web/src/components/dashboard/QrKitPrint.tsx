@@ -148,7 +148,7 @@ export function QrKitPrint({ kit, street, initialLocationId, initialSize, localS
         ) : null}
       </div>
       {loc ? (
-        <div className="qr-kit-canvas flex justify-center overflow-x-auto rounded-card bg-bg-subtle px-4 py-10 print:block print:rounded-none print:bg-transparent print:p-0">
+        <div tabIndex={0} role="region" aria-label="Print preview" className="qr-kit-canvas flex justify-center overflow-x-auto focus-visible:focus-ring rounded-card bg-bg-subtle px-4 py-10 print:block print:rounded-none print:bg-transparent print:p-0">
         <div className="qr-kit-sheet border border-line print:border-0">
           {size === "script" ? <ScriptCard kit={kit} street={street} local={localScript} /> : <QrStand shopName={kit.merchant.name} street={street} joinUrl={loc.joinUrl} scale={size === "a4" ? 2 : 1} unit={kit.program?.terminology} />}
         </div>

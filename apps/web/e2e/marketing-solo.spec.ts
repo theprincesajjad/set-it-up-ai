@@ -73,7 +73,7 @@ test("nail page: the hook, the phone, the source cookie and a prerendered respon
   await expect(page.locator("#plans [data-plan=monthly]")).toContainText(/\$\d+\/month/);
   await expect(page.locator("#plans [data-plan=yearly]")).toContainText(/first year/);
   await expect(page.locator("#plans [data-plan=studio]")).toHaveCount(1);
-  await expect(page.locator("#plans").getByRole("link", { name: /Compare with Fresha/ })).toHaveAttribute("href", "/pricing#booking-apps");
+  await expect(page.locator("#plans").getByRole("link", { name: /Compare with Fresha/ })).toHaveAttribute("href", "/pricing?for=booking#booking-apps");
   // Deposits are optional, never the lead: not in the hero copy or the trust row; the booking flow says so on its details step.
   await expect(page.locator(".sl-copy")).not.toContainText(/deposit/i);
   await expect(page.locator(".sl-app").nth(2)).toContainText("Deposits are optional");
@@ -127,11 +127,16 @@ test("barber page: one link for the shop, the barber preset, and the comparison 
   await expect(page.locator("table")).toHaveCount(0);
   if (SHOTS) await page.screenshot(shot("barber-1440")!);
 
-  await page.goto("/pricing#booking-apps");
+  await page.goto("/pricing?for=booking#booking-apps");
   const table = page.locator("#booking-apps table");
   await expect(table).toBeVisible();
   expect(await table.locator("tbody tr").count()).toBe(6); // five rows plus four chairs
-  await expect(table).toContainText("Oct 28, 2026");
+  // Each competitor's figures carry the day its own pricing page was read.
+  await expect(table).toContainText("Nov 12, 2026");
+  await expect(table).toContainText("Oct 29, 2026");
+  // The sourcing words match the table: every figure is from the company's own pricing page, none from a guide, none our own arithmetic.
+  await expect(page.locator("#booking-apps")).toContainText("Read from each company’s own pricing page");
+  await expect(page.locator("#booking-apps")).not.toContainText(/third-party|koalendar|PricingSaaS|hand math|US\$89\.99/);
   await expect(table).toContainText("currency not stated");
   expect(await table.locator("tbody td:not(:first-of-type)").filter({ hasText: /Fresha|\$|Free|None|Included|Not on/ }).count()).toBeGreaterThan(10);
 });

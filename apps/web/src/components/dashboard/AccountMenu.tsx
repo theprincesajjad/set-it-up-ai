@@ -52,7 +52,7 @@ export function AccountMenu({ name, email, links = [] }: { name: string | null; 
           onClick={async () => {
             setBusy(true);
             await sessionApi.logout().catch(() => undefined);
-            router.push("/login");
+            router.push("/login?signedout=1");
             router.refresh();
           }}
         >

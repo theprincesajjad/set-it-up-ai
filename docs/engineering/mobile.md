@@ -79,7 +79,7 @@ Put it in `apps/mobile/.env.local` (see `.env.example`), or prefix the command: 
 | preview | `ca.localloyalty.app.preview` | `BRAND.name (Preview)` |
 | development | `ca.localloyalty.app.dev` | `BRAND.name (Dev)` |
 
-URL scheme `ll://` (deep links `ll://shop/<slug>`, `ll://card`, `ll://ticket/<id>`, `ll://quote/<token>`, `ll://order/<id>`). Universal links are configured for the placeholder host `local.example` (`/s/`, `/q/`, `/i/`, `/j/`). Replace it with the real web domain and host the AASA / assetlinks files before launch.
+URL scheme `ll://` (deep links `ll://shop/<slug>`, `ll://card`, `ll://ticket/<id>`, `ll://quote/<token>`, `ll://order/<id>`). Universal links use the host of `EXPO_PUBLIC_WEB_URL` (`/s/`, `/q/`, `/j/`; `/i/` invoice pages stay in the browser because the app has no invoice screen). Preview and production builds fail unless `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_WEB_URL` (https, real hosts) and `EXPO_PUBLIC_SUPPORT_EMAIL` are set; there is no fallback. Before launch the web host must serve `/.well-known/apple-app-site-association` (paths `/s/*`, `/q/*`, `/j/*`) and `/.well-known/assetlinks.json` with the real Apple team id and Android signing certificate fingerprint, and pass `--asc-app-id` (or set `ascAppId`) when submitting to the App Store. Camera and location prompts are translated through `locales/*.json`.
 
 ## EAS builds (`eas.json`)
 

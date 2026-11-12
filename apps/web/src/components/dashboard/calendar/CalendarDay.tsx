@@ -158,7 +158,7 @@ export function CalendarDay({
           </div>
         ))}
       </div>
-      <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 280px)", minHeight: 360 }}>
+      <div className="overflow-y-auto focus-visible:focus-ring" tabIndex={0} role="region" aria-label="Day schedule" style={{ maxHeight: "calc(100vh - 280px)", minHeight: 360 }}>
         <div className="grid grid-cols-[48px_minmax(0,1fr)] md:[grid-template-columns:48px_repeat(var(--n),minmax(0,1fr))]" style={{ "--n": cols } as React.CSSProperties}>
           <div aria-hidden className="relative border-e border-line" style={{ height: hours * PX_PER_HOUR }}>
             {Array.from({ length: hours }, (_, i) => (
