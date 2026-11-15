@@ -148,7 +148,7 @@ export function CheckoutSheet({
             {inv.discountCents ? <Line label="Reward" value={`-${money(inv.discountCents)}`} tone="positive" /> : null}
             {inv.taxCents > 0 ? <Line label={settings?.tax.name ?? "Tax"} value={money(inv.taxCents)} /> : settings?.taxStatus === "unset" ? <Line label="Tax" value="Not added: tax status not set" /> : settings?.taxStatus === "small" ? <Line label="Tax" value="None (small supplier)" /> : null}
             {inv.depositAppliedCents ? <Line label="Deposit paid online" value={`-${money(inv.depositAppliedCents)}`} tone="positive" /> : null}
-            <Line label="Balance" value={money(inv.amountDueCents)} strong />
+            <Line label={inv.status === "paid" ? "Total paid" : "Balance"} value={money(inv.amountDueCents)} strong />
             {inv.tipCents ? <Line label="Tip" value={money(inv.tipCents)} /> : null}
           </dl>
           {result.payUrl ? <p className="break-all text-meta text-fg-muted">{result.payUrl}</p> : null}

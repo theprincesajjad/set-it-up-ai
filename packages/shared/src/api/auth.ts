@@ -25,7 +25,10 @@ export const otpCodeSchema = z.string().regex(/^\d{6}$/, "Enter the 6-digit code
 export const emailSchema = z.email().max(254);
 export const passwordSchema = z.string().min(8, "Use at least 8 characters").max(200);
 export const nameSchema = z.string().trim().min(1).max(120);
+/** What a PIN pad accepts when checking a PIN. Older PINs may be 5 or 6 digits, so checking stays lenient. */
 export const staffPinSchema = z.string().regex(/^\d{4,6}$/, "PIN is 4 to 6 digits");
+/** A new counter PIN is exactly four digits: the counter keypad submits on the fourth. */
+export const newStaffPinSchema = z.string().regex(/^\d{4}$/, "PIN is 4 digits");
 
 /** POST /v1/auth/otp/start */
 export const otpStartBody = z.object({ phone: phoneSchema });
@@ -68,7 +71,7 @@ export const staffPinVerifyBody = z.object({
 export type StaffPinVerifyBody = z.infer<typeof staffPinVerifyBody>;
 
 /** PUT /v1/merchants/:merchantId/staff-pin (set your own PIN for this merchant) */
-export const staffPinSetBody = z.object({ pin: staffPinSchema });
+export const staffPinSetBody = z.object({ pin: newStaffPinSchema });
 export type StaffPinSetBody = z.infer<typeof staffPinSetBody>;
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@ import { useId, useState, type ReactNode } from "react";
 import { Platform, StyleSheet, View, type AccessibilityRole, type LayoutChangeEvent, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { useTheme } from "../theme";
+import { hiddenFromA11y } from "./direction";
 
 export type GlassVariant = "regular" | "strong" | "lift";
 
@@ -60,7 +61,7 @@ export function Glass({ children, variant = "regular", radius, style, flat, noSh
         <View style={[StyleSheet.absoluteFill, { borderRadius: radius, boxShadow: inset } as ViewStyle]} />
       </View>
       {ring && size ? (
-        <Svg pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} width={size.w} height={size.h} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Svg pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} width={size.w} height={size.h} {...hiddenFromA11y}>
           <Defs>
             {/* 140deg: rim-a at the top-left, rim-b at 28% and 74%, clear at 52%, rim-c at the bottom-right. */}
             <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">

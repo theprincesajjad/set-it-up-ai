@@ -231,6 +231,9 @@
   .lp-counts dt { grid-area: 1 / 2; }
 }
 
+/* In-page jumps (#try, #how, #pricing, #book ...) land with the band's top right under the sticky header, not behind it. */
+.lp :is(.lp-sec, .lp-try, .lp-final) { scroll-margin-top: 72px; }
+
 /* ---------- 2. Try it: the card maker on the grey band ---------- */
 .lp-try { padding-block: 56px 64px; background: var(--mkt-grey); }
 @media (min-width: 1024px) { .lp-try { padding-block: 128px; } }
@@ -248,6 +251,17 @@
 @media (max-width: 1023.98px) {
   .lp-try-art { block-size: 372px; margin-inline: calc(var(--lp-gutter) * -1); padding-inline: var(--lp-gutter); overflow: hidden; -webkit-mask-image: linear-gradient(#000 76%, transparent); mask-image: linear-gradient(#000 76%, transparent); }
   .lp-try-caption { display: none; }
+  /*
+   * Phones and tablets: the name field comes first, straight under the heading, and the card sits right below it, so the field the hero's
+   * "try it with your shop's name" promises is in view on arrival and the card stays in sight while the owner types. The trade, colour,
+   * reward and button follow. (The side column and its form are unwrapped so their parts can be ordered around the card.)
+   */
+  .lp-try-grid { grid-template-areas: none; }
+  .lp-try-grid > * { grid-area: auto; }
+  .lp-try-side, .lp-try-form { display: contents; }
+  .lp-try-form > .lp-field:first-child { order: 1; }
+  .lp-try-art { order: 2; }
+  .lp-try-form > :not(.lp-field:first-child), .lp-try-cta { order: 3; }
 }
 .lp-try-caption { margin-block-start: 20px; text-align: center; }
 
@@ -304,6 +318,18 @@ legend.lp-label { margin-block-end: 10px; }
 @media (max-width: 639.98px) { .lp-step-n { margin-block-start: 16px; } }
 @media (min-width: 1024px) { .lp-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; } }
 .lp-steps li { display: grid; gap: 10px; align-content: start; }
+/*
+ * Tablets (640 to 1023 px): each step is one row, the picture beside its words, instead of three full-width square panels that took
+ * three screens. The words sit centred against the picture.
+ */
+@media (min-width: 640px) and (max-width: 1023.98px) {
+  .lp-steps { gap: 32px; }
+  .lp-steps li { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); grid-template-rows: 1fr auto auto auto 1fr; column-gap: 40px; row-gap: 10px; }
+  .lp-steps li > .lp-panel { grid-column: 1; grid-row: 1 / -1; }
+  .lp-steps li > .lp-step-n { grid-column: 2; grid-row: 2; margin-block-start: 0; }
+  .lp-steps li > .lp-h3 { grid-column: 2; grid-row: 3; }
+  .lp-steps li > .lp-body { grid-column: 2; grid-row: 4; }
+}
 .lp-step-n { margin-block-start: 22px; font-family: var(--mkt-face-italic); font-size: 24px; font-style: italic; font-weight: 400; color: var(--mkt-quiet); }
 .lp-panel { position: relative; display: grid; place-items: center; overflow: hidden; aspect-ratio: 1 / 1; border-radius: 28px; background: var(--mkt-grey); }
 .lp-panel-pass { align-items: start; }
@@ -322,6 +348,8 @@ legend.lp-label { margin-block-end: 10px; }
 @media (min-width: 640px) { .lp-gets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 24px; } }
 @media (min-width: 1280px) { .lp-gets { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; } }
 .lp-get { display: grid; gap: 10px; align-content: start; }
+/* Four columns: every title takes two lines' room, so the four bodies start on one line. */
+@media (min-width: 1280px) { .lp-get .lp-h3 { min-block-size: 2lh; text-wrap: balance; } }
 .lp-get-art { display: grid; place-items: center; overflow: hidden; aspect-ratio: 4 / 4.4; margin-block-end: 14px; border-radius: 28px; background: var(--mkt-black-hover); }
 .lp-get-art > * { inline-size: 72%; }
 .lp-get-pass > * { inline-size: 70%; }
@@ -400,7 +428,9 @@ legend.lp-label { margin-block-end: 10px; }
 
 /* ---------- 6. Pricing on the grey band; Pro is the black card ---------- */
 .lp-plans { display: grid; gap: 16px; }
-@media (min-width: 1024px) { .lp-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: stretch; } }
+/* Tablets: two plans side by side and the third across the row under them; three columns from 900 px. */
+@media (min-width: 640px) { .lp-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; } .lp-plan:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+@media (min-width: 900px) { .lp-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; } .lp-plan:last-child:nth-child(odd) { grid-column: auto; } }
 .lp-plan { display: flex; flex-direction: column; gap: 12px; padding: 28px; border-radius: 28px; background: var(--mkt-paper); }
 @media (min-width: 1024px) { .lp-plan { padding: 40px 36px; } }
 .lp-plan-monthly { background: var(--mkt-black); color: var(--mkt-on-black); }
@@ -490,7 +520,14 @@ body:has([data-chat-launcher]) .lp-sticky { padding-inline-end: 140px; }
 @media (max-width: 639.98px) { body:has([data-chat-launcher]) .lp-sticky { padding-inline-end: 76px; } }
 .lp-sticky .lp-btn { flex: 1; min-block-size: 44px; font-size: 16px; }
 @media (min-width: 1024px) { .lp-sticky { display: none; } }
-@media (max-width: 1023.98px) { .lp { padding-block-end: 64px; } }
+/*
+ * The visit-counting notice (LandingMeasure, CountingOff) sits between the black closing band and the black footer: set it on the same
+ * black, under a hairline, so it reads as the first line of the footer instead of a white strip. No extra room under it on phones: the
+ * sticky bar is hidden over the closing band and the footer, so nothing is covered there.
+ */
+.lp-notice-band { background: var(--mkt-black); border-block-start: 1px solid var(--mkt-rule-on-black); }
+.lp-notice-band p { color: var(--mkt-on-black-muted); }
+.lp-notice-band a { color: var(--mkt-on-black); }
 
 @media (prefers-reduced-motion: no-preference) {
   /* The hero: the phone settles in once. */
@@ -510,9 +547,7 @@ body:has([data-chat-launcher]) .lp-sticky { padding-inline-end: 140px; }
   .lp-tile:hover .lp-tile-photo img { transform: none; }
 }
 
-/* Below the first screens, sections skip layout and paint until they come near the viewport. `auto` remembers each real height. */
-.lp-sec, .lp-final { content-visibility: auto; contain-intrinsic-size: auto 1000px; }
-/* Phones: a closer first guess at each band's height (the page measures about 12,000 px there), before `auto` learns the real one. */
-@media (max-width: 639.98px) { .lp-sec, .lp-final { contain-intrinsic-size: auto 800px; } }
-/* The card maker is the second screen: skip it while the hero paints, but keep its real size so #try links land right. */
-.lp-try { content-visibility: auto; contain-intrinsic-size: auto 1500px; }
+/*
+ * No content-visibility on the sections (as on the solo pages, solo.css): lazily sized bands changed the page height while an in-page
+ * jump was running, so "See plans" (#pricing) and the footer's "Book a visit" (/#book) landed hundreds of pixels off their section.
+ */

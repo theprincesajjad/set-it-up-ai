@@ -520,6 +520,10 @@
   position: fixed;
   border: 0;
 }
+/* Side sheets hold forms and prices: a solid card surface, so the page under them never shows through the fields. */
+[data-theme-style="clear"] .kit-sheet[data-slot="side-panel"] {
+  background-color: var(--card);
+}
 [data-theme-style="clear"] .kit-sheet-h {
   border-bottom: 0;
   padding: 16px;
@@ -780,6 +784,24 @@
   }
 }
 
+/* An English screen shown inside a right-to-left page (EnglishFallback) reads left to right, but the sidebar is on the right: the card must not run off the left edge. */
+@media (min-width: 1024px) {
+  :root[dir="rtl"] [data-shell="clear"] [data-english-screen] .cust-tools:has(+ .cust-grid),
+  :root[dir="rtl"] [data-shell="clear"] [data-english-screen] .cust-grid,
+  :root[dir="rtl"] [data-shell="clear"] [data-english-screen] .kit-tw {
+    margin-inline-start: 0;
+  }
+  :root[dir="rtl"] [data-shell="clear"] [data-english-screen] .cust-tools:has(+ .cust-grid) {
+    padding-inline-start: 16px;
+  }
+  :root[dir="rtl"] [data-shell="clear"] [data-english-screen] .cust-grid thead th:first-child,
+  :root[dir="rtl"] [data-shell="clear"] [data-english-screen] .cust-grid tbody td:first-child,
+  :root[dir="rtl"] [data-shell="clear"] [data-english-screen] .kit-th:first-child,
+  :root[dir="rtl"] [data-shell="clear"] [data-english-screen] .kit-td:first-child {
+    padding-inline-start: 16px;
+  }
+}
+
 /* Heatmap: an ink ramp in Clear (the trade colour is for the current bar only). */
 [data-theme-style="clear"] .kit-heat {
   --heat-ink: var(--foreground);
@@ -787,4 +809,27 @@
 /* Balance column: regular weight, like the mock's "7 / 10". */
 [data-theme-style="clear"] .cust-grid tbody td bdi.tabular {
   font-weight: 450;
+}
+
+/* ---------- phones: 44 px tap targets (route-crawl); the desktop look above is unchanged ---------- */
+@media (max-width: 767px) {
+  /* Filter capsules and range switches: the option fills the 44 px track (no inset), so the whole option is the target. */
+  [data-theme-style="clear"] .kit-caps,
+  [data-theme-style="clear"] .kit-seg {
+    padding: 0;
+  }
+  [data-theme-style="clear"] .kit-cap,
+  [data-theme-style="clear"] .kit-seg-o {
+    height: 44px;
+  }
+  [data-theme-style="clear"] .kit-tbtn {
+    height: 44px;
+  }
+  /* Text-weight actions ("See all", "Cancel", "View as table"): a 44 px target that takes no more room than the text line. */
+  [data-theme-style="clear"] .kit-quiet {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-block: -12px;
+  }
 }

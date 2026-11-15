@@ -45,6 +45,16 @@ const PASS_REQUEST_HEADERS = ["content-type", "accept", "idempotency-key", "user
 const PASS_RESPONSE_HEADERS = ["content-type", "content-disposition", "cache-control", "last-modified", "etag", "retry-after"];
 
 /**
+ * True when a 401 means the session itself is gone (no error code, or `unauthorized`). A wrong staff PIN (`invalid_pin`) or an expired one-time
+ * link is also a 401, but the person is still signed in: rotating the refresh token and replaying the request would count a wrong PIN twice.
+ */
+export async function isSessionGone(res: Response): Promise<boolean> {
+  const data = (await res.clone().json().catch(() => null)) as { error?: { code?: unknown } } | null;
+  const code = data?.error?.code;
+  return code === undefined || code === "unauthorized";
+}
+
+/**
  * Forward one browser request to the API with the session's bearer token.
  * On 401, rotate the refresh token once, retry, and return the new cookies.
  */
@@ -80,7 +90,7 @@ export async function forwardToApi(
     // A PIN token that expired answers 401 and the counter asks for the PIN again; the shop's own session is not rotated for it.
     res = await call(staffToken ?? jar.get(ACCESS_COOKIE)?.value);
     const rt = jar.get(REFRESH_COOKIE)?.value;
-    if (res.status === 401 && rt && !staffToken) {
+    if (res.status === 401 && rt && !staffToken && (await isSessionGone(res))) {
       const fresh = await refreshSession(rt, fetchImpl);
       if (fresh) {
         cookies = sessionCookies(fresh);

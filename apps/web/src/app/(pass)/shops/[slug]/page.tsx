@@ -191,12 +191,13 @@ export default async function ShopPage({ params, searchParams }: Props) {
         subtitle={heroSubtitle}
         offer={shop.rewards[0] ? <>{unitsText(locale, shop.rewards[0].pointsCost, terminology, false)} = <bdi>{locale === "en" ? shop.rewards[0].name : rewardInSentenceL(L, shop.rewards[0].name)}</bdi></> : null}
         goal={program?.earnType === "stamps" ? (shop.rewards[0]?.pointsCost ?? program.stampGoal) : 0}
+        filled={membership?.balance ?? 0}
       />
-      {status || shop.memberCount || shop.features?.orderAhead || shop.features?.serviceTickets ? (
+      {status || shop.memberCount || shop.features?.serviceTickets ? (
         <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-fg">
           {status ? <StatusDot tone={status.open ? "positive" : "neutral"}>{status.label.charAt(0).toLowerCase() + status.label.slice(1)}</StatusDot> : null}
           {shop.memberCount ? <span className="text-fg-muted">{t("shop.membersCount", { n: shop.memberCount.toLocaleString("en-CA") })}</span> : null}
-          {rest ? (rest.quotedWaitMin ? <span className="text-fg-muted">{t("rs.pickupWait", { min: rest.quotedWaitMin })}</span> : null) : shop.features?.orderAhead ? <span className="text-fg-muted">{t("shop.orderAheadInApp")}</span> : null}
+          {rest ? (rest.quotedWaitMin ? <span className="text-fg-muted">{t("rs.pickupWait", { min: rest.quotedWaitMin })}</span> : null) : null}
           {shop.features?.serviceTickets ? <span className="text-fg-muted">{t("shop.repairTracking")}</span> : null}
         </div>
       ) : null}
@@ -215,6 +216,12 @@ export default async function ShopPage({ params, searchParams }: Props) {
           ) : null}
           {rest.features.pickup && !rest.acceptingOrders ? <p className="text-center text-meta text-fg-muted">{t("rs.notTakingOrders")}</p> : null}
         </div>
+      ) : null}
+      {/* A café or bakery that takes orders on the web: the menu is the way in (it was "Order ahead in the app", with no link). */}
+      {!rest && shop.features?.orderAhead ? (
+        <Button size="lg" fullWidth href={`${base}/menu`}>
+          {t("rs.orderPickup")}
+        </Button>
       ) : null}
       {shop.features?.appointments ? (
         <div className="flex flex-col gap-2">
@@ -266,7 +273,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
             <p className="display text-title tabular-nums text-points-text">{unitsText(locale, membership.balance, membership.terminology, false)}</p>
             <p className="text-meta text-fg-muted">{membership.nextReward ? t("ui.stampMore", { n: membership.nextReward.pointsNeeded, reward: rewardWord(membership.nextReward.name) }) : expiryLineL(L, membership)}</p>
           </div>
-          <Button variant="secondary" size="sm" href="/me">
+          <Button variant="secondary" size="md" href="/me">
             {t("sh.fs.ctaCard")}
           </Button>
         </div>
@@ -286,7 +293,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
                   <ListGroup title={t("shop.howEarn")} as="div">
                     <div className="flex flex-col gap-1 py-3.5">
                       <p dir="auto" className="text-body-strong text-fg">{howYouEarnL(L, program, formatCurrency(locale, 100))}</p>
-                      {program.welcomeBonus > 0 && m.vertical !== "pharmacy" ? (
+                      {program.welcomeBonus > 0 && m.vertical !== "pharmacy" && !membership ? (
                         <p className="text-meta text-fg">
                           {t("shop.welcomeBonus", { points: unitsText(locale, program.welcomeBonus, terminology, false) })}
                         </p>
@@ -361,7 +368,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
                   <ListGroup title={t("wp.shop.visit")} as="div">
                     <a href={directionsUrl(loc)} rel="noopener noreferrer" className="-mx-4 flex items-center gap-3 px-4 py-3.5 hover:bg-bg-subtle focus-visible:focus-ring">
                       <div className="min-w-0 flex-1">
-                        <p className="text-body-strong text-fg">{loc.address}</p>
+                        <p className="text-body-strong text-fg"><bdi>{loc.address}</bdi></p>
                         <p className="text-meta text-fg-muted">
                           {loc.city}
                           {loc.postalCode ? ` ${loc.postalCode}` : ""}
@@ -409,7 +416,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
         <ListGroup title={t("wp.shop.moreOn", { hood: m.neighbourhood.name })}>
           {nearby.map((s) => (
             <li key={s.merchant.id}>
-              <ShopTile variant="list" href={`/shops/${s.merchant.slug}`} className="-mx-4 px-4 hover:bg-bg-subtle" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} subtitle={s.location?.address} />
+              <ShopTile variant="list" href={`/shops/${s.merchant.slug}`} className="-mx-4 px-4 hover:bg-bg-subtle" shop={{ name: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl, brandColor: s.merchant.brandColor }} subtitle={s.location?.address ? <bdi>{s.location.address}</bdi> : undefined} />
             </li>
           ))}
         </ListGroup>

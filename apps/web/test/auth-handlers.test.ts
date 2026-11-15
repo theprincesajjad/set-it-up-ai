@@ -73,6 +73,19 @@ describe("forwardToApi", () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it("forwards a wrong staff PIN once: no refresh, no replay (a replay would count the failure twice)", async () => {
+    const fetch = vi.fn(async () => new Response('{"error":{"code":"invalid_pin","message":"That PIN is not right."}}', { status: 401, headers: { "content-type": "application/json" } }));
+    const r = await forwardToApi(
+      new Request("http://web/api/ll/v1/merchants/m/staff-pin/verify", { method: "POST", body: '{"pin":"1111"}' }),
+      "/v1/merchants/m/staff-pin/verify",
+      jar({ [ACCESS_COOKIE]: "at-1", [REFRESH_COOKIE]: "rt-unique-3-xxxxxxxxxxxxxxxx" }),
+      fetch as unknown as typeof globalThis.fetch,
+    );
+    expect(r.status).toBe(401);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(r.cookies).toEqual([]);
+  });
+
   it("clears the session when refresh fails", async () => {
     const fetch = vi.fn(async () => new Response('{"error":{"code":"unauthorized","message":"x"}}', { status: 401 }));
     const r = await forwardToApi(new Request("http://web/api/ll/v1/me"), "/v1/me", jar({ [REFRESH_COOKIE]: "rt-unique-2-xxxxxxxxxxxxxxxx" }), fetch);

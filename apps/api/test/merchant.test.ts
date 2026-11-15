@@ -243,21 +243,39 @@ describe("locations + team", () => {
     expect((await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/team`, headers: auth(mgr.token), payload: invite })).statusCode).toBe(403);
     const r = await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/team`, headers: auth(ownerToken), payload: invite });
     expect(r.statusCode).toBe(201);
-    expect(r.json()).toMatchObject({ role: "staff", name: "Bea", hasPin: false });
+    // An invite nobody has opened: the owner sees it as not signed in and can send it again.
+    expect(r.json()).toMatchObject({ role: "staff", name: "Bea", hasPin: false, signedIn: false });
     expect(env.ctx.providers.outbox.email.at(-1)?.to).toBe("Barista@Example.com");
     // The email invite opens "email me a code" with the address filled in (the invitee has no password).
     expect(env.ctx.providers.outbox.email.at(-1)?.text).toMatch(/\/login\?mode=code&email=Barista%40Example\.com/);
     expect(env.ctx.providers.outbox.email.at(-1)?.text).toContain("6-digit code");
+    // The link also says who added them, so the sign-in page can say it (it only changes the words on the page).
+    expect(env.ctx.providers.outbox.email.at(-1)?.text).toMatch(/&invite=1&shop=/);
     expect((await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/team`, headers: auth(ownerToken), payload: invite })).statusCode).toBe(409);
     const phoneInvite = await env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/team`, headers: auth(ownerToken), payload: { phone: "416 555 7777", role: "manager" } });
     expect(phoneInvite.json().phone).toBe("+14165557777");
     expect(env.ctx.providers.outbox.sms.at(-1)?.to).toBe("+14165557777");
-    // The phone invite opens the phone tab (/login?as=customer) and says what to do.
-    expect(env.ctx.providers.outbox.sms.at(-1)?.body).toMatch(/added you to their team .* Sign in with this phone number.*\/login\?as=customer/);
+    // The phone invite opens the phone tab (/login?as=phone) and says what to do.
+    expect(env.ctx.providers.outbox.sms.at(-1)?.body).toMatch(/added you to their team .* Sign in with this phone number.*\/login\?as=phone&invite=1&shop=/);
     const bea = r.json().userId;
+
+    // Send the invite again: owner only, to the email on file, a few times an hour, and it is audited.
+    const resend = (token: string) => env.app.inject({ method: "POST", url: `/v1/merchants/${merchant.id}/team/${bea}/resend`, headers: auth(token) });
+    expect((await resend(mgr.token)).statusCode).toBe(403);
+    const sentBefore = env.ctx.providers.outbox.email.length;
+    expect((await resend(ownerToken)).statusCode).toBe(204);
+    expect(env.ctx.providers.outbox.email.length).toBe(sentBefore + 1);
+    expect(env.ctx.providers.outbox.email.at(-1)?.to).toBe("Barista@Example.com");
+    expect((await resend(ownerToken)).statusCode).toBe(204);
+    expect((await resend(ownerToken)).statusCode).toBe(204);
+    const capped = await resend(ownerToken);
+    expect(capped.statusCode).toBe(429);
+    expect(capped.json().error.details.reason).toBe("invite_resend_cap");
 
     // PIN: hashed, unique per shop, owner can set others', staff only their own.
     expect((await env.app.inject({ method: "PUT", url: `/v1/merchants/${merchant.id}/team/${bea}/pin`, headers: auth(ownerToken), payload: { pin: "12a4" } })).statusCode).toBe(400);
+    // A counter PIN is exactly four digits: the counter keypad submits on the fourth, so a longer one could never be typed.
+    for (const pin of ["123", "12345", "246810"]) expect((await env.app.inject({ method: "PUT", url: `/v1/merchants/${merchant.id}/team/${bea}/pin`, headers: auth(ownerToken), payload: { pin } })).statusCode).toBe(400);
     expect((await env.app.inject({ method: "PUT", url: `/v1/merchants/${merchant.id}/team/${bea}/pin`, headers: auth(ownerToken), payload: { pin: "4321" } })).statusCode).toBe(204);
     const [row] = await env.db.select().from(merchantStaff).where(and(eq(merchantStaff.merchantId, merchant.id), eq(merchantStaff.userId, bea)));
     expect(row!.pinHash).toBeTruthy();

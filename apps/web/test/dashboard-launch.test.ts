@@ -35,6 +35,11 @@ describe("dashboard launch fixes", () => {
     expect(isEnglishOnlyScreen(`${base}/grocery/butcher`, base)).toBe(true);
     expect(isEnglishOnlyScreen(`${base}/restaurant/kitchen`, base)).toBe(false);
     expect(isEnglishOnlyScreen(`${base}/classes/door`, base)).toBe(false);
-    expect(isEnglishOnlyScreen(`${base}/customers`, base)).toBe(false);
+    expect(isEnglishOnlyScreen(`${base}/reports/week`, base)).toBe(false);
+    expect(isEnglishOnlyScreen(`${base}/messages/promos`, base)).toBe(false);
+    // Half-translated screens (a translated search box over English sentences) read as broken in a right-to-left page: whole screen in English until finished.
+    expect(isEnglishOnlyScreen(`${base}/customers`, base)).toBe(true);
+    expect(isEnglishOnlyScreen(`${base}/messages/new`, base)).toBe(true);
+    expect(isEnglishOnlyScreen(`${base}/reports`, base)).toBe(true);
   });
 });

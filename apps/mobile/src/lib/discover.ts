@@ -10,13 +10,12 @@ import { formatDistance } from "./format";
 import { formatDistanceL, formatShortDateL, isolateL, openPartsL, type L } from "./formatL";
 import { shopLine } from "./shopLine";
 
-/** "Roncesvalles Village" → "roncesvalles" (the canvas voice: short, lowercase). */
+/** "Roncesvalles Village" → "Roncesvalles" (short; a place keeps its capitals). */
 export function shortHood(name: string | null | undefined): string {
   if (!name) return "";
   return name
     .replace(/\s+(village|bia|neighbourhood)$/i, "")
-    .trim()
-    .toLowerCase();
+    .trim();
 }
 
 /** Row order and the plural the row title uses ("bakeries on roncesvalles"). */
@@ -86,9 +85,9 @@ export interface HeroCampaign {
   progress?: { visited: number; goal: number } | null;
 }
 
-const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** Hero copy for the live campaign: eyebrow, lowercase headline, progress. */
+/** Hero copy for the live campaign: eyebrow, sentence-case headline, progress. */
 export function heroCopy(c: HeroCampaign, now = new Date()): { eyebrow: string; headline: string; progress: { value: number; max: number } | null } {
   const end = new Date(c.endsAt);
   const ends = end.getTime() > now.getTime() ? ` · ends ${MONTHS[end.getMonth()]} ${end.getDate()}` : "";
@@ -104,8 +103,8 @@ export function heroCopy(c: HeroCampaign, now = new Date()): { eyebrow: string; 
           : lower(c.name);
   const g = c.progress?.goal ?? c.goalVisits;
   return {
-    eyebrow: `${c.name.toLowerCase()}${ends}`,
-    headline: headline.toLowerCase(),
+    eyebrow: `${c.name}${ends}`,
+    headline: headline.charAt(0).toUpperCase() + headline.slice(1),
     progress: c.kind === "passport" && g > 0 ? { value: Math.min(c.progress?.visited ?? 0, g), max: g } : null,
   };
 }

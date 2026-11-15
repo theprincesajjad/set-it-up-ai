@@ -24,7 +24,7 @@ const TONE: Record<SectionTone, string> = {
 export function MSection({ children, className, id, tone = "canvas", reveal }: { children: ReactNode; className?: string; id?: string; tone?: SectionTone; reveal?: boolean }) {
   return (
     <section id={id} className={cn("py-16 md:py-24", TONE[tone], className)}>
-      {reveal ? <BlurFadeStatic className="mx-auto max-w-[1200px] px-4 md:px-8">{children}</BlurFadeStatic> : <div className="mx-auto max-w-[1200px] px-4 md:px-8">{children}</div>}
+      {reveal ? <BlurFadeStatic className="mx-auto max-w-360 px-5 md:px-10 xl:px-15">{children}</BlurFadeStatic> : <div className="mx-auto max-w-360 px-5 md:px-10 xl:px-15">{children}</div>}
     </section>
   );
 }

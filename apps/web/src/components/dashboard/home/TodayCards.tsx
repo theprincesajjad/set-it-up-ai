@@ -169,7 +169,7 @@ export function NeedsYouCard({ rows, loading, base, className }: { rows: NeedsRo
           {shown.map((r) => {
             const v = needsVisual(r);
             return (
-              <li key={r.key} className={cn("flex min-h-[92px] flex-1 [[lang^=ur]_&]:min-h-24", CLEAR_DIVIDER)}>
+              <li key={r.key} className={cn("flex min-h-[92px] [[lang^=ur]_&]:min-h-24", shown.length >= 3 && "flex-1", CLEAR_DIVIDER)}>
                 <Link href={`${base}${r.href}`} className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-hover focus-visible:focus-ring [[lang^=ur]_&]:py-2.5">
                   <span aria-hidden className={CLEAR_TILE}>
                     <v.icon className="size-4" strokeWidth={1.8} />
@@ -336,7 +336,7 @@ export function HoursCard({ hourly, loading, currentHour, className }: { hourly:
   );
 }
 
-export function UpNextCard({ rows, loading, base, label, className }: { rows: UpRow[]; loading?: boolean; base: string; label: string; className?: string }) {
+export function UpNextCard({ rows, loading, base, label, empty, className }: { rows: UpRow[]; loading?: boolean; base: string; label: string; /** What to say when nothing is up next (a shop with no schedule says so differently). */ empty?: string; className?: string }) {
   const { t } = useLocaleOrEnglish();
   const clear = useThemeStyle().clear;
   return (
@@ -344,7 +344,7 @@ export function UpNextCard({ rows, loading, base, label, className }: { rows: Up
       {loading ? (
         <RowSkeleton rows={clear ? 1 : 2} />
       ) : rows.length === 0 ? (
-        <Empty>{t("shell.today.nothingUpNext")}</Empty>
+        <Empty>{empty ?? t("shell.today.nothingUpNext")}</Empty>
       ) : clear ? (
         <ul className="flex flex-col">
           {rows.map((r) => {

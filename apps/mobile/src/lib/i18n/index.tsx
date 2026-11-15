@@ -10,6 +10,8 @@ import {
   formatNumber,
   formatTime,
   isLocale,
+  CATALOGS,
+  formatMessage,
   normalizeLocale,
   pickTranslation,
   t as translate,
@@ -26,6 +28,8 @@ import { setApiErrorTranslator, setRequestLocale } from "../../api/client";
 import { api } from "../../state/api";
 import { useSession } from "../../state/session";
 import { getJson, setJson } from "../../state/storage";
+import { dirStyle } from "../../ui/direction";
+import { isLocalKey, LOCAL_MESSAGES, type LocalKey } from "./local";
 
 const LOCALE_KEY = "ll.locale.v1";
 
@@ -40,15 +44,38 @@ function isolateVars(vars: Vars): Vars {
   return out;
 }
 
+/**
+ * The English catalogue is written with straight apostrophes; the product copy rule is curly ones ("What’s your number?").
+ * Only the template is changed (before names and amounts are filled in), so a shop called "Nonna's Table" stays as typed.
+ */
+const CURLY_APOSTROPHE = /(\p{L})'(\p{L})/gu;
+const curlyTemplates = new Map<string, string>();
+function translateCopy(locale: Locale, key: MessageKey | LocalKey, vars?: Vars): string {
+  if (isLocalKey(key)) {
+    const words: Record<Locale, string> = LOCAL_MESSAGES[key];
+    const msg = words[locale] ?? words.en;
+    return vars || msg.includes("{") ? formatMessage(locale, msg, vars) : msg;
+  }
+  if (locale !== "en") return translate(locale, key, vars);
+  let msg = curlyTemplates.get(key);
+  if (msg === undefined) {
+    msg = (CATALOGS.en[key] ?? key).replace(CURLY_APOSTROPHE, "$1\u2019$2");
+    curlyTemplates.set(key, msg);
+  }
+  return vars || msg.includes("{") ? formatMessage(locale, msg, vars) : msg;
+}
+
 export interface LocaleValue {
   locale: Locale;
   info: LocaleInfo;
   dir: "ltr" | "rtl";
   isRtl: boolean;
-  t: (key: MessageKey, vars?: Vars) => string;
+  t: (key: MessageKey | LocalKey, vars?: Vars) => string;
   setLocale: (next: Locale) => void;
   money: (cents: number, currency?: string) => string;
   number: (n: number) => string;
+  /** A run that must read left to right inside a right-to-left line (an address, a phone number, a price): wrapped in an LTR isolate there, unchanged elsewhere. */
+  ltr: (text: string) => string;
   date: (d: Date | string | number, opts?: Intl.DateTimeFormatOptions, tz?: string) => string;
   time: (d: Date | string | number, tz?: string) => string;
   pick: (item: { name: string; description?: string | null; translations?: TranslationsJson | null }) => { name: string; description: string | null };
@@ -107,11 +134,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       info: LOCALES[locale],
       dir: LOCALES[locale].dir,
       isRtl: LOCALES[locale].dir === "rtl",
-      t: (key, vars) => withRtlMark(locale, translate(locale, key, vars && LOCALES[locale].dir === "rtl" ? isolateVars(vars) : vars)),
+      t: (key, vars) => withRtlMark(locale, translateCopy(locale, key, vars && LOCALES[locale].dir === "rtl" ? isolateVars(vars) : vars)),
       setLocale,
       // Right-to-left text would put the currency sign on the wrong side ("$54" as "54$"): wrap the amount in a left-to-right isolate.
       money: (cents, currency) => (LOCALES[locale].dir === "rtl" ? `\u2066${formatCurrency(locale, cents, currency)}\u2069` : formatCurrency(locale, cents, currency)),
       number: (n) => formatNumber(locale, n),
+      ltr: (text) => (LOCALES[locale].dir === "rtl" && text ? `\u2066${text}\u2069` : text),
       date: (d, opts, tz) => formatDate(locale, d, opts, tz),
       time: (d, tz) => formatTime(locale, d, tz),
       pick: (item) => pickTranslation(item, locale),
@@ -148,7 +176,7 @@ export function LocaleRoot({ children, style }: { children: ReactNode; style?: S
   const { dir } = useLocale();
   // `dir` (not only the style) so react-native-web resolves start/end and marginStart/paddingStart for the whole subtree.
   return (
-    <View {...({ dir } as object)} style={[{ flex: 1, direction: dir }, style]}>
+    <View {...({ dir } as object)} style={[{ flex: 1 }, dirStyle(dir), style]}>
       {children}
     </View>
   );

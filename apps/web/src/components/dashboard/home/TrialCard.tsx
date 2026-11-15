@@ -8,7 +8,7 @@
  */
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
-import { PLANS, TRIAL_DAYS, TRIAL_REMINDER_DAYS_LEFT, type billingApi, type reportsApi } from "@ll/shared";
+import { PLANS, TRIAL_DAYS, TRIAL_REMINDER_DAYS_LEFT, onboardingPath, type billingApi, type reportsApi } from "@ll/shared";
 import { Panel } from "@/components/dashboard/kit";
 import { Button } from "@/components/ui/Button";
 import { useApi } from "@/lib/dashboard/useApi";
@@ -43,7 +43,7 @@ function readDismissed(endsAt: string): boolean {
 }
 
 export function TrialCard() {
-  const { api, base, role } = useMerchant();
+  const { api, base, role, detail } = useMerchant();
   const loc = useLocaleOrEnglish();
   const { t } = loc;
   const manager = role !== "staff";
@@ -62,17 +62,20 @@ export function TrialCard() {
 
   if (moment.kind === "start") {
     const date = loc.date(moment.trial.endsAt, { weekday: "long", month: "long", day: "numeric" });
+    // A shop on stamps has no booking link, slots or waitlist: its card speaks of promos, texts and the weekly report, and the weekly goal is
+    // already one tap away in "This week" below.
+    const shopCard = onboardingPath(detail.merchant.vertical, detail.merchant.workSetting) === "storefront";
     return (
       <Panel className="trial-card">
         <div data-testid="trial-card" data-moment="start" className="flex flex-col gap-3">
           <p className="flex items-start gap-2 text-body-strong text-fg">
             <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0 text-trade" />
-            {t("trial.card.startTitle", { plan, days: TRIAL_DAYS })}
+            {t(shopCard ? "trial.card.startTitleShop" : "trial.card.startTitle", { plan, days: TRIAL_DAYS })}
           </p>
-          <p className="text-body text-fg-muted">{t("trial.card.startBody", { date })}</p>
+          <p className="text-body text-fg-muted">{t(shopCard ? "trial.card.startBodyShop" : "trial.card.startBody", { date })}</p>
           <div className="flex flex-wrap gap-2">
             <Button href={`${base}/billing`} variant="secondary">{t("trial.card.seeOn")}</Button>
-            <Button href={`${base}/settings/goal`} variant="secondary">{t("trial.card.goal")}</Button>
+            {shopCard ? null : <Button href={`${base}/settings/goal`} variant="secondary">{t("trial.card.goal")}</Button>}
           </div>
         </div>
       </Panel>

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { TextField, inputBase } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/lib/cn";
 import { isApiError } from "@/lib/api/errors";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { fromLocalInput } from "@/lib/dashboard/time";
@@ -42,7 +43,7 @@ function fromHours(hours: appointmentsApi.StaffHoursDto[]): Week {
  * Hours and services for one person (staff page, "Hours and services"): weekly shifts (a day can have two), which
  * services they do with their own length and price, and time off. The calendar and online booking read these.
  */
-export function StaffScheduleSheet({ open, onClose, member }: { open: boolean; onClose: () => void; member: merchantApi.StaffMember | null }) {
+export function StaffScheduleSheet({ open, onClose, member, onSaved }: { open: boolean; onClose: () => void; member: Pick<merchantApi.StaffMember, "userId" | "name"> | null; /** The calendar's first-run step saves hours right here, then reloads itself. */ onSaved?: () => void | Promise<void> }) {
   const { api, base } = useMerchant();
   const toast = useToast();
   const act = useAction();
@@ -100,8 +101,9 @@ export function StaffScheduleSheet({ open, onClose, member }: { open: boolean; o
       return true;
     });
     if (r) {
-      toast({ message: `${member!.name ?? "Staff"}'s hours saved`, tone: "success" });
+      toast({ message: `${member!.name ?? "Staff"}’s hours saved`, tone: "success" });
       await cal.reload();
+      await onSaved?.();
       onClose();
     }
   }
@@ -146,12 +148,12 @@ export function StaffScheduleSheet({ open, onClose, member }: { open: boolean; o
                 </div>
                 {day.on
                   ? day.shifts.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2 ps-[104px]">
-                        <input aria-label={`${d.label} starts`} type="time" value={s.start} onChange={(e) => setShift(d.weekday, i, { start: e.target.value })} className={inputBase} />
+                      <div key={i} className={cn("grid items-center gap-2 sm:ps-[104px]", i > 0 ? "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]")}>
+                        <input aria-label={`${d.label} starts`} type="time" value={s.start} onChange={(e) => setShift(d.weekday, i, { start: e.target.value })} className={cn(inputBase, "min-w-0")} />
                         <span aria-hidden>–</span>
-                        <input aria-label={`${d.label} ends`} type="time" value={s.end} onChange={(e) => setShift(d.weekday, i, { end: e.target.value })} className={inputBase} />
+                        <input aria-label={`${d.label} ends`} type="time" value={s.end} onChange={(e) => setShift(d.weekday, i, { end: e.target.value })} className={cn(inputBase, "min-w-0")} />
                         {i > 0 ? (
-                          <button type="button" aria-label="Remove shift" onClick={() => setWeek((w) => ({ ...w, [d.weekday]: { ...w[d.weekday]!, shifts: w[d.weekday]!.shifts.filter((_, k) => k !== i) } }))} className="inline-flex size-8 items-center justify-center rounded-full text-fg-muted hover:bg-bg-subtle">
+                          <button type="button" aria-label="Remove shift" onClick={() => setWeek((w) => ({ ...w, [d.weekday]: { ...w[d.weekday]!, shifts: w[d.weekday]!.shifts.filter((_, k) => k !== i) } }))} className="inline-flex size-8 items-center justify-center rounded-full text-fg-muted hover:bg-bg-subtle max-sm:size-11">
                             <X aria-hidden className="size-4" />
                           </button>
                         ) : null}
@@ -159,7 +161,7 @@ export function StaffScheduleSheet({ open, onClose, member }: { open: boolean; o
                     ))
                   : null}
                 {day.on && day.shifts.length < 2 ? (
-                  <button type="button" onClick={() => setWeek((w) => ({ ...w, [d.weekday]: { ...w[d.weekday]!, shifts: [...w[d.weekday]!.shifts, { start: "17:30", end: "20:00" }] } }))} className="ms-[104px] w-fit text-meta text-fg-muted underline-offset-2 hover:text-fg hover:underline">
+                  <button type="button" onClick={() => setWeek((w) => ({ ...w, [d.weekday]: { ...w[d.weekday]!, shifts: [...w[d.weekday]!.shifts, { start: "17:30", end: "20:00" }] } }))} className="inline-flex w-fit items-center text-meta text-fg-muted underline-offset-2 hover:text-fg hover:underline max-sm:min-h-11 sm:ms-[104px]">
                     Add a second shift
                   </button>
                 ) : null}
@@ -219,7 +221,7 @@ export function StaffScheduleSheet({ open, onClose, member }: { open: boolean; o
             <TextField label="To" type="datetime-local" value={offTo} onChange={(e) => setOffTo(e.target.value)} />
           </div>
           <TextField label="Reason" optionalLabel value={offWhy} onChange={(e) => setOffWhy(e.target.value)} />
-          <Button variant="secondary" size="sm" className="w-fit" onClick={addOff}>Add time off</Button>
+          <Button variant="secondary" size="sm" className="w-fit max-sm:min-h-11" onClick={addOff}>Add time off</Button>
         </section>
         {act.error && limitPlan ? (
           <PlanLine href={`${base}/billing?plan=${limitPlan}`} linkLabel={`See ${PLANS[limitPlan].name}`}>

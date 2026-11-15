@@ -34,8 +34,8 @@ const bundleId = `ca.localloyalty.app${suffix}`;
 const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
 const projectId = process.env.EAS_PROJECT_ID;
 
-/** Permission prompts the OS shows. English here; hi, ur and pa live in locales/*.json (the OS picks by device language). The camera text is honest for customers too. */
-const CAMERA_PERMISSION = { en: "Scan a QR code to join a shop, collect points, or check in a customer at the counter." };
+/** Permission prompts the OS shows. English here; hi, ur and pa live in locales/*.json (the OS picks by device language). The camera is only used on the staff counter, and the text says so. */
+const CAMERA_PERMISSION = { en: "Shop staff scan a customer’s card or reward code at the counter." };
 const LOCATION_PERMISSION = { en: "See shops near you on the map." };
 
 const config: ExpoConfig = {

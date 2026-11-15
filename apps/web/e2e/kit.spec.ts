@@ -74,7 +74,7 @@ for (const vp of [
       // File drop: a wrong type is refused in plain words.
       const input = page.locator("[data-kit-section=file] input[type=file]").first();
       await input.setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hi") });
-      await expect(page.locator("[data-kit-section=file]").getByRole("alert").first()).toContainText("won't work here");
+      await expect(page.locator("[data-kit-section=file]").getByRole("alert").first()).toContainText("won’t work here");
       // Urdu: the month is right to left and named in Urdu.
       await page.goto("/dev/kit?lang=ur&theme=clear");
       const cal = page.locator("[data-kit-section=dates] [data-slot=calendar]").first();
@@ -110,7 +110,7 @@ test.describe("kit adopted: signup progress and the You're live confetti", () =>
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
     const page = await ctx.newPage();
     await page.goto("/signup");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await expect(page.getByText("Step 2 of 6")).toBeVisible();
     await page.waitForTimeout(700);
     await shot(page, "signup-step2-1440");
@@ -136,7 +136,7 @@ for (const vp of [
     const page = await ctx.newPage();
     await signIn(page);
     await page.waitForURL(/\/m\/[^/]+/);
-    const tiles = page.getByRole("group", { name: "Today's numbers" });
+    const tiles = page.getByRole("group", { name: "Today’s numbers" });
     await expect(tiles).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(1500);
     await shot(page, `today-tiles-${vp.name}`);

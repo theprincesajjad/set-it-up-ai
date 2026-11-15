@@ -71,7 +71,7 @@ test.describe("the studio's side", () => {
     await page.goto(`${o.page}/classes/offers`);
     await expect(page.getByRole("heading", { level: 1, name: "Memberships & passes" })).toBeVisible();
     await expect(page.getByRole("cell", { name: "Unlimited monthly" })).toBeVisible();
-    await expect(page.getByText("Intro: 3 classes")).toBeVisible();
+    await expect(page.getByText("Intro: 3 classes").first()).toBeVisible();
     await page.screenshot({ path: shot("03-offers-1440") });
     await page.getByRole("radio", { name: /^Billing issues/ }).click();
     await expect(page.getByText("Payment failed").first()).toBeVisible();

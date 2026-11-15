@@ -375,6 +375,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     /** Language and kitchen station for a team member (owner or manager). */
     setStaffProfile: (userId: string, body: { locale?: merchantApi.StaffMember["locale"]; station?: string | null }) => c.patch<merchantApi.StaffMember>(`${b}/team/${enc(userId)}`, body),
     removeStaff: (userId: string) => c.delete<void>(`${b}/team/${enc(userId)}`),
+    /** Send a team member's invite again (owner only; a few times an hour). */
+    resendInvite: (userId: string) => c.post<void>(`${b}/team/${enc(userId)}/resend`, {}),
     setPin: (userId: string, pin: string) => c.put<void>(`${b}/team/${enc(userId)}/pin`, { pin }),
     // Wallet card (Settings, Wallet card)
     walletCard: () => c.get<walletApi.WalletCardResponse>(`${b}/wallet-card`),
@@ -502,6 +504,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     updateItem: (id: string, body: commerceApi.UpdateCatalogItemBody) => c.patch<commerceApi.CatalogItemDto>(`${b}/catalog/items/${enc(id)}`, body),
     archiveItem: (id: string) => c.delete<commerceApi.CatalogItemDto>(`${b}/catalog/items/${enc(id)}`),
     createCatalogCategory: (body: commerceApi.CreateCategoryBody) => c.post<commerceApi.CatalogCategoryDto>(`${b}/catalog/categories`, body),
+    updateCatalogCategory: (id: string, body: commerceApi.UpdateCategoryBody) => c.patch<commerceApi.CatalogCategoryDto>(`${b}/catalog/categories/${enc(id)}`, body),
+    deleteCatalogCategory: (id: string) => c.delete<{ id: string }>(`${b}/catalog/categories/${enc(id)}`),
     orders: (q: Q = {}) => c.get<PageOf<commerceApi.OrderDto>>(`${b}/orders`, { query: q }),
     setOrderStatus: (id: string, body: commerceApi.UpdateOrderStatusBody) => c.post<commerceApi.OrderDto>(`${b}/orders/${enc(id)}/status`, body),
     slots: (q: Q = {}) => c.get<PageOf<commerceApi.SlotDto>>(`${b}/slots`, { query: q }),

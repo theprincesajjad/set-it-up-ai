@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
+import { LoadFailed } from "../../features/customer/LoadFailed";
 import { usePhase2 } from "../../features/customer/queries";
 import { formatDateL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
@@ -12,7 +13,7 @@ const TICKET_TONE: Record<string, BadgeTone> = { intake: "info", diagnosing: "in
 export default function OrdersAndTickets() {
   const L = useLocale();
   const { t } = L;
-  const { orders, tickets, loading, refetch } = usePhase2();
+  const { orders, tickets, loading, failure, refetch } = usePhase2();
   const [tab, setTab] = useState<"active" | "past">("active");
   const activeOrder = (s: string) => ["pending", "accepted", "preparing", "ready"].includes(s);
   const activeTicket = (s: string) => !["picked_up", "cancelled", "declined"].includes(s);
@@ -35,6 +36,8 @@ export default function OrdersAndTickets() {
       />
       {loading ? (
         <SkeletonList rows={3} rowHeight={64} />
+      ) : failure && rows.length === 0 ? (
+        <LoadFailed error={failure} onRetry={() => void refetch()} />
       ) : rows.length === 0 ? (
         <EmptyState icon={ShoppingBag} title={t("cp.empty.ordersTitle")} body={t("cp.empty.ordersBody")} />
       ) : (

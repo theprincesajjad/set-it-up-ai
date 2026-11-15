@@ -26,9 +26,6 @@ export interface ColorFieldProps {
   className?: string;
 }
 
-/** A glyph sample for the contrast preview (aria-hidden, language-neutral). */
-const SAMPLE = "Aa 10/10"; // l10n-ok: a glyph sample, aria-hidden
-
 const DEFAULT_SWATCHES = Object.values(tradeFamilies).map((f) => f.accent);
 
 export function ColorField({ label, value, onChange, vertical, swatches = DEFAULT_SWATCHES, className }: ColorFieldProps) {
@@ -104,7 +101,7 @@ export function ColorField({ label, value, onChange, vertical, swatches = DEFAUL
           className="inline-flex h-11 items-center gap-2 rounded-full px-4 text-body font-[650]"
           style={{ backgroundColor: resolved.light.accent, color: resolved.light.foreground }}
         >
-          {SAMPLE}
+          {t("kit.color.sample")}
         </span>
       </div>
       {bad ? (

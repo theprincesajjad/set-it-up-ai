@@ -19,7 +19,10 @@ export default function RingUp() {
   const toast = useToast();
   const mId = config.merchantId ?? "";
   const menu = useQuery({ queryKey: ["counter", "ringup-menu", mId], queryFn: () => api.kitchen.catalog(mId), enabled: !!mId });
-  const dual = useQuery({ queryKey: ["counter", "dual", mId], queryFn: () => api.kitchen.dualPricing(mId).catch(() => null), enabled: !!mId });
+  // Cash-discount pricing is a plan feature: ask for it only where the shop has it (otherwise the call is a 402 on every open).
+  const featuresQ = useQuery({ queryKey: ["counter", "features", mId || "none"], queryFn: () => api.kitchen.features(mId), enabled: !!mId, staleTime: 5 * 60_000 });
+  const dualOn = !!featuresQ.data?.features.find((f) => f.key === "restaurant.dual_pricing")?.enabled;
+  const dual = useQuery({ queryKey: ["counter", "dual", mId], queryFn: () => api.kitchen.dualPricing(mId).catch(() => null), enabled: !!mId && dualOn });
   const bps = dual.data?.cashDiscountBps ?? 0;
   const [qty, setQty] = useState<Record<string, number>>({});
   const [tender, setTender] = useState<restaurantApi.Tender>("card");

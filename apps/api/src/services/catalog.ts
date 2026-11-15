@@ -1,9 +1,9 @@
 /** Catalog (menu) for order-ahead. Every query is scoped by merchant_id. */
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { catalogItems, locations, merchantCategories, merchants, type DbOrTx } from "@ll/db";
 import { defaultSectionName, publicPlaceLine, portionPriceCents, restaurantApi, restaurantWebApi, type commerceApi, type FeatureKey } from "@ll/shared";
 import type { z } from "zod";
-import { HttpError, badRequest, notFound } from "../lib/errors.js";
+import { HttpError, badRequest, conflict, notFound } from "../lib/errors.js";
 import type { AppContext } from "../context.js";
 import { paymentsReady } from "./commerceShared.js";
 import { getMerchantFeatures, isFeatureOn, requireFeature, requireAnyFeature, PREORDER_FEATURES } from "./features.js";
@@ -43,6 +43,28 @@ async function assertCategory(db: DbOrTx, merchantId: string, categoryId: string
   if (!categoryId) return;
   const [c] = await db.select({ id: merchantCategories.id }).from(merchantCategories).where(and(eq(merchantCategories.id, categoryId), eq(merchantCategories.merchantId, merchantId))).limit(1);
   if (!c) throw badRequest("Unknown category");
+}
+
+/**
+ * Restaurant menus read a dish's choices from `options.groups`, but the menu editor writes `modifiers` ("Spice: Mild, Hot").
+ * Mirror the second into the first so the counter order sheet and the public menu ask for the choice. Mirrored groups carry
+ * the id prefix "mod-"; groups an owner set some other way are kept as they are.
+ */
+const MIRRORED_ID = /^mod-\d+$/;
+function mirrorModifiers(mods: { name: string; options: { name: string; priceCents: number }[] }[], current: Item["options"] | null | undefined): Item["options"] {
+  const own = (current?.groups ?? []).filter((g) => !MIRRORED_ID.test(g.id));
+  const mirrored = mods.map((g, gi) => ({
+    id: `mod-${gi}`,
+    name: g.name,
+    type: "single" as const,
+    // A group whose first choice is free can default to it, so older clients and WhatsApp still get the listed price.
+    required: g.options[0]!.priceCents === 0,
+    priceMode: "delta" as const,
+    options: g.options.map((o, oi) => ({ id: `mod-${gi}-${oi}`, name: o.name, priceCents: o.priceCents })),
+  }));
+  const groups = [...mirrored, ...own];
+  if (groups.length > 8) throw badRequest("A dish can have up to 8 groups of choices");
+  return groups.length ? { groups } : null;
 }
 
 function assertModifiers(mods: { name: string; options: { name: string }[] }[] | undefined) {
@@ -100,6 +122,8 @@ export async function createItem(db: DbOrTx, merchantId: string, body: z.infer<t
   assertModifiers(body.modifiers);
   await gateRestaurantFields(db, merchantId, body);
   const restaurant = RESTAURANT_ITEM_FIELDS.some((g) => g.keys.some((k) => body[k] !== undefined));
+  const restaurantShop = restaurant || (await isRestaurantShop(db, merchantId));
+  const options = body.options ?? (restaurantShop && body.modifiers.length ? mirrorModifiers(body.modifiers, null) : null);
   const [row] = await db
     .insert(catalogItems)
     .values({
@@ -122,11 +146,11 @@ export async function createItem(db: DbOrTx, merchantId: string, body: z.infer<t
       station: body.station ?? null,
       cookMinutes: body.cookMinutes ?? 0,
       recipe: body.recipe ?? null,
-      options: body.options ?? null,
+      options,
       ...weightFields(body, null),
     })
     .returning();
-  return itemDto(row!, restaurant || !!(await isRestaurantShop(db, merchantId)));
+  return itemDto(row!, restaurantShop);
 }
 
 /** Restaurant-tier shops and butcher counters get the extended item fields (pre-order rules, weight, tax). */
@@ -166,6 +190,11 @@ export async function updateItem(db: DbOrTx, merchantId: string, itemId: string,
     if (!cur) throw notFound("Catalog item");
     Object.assign(patch, weightFields(body, cur));
   }
+  if (body.modifiers !== undefined && body.options === undefined && (await isRestaurantShop(db, merchantId))) {
+    const [cur] = await db.select({ options: catalogItems.options }).from(catalogItems).where(and(eq(catalogItems.id, itemId), eq(catalogItems.merchantId, merchantId))).limit(1);
+    if (!cur) throw notFound("Catalog item");
+    patch.options = mirrorModifiers(body.modifiers, cur.options);
+  }
   if (body.dietary !== undefined) patch.dietary = normaliseDietary(body.dietary);
   if (body.soldOutUntil !== undefined) patch.soldOutUntil = body.soldOutUntil ? new Date(body.soldOutUntil) : null;
   if (!Object.keys(patch).length) throw badRequest("Nothing to update");
@@ -181,16 +210,43 @@ export async function archiveItem(db: DbOrTx, merchantId: string, itemId: string
   return itemDto(row, await isRestaurantShop(db, merchantId));
 }
 
+/** A second section with the same name (any capitals) only splits a menu in two: say so instead of accepting it. */
+async function assertSectionNameFree(db: DbOrTx, merchantId: string, name: string, exceptId?: string) {
+  const [dup] = await db
+    .select({ id: merchantCategories.id, name: merchantCategories.name })
+    .from(merchantCategories)
+    .where(and(eq(merchantCategories.merchantId, merchantId), sql`lower(${merchantCategories.name}) = lower(${name.trim()})`, exceptId ? ne(merchantCategories.id, exceptId) : undefined))
+    .limit(1);
+  if (dup) throw conflict(`You already have a ${dup.name} section`);
+}
+
 export async function createCategory(db: DbOrTx, merchantId: string, body: z.infer<typeof commerceApi.createCategoryBody>) {
+  await assertSectionNameFree(db, merchantId, body.name);
   const [row] = await db.insert(merchantCategories).values({ merchantId, ...body }).returning();
   return categoryDto(row!);
 }
 
 export async function updateCategory(db: DbOrTx, merchantId: string, categoryId: string, body: z.infer<typeof commerceApi.updateCategoryBody>) {
   if (!Object.keys(body).length) throw badRequest("Nothing to update");
+  if (body.name !== undefined) await assertSectionNameFree(db, merchantId, body.name, categoryId);
   const [row] = await db.update(merchantCategories).set(body).where(and(eq(merchantCategories.id, categoryId), eq(merchantCategories.merchantId, merchantId))).returning();
   if (!row) throw notFound("Category");
   return categoryDto(row);
+}
+
+/** Delete a menu section. Its dishes stay on the menu with no section; the pharmacy dispensary section can't go. */
+export async function deleteCategory(db: DbOrTx, merchantId: string, categoryId: string) {
+  const [cat] = await db.select().from(merchantCategories).where(and(eq(merchantCategories.id, categoryId), eq(merchantCategories.merchantId, merchantId))).limit(1);
+  if (!cat) throw notFound("Category");
+  if (cat.dispensary) throw badRequest("This section can't be deleted");
+  await db.update(catalogItems).set({ categoryId: null }).where(and(eq(catalogItems.merchantId, merchantId), eq(catalogItems.categoryId, categoryId)));
+  try {
+    await db.delete(merchantCategories).where(and(eq(merchantCategories.id, categoryId), eq(merchantCategories.merchantId, merchantId)));
+  } catch {
+    // Something else points at it (a past sale, a reward rule): keep it rather than lose that history.
+    throw conflict(`${cat.name} is still used elsewhere, so it can't be deleted. Rename it instead.`);
+  }
+  return { id: categoryId };
 }
 
 /** Item passes the diner's dietary filters. Untagged spice counts as mild; halal includes zabihah, veg includes vegan and Jain. */

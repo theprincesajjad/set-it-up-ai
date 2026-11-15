@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { MessageKey, commerceApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatMoney, formatTime } from "@/lib/format";
@@ -37,6 +38,7 @@ export function OrderStatus({ initial }: { initial: commerceApi.OrderDto }) {
         pickupAt={order.pickupAt}
         shopName={order.merchantName}
         cancelReason={order.cancelReason}
+        headingLevel={1}
         refundCents={order.status === "refunded" || (order.status === "cancelled" && order.paymentStatus === "refunded") ? order.totalCents : null}
       />
       {!TERMINAL.has(order.status) ? <PickupDetails order={order} /> : null}
@@ -52,13 +54,41 @@ export function OrderStatus({ initial }: { initial: commerceApi.OrderDto }) {
             </li>
           ))}
         </ul>
-        <div className="flex justify-between border-t border-line py-3 text-body-strong">
-          <span>{t("cart.total")}</span>
-          <span className="tabular-nums">{locale === "en" ? formatMoney(order.totalCents) : money(order.totalCents)}</span>
-        </div>
+        {/* The lines add up to the total: subtotal, discount, tax, tip and the card service fee when there is one. */}
+        <dl className="flex flex-col gap-1.5 border-t border-line py-3 text-body text-fg-muted">
+          {[
+            { label: t("cart.subtotal"), cents: order.subtotalCents, show: true, sign: "" },
+            { label: t("wp.ui.discount"), cents: order.discountCents, show: order.discountCents > 0, sign: "−" },
+            { label: t("rc.ca.tax"), cents: order.taxCents, show: order.taxCents > 0, sign: "" },
+            { label: t("sv.i.tipLine"), cents: order.tipCents, show: order.tipCents > 0, sign: "" },
+            { label: t("wp.os.cardFee"), cents: order.customerFeeCents, show: order.customerFeeCents > 0, sign: "" },
+          ]
+            .filter((r) => r.show)
+            .map((r) => (
+              <div key={r.label} className="flex justify-between gap-3">
+                <dt>{r.label}</dt>
+                <dd className="tabular-nums">{r.sign}{locale === "en" ? formatMoney(r.cents) : money(r.cents)}</dd>
+              </div>
+            ))}
+          <div className="flex justify-between gap-3 pt-1.5 text-body-strong text-fg">
+            <dt>{t("cart.total")}</dt>
+            <dd className="tabular-nums">{locale === "en" ? formatMoney(order.totalCents) : money(order.totalCents)}</dd>
+          </div>
+        </dl>
         <p className="pb-3 text-meta text-fg-muted">{order.paymentMethod === "in_app" ? (order.paymentStatus === "paid" ? t("wp.os.paid") : t("wp.os.pending")) : t("checkout.payAtPickup")}</p>
-        {order.pointsEarned > 0 ? <p className="-mt-2 pb-3 text-meta font-semibold text-points-text">{t("wp.os.earned", { amount: unitsText(locale, order.pointsEarned, "points") })}</p> : null}
+        {order.pointsEarned > 0 ? <p className="-mt-2 pb-3 text-meta font-semibold text-points-text">{t("wp.os.earned", { amount: unitsText(locale, order.pointsEarned, order.pointsTerminology ?? "points", false) })}</p> : null}
       </section>
+      {/* Not a dead end: back to the shop's menu and to the wallet. */}
+      <nav aria-label={order.merchantName} className="flex flex-wrap items-center gap-x-5 gap-y-1">
+        {order.merchantSlug ? (
+          <Link href={`/shops/${encodeURIComponent(order.merchantSlug)}`} className="inline-flex min-h-11 items-center gap-1 text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring">
+            {t("wp.os.backToShop", { shop: order.merchantName })}
+          </Link>
+        ) : null}
+        <Link href="/me" className="inline-flex min-h-11 items-center text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring">
+          {t("sh.fs.ctaCard")}
+        </Link>
+      </nav>
     </div>
   );
 }
@@ -80,7 +110,7 @@ function PickupDetails({ order }: { order: commerceApi.OrderDto }) {
         {order.shopAddress ? (
           <div className="flex flex-col gap-0.5">
             <dt className="text-caption font-semibold text-fg-muted">{t("wp.os.where")}</dt>
-            <dd className="text-body-strong text-fg">{order.shopAddress}</dd>
+            <dd className="text-body-strong text-fg"><bdi>{order.shopAddress}</bdi></dd>
           </div>
         ) : null}
       </dl>
@@ -101,9 +131,9 @@ function PickupDetails({ order }: { order: commerceApi.OrderDto }) {
       ) : null}
       {estimate > 0 ? (
         <div className="flex flex-col gap-2 border-t border-line pt-3">
-          <p className="text-meta text-fg">{order.isMember ? t("wp.os.willEarn", { amount: unitsText(locale, estimate, "points") }) : t("wp.os.joinPrompt", { shop: order.merchantName, amount: unitsText(locale, estimate, "points") })}</p>
+          <p className="text-meta text-fg">{order.isMember ? t("wp.os.willEarn", { amount: unitsText(locale, estimate, order.pointsTerminology ?? "points", false) }) : t("wp.os.joinPrompt", { shop: order.merchantName, amount: unitsText(locale, estimate, order.pointsTerminology ?? "points", false) })}</p>
           {!order.isMember && slug ? (
-            <Button variant="ghost" size="sm" href={`/shops/${slug}`} className="self-start">
+            <Button variant="secondary" size="md" href={`/shops/${slug}`} className="self-start">
               {t("wp.os.joinCta")}
             </Button>
           ) : null}

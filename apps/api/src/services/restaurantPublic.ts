@@ -5,7 +5,7 @@
  */
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { catalogItems, merchants, orderItems, orders } from "@ll/db";
-import { restaurantApi, restaurantWebApi } from "@ll/shared";
+import { FEES, restaurantApi, restaurantWebApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
 import { addDays } from "./bookings.js";
 import { isAnyFeatureOn, isFeatureOn, PREORDER_FEATURES } from "./features.js";
@@ -48,6 +48,8 @@ export async function publicRestaurant(ctx: AppContext, merchant: Merchant): Pro
   const dietOn = await isFeatureOn(ctx.db, merchant, "restaurant.dietary_tags");
   const langOn = await isFeatureOn(ctx.db, merchant, "restaurant.multilingual_menu");
   const items = pickup ? await ctx.db.select().from(catalogItems).where(and(eq(catalogItems.merchantId, merchant.id), eq(catalogItems.available, true), eq(catalogItems.orderable, true))).orderBy(asc(catalogItems.sortOrder), asc(catalogItems.name)) : [];
+  // Commission-free shops add the card service fee for the customer on in-app payments (the same rule placeOrder charges by).
+  const customerFeeCents = pickup && (await isFeatureOn(ctx.db, merchant, "restaurant.commission_free")) ? FEES.customerServiceFeeCents : 0;
   const preorderItems = deghOn ? items.filter((i) => i.preorderOnly) : [];
   const regular = items.filter((i) => !i.preorderOnly);
 
@@ -83,6 +85,7 @@ export async function publicRestaurant(ctx: AppContext, merchant: Merchant): Pro
     acceptingOrders: pickup && merchant.status !== "paused" && merchant.status !== "closed",
     // A butcher cuts to order: no "ready in 20 minutes" promise.
     quotedWaitMin: pickup && !grocer ? quotedWaitMinutes(merchant, now) : null,
+    customerFeeCents,
     whatsappNumber: merchant.whatsappNumber,
     preorderItems: preorderItems.map((i) => ({ id: i.id, name: i.name, serves: i.serves, priceCents: i.priceCents, leadTimeHours: i.leadTimeHours, depositBps: i.depositBps, ...(langOn && i.translations && Object.keys(i.translations).length ? { translations: i.translations } : {}) })),
     ...(grocer ? { qurbani: qurbaniWindow(merchant, localDay(now, merchant.timezone)) } : {}),

@@ -2,12 +2,12 @@ import { BRAND, customerApi } from "@ll/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { View } from "react-native";
+import { LoadFailed } from "../../features/customer/LoadFailed";
 import { useWallet } from "../../features/customer/queries";
 import { termWordL } from "../../lib/formatL";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useLocale } from "../../lib/i18n";
-import { useSession } from "../../state/session";
 import { Button, Card, ConsentCheckbox, EmptyState, ListRow, Screen, Sheet, ShopLogo, Store, SwitchRow, Text, useToast } from "../../ui";
 
 /** 10.1 Shops & messages: per-shop offers consent (CASL) and mute. */
@@ -17,7 +17,6 @@ export default function ShopsAndMessages() {
   const toast = useToast();
   const L = useLocale();
   const { t: lt } = L;
-  const { prefs, updatePrefs } = useSession();
   const [open, setOpen] = useState<customerApi.MembershipDto | null>(null);
   const [granting, setGranting] = useState<customerApi.MembershipDto | null>(null);
   const [agree, setAgree] = useState(false);
@@ -62,7 +61,9 @@ export default function ShopsAndMessages() {
   return (
     <Screen back title={lt("sh.you.shopsMessages")}>
       <Text color="fgMuted">{lt("sh.shops.intro")}</Text>
-      {items.length === 0 ? (
+      {wallet.isError && !wallet.data ? (
+        <LoadFailed error={wallet.error} onRetry={() => void wallet.refetch()} />
+      ) : items.length === 0 ? (
         <EmptyState icon={Store} title={lt("sh.wallet.emptyTitle")} body={lt("cp.empty.walletBody")} />
       ) : (
         <Card padded={false} style={{ paddingHorizontal: 16 }}>
@@ -79,9 +80,6 @@ export default function ShopsAndMessages() {
           ))}
         </Card>
       )}
-      <Card>
-        <SwitchRow label={lt("sh.shops.news", { brand: BRAND.name })} description={lt("sh.shops.newsSub")} value={prefs.platformConsent} onValueChange={(v) => updatePrefs({ platformConsent: v })} />
-      </Card>
 
       <Sheet visible={!!current} onClose={() => setOpen(null)} title={current?.merchant.name}>
         {current ? (

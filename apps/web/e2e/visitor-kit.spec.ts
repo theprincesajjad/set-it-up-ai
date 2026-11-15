@@ -27,7 +27,7 @@ test.describe("home on the kit", () => {
     await tryIt.locator(".lp-swatch", { has: page.getByRole("radio", { name: "Blue" }) }).click();
     await expect(tryIt.getByRole("radio", { name: "Repair shop" })).toBeChecked();
     await expect(pass.locator(".wu-pass-name")).toHaveText("Fix-It Phone Lab");
-    await expect(cta).toHaveText("Keep Fix-It Phone Lab’s card, start free");
+    await expect(cta).toHaveText("Keep the Fix-It Phone Lab card, start free");
     await expect(pass.locator(".wu-pass-logo")).toHaveText("F");
     await expect(pass).toContainText("Free screen protector");
     await expect(tryIt.getByText("Free screen protector at 150 points, 1 point a dollar", { exact: true })).toBeVisible();

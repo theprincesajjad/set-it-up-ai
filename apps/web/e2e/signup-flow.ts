@@ -37,7 +37,7 @@ export interface SignupInput {
 export async function signUpThroughFlow(page: Page, o: SignupInput): Promise<string> {
   await page.goto(o.from ?? "/signup");
   await atStep(page, "link");
-  await page.getByRole("button", { name: "I don't have one, skip" }).click();
+  await page.getByRole("button", { name: "I don’t have one, skip" }).click();
   await atStep(page, "shop");
   await page.getByLabel("Shop name").fill(o.name);
   await cont(page);

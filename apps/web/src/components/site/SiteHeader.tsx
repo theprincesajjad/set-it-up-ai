@@ -8,6 +8,7 @@ import { copy } from "@/copy/en-CA";
 import { cn } from "@/lib/cn";
 import { MarketingWordmark } from "@/components/marketing/landing/Wordmark";
 import { marketingFontVars } from "@/lib/marketing/fonts";
+import { InlineScript } from "@/components/ui/ThemeStyle";
 
 /**
  * The header strings in every language, translated on the server by the layout (see `headerLabels`). The client never imports the
@@ -21,6 +22,8 @@ export interface HeaderLabels {
   /** The shopper page's own header actions: its visitors are customers, not shop owners. */
   findShops: string;
   myCard: string;
+  /** The restaurant page's own ask: its sign-up starts the restaurant plan, not a stamp card. */
+  restaurantCta?: string;
 }
 export type HeaderLabelsByLocale = Record<Locale, HeaderLabels>;
 
@@ -50,8 +53,17 @@ function rememberLocale(locale: Locale) {
 const subscribeNever = () => () => undefined;
 
 /**
+ * Translated pages: the header carries its words in all four languages and CSS shows the set named by `data-lang` (marketing.css). This
+ * runs while the HTML is parsed, before first paint, and picks the language the page itself was rendered in (?lang=, then the cookie, the
+ * same order as the pages' pageLocale), so the header never shows English left to right and then flips after hydration.
+ */
+const LANG_INFO = JSON.stringify(Object.fromEntries(LOCALE_LIST.map((l) => [l.code, [l.bcp47, l.dir]])));
+const LANG_SCRIPT = `(function(){try{var I=${LANG_INFO},h=document.currentScript.parentElement,q=new URLSearchParams(location.search).get("lang"),m=/(?:^|; )ll_lang=([^;]+)/.exec(document.cookie),n=function(v){v=(v||"").trim().toLowerCase().split(/[-_]/)[0];return I[v]?v:""},l=n(q)||n(m&&m[1])||"en";h.setAttribute("data-lang",l);h.lang=I[l][0];h.dir=I[l][1]}catch(e){}})()`;
+
+/**
  * A <details> menu that behaves like a menu: it closes when a link inside it is tapped, when the route changes (the header stays mounted
- * across pages, so an open panel would sit on top of the next one), on Escape (focus goes back to its button) and on a tap outside.
+ * across pages, so an open panel would sit on top of the next one), on Escape (focus goes back to its button), on a tap outside and
+ * when keyboard focus leaves it.
  * Without JS it is still a plain <details> that opens and closes.
  */
 function useMenu(pathname: string) {
@@ -81,13 +93,30 @@ function useMenu(pathname: string) {
       el.querySelector("summary")?.focus();
     };
     const onDown = (e: PointerEvent) => {
-      if (el.open && e.target instanceof Node && !el.contains(e.target)) el.open = false;
+      // Outside the menu.
+      if (el.open && e.target instanceof Element && !el.contains(e.target)) el.open = false;
+    };
+    // On its scrim (inside the <details>, behind the panel): closed on the click, not the pointerdown. Hiding the <details> content
+    // under a pointer that is still down on it crashes Chromium's renderer.
+    const onScrimClick = (e: Event) => {
+      if (el.open && e.target instanceof Element && e.target.closest("[data-scrim]")) {
+        e.preventDefault();
+        el.open = false;
+      }
+    };
+    // Tab past the last item (or Shift+Tab past the button): the menu closes, so focus never moves through the dimmed page behind it.
+    const onFocusOut = (e: FocusEvent) => {
+      if (el.open && e.relatedTarget instanceof Node && !el.contains(e.relatedTarget)) el.open = false;
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onDown);
+    el.addEventListener("focusout", onFocusOut);
+    el.addEventListener("click", onScrimClick);
     return () => {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("focusout", onFocusOut);
+      el.removeEventListener("click", onScrimClick);
     };
   }, []);
   return {
@@ -109,32 +138,52 @@ const isCurrent = (pathname: string, href: string) => (href === "/" ? pathname =
  * text links that underline on hover (the current page keeps the line), "Sign in" as a text link and one black pill button. Its own `.mkt` scope, so the tokens resolve on every marketing page. The phone menu and the language menu are <details> that `useMenu` closes. The language menu and
  * translated labels appear only on /for-restaurants and /for-shoppers, the pages that have translated content (docs/research/landing-and-network.md 7.3).
  * On /for-bias the sign-in link and the black button become "BIA sign in" and "Plan a campaign"; on /for-shoppers, whose visitors are
- * customers, they become "My card" (/me) and "Find shops near me" (/map), the same two actions as that page's hero.
+ * customers, they become "My card" (/me) and "Find shops near me" (/map), the same two actions as that page's hero; on /for-restaurants the
+ * button starts the restaurant plan (sign-up with the restaurant trade chosen).
+ * Wide screens (xl): logo, links and actions in three columns, so the links stay put when the language menu joins the actions.
+ * The translated pages' labels are longer (Urdu, Hindi, Punjabi), so their full row starts at xl and the menu serves below it.
+ * Phones: the menu is a full-width panel under the bar over a scrim; the page behind does not scroll while it is open (marketing.css).
  */
 export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
   const pathname = usePathname() ?? "/";
   // Pages that have translated content (the restaurant page and the shopper page) get the language menu.
   const shoppers = pathname.startsWith("/for-shoppers");
-  const translated = pathname.startsWith(RESTAURANTS) || shoppers;
+  const restaurants = pathname.startsWith(RESTAURANTS);
+  const translated = restaurants || shoppers;
   const langBase = shoppers ? "/for-shoppers" : RESTAURANTS;
   const bia = pathname.startsWith("/for-bias");
-  // English on the server and while hydrating; then ?lang= / the cookie. A tap on a language switches the header at once.
+  // English on the server and while hydrating; then ?lang= / the cookie. A tap on a language switches the header at once. On a hard load
+  // LANG_SCRIPT has already shown the right words before paint, so nothing visible changes when this catches up.
   const stored = useSyncExternalStore(subscribeNever, readLocale, () => "en" as Locale);
   const [chosen, setChosen] = useState<Locale | null>(null);
   const locale: Locale = translated ? (chosen ?? stored) : "en";
   const info = LOCALES[locale];
-  const nav = copy.nav.items.map((n) => ({ ...n, label: translated && locale !== "en" ? (labels[locale].nav[n.href] ?? n.label) : n.label }));
-  const other = translated && locale !== "en";
-  const login = bia ? { href: "/login?next=%2Fbia", label: copy.nav.biaLogin } : shoppers ? { href: "/me", label: labels[locale].myCard } : { href: "/login", label: other ? labels[locale].login : copy.nav.login };
-  const cta = bia ? { href: "/for-bias#talk", label: copy.nav.planCampaign } : shoppers ? { href: "/map", label: labels[locale].findShops } : { href: "/signup", label: other ? labels[locale].getStarted : copy.nav.getStarted };
+  /** One string in every language on the translated pages (CSS shows the header's `data-lang`), plain English elsewhere. */
+  const say = (word: (l: Locale) => string) =>
+    translated
+      ? LOCALE_LIST.map((l) => (
+          <span key={l.code} data-l={l.code} lang={l.bcp47}>
+            {word(l.code)}
+          </span>
+        ))
+      : word("en");
+  const nav = copy.nav.items.map((n) => ({ ...n, label: say((l) => (l === "en" ? n.label : (labels[l].nav[n.href] ?? n.label))) }));
+  const login = bia ? { href: "/login?next=%2Fbia", label: copy.nav.biaLogin } : shoppers ? { href: "/me", label: say((l) => labels[l].myCard) } : { href: "/login", label: say((l) => (l === "en" ? copy.nav.login : labels[l].login)) };
+  const cta = bia
+    ? { href: "/for-bias#talk", label: copy.nav.planCampaign }
+    : shoppers
+      ? { href: "/map", label: say((l) => labels[l].findShops) }
+      : restaurants
+        ? { href: "/signup?vertical=restaurant_south_asian", label: say((l) => labels[l].restaurantCta ?? labels[l].getStarted) }
+        : { href: "/signup", label: copy.nav.getStarted };
   const langMenu = useMenu(pathname);
   const phoneMenu = useMenu(pathname);
 
   const switcher = translated ? (
     <details className="group relative" {...langMenu.props}>
       <summary aria-expanded={langMenu.open} className="flex h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-body text-mkt-body hover:bg-mkt-grey hover:text-mkt-black focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
-        <span className="sr-only">{labels[locale].language}: </span>
-        <span lang={info.bcp47}>{info.name}</span>
+        <span className="sr-only">{say((l) => labels[l].language)}: </span>
+        {say((l) => LOCALES[l].name)}
         <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" strokeWidth={1.5} />
       </summary>
       <ul className="absolute end-0 top-12 z-sticky w-44 rounded-r5 border border-mkt-rule bg-mkt-paper p-1.5 shadow-mkt-float">
@@ -160,10 +209,18 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
   ) : null;
 
   return (
-    <header className={`mkt ${marketingFontVars} sticky top-0 z-sticky border-b border-mkt-rule bg-mkt-paper font-mkt-sans text-mkt-black`} lang={translated ? info.bcp47 : undefined} dir={translated ? info.dir : undefined}>
-      <div className="mx-auto flex h-18 max-w-360 items-center justify-between gap-4 px-5 md:px-10 xl:px-15">
+    <header
+      className={`mkt ${marketingFontVars} ll-hdr sticky top-0 z-sticky border-b border-mkt-rule bg-mkt-paper font-mkt-sans text-mkt-black`}
+      lang={translated ? info.bcp47 : undefined}
+      dir={translated ? info.dir : undefined}
+      data-lang={translated ? locale : undefined}
+      // LANG_SCRIPT sets lang, dir and data-lang from the URL before hydration; React's first pass is English and then agrees with it.
+      suppressHydrationWarning
+    >
+      {translated ? <InlineScript html={LANG_SCRIPT} /> : null}
+      <div className="mx-auto flex h-18 max-w-360 items-center justify-between gap-4 px-5 md:px-10 xl:grid xl:grid-cols-[1fr_auto_1fr] xl:px-15">
         <MarketingWordmark />
-        <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
+        <nav aria-label="Main" className={cn("hidden items-center gap-1 whitespace-nowrap", translated ? "xl:flex" : "lg:flex")}>
           {nav.map((n) => (
             <Link
               key={n.href}
@@ -175,23 +232,25 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className={cn("hidden items-center gap-2 whitespace-nowrap xl:justify-self-end", translated ? "xl:flex" : "lg:flex")}>
           {switcher}
           <Link href={login.href} className="inline-flex h-11 items-center rounded-md px-3.5 text-base font-medium text-mkt-black underline decoration-transparent decoration-1 underline-offset-8 transition-colors hover:decoration-mkt-black focus-visible:focus-ring">
             {login.label}
           </Link>
-          <Link href={cta.href} className="ms-1 inline-flex h-11 items-center rounded-full bg-mkt-black px-5.5 text-base font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
+          <Link href={cta.href} prefetch={false} className="ms-1 inline-flex h-11 items-center rounded-full bg-mkt-black px-5.5 text-base font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
             {cta.label}
           </Link>
         </div>
-        <details className="group relative lg:hidden" {...phoneMenu.props}>
+        <details className={cn("ll-menu group", translated ? "xl:hidden" : "lg:hidden")} {...phoneMenu.props}>
           <summary aria-expanded={phoneMenu.open} className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full bg-mkt-grey hover:bg-mkt-grey focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
             <Menu aria-hidden className="size-5" strokeWidth={1.5} />
           </summary>
-          <div className="absolute end-0 top-14 w-[min(88vw,320px)] rounded-r7 border border-mkt-rule bg-mkt-paper p-2 shadow-mkt-float">
-            <nav aria-label="Main" className="flex flex-col">
+          {/* The scrim: the page behind is dimmed, and a tap on it closes the menu (useMenu). */}
+          <div aria-hidden data-scrim className="absolute inset-x-0 top-full h-dvh bg-overlay" />
+          <div className="absolute inset-x-0 top-full max-h-[calc(100dvh-4.5rem)] overflow-y-auto rounded-b-r7 border-b border-mkt-rule bg-mkt-paper px-3 pt-2 pb-4 shadow-mkt-float">
+            <nav aria-label="Main" className="mx-auto flex max-w-xl flex-col">
               {nav.map((n) => (
-                <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="flex min-h-11 items-center rounded-r4 px-3 text-body font-medium text-mkt-black hover:bg-mkt-grey">
+                <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="flex min-h-12 items-center rounded-r4 px-3 text-lg font-medium text-mkt-black hover:bg-mkt-grey aria-[current=page]:underline aria-[current=page]:decoration-1 aria-[current=page]:underline-offset-8">
                   {n.label}
                 </Link>
               ))}
@@ -202,7 +261,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                       key={l.code}
                       href={`${langBase}?lang=${l.code}`}
                       lang={l.bcp47}
-                              onClick={() => {
+                      onClick={() => {
                         rememberLocale(l.code);
                         setChosen(l.code);
                       }}
@@ -214,11 +273,11 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                   ))}
                 </div>
               ) : null}
-              <Link href={login.href} className="flex min-h-11 items-center rounded-r4 px-3 text-body font-medium text-mkt-black hover:bg-mkt-grey">
+              <Link href={login.href} className="flex min-h-12 items-center rounded-r4 px-3 text-lg font-medium text-mkt-black hover:bg-mkt-grey">
                 {login.label}
               </Link>
               {/* The page's primary button (landing.css .lp-btn): 56px, the arrow, darker on hover, the focus ring. */}
-              <Link href={cta.href} className="group/cta mt-2 flex min-h-14 items-center justify-center gap-2.5 rounded-full bg-mkt-black px-6 text-lg font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
+              <Link href={cta.href} prefetch={false} className="group/cta mt-2 flex min-h-14 items-center justify-center gap-2.5 rounded-full bg-mkt-black px-6 text-lg font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
                 {cta.label}
                 <ArrowRight aria-hidden strokeWidth={2} className="-me-1 size-4.5 transition-transform group-hover/cta:translate-x-0.5 motion-reduce:transition-none rtl:-scale-x-100" />
               </Link>

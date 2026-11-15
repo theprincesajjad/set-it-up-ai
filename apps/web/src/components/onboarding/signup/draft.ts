@@ -41,6 +41,12 @@ export interface SignupDraft {
   imported: siteImportApi.SiteImportResult | null;
   /** What the owner kept on "Is this you?" (logo, colour, links, hours, services). Name, type, phone and address live below. */
   accepted: SiteImportAccepted | null;
+  /** What was typed in the link field (step 1), so refresh and Back keep it. */
+  linkUrl: string;
+  /** The exact text that was read into `imported`, so Back to step 1 can continue without reading again. */
+  readFor: string;
+  /** What "Is this you?" is showing right now (colour and logo), so the card beside it follows the owner's picks before Continue. */
+  preview: { brandColor: string | null; logo: string | null } | null;
   name: string;
   vertical: string;
   /** The type came from the import or a link and the owner has not picked one yet. */
@@ -64,7 +70,7 @@ export interface SignupDraft {
 export const STORAGE_KEY = "ll_signup_v1";
 
 export function emptyDraft(): SignupDraft {
-  return { v: 1, link: "ask", imported: null, accepted: null, name: "", vertical: "", verticalGuess: false, sells: "", work: "shop", workTouched: false, address: "", postal: "", card: null, color: null, phone: "", email: "", created: null, prefillKey: "" };
+  return { v: 1, link: "ask", imported: null, accepted: null, linkUrl: "", readFor: "", preview: null, name: "", vertical: "", verticalGuess: false, sells: "", work: "shop", workTouched: false, address: "", postal: "", card: null, color: null, phone: "", email: "", created: null, prefillKey: "" };
 }
 
 export interface Prefill {
@@ -107,6 +113,14 @@ export function readDraft(raw: string | null): SignupDraft | null {
     d.imported = o.imported && typeof o.imported === "object" && typeof o.imported.id === "string" ? o.imported : null;
     d.accepted = o.accepted && typeof o.accepted === "object" && typeof o.accepted.importId === "string" ? o.accepted : null;
     if (d.link === "read" && !d.imported) d.link = "ask";
+    d.linkUrl = str(o.linkUrl, 500);
+    d.readFor = d.link === "read" ? str(o.readFor, 500) : "";
+    // What "Is this you?" was showing, so a refresh on that step keeps the owner's colour and logo picks.
+    if (d.link === "read" && o.preview && typeof o.preview === "object") {
+      const c = (o.preview as { brandColor?: unknown }).brandColor;
+      const l = (o.preview as { logo?: unknown }).logo;
+      d.preview = { brandColor: typeof c === "string" && /^#[0-9A-Fa-f]{6}$/.test(c) ? c.toUpperCase() : null, logo: typeof l === "string" && l.length < 500 ? l : null };
+    }
     d.name = str(o.name, 120);
     d.vertical = (VERTICALS as readonly string[]).includes(o.vertical as string) ? (o.vertical as string) : "";
     d.verticalGuess = o.verticalGuess === true;

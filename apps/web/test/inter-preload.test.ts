@@ -26,10 +26,14 @@ describe("Inter preload scope", () => {
     expect(read("(marketing)/page.tsx")).not.toContain("preloadInter();");
   });
 
-  it("preloads it on every other marketing page, the solo pages and the app", () => {
+  it("keeps it off the solo pages, which use the home page's faces and preload Strata instead", () => {
+    expect(read("(landing)/layout.tsx")).not.toContain("preloadInter();");
+    expect(fs.readFileSync(path.join(__dirname, "../src/components/marketing/SoloLanding.tsx"), "utf8")).toContain("preloadSerif();");
+  });
+
+  it("preloads it on every other marketing page and the app", () => {
     const want = [
       ...pages("(marketing)").filter((p) => p !== path.join("(marketing)", "page.tsx")),
-      "(landing)/layout.tsx",
       "(admin)/admin/layout.tsx",
       "(bia)/bia/layout.tsx",
       "(dashboard)/m/[merchantId]/layout.tsx",

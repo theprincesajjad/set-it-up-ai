@@ -3,7 +3,7 @@ import { Dot } from "@/components/dashboard/kit";
 import { cn } from "@/lib/cn";
 import type { CardModel, Tone } from "@/lib/dashboard/tickets";
 
-const TEXT: Record<Tone, string> = { accent: "text-fg", info: "text-location", positive: "text-fg", negative: "text-negative", neutral: "text-fg-muted" };
+const TEXT: Record<Tone, string> = { accent: "text-fg", info: "text-info-text", positive: "text-fg", negative: "text-negative", neutral: "text-fg-muted" };
 
 /** One ticket on the board: number and status top row, device, issue, who and when, one money or state line. */
 export function TicketCard({ model: m, href }: { model: CardModel; href: string }) {

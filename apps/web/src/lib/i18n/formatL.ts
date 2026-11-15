@@ -27,6 +27,12 @@ function intl(locale: Locale, d: Date, opts: Intl.DateTimeFormatOptions): string
 /** "17:30" in the language's own clock style ("5:30 pm", "५:३० ..." never: Latin digits stay, the am/pm word follows the language). */
 export function hhmmL(locale: Locale, hhmm: string): string {
   const [h = "0", m = "0"] = hhmm.split(":");
+  if (locale === "hi") {
+    // How Hindi says a time: the part of the day first, then "बजे" ("शाम 5 बजे"), not the formal पूर्वाह्न / अपराह्न.
+    const hour = Number(h) % 24;
+    const part = hour >= 4 && hour < 12 ? "सुबह" : hour >= 12 && hour < 16 ? "दोपहर" : hour >= 16 && hour < 20 ? "शाम" : "रात";
+    return `${part} ${hour % 12 === 0 ? 12 : hour % 12}${Number(m) ? `:${String(Number(m)).padStart(2, "0")}` : ""} बजे`; // l10n-ok: the Hindi branch of a time formatter, not a screen string
+  }
   return intl(locale, new Date(Date.UTC(2000, 0, 1, Number(h), Number(m))), { hour: "numeric", minute: Number(m) ? "2-digit" : undefined });
 }
 
@@ -104,11 +110,11 @@ export function promoWhenL(L: L, p: { daysOfWeek?: number[] | null; startTime?: 
     : !days.length || days.length === 7 ? t("wp.ui.promoEveryDay")
     : days.length === 1 ? t("wp.ui.promoDayEvery", { day: dayName(days[0]!, "long") })
     : days.map((d) => dayName(d, "short")).join(", ");
-  // English keeps the hand-written "2 pm" (Intl says "2 p.m."); the other languages go through Intl.
+  // English keeps the hand-written "2 p.m."; the other languages go through Intl.
   const clock = (hhmm: string) => {
     if (locale !== "en") return hhmmL(locale, hhmm);
     const [h = 0, m = 0] = hhmm.split(":").map(Number);
-    return `${h % 12 === 0 ? 12 : h % 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h >= 12 && h < 24 ? "pm" : "am"}`; // l10n-ok: English branch (locale === "en") keeps the hand-written formats
+    return `${h % 12 === 0 ? 12 : h % 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h >= 12 && h < 24 ? "p.m." : "a.m."}`; // l10n-ok: English branch (locale === "en") keeps the hand-written formats
   };
   const time = !p.startTime && !p.endTime ? t("wp.ui.promoAllDay") : t("wp.ui.promoRange", { from: clock(p.startTime ?? "00:00"), to: clock(p.endTime ?? "24:00") });
   return `${dayLabel} · ${time}`;

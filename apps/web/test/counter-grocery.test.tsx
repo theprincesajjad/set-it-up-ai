@@ -88,9 +88,11 @@ describe("<CounterApp> for a grocer", () => {
     await userEvent.click(screen.getByRole("button", { name: /Not counted/ }));
     for (const d of "2000") await userEvent.click(within(screen.getByRole("group", { name: "Not counted keypad" })).getByRole("button", { name: d }));
     expect(screen.getAllByText("More than the total.").length).toBeGreaterThan(0);
-    await userEvent.click(screen.getByRole("button", { name: /Award/ }));
+    // Nothing is left to count, so the award button is off and says what is missing; nothing can be sent.
+    const award = screen.getByRole("button", { name: "Enter the amount" }) as HTMLButtonElement;
+    expect(award.disabled).toBe(true);
+    await userEvent.click(award);
     expect(a.award).not.toHaveBeenCalled();
-    expect(screen.getByText(/more than the total/)).toBeTruthy();
   }, 30_000);
 
   it("shows no grocery fields to other shops", async () => {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { appointmentsApi, campaignsApi, groceryApi, networkApi, tiffinApi } from "@ll/shared";
+import type { appointmentsApi, campaignsApi, commerceApi, groceryApi, networkApi, tiffinApi } from "@ll/shared";
 import { PantryReminders } from "@/components/pass/PantryReminders";
 import { NextVisitCard } from "@/components/pass/NextVisitCard";
 import { PeopleLinks } from "@/components/pass/PeopleLinks";
@@ -59,12 +59,14 @@ export default async function MePage({ searchParams }: Props) {
     );
   }
   const api = await getServerApi();
-  const data = await Promise.all([api.me.profile(), api.me.memberships(), api.me.card().catch(() => null), api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[]), api.me.pantry().then((r) => r.items).catch(() => [] as groceryApi.MyPantryResponse["items"]), api.me.myPets().then((r) => r.items.length).catch(() => 0), api.me.myFoodCards().then((r) => r.items.length).catch(() => 0), api.me.myVehicles().then((r) => r.vehicles.length).catch(() => 0), serverRestaurantApi().then((r) => r.tiffin.mine()).then((r) => r.items).catch(() => [] as tiffinApi.MySubscriptionDto[]), api.me.appointments().then((r) => r.items).catch(() => [] as appointmentsApi.MyAppointmentDto[])]).catch(() => null);
+  const data = await Promise.all([api.me.profile(), api.me.memberships(), api.me.card().catch(() => null), api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[]), api.me.pantry().then((r) => r.items).catch(() => [] as groceryApi.MyPantryResponse["items"]), api.me.myPets().then((r) => r.items.length).catch(() => 0), api.me.myFoodCards().then((r) => r.items.length).catch(() => 0), api.me.myVehicles().then((r) => r.vehicles.length).catch(() => 0), serverRestaurantApi().then((r) => r.tiffin.mine()).then((r) => r.items).catch(() => [] as tiffinApi.MySubscriptionDto[]), api.me.appointments().then((r) => r.items).catch(() => [] as appointmentsApi.MyAppointmentDto[]), api.me.orders().then((r) => r.items).catch(() => [] as commerceApi.OrderDto[])]).catch(() => null);
   if (!data) {
     const t = await getT(sp);
     return <ErrorState title={t("wp.err.card")} description={t("rc.error.body")} action={<Button variant="secondary" href="/me">{t("rc.tryAgain")}</Button>} />;
   }
-  const [profile, wallet, card, campaigns, pantry, petCount, foodCount, vehicleCount, tiffin, visits] = data;
+  const [profile, wallet, card, campaigns, pantry, petCount, foodCount, vehicleCount, tiffin, visits, orders] = data;
+  // Orders still on their way: each one is a card above the pass that opens its tracker (they were only reachable from the text message).
+  const openOrders = orders.filter((o) => ["pending", "accepted", "preparing", "ready"].includes(o.status)).slice(0, 3).map((o) => ({ id: o.id, number: o.number, status: o.status, merchantName: o.merchantName }));
   // Your next visit.
   const nextVisit = soonest(visits);
   const petShop = wallet.items.find((m) => m.merchant.vertical === "pet")?.merchant.name ?? null;
@@ -86,6 +88,8 @@ export default async function MePage({ searchParams }: Props) {
         endsLabels={Object.fromEntries(campaigns.map((c) => [c.id, formatDate(locale, c.endsAt, { month: "short", day: "numeric" })]))}
         nearby={nearby}
         nextVisit={nextVisit ? <NextVisitCard appt={nextVisit} /> : null}
+        openOrders={openOrders}
+        joinHint={nextVisit && !wallet.items.some((m) => m.merchant.id === nextVisit.merchant.id) ? { name: nextVisit.merchant.name, slug: nextVisit.merchant.slug } : null}
         extras={
           <>
             {/* wave-n promo: the Deals inbox (running deals, door-crasher spots, per-shop consent) */}

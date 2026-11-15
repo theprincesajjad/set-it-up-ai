@@ -44,8 +44,8 @@ function MessagesPage() {
         description={`${sms ? "Texts and emails" : "Emails"} go only to people who agreed. Your business name, address and a ${sms ? "STOP line" : "way to unsubscribe"} are added for you.`}
         actions={
           <>
-            <Button size="md" variant="secondary" href="#automations" className="h-[38px] rounded-full px-4 text-[14px] font-medium">Automations</Button>
-            <Button size="md" variant="secondary" href="#sent" className="h-[38px] rounded-full px-4 text-[14px] font-medium">Sent</Button>
+            <Button size="md" variant="secondary" href="#automations" className="max-md:h-11 md:h-[38px] rounded-full px-4 text-[14px] font-medium">Automations</Button>
+            <Button size="md" variant="secondary" href="#sent" className="max-md:h-11 md:h-[38px] rounded-full px-4 text-[14px] font-medium">Sent</Button>
           </>
         }
       />

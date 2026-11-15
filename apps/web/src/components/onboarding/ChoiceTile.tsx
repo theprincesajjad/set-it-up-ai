@@ -16,6 +16,8 @@ export interface ChoiceGroupProps {
   "aria-label"?: string;
   "aria-labelledby"?: string;
   className?: string;
+  /** Columns from sm: 3 across (default) or one row per choice. */
+  columns?: 1 | 3;
   children: ReactNode;
 }
 
@@ -23,7 +25,7 @@ export interface ChoiceGroupProps {
  * `role="radiogroup"` for ChoiceTiles: 3 across from sm, 1 across on phones (object on the start side). Arrow keys move and select (they follow
  * the reading direction: in Urdu the left arrow goes forward), Space selects, one tab stop.
  */
-export function ChoiceGroup({ value, onValueChange, className, children, ...aria }: ChoiceGroupProps) {
+export function ChoiceGroup({ value, onValueChange, className, columns = 3, children, ...aria }: ChoiceGroupProps) {
   const ref = useRef<HTMLDivElement>(null);
   // One tab stop: the checked tile, or the first enabled one when nothing is checked.
   useEffect(() => {
@@ -54,7 +56,7 @@ export function ChoiceGroup({ value, onValueChange, className, children, ...aria
   };
   return (
     <Ctx.Provider value={{ value, onValueChange }}>
-      <div ref={ref} role="radiogroup" onKeyDown={onKeyDown} className={cn("grid grid-cols-1 gap-3 sm:grid-cols-3", className)} {...aria}>
+      <div ref={ref} role="radiogroup" onKeyDown={onKeyDown} className={cn("grid grid-cols-1 gap-3", columns === 3 && "sm:grid-cols-3", className)} {...aria}>
         {children}
       </div>
     </Ctx.Provider>
@@ -69,6 +71,8 @@ export interface ChoiceTileProps {
   icon: Icon3dProps["name"];
   trade?: Icon3dProps["trade"];
   disabled?: boolean;
+  /** "stack" (default): the object above the text from sm. "row": the object beside the text at every width. */
+  layout?: "stack" | "row";
   className?: string;
 }
 
@@ -76,7 +80,7 @@ export interface ChoiceTileProps {
  * A radio presented as a tile (docs/design/onboarding-v1.md section 5): 1 px hairline, radius 12, 16 padding, a 40 px 3D object, a 14/550 label
  * and a 12 muted hint. Selected: a 2 px black ring, no fill change. Use inside `ChoiceGroup`.
  */
-export function ChoiceTile({ value, label, hint, icon, trade, disabled, className }: ChoiceTileProps) {
+export function ChoiceTile({ value, label, hint, icon, trade, disabled, layout = "stack", className }: ChoiceTileProps) {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error("ChoiceTile must be inside ChoiceGroup");
   const checked = ctx.value === value;
@@ -90,7 +94,8 @@ export function ChoiceTile({ value, label, hint, icon, trade, disabled, classNam
       tabIndex={checked ? 0 : -1}
       onClick={() => !disabled && ctx.onValueChange(value)}
       className={cn(
-        "flex min-h-14 w-full flex-row items-center gap-4 rounded-r4 border bg-card p-4 text-start text-card-foreground transition-shadow duration-150 focus-visible:focus-ring sm:flex-col sm:items-start sm:gap-3",
+        "flex min-h-14 w-full flex-row items-center gap-4 rounded-r4 border bg-card p-4 text-start text-card-foreground transition-shadow duration-150 focus-visible:focus-ring",
+        layout === "stack" && "sm:flex-col sm:items-start sm:gap-3",
         checked ? "border-primary shadow-[0_0_0_1px_var(--primary)]" : "border-border hover:bg-hover",
         disabled && "cursor-not-allowed opacity-50",
         className,

@@ -1,8 +1,10 @@
 "use client";
 import { Printer } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { merchantApi } from "@ll/shared";
 import { BRAND } from "@ll/shared";
+import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { QrCode } from "@/components/ui/QrCode";
 import { Segmented } from "./kit";
@@ -22,7 +24,7 @@ const TEXT = "Inter, var(--font-inter), ui-sans-serif, system-ui, -apple-system,
  * one points dot (the tokens are pinned to light, so it prints the same in dark mode). Filled with the shop name, street and join URL, with a real QR (QrCode, black on
  * white, ECC M) in the 50 mm slot.
  */
-export function QrStand({ shopName, street, joinUrl, scale = 1, unit = "points" }: { shopName: string; street: string; joinUrl: string; scale?: number; /** The program's word ("stamps" for a stamp card). */ unit?: string }) {
+export function QrStand({ shopName, street, joinUrl, scale = 1, unit = "points" }: { shopName: string; /** The street the shop belongs to; null when it is on none (the stand then promises only this shop). */ street: string | null; joinUrl: string; scale?: number; /** The program's word ("stamps" for a stamp card). */ unit?: string }) {
   const word = (unit || "points").toLowerCase();
   const short = joinUrl.replace(/^https?:\/\//, "");
   const longName = shopName.length > 28;
@@ -57,12 +59,14 @@ export function QrStand({ shopName, street, joinUrl, scale = 1, unit = "points" 
                 </>
               )}
             </text>
-            <text x="52.5" y="59.5">
-              and every shop on{" "}
-              <tspan fontWeight="600" className="fill-foreground">
-                {street.slice(0, 22)}
-              </tspan>
-            </text>
+            {street ? (
+              <text x="52.5" y="59.5">
+                and every shop on{" "}
+                <tspan fontWeight="600" className="fill-foreground">
+                  {street.slice(0, 22)}
+                </tspan>
+              </text>
+            ) : null}
           </g>
         </g>
         <rect x="23.5" y="66" width="58" height="58" rx="4" className="fill-background stroke-border" strokeWidth="0.35" />
@@ -90,18 +94,21 @@ export function QrStand({ shopName, street, joinUrl, scale = 1, unit = "points" 
   );
 }
 
-function ScriptCard({ kit, street, local }: { kit: merchantApi.QrKit; street: string; local?: merchantApi.OnboardingPlaybookDto["tillLineLocal"] }) {
+function ScriptCard({ kit, street, programLine, tillLine, local }: { kit: merchantApi.QrKit; street: string | null; /** What the card does, with the shop's real reward ("Collect 8 stamps, get a free latte"). */ programLine?: string | null; /** The one line staff say at the till (the trade's own, from the setup playbook). */ tillLine?: string | null; local?: merchantApi.OnboardingPlaybookDto["tillLineLocal"] }) {
   const row = { fontSize: "3.8mm", lineHeight: 1.4, borderTop: "0.3mm solid var(--color-border)", paddingTop: "3mm" } as const;
   return (
     <div data-theme="light" className="qr-stand flex flex-col gap-[3mm] bg-background p-[8mm] text-foreground" style={{ width: "105mm", height: "148mm", fontFamily: TEXT }}>
       <p style={{ fontSize: "3.2mm", color: "var(--color-muted-foreground)" }}>Staff script · {kit.merchant.name}</p>
       <p style={{ fontFamily: DISPLAY, fontSize: "7mm", fontWeight: 800, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "2mm" }}>ask every customer</p>
-      <p style={row}>&quot;Are you on {BRAND.name}? {kit.program?.headline ?? "You earn rewards here"}, here and at every shop on {street}.&quot;</p>
       <p style={row}>
-        <strong>Yes</strong> · &quot;Scan your card, or what&apos;s your number?&quot; Then tap <strong>Add stamp</strong> or <strong>Award</strong>.
+        &ldquo;{tillLine ?? `Are you on ${BRAND.name}?`}&rdquo; {programLine ?? kit.program?.headline ?? "You earn rewards here"}
+        {street ? `, here and at every shop on ${street}` : ""}.
       </p>
       <p style={row}>
-        <strong>No</strong> · &quot;Scan this. It takes 30 seconds, no app.&quot; Point at the stand.
+        <strong>Yes</strong> · &ldquo;Scan your card, or what&rsquo;s your number?&rdquo; Then tap <strong>Add stamp</strong> or <strong>Award</strong>.
+      </p>
+      <p style={row}>
+        <strong>No</strong> · &ldquo;Scan this. It takes 30 seconds, no app.&rdquo; Point at the stand.
       </p>
       <p style={row}>
         <strong>Mistake?</strong> Tap <strong>Undo</strong> right away.
@@ -113,18 +120,21 @@ function ScriptCard({ kit, street, local }: { kit: merchantApi.QrKit; street: st
           <p lang="pa">{local.pa}</p>
         </div>
       ) : null}
-      <p style={{ ...row, fontSize: "3.2mm", color: "var(--color-muted-foreground)", marginTop: "auto" }}>{kit.staffScript}</p>
     </div>
   );
 }
 
 /** Print-ready QR kit page body. `window.print()` with @page sized to the chosen artifact. */
-export function QrKitPrint({ kit, street, initialLocationId, initialSize, localScript, onPrinted }: { kit: merchantApi.QrKit; street: string; initialLocationId?: string | null; initialSize?: KitSize; localScript?: merchantApi.OnboardingPlaybookDto["tillLineLocal"]; onPrinted?: () => void }) {
+export function QrKitPrint({ kit, street, initialLocationId, initialSize, localScript, tillLine, programLine, setupHref, onPrinted }: { kit: merchantApi.QrKit; street: string | null; initialLocationId?: string | null; initialSize?: KitSize; localScript?: merchantApi.OnboardingPlaybookDto["tillLineLocal"]; tillLine?: string | null; programLine?: string | null; /** Where "Back to setup" goes, when the owner came from the setup guide (or the step is still open). */ setupHref?: string | null; onPrinted?: () => void }) {
+  const [printed, setPrinted] = useState(false);
   const [size, setSize] = useState<KitSize>(initialSize ?? "a6");
   const [locId, setLocId] = useState(initialLocationId && kit.locations.some((l) => l.id === initialLocationId) ? initialLocationId : (kit.locations[0]?.id ?? ""));
   const loc = kit.locations.find((l) => l.id === locId) ?? kit.locations[0];
   useEffect(() => {
-    const after = () => onPrinted?.();
+    const after = () => {
+      setPrinted(true);
+      onPrinted?.();
+    };
     window.addEventListener("afterprint", after);
     return () => window.removeEventListener("afterprint", after);
   }, [onPrinted]);
@@ -133,6 +143,11 @@ export function QrKitPrint({ kit, street, initialLocationId, initialSize, localS
     <div className="flex flex-col gap-5">
       <style>{`@media print { @page { size: ${page}; margin: 0; } html, body { background: #FFFFFF !important; } .qr-kit-controls { display: none !important; } .qr-kit-sheet { box-shadow: none !important; margin: 0 !important; border: 0 !important; } .qr-kit-canvas { background: transparent !important; padding: 0 !important; } }`}</style>
       <div className="qr-kit-controls flex flex-col gap-4 print:hidden">
+        {printed && setupHref ? (
+          <Banner tone="success" title="Marked as printed.">
+            The setup step is done. <Link className="underline" href={setupHref}>Back to setup</Link>
+          </Banner>
+        ) : null}
         <div className="flex flex-wrap items-center gap-3">
           {kit.locations.length > 1 ? <Select label="Location" value={locId} onChange={(e) => setLocId(e.target.value)} options={kit.locations.map((l) => ({ value: l.id, label: l.name }))} /> : null}
           <Segmented label="What to print" value={size} onChange={setSize} options={[{ value: "a6", label: "A6 stand" }, { value: "a4", label: "A4 poster" }, { value: "script", label: "Staff script" }]} />
@@ -150,7 +165,7 @@ export function QrKitPrint({ kit, street, initialLocationId, initialSize, localS
       {loc ? (
         <div tabIndex={0} role="region" aria-label="Print preview" className="qr-kit-canvas flex justify-center overflow-x-auto focus-visible:focus-ring rounded-card bg-bg-subtle px-4 py-10 print:block print:rounded-none print:bg-transparent print:p-0">
         <div className="qr-kit-sheet border border-line print:border-0">
-          {size === "script" ? <ScriptCard kit={kit} street={street} local={localScript} /> : <QrStand shopName={kit.merchant.name} street={street} joinUrl={loc.joinUrl} scale={size === "a4" ? 2 : 1} unit={kit.program?.terminology} />}
+          {size === "script" ? <ScriptCard kit={kit} street={street} programLine={programLine} tillLine={tillLine} local={localScript} /> : <QrStand shopName={kit.merchant.name} street={street} joinUrl={loc.joinUrl} scale={size === "a4" ? 2 : 1} unit={kit.program?.terminology} />}
         </div>
         </div>
       ) : (

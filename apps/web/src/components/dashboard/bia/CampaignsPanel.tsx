@@ -43,7 +43,7 @@ function Row({ c }: { c: C.Campaign }) {
 export function CampaignsPanel({ hoodId }: { hoodId: string }) {
   const list = useApi(() => browserApi.campaigns.list({ neighbourhoodId: hoodId, limit: 4 }), [hoodId]);
   return (
-    <Panel title="Campaigns" action={<Link href="/bia/campaigns" className="text-meta-strong text-fg-muted hover:text-fg">All campaigns</Link>}>
+    <Panel title="Campaigns" action={<Link href="/bia/campaigns" className="text-meta-strong text-fg-muted hover:text-fg max-md:-my-3 max-md:inline-flex max-md:min-h-11 max-md:items-center">All campaigns</Link>}>
       <ListAsync state={list} errorTitle="Couldn't load the campaigns.">
         {(d) =>
           d.items.length ? (

@@ -4,9 +4,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { roleHome } from "@/lib/auth/home";
 import { otpErrorMessage } from "@/lib/auth/otpErrors";
+import { isApiError } from "@/lib/api/errors";
 import { rememberLocale, saveProfileLocale, useLocaleOrEnglish } from "@/lib/i18n/client";
 import { withLang } from "@/lib/i18n/url";
 import { formatNanp, toE164, validateNanp } from "@/lib/phone";
+import { useHydrated } from "@/lib/useHydrated";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { OtpField } from "@/components/ui/OtpField";
@@ -21,6 +23,7 @@ const RESEND_SECONDS = 30;
 
 export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro, tone = "ink", homeByRole = false }: { next?: string; devAutofill?: boolean; /** With no `next`: send people to their dashboard or console when they have one (shop staff invited by phone), else to /me. */ homeByRole?: boolean; /** Already-localized title; defaults to "Sign in with your phone". */ title?: string; heading?: "h1" | "h2" | "h3"; /** One sentence under the title (replaces the "6-digit code" line). */ intro?: string; /** wave-q: "trade" uses the shop's colour for the buttons and the code boxes (inside a shop's booking flow). */ tone?: "ink" | "trade" }) {
   const H = heading;
+  const hydrated = useHydrated();
   const { t, locale } = useLocaleOrEnglish();
   const router = useRouter();
   const [step, setStep] = useState<"phone" | "code">("phone");
@@ -56,7 +59,14 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro, t
       setCooldown(RESEND_SECONDS);
       if (resend) setStatus(t("auth.otp.sent"));
     } catch (err) {
-      setBanner(otpErrorMessage(err, t, locale));
+      // Asked again while the first code is still good (a refresh on the code step): go to the code box, not a "too fast" error.
+      const d = isApiError(err) && err.status === 429 ? (err.details as { reason?: string; codeStillValid?: boolean } | undefined) : undefined;
+      if (d?.reason === "otp_cooldown" && d.codeStillValid) {
+        setStep("code");
+        setCode("");
+        setCooldown(Math.max(1, Math.ceil((isApiError(err) && err.retryAfter) || RESEND_SECONDS)));
+        setStatus(t("auth.otp.alreadySent"));
+      } else setBanner(otpErrorMessage(err, t, locale));
     } finally {
       setBusy(false);
     }
@@ -78,7 +88,11 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro, t
       }
       router.refresh();
     } catch (err) {
-      setCode("");
+      // Only a wrong, used or locked code is cleared; a server fault, a rate limit or no signal keeps what they typed.
+      const theirs = isApiError(err) && err.status >= 400 && err.status < 500 && err.status !== 429;
+      const closed = isApiError(err) && ((err.status === 429 && ((err.details as { reason?: string } | undefined)?.reason === "otp_locked" || /wrong codes|new one/i.test(err.message))) || (err.code === "invalid_code" && /expire|used/i.test(err.message)));
+      if (theirs || closed) setCode("");
+      if (closed) setCooldown(0);
       setError(otpErrorMessage(err, t, locale));
       setBusy(false);
     }
@@ -94,7 +108,7 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro, t
       {step === "phone" ? (
         <form onSubmit={send} noValidate className="flex flex-col gap-4">
           <PhoneField autoFocus value={digits} onChangeDigits={setDigits} error={error} />
-          <Button type="submit" size="lg" fullWidth loading={busy} variant={tone === "trade" ? "shop" : undefined}>
+          <Button type="submit" size="lg" fullWidth loading={busy} disabled={!hydrated} variant={tone === "trade" ? "shop" : undefined}>
             {t("auth.phone.sendCode")}
           </Button>
           {intro ? null : <p className="text-meta text-fg-muted">{t("auth.phone.hint")}</p>}
@@ -112,7 +126,7 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro, t
             {t("auth.otp.sentTo", { phone: formatNanp(digits) })}{" "}
             <button
               type="button"
-              className="font-semibold text-fg underline underline-offset-2"
+              className="inline-flex min-h-11 items-center font-semibold text-fg underline underline-offset-2 focus-visible:focus-ring"
               onClick={() => {
                 setStep("phone");
                 setCode("");
@@ -125,11 +139,11 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro, t
           </p>
           <OtpField tone={tone} value={code} onChange={setCode} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
           {/* l10n-ok: development builds only (the API sends a devCode only outside production) */}
-          {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
-          <Button type="submit" size="lg" fullWidth loading={busy} variant={tone === "trade" ? "shop" : undefined}>
+          {devCode && devAutofill ? <p dir="ltr" className="text-meta text-fg-muted text-start">Dev mode: code {devCode} filled in for you.</p> : null}
+          <Button type="submit" size="lg" fullWidth loading={busy} disabled={!hydrated} variant={tone === "trade" ? "shop" : undefined}>
             {t("auth.otp.signIn")}
           </Button>
-          <Button variant="ghost" size="sm" disabled={cooldown > 0 || busy} onClick={() => void send(undefined, true)} className="-ms-3 self-start">
+          <Button variant="ghost" size="sm" disabled={cooldown > 0 || busy} onClick={() => void send(undefined, true)} className="min-h-11 self-start">
             {cooldown > 0 ? t("auth.otp.resendIn", { time: `0:${String(cooldown).padStart(2, "0")}` }) : t("auth.otp.resend")}
           </Button>
           <p role="status" aria-live="polite" className="text-meta text-fg-muted empty:hidden">

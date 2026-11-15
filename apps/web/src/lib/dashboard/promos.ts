@@ -243,7 +243,7 @@ const DAY_NAMES = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", 
 const hr = (t: string) => {
   const h = Number(t.slice(0, 2));
   const m = t.slice(3, 5);
-  return { n: `${h % 12 === 0 ? 12 : h % 12}${m && m !== "00" ? `:${m}` : ""}`, ap: h >= 12 && h < 24 ? "pm" : "am" };
+  return { n: `${h % 12 === 0 ? 12 : h % 12}${m && m !== "00" ? `:${m}` : ""}`, ap: h >= 12 && h < 24 ? "p.m." : "a.m." };
 };
 
 /** "Weekdays 2 to 4 pm", "Tuesdays, all day", "Oct 1 to 12, all day" (no weekday rule: the dates). */

@@ -11,6 +11,7 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Async, NoAccess } from "@/components/dashboard/PageStates";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
+import { DataTable, type Column } from "@/components/ui/DataTable";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { money } from "@/lib/dashboard/calendar";
@@ -27,6 +28,14 @@ export default function MembershipsPage() {
 
 type Tab = "offers" | "members" | "issues";
 const d = (v: string | null) => (v ? new Date(`${v}T12:00:00Z`).toLocaleDateString("en-CA", { timeZone: "UTC", month: "short", day: "numeric" }) : "");
+
+const offerColumns: Column<classesApi.ProductDto>[] = [
+  { key: "name", header: "Offer", mobile: "title", cell: (o) => <span className="flex min-w-0 items-center gap-2"><span className={`min-w-0 truncate ${o.active ? "text-fg" : "text-fg-muted"}`}>{o.name}</span>{o.active ? null : <span className="shrink-0 text-meta text-fg-muted">Off sale</span>}</span> },
+  { key: "price", header: "Price", align: "end", mobile: "trailing", cell: (o) => <span className="tabular">{offerPrice(o, money)}</span> },
+  { key: "type", header: "Type", mobile: "subtitle", cell: (o) => <span className="text-fg-muted">{offerType(o)}</span> },
+  { key: "rules", header: "Rules", mobile: "subtitle", cell: (o) => <span className="text-fg-muted">{offerRules(o)}</span> },
+  { key: "sold", header: "Sold", align: "end", mobile: "hidden", cell: (o) => <span className="tabular">{o.kind === "membership" ? `${o.activeCount ?? 0} active` : `${o.soldLast30 ?? 0} in 30 days`}</span> },
+];
 
 function Memberships() {
   const { api, role, enabled } = useMerchant();
@@ -50,7 +59,7 @@ function Memberships() {
   if (role === "staff") {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader flush title="Desk sale" description="Someone paying at the desk for a drop-in, a pack or an intro offer. It lands on their member card straight away." actions={packs.length ? <Button onClick={() => setSale(true)}>Record a desk sale</Button> : undefined} />
+        <PageHeader flush title="Desk sale" description="Someone paying at the desk for a drop-in, a pack or an intro offer. It lands on their member card straight away." actions={packs.length ? <Button size="sm" onClick={() => setSale(true)}>Record a desk sale</Button> : undefined} />
         {products.data && !packs.length ? <EmptyState title="Nothing for sale yet" description="Ask an owner or manager to add a drop-in or a pack." /> : null}
         <SalePanel open={sale} onClose={() => setSale(false)} packs={packs} onSaved={reload} />
       </div>
@@ -64,8 +73,9 @@ function Memberships() {
         description="What you sell, who is on it and when they are billed. Renewals charge the card on file."
         actions={
           <>
-            {packs.length ? <Button variant="secondary" onClick={() => setSale(true)}>Record a desk sale</Button> : null}
-            <Button iconStart={Plus} onClick={() => setOffer(null)}>New offer</Button>
+            {packs.length ? <Button size="sm" variant="secondary" onClick={() => setSale(true)}>Record a desk sale</Button> : null}
+            {/* With nothing for sale the empty card holds the one primary. */}
+            {products.data && !products.data.items.length ? null : <Button size="sm" iconStart={Plus} onClick={() => setOffer(null)}>New offer</Button>}
           </>
         }
       />
@@ -75,7 +85,7 @@ function Memberships() {
           { label: "Active members", value: s?.activeMembers ?? 0, caption: `${s?.frozenMembers ?? 0} frozen` },
           { label: "Monthly recurring", value: money(s?.mrrCents ?? 0), caption: "Before tax, active and past due" },
           { label: "Cancelled, last 30 days", value: s?.cancelledLast30 ?? 0, caption: s && s.activeMembers + s.cancelledLast30 > 0 ? `${Math.round((s.cancelledLast30 / (s.activeMembers + s.cancelledLast30)) * 1000) / 10}% of members` : "No members yet" },
-          { label: "Pack and drop-in sales", value: money(s?.packSalesCents ?? 0), caption: "Last 30 days, before tax" },
+          { label: "Class sales", value: money(s?.packSalesCents ?? 0), caption: "Packs and drop-ins, last 30 days, before tax" },
         ]}
       />
       <Capsules
@@ -93,24 +103,15 @@ function Memberships() {
           <Async state={products}>
             {(p) =>
               p.items.length === 0 ? (
-                <EmptyState title="Nothing for sale yet" description="Start with a drop-in, a 10-class pack and an intro offer for new students. Add a membership when you want monthly billing." action={<Button onClick={() => setOffer(null)}>New offer</Button>} />
+                <EmptyState title="Nothing for sale yet" description="Start with a drop-in so anyone can book a class. Add a 10-class pack next, and turn on Intro offer for new students. Add a membership when you want monthly billing." action={<Button iconStart={Plus} onClick={() => setOffer(null)}>Add a drop-in</Button>} />
               ) : (
-                <TableWrap>
-                  <Table label="Offers">
-                    <thead><tr><Th>Offer</Th><Th>Price</Th><Th>Type</Th><Th>Rules</Th><Th align="end">Sold</Th></tr></thead>
-                    <tbody>
-                      {p.items.map((o) => (
-                        <Tr key={o.id} onOpen={() => setOffer(o)}>
-                          <Td><span className={o.active ? "text-fg" : "text-fg-muted"}>{o.name}</span>{o.active ? null : <span className="ms-2 text-meta text-fg-muted">Off sale</span>}</Td>
-                          <Td>{offerPrice(o, money)}</Td>
-                          <Td>{offerType(o)}</Td>
-                          <Td>{offerRules(o)}</Td>
-                          <Td align="end">{o.kind === "membership" ? `${o.activeCount ?? 0} active` : `${o.soldLast30 ?? 0} in 30 days`}</Td>
-                        </Tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </TableWrap>
+                <DataTable
+                  caption="Offers"
+                  columns={offerColumns}
+                  rows={p.items}
+                  rowKey={(o) => o.id}
+                  onRowClick={(o) => setOffer(o)}
+                />
               )
             }
           </Async>
@@ -157,7 +158,7 @@ function Memberships() {
           </Async>
         </Section>
       )}
-      <OfferPanel open={offer !== undefined} onClose={() => setOffer(undefined)} offer={offer ?? null} canMemberships={canMemberships} onSaved={reload} />
+      <OfferPanel open={offer !== undefined} onClose={() => setOffer(undefined)} offer={offer ?? null} canMemberships={canMemberships} onSaved={reload} firstOffer={!!products.data && !products.data.items.length} />
       <SalePanel open={sale} onClose={() => setSale(false)} packs={packs} onSaved={reload} />
       <ConfirmDialog
         open={!!ending}

@@ -11,18 +11,18 @@ export async function PassFooter({ lazyCatalog }: { /** Inside the root 404 (in 
   return (
     <LocaleScope locale={locale} lazyCatalog={lazyCatalog}>
       <footer className="mx-auto mt-12 flex w-full max-w-[480px] flex-col items-center gap-2 border-t border-line px-4 pt-6 pb-10 text-center">
-        <Link href="/for-shoppers" className="inline-flex items-center gap-2 text-meta text-fg-muted hover:text-fg">
+        <Link href="/for-shoppers" className="inline-flex min-h-11 items-center gap-2 text-meta text-fg-muted hover:text-fg">
           <LogoMark size={16} />
           <span>{t("auth.footer.part", { brand: BRAND.name })}</span>
         </Link>
-        <p className="flex gap-3 text-meta text-fg-muted">
-          <Link href="/legal/terms" className="hover:text-fg">
+        <p className="flex flex-wrap justify-center gap-x-4 text-meta text-fg-muted">
+          <Link href="/legal/terms" className="inline-flex min-h-11 items-center hover:text-fg">
             {t("auth.footer.terms")}
           </Link>
-          <Link href="/legal/privacy" className="hover:text-fg">
+          <Link href="/legal/privacy" className="inline-flex min-h-11 items-center hover:text-fg">
             {t("auth.footer.privacy")}
           </Link>
-          <Link href="/legal/rewards" className="hover:text-fg">
+          <Link href="/legal/rewards" className="inline-flex min-h-11 items-center hover:text-fg">
             {t("auth.footer.rewards")}
           </Link>
         </p>

@@ -218,7 +218,7 @@ function Intake() {
               {checklist.map((c) => {
                 const on = checks.includes(c);
                 return (
-                  <button key={c} type="button" role="checkbox" aria-checked={on} onClick={() => setChecks(on ? checks.filter((x) => x !== c) : [...checks, c])} className={cn("rounded-full border px-3 py-1.5 text-meta transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle")}>
+                  <button key={c} type="button" role="checkbox" aria-checked={on} onClick={() => setChecks(on ? checks.filter((x) => x !== c) : [...checks, c])} className={cn("inline-flex items-center rounded-full border px-3 py-1.5 text-meta max-md:min-h-11 transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line text-fg hover:bg-bg-subtle")}>
                     {c}
                   </button>
                 );

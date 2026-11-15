@@ -64,7 +64,7 @@ export function windowLabel(startTime: string | null, endTime: string | null): s
   if (!startTime && !endTime) return "all day";
   const a = startTime ? Number(startTime.slice(0, 2)) : 0;
   const b = endTime ? Number(endTime.slice(0, 2)) : 24;
-  const ap = (h: number) => (h < 12 || h === 24 ? "am" : "pm");
+  const ap = (h: number) => (h < 12 || h === 24 ? "a.m." : "p.m.");
   const h12 = (h: number) => (h % 12 === 0 ? 12 : h % 12);
   return ap(a) === ap(b) ? `${h12(a)}–${h12(b)} ${ap(b)}` : `${h12(a)} ${ap(a)}–${h12(b)} ${ap(b)}`;
 }
@@ -95,7 +95,7 @@ export function rewardNoun(vertical: string | undefined, plural = false): string
 const KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 const hhmm12 = (t: string) => {
   const [h, m] = t.split(":").map(Number) as [number, number];
-  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h >= 12 && h < 24 ? "pm" : "am"}`;
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h >= 12 && h < 24 ? "p.m." : "a.m."}`;
 };
 
 /** "opens 7:00 am" before opening and during the morning, "closed 6:00 pm" once the shop has shut (today's hours). */
@@ -119,7 +119,7 @@ export function lastSeen(iso: string | null | undefined, now: Date): string {
   const d = new Date(iso);
   const day = (x: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(x);
   const days = Math.round((Date.parse(day(now)) - Date.parse(day(d))) / 86_400_000);
-  const time = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(d).replace(/\./g, "").replace("a m", "am").replace("p m", "pm");
+  const time = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(d).replace(/[\u202f\u00a0]/g, " ").replace(/^(\d+):00 /, "$1 ").replace(/\b([ap])\.?m\.?$/i, (_, x: string) => `${x.toLowerCase()}.m.`);
   if (days <= 0) return `today ${time}`;
   if (days === 1) return `yesterday ${time}`;
   if (days < 7) return `${days} days ago`;

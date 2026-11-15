@@ -3,9 +3,11 @@
  * Web pass (`/me`): my card, my shops, rewards with redeem → code, activity and
  * settings (mute, consent, data export, delete). customer-web-pass.md §5.
  */
-import { placeKindLabel } from "@ll/shared";
+import { placeKindLabel, type Locale } from "@ll/shared";
 import { InboxList, NotificationSettings } from "./NotificationSettings";
 import { InviteSheet } from "./InviteSheet";
+import { OpenOrders, type OpenOrder } from "./OpenOrders";
+import { SessionEndedCard } from "./SessionEnded";
 import { MemberCardBlock } from "./MemberCardBlock";
 import { LanguageChip, PassPanel } from "./PassChrome";
 import { NearbyOnStreet } from "./NearbyOnStreet";
@@ -21,7 +23,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { PassTabBar } from "./PassTabBar";
 import { usePassStyle } from "./useThemeStyle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { saveOfflineCard } from "@/lib/offlineCard";
 import { type campaignsApi, type customerApi, type MessageKey, type networkApi } from "@ll/shared";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
@@ -29,6 +31,8 @@ import { unitCaption, unitsText } from "@/lib/units";
 import { copy } from "@/copy/en-CA"; // l10n-ok: only the recorded consent sentence (stored with the opt-in) comes from here
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { useErrorText } from "@/lib/api/useErrorText";
+import { isSessionEnded } from "@/lib/api/errors";
+import { rewardNameIn } from "@/lib/i18n/rewardName";
 import { newIdempotencyKey } from "@/lib/api/client";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatDate, rewardInSentence, withArticle } from "@/lib/format";
@@ -76,13 +80,20 @@ export interface WalletProps {
   extras?: React.ReactNode;
   /** Shops on the member's street they haven't joined (promo first, nearest first): the "Nearby on your street" card. */
   nearby?: networkApi.ShopListItemDto[];
+  /** Orders still on their way (sent, accepted, being prepared, ready): each is a way back to its tracker. */
+  openOrders?: OpenOrder[];
+  /** The shop of the next booked visit when the customer has not joined it: the empty wallet offers to join it instead of "find a shop". */
+  joinHint?: { name: string; slug: string } | null;
 }
 
 type Details = Record<string, customerApi.MembershipDetailResponse>;
 
+/** The card whose code sheet is open: the wallet keeps that shop on screen (and its sheet mounted) while the sheet shows "Redeemed", however the lists refresh under it. */
+const SheetPin = createContext<(membershipId: string | null) => void>(() => undefined);
+
 const TX_KEYS = ["earn", "redeem", "adjust", "welcome_bonus", "birthday_bonus", "referral_bonus", "promo_bonus", "network_bonus", "campaign_bonus", "reversal", "expire", "import"] as const;
 
-export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {}, nextVisit, extras, nearby = [] }: WalletProps) {
+export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], endsLabels = {}, nextVisit, extras, nearby = [], openOrders = [], joinHint = null }: WalletProps) {
   const errText = useErrorText();
   const { t, locale } = useLocaleOrEnglish();
   const [tab, setTab] = useState<Tab>("card");
@@ -90,6 +101,8 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
   const [details, setDetails] = useState<Details>({});
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [openShop, setOpenShop] = useState<string | null>(null);
+  // A 401 from any call below: the session ended, so say so once, with the way back in (never "Try again").
+  const [sessionEnded, setSessionEnded] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -121,11 +134,12 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
       const res = await Promise.all(list.map((id) => browserApi.me.membership(id, { historyLimit: 30 }).then((d) => [id, d] as const)));
       setDetails((prev) => ({ ...prev, ...Object.fromEntries(res) }));
     } catch (e) {
-      toast({ message: errText(e), tone: "error" });
+      if (isSessionEnded(e)) setSessionEnded(true);
+      else toast({ message: errText(e), tone: "error" });
     } finally {
       setLoadingDetails(false);
     }
-  }, [wallet.items, toast]);
+  }, [wallet.items, toast, errText]);
 
   // Keep this customer's member number and QR on the phone for the offline page (sw.js). A card that failed to load leaves the saved one alone;
   // signing out removes it (sessionApi.logout).
@@ -133,7 +147,10 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
     if (card) saveOfflineCard({ code: card.memberCode, qrSvg: card.qrSvg });
   }, [card]);
 
-  const hero = useMemo(() => heroMembership(wallet.items), [wallet.items]);
+  // A shop whose reward code is open at the counter stays the featured card (its stamps are held, so it would otherwise drop down the list).
+  const [sheetFor, setSheetFor] = useState<string | null>(null);
+  const holding = useMemo(() => new Set([...wallet.items.filter((m) => (m.openRedemptions ?? 0) > 0).map((m) => m.id), ...(sheetFor ? [sheetFor] : [])]), [wallet.items, sheetFor]);
+  const hero = useMemo(() => heroMembership(wallet.items, holding), [wallet.items, holding]);
   // Clear: on the card tab the header sits on the featured shop's colour (the pass's brand field).
   const clear = usePassStyle() === "clear";
   const onField = clear && tab === "card" && !!hero;
@@ -150,10 +167,54 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
   const refreshWallet = useCallback(async () => {
     try {
       setWallet(await browserApi.me.memberships());
-    } catch {
+    } catch (e) {
       /* keep stale */
+      if (isSessionEnded(e)) setSessionEnded(true);
     }
   }, []);
+
+  // The card follows the counter: when the customer comes back to this tab, focuses the window, or leaves it open, a stamp added at the
+  // counter shows up by itself (nothing runs while the tab is hidden). Same-shaped data is kept as is, so nothing re-renders for no reason.
+  const live = useRef({ tab, items: wallet.items });
+  useEffect(() => {
+    live.current = { tab, items: wallet.items };
+  });
+  useEffect(() => {
+    if (sessionEnded) return;
+    let stopped = false;
+    const same = <T,>(a: T, b: T) => JSON.stringify(a) === JSON.stringify(b);
+    const tick = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const w = await browserApi.me.memberships();
+        if (stopped) return;
+        setWallet((prev) => (same(prev, w) ? prev : w));
+        const cur = live.current.tab;
+        const h = heroMembership(w.items);
+        const ids = cur === "rewards" || cur === "activity" ? w.items.map((m) => m.id) : cur === "card" && h ? [h.id] : [];
+        if (!ids.length) return;
+        const res = await Promise.all(ids.map((id) => browserApi.me.membership(id, { historyLimit: 30 }).then((d) => [id, d] as const)));
+        if (stopped) return;
+        setDetails((prev) => {
+          const next = { ...prev, ...Object.fromEntries(res) };
+          return same(prev, next) ? prev : next;
+        });
+      } catch (e) {
+        if (isSessionEnded(e)) setSessionEnded(true);
+        /* offline or a server hiccup: keep what is on screen */
+      }
+    };
+    const onVisible = () => void tick();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    const timer = window.setInterval(tick, 15_000);
+    return () => {
+      stopped = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.clearInterval(timer);
+    };
+  }, [sessionEnded]);
 
   // Never sum points and stamps across shops: the card features one shop; the footer only counts rewards ready.
   const headline = useMemo(() => walletHeadline(wallet.items), [wallet.items]);
@@ -161,6 +222,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
   const updateMembership = (m: customerApi.MembershipDto) => setWallet((w) => ({ ...w, items: w.items.map((x) => (x.id === m.id ? { ...x, ...m } : x)) }));
 
   return (
+    <SheetPin.Provider value={setSheetFor}>
     <div {...shopColorProps(hero?.merchant)} className="isolate flex flex-col gap-4 pb-32">
       <header className={cn("flex min-h-11 items-center gap-2", onField && "text-trade-pass-text")}>
         <h1
@@ -200,9 +262,13 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
         </div>
       </header>
 
+      {/* Activity and Settings load their own lists and show this same card when those fail; one card per screen. */}
+      {sessionEnded && tab !== "activity" && tab !== "settings" ? <SessionEndedCard /> : null}
       {tab === "card" ? (
         <CardTab
           hero={hero}
+          openOrders={openOrders}
+          joinHint={joinHint}
           wallet={wallet}
           details={details}
           loading={loadingDetails}
@@ -219,28 +285,34 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
       {tab === "shops" ? (
         <ShopsTab wallet={wallet} details={details} openShop={openShop} setOpenShop={setOpenShop} loadDetails={loadDetails} onChanged={refreshWallet} profile={profile} campaigns={campaigns} endsLabels={endsLabels} />
       ) : null}
-      {tab === "rewards" ? <RewardsTab wallet={wallet} details={details} loading={loadingDetails} onShowShops={() => selectTab("shops")} onChanged={async () => { await refreshWallet(); await loadDetails(); }} /> : null}
+      {tab === "rewards" ? <RewardsTab pinned={sheetFor} wallet={wallet} details={details} loading={loadingDetails} onShowShops={() => selectTab("shops")} onChanged={async () => { await refreshWallet(); await loadDetails(); }} /> : null}
       {tab === "activity" ? <ActivityTab wallet={wallet} details={details} loading={loadingDetails} /> : null}
       {tab === "settings" ? <SettingsTab wallet={wallet} profile={profile} onMembership={updateMembership} /> : null}
       <PassTabBar active={tab === "settings" ? null : tab} onSelect={selectTab} />
     </div>
+    </SheetPin.Provider>
   );
 }
 
 /** The pass itself (frame 15:184): the featured shop with its ring, my QR and wallet buttons, that shop's rewards and recent visits. */
-function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, extras, nearby, footer, onChanged, onOpenShop }: { onOpenShop: (id?: string) => void; nearby: networkApi.ShopListItemDto[]; hero: customerApi.MembershipDto | null; wallet: customerApi.WalletResponse; details: Details; loading: boolean; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; nextVisit?: React.ReactNode; extras?: React.ReactNode; footer: string | null; onChanged: () => Promise<void> }) {
+function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, extras, nearby, footer, onChanged, onOpenShop, openOrders, joinHint }: { openOrders: OpenOrder[]; joinHint: { name: string; slug: string } | null; onOpenShop: (id?: string) => void; nearby: networkApi.ShopListItemDto[]; hero: customerApi.MembershipDto | null; wallet: customerApi.WalletResponse; details: Details; loading: boolean; card: customerApi.CardResponse | null; profile: customerApi.ProfileDto; nextVisit?: React.ReactNode; extras?: React.ReactNode; footer: string | null; onChanged: () => Promise<void> }) {
   const { t, locale, date } = useLocaleOrEnglish();
   const d = hero ? details[hero.id] : undefined;
   const visits = useMemo(() => (hero && d ? hideQuickUndos(d.history.items.map((tx) => ({ tx, m: hero }))).slice(0, 3) : []), [hero, d]);
   return (
     <>
       {nextVisit}
+      <OpenOrders orders={openOrders} />
       {hero ? <ShopPassHero m={hero} line={progressLine(hero, t, locale)} footer={footer} /> : null}
       {hero ? <PassActions card={card} profile={profile} /> : null}
       {hero && wallet.items.length > 1 ? <OtherCards items={wallet.items.filter((m) => m.id !== hero.id)} onOpen={onOpenShop} /> : null}
       <NearbyOnStreet shops={nearby} />
       {!hero ? (
-        <EmptyState icon={Store} media={<CardFan />} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button variant="secondary" href="/map">{t("sh.wallet.empty")}</Button>} />
+        joinHint ? (
+          <EmptyState icon={Store} media={<CardFan />} title={t("cust.me.joinBookedTitle", { shop: joinHint.name })} description={t("cust.me.joinBookedBody")} action={<Button href={`/shops/${encodeURIComponent(joinHint.slug)}`}>{t("auth.join.joinShop", { shop: joinHint.name })}</Button>} />
+        ) : (
+          <EmptyState icon={Store} media={<CardFan />} title={t("sh.wallet.emptyTitle")} description={t("cp.empty.walletBody")} action={<Button variant="secondary" href="/map">{t("sh.wallet.empty")}</Button>} />
+        )
       ) : !d ? (
         loading || wallet.items.length ? <SkeletonCard /> : null
       ) : (
@@ -251,7 +323,7 @@ function CardTab({ hero, wallet, details, loading, card, profile, nextVisit, ext
               {visits.map(({ tx }) => (
                 <li key={tx.id} className="flex min-h-14 items-center gap-3 py-2.5 clear:min-h-16 clear:py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-body text-foreground">{txLabelFor(t, locale, tx.type, tx.description)}</p>
+                    <p className="truncate text-body text-foreground">{txLabelFor(t, locale, tx.type, tx.description, hero.terminology)}</p>
                     <p className="truncate text-meta text-muted-foreground">{date(tx.createdAt, { month: "short", day: "numeric" })}{tx.reversed ? ` · ${t("sh.wallet.reversed")}` : ""}</p>
                   </div>
                   <span className={cn("shrink-0 text-body-strong tabular-nums", tx.points >= 0 ? "text-points-text" : "text-muted-foreground")}>
@@ -357,7 +429,12 @@ function Group({ title, footer, children, as = "ul" }: { title: React.ReactNode;
   );
 }
 
-const txLabelFor = (t: Tr, locale: string, type: string, description: string | null | undefined) => {
+const txLabelFor = (t: Tr, locale: string, type: string, description: string | null | undefined, terminology?: string | null) => {
+  // A cancelled reward code is back-office wording on the ledger ("Reversal: Customer cancelled reward code"): say what happened to the customer.
+  if (type === "reversal" && /cancel/i.test(description ?? "")) {
+    const unit = unitCaption(locale as Locale, 2, terminology);
+    return t("sh.tx.codeCancelled", { unit: locale === "en" ? unit.charAt(0).toUpperCase() + unit.slice(1) : unit });
+  }
   const translated = (TX_KEYS as readonly string[]).includes(type) ? t(`sh.tx.${type}` as MessageKey) : type;
   // English keeps the shop's own description ("Purchase $12.50"); other languages show the translated kind.
   return locale === "en" ? description || translated : translated;
@@ -368,7 +445,7 @@ type Tr = (key: MessageKey, vars?: Record<string, string | number | null | undef
 /** The grey line under a shop name: what's left to the next reward, else the expiry rule. English keeps the shop's own wording. */
 function progressLine(m: customerApi.MembershipDto, t: Tr, locale: string) {
   if (locale === "en") return m.nextReward ? t("ui.stampMore", { n: m.nextReward.pointsNeeded, reward: withArticle(rewardInSentence(m.nextReward.name)) }) : m.expiryDisclosure;
-  if (m.nextReward) return t("sh.n.earnNext", { need: unitsText(locale as never, m.nextReward.pointsNeeded, m.terminology, false), reward: m.nextReward.name }).replace(/[.।۔]$/, "");
+  if (m.nextReward) return t("sh.n.earnNext", { need: unitsText(locale as never, m.nextReward.pointsNeeded, m.terminology, false), reward: rewardNameIn(locale as Locale, t, m.nextReward.name) }).replace(/[.।۔]$/, "");
   const unit = unitCaption(locale as never, 2, m.terminology);
   const months = m.program?.expiryMonths;
   return months ? t("sh.pass.expireAfter", { unit, months }) : t("sh.pass.neverExpire", { unit });
@@ -479,7 +556,7 @@ function ShopSheetBody({ m, d, profile, onChanged }: { m: customerApi.Membership
   return (
     <div {...shopColorProps(m.merchant)} className="flex flex-col gap-5">
       {m.program?.earnType === "stamps" ? (
-        <StampCard stamps={m.balance} goal={m.program.stampGoal} rewardName={m.nextReward?.name ?? "reward"} vertical={m.merchant.vertical} terminology={m.terminology} />
+        <StampCard stamps={m.balance} goal={m.program.stampGoal} rewardName={m.nextReward ? rewardNameIn(locale, t, m.nextReward.name) : t("ui.reward").toLowerCase()} vertical={m.merchant.vertical} terminology={m.terminology} />
       ) : (
         <div className="flex items-center gap-4 rounded-card bg-trade-soft p-4 clear:bg-card clear:hairline-inset">
           <PointsRing balance={m.balance} goal={m.nextReward?.pointsCost ?? 0} terminology={m.terminology} size={64} showCaption={false} />
@@ -519,8 +596,15 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
   const [active, setActive] = useState<{ redemption: customerApi.RedemptionDto; used: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ended, setEnded] = useState(false);
   const toast = useToast();
-  const { t } = useLocaleOrEnglish();
+  const { t, locale } = useLocaleOrEnglish();
+  const pin = useContext(SheetPin);
+  const sheetOpen = !!active;
+  useEffect(() => {
+    pin(sheetOpen ? membership.id : null);
+    return () => pin(null);
+  }, [sheetOpen, membership.id, pin]);
 
   // While a code is showing, poll until staff confirm it at the counter.
   useEffect(() => {
@@ -543,7 +627,8 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
       const r = await browserApi.me.redeem(membership.id, rewardId, newIdempotencyKey("redeem"));
       setActive({ redemption: r.redemption, used: false });
     } catch (e) {
-      setError(errText(e));
+      if (isSessionEnded(e)) setEnded(true);
+      else setError(errText(e));
     } finally {
       setBusy(null);
     }
@@ -555,7 +640,8 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
       await browserApi.me.cancelRedemption(active.redemption.id);
       toast({ message: t("sh.wallet.cancelled"), tone: "success" });
     } catch (e) {
-      toast({ message: errText(e), tone: "error" });
+      if (isSessionEnded(e)) setEnded(true);
+      else toast({ message: errText(e), tone: "error" });
     }
     setActive(null);
     await onChanged();
@@ -563,22 +649,28 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
 
   const open = detail.openRedemptions;
   if (!open.length && !detail.rewards.length) return null;
+  // A reward whose code is open is shown once (as its code), not again as "10 stamps to go": its stamps are held, not gone.
+  const openRewardIds = new Set(open.map((r) => r.rewardId));
+  const rewards = detail.rewards.filter((r) => !(openRewardIds.has(r.id) && !r.affordable));
   return (
     <div className="flex flex-col gap-3">
-      {error ? <Banner tone="danger">{error}</Banner> : null}
+      {ended ? <SessionEndedCard /> : error ? <Banner tone="danger">{error}</Banner> : null}
       <PassPanel title={t("sh.wallet.rewards")}>
-        {open.map((r) => (
-          <li key={r.id} className="flex items-center justify-between gap-3 py-3.5">
-            <div className="min-w-0">
-              <p className="text-body-strong text-foreground">{r.rewardName}</p>
-              <p className="text-meta font-semibold text-points-text">{t("sh.wallet.codeReady")}</p>
-            </div>
-            <Button size="sm" onClick={() => setActive({ redemption: r, used: false })}>
-              {t("sh.wallet.showCode")}
-            </Button>
-          </li>
-        ))}
-        {detail.rewards.map((r) => (
+        {open.map((r) => {
+          const held = detail.rewards.find((x) => x.id === r.rewardId)?.pointsCost;
+          return (
+            <li key={r.id} className="flex items-center justify-between gap-3 py-3.5">
+              <div className="min-w-0">
+                <p className="text-body-strong text-foreground">{rewardNameIn(locale, t, r.rewardName)}</p>
+                <p className="text-meta font-semibold text-points-text">{held ? t("sh.wallet.codeReadyHeld", { amount: unitsText(locale, held, membership.terminology) }) : t("sh.wallet.codeReady")}</p>
+              </div>
+              <Button size="md" onClick={() => setActive({ redemption: r, used: false })}>
+                {t("sh.wallet.showCode")}
+              </Button>
+            </li>
+          );
+        })}
+        {rewards.map((r) => (
           <li key={r.id}>
             <RewardCard
               layout="row"
@@ -596,9 +688,9 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
       <Modal
         open={!!active}
         onClose={async () => {
-          const wasUsed = active?.used;
           setActive(null);
-          if (wasUsed) await onChanged();
+          // Whether the code was used or just closed, the list and the balance say what is true now (held stamps, or the reward given).
+          await onChanged();
         }}
         title={active?.used ? t("sh.wallet.redeemed") : t("sh.wallet.showCode")}
         variant="sheet"
@@ -609,8 +701,9 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
               <ShopLogo shop={membership.merchant} size={32} />
               <p className="text-body-strong text-fg"><bdi>{membership.merchant.name}</bdi></p>
             </div>
-            <p className="display text-large-title text-fg">{active.redemption.rewardName}</p>
-            <RedeemCode code={active.redemption.code} rewardName={t("sh.wallet.yourCode")} expiresAt={active.redemption.expiresAt} onExpired={() => void onChanged()} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
+            {/* Once used, the reward is named in the confirmation line below: not twice. */}
+            {active.used ? null : <p className="display text-large-title text-fg">{rewardNameIn(locale, t, active.redemption.rewardName)}</p>}
+            <RedeemCode code={active.redemption.code} rewardName={rewardNameIn(locale, t, active.redemption.rewardName)} label={t("sh.wallet.yourCode")} unit={unitCaption(locale, 2, membership.terminology)} expiresAt={active.redemption.expiresAt} onExpired={() => void onChanged()} status={active.used ? "used" : "issued"} onCancel={active.used ? undefined : cancel} />
           </div>
         ) : null}
       </Modal>
@@ -618,9 +711,9 @@ function MemberRewards({ membership, detail, onChanged }: { membership: customer
   );
 }
 
-function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wallet: customerApi.WalletResponse; details: Details; loading: boolean; onChanged: () => Promise<void>; onShowShops: () => void }) {
+function RewardsTab({ pinned, wallet, details, loading, onChanged, onShowShops }: { pinned: string | null; wallet: customerApi.WalletResponse; details: Details; loading: boolean; onChanged: () => Promise<void>; onShowShops: () => void }) {
   const { t, locale } = useLocaleOrEnglish();
-  const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0 || (details[m.id]?.openRedemptions.length ?? 0) > 0);
+  const ready = wallet.items.filter((m) => m.rewardsAvailableCount > 0 || m.id === pinned || (details[m.id]?.openRedemptions.length ?? 0) > 0);
   if (loading && !Object.keys(details).length) return <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
   if (!ready.length) {
     const close = [...wallet.items].filter((m) => m.nextReward).sort((a, b) => b.nextReward!.progressPct - a.nextReward!.progressPct).slice(0, 5);
@@ -635,12 +728,12 @@ function RewardsTab({ wallet, details, loading, onChanged, onShowShops }: { wall
               <div className="flex items-center gap-3">
                 <ShopLogo shop={m.merchant} size={32} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-body-strong text-fg">{m.nextReward!.name}</p>
+                  <p className="truncate text-body-strong text-fg">{rewardNameIn(locale, t, m.nextReward!.name)}</p>
                   <p className="truncate text-meta text-fg-muted"><bdi>{m.merchant.name}</bdi></p>
                 </div>
                 <span className="shrink-0 text-meta tabular-nums text-fg-muted">{t("sh.wallet.toGo", { amount: unitsText(locale, m.nextReward!.pointsNeeded, m.terminology) })}</span>
               </div>
-              <ProgressBar value={m.nextReward!.progressPct} max={100} showValue={false} valueText={t("wp.w.wayTo", { pct: m.nextReward!.progressPct, reward: m.nextReward!.name })} />
+              <ProgressBar value={m.nextReward!.progressPct} max={100} showValue={false} valueText={t("wp.w.wayTo", { pct: m.nextReward!.progressPct, reward: rewardNameIn(locale, t, m.nextReward!.name) })} />
             </li>
           ))}
         </Group>
@@ -679,7 +772,7 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
       ).slice(0, 100),
     [wallet.items, details],
   );
-  const txLabel = (type: string, description: string | null | undefined) => txLabelFor(t, locale, type, description);
+  const txLabel = (type: string, description: string | null | undefined, terminology: string) => txLabelFor(t, locale, type, description, terminology);
   let history: React.ReactNode;
   if (loading && !rows.length) history = <div className="flex flex-col gap-3"><SkeletonCard /><SkeletonCard /></div>;
   else if (!rows.length) {
@@ -688,14 +781,16 @@ function ActivityTab({ wallet, details, loading }: { wallet: customerApi.WalletR
     history = (
       <PassPanel title={t("sh.activity.history")}>
         {rows.map(({ tx, m }) => (
-          <li key={tx.id} className="flex min-h-16 items-center gap-3 py-2.5">
+          <li key={tx.id} className="flex min-h-16 items-center gap-3 py-3">
             <ShopLogo shop={m.merchant} size={40} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-body-strong text-fg">{txLabel(tx.type, tx.description)}</p>
-              <p className="truncate text-meta text-fg-muted">
-                {m.merchant.name} · {date(tx.createdAt, { weekday: "short", month: "short", day: "numeric" })}, {time(tx.createdAt)}
+              <p className="line-clamp-2 text-body-strong text-fg">{txLabel(tx.type, tx.description, m.terminology)}</p>
+              {/* The date comes first and wraps: it was the part cut off at phone width, and it is what the customer looks for. */}
+              <p className="text-meta text-fg-muted">
+                {date(tx.createdAt, { weekday: "short", month: "short", day: "numeric" })}, {time(tx.createdAt)}
                 {tx.reversed ? ` · ${t("sh.wallet.reversed")}` : ""}
               </p>
+              <p className="truncate text-meta text-fg-muted"><bdi>{m.merchant.name}</bdi></p>
             </div>
             <span className={tx.points >= 0 ? "shrink-0 text-body-strong tabular-nums text-points-text" : "shrink-0 text-body-strong tabular-nums text-fg-muted"}>
               {tx.points >= 0 ? "+" : "−"}

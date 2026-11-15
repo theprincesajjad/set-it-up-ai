@@ -6,7 +6,7 @@ import { requireStaff } from "../../lib/auth.js";
 import { forbidden } from "../../lib/errors.js";
 import { parse } from "../../lib/validate.js";
 import { createLocation, deactivateLocation, listLocations, rotateLocationQr, updateLocation } from "../../services/merchant-program.js";
-import { inviteStaff, listStaff, removeStaff, setStaffPinFor, updateStaffMember } from "../../services/merchant-staff.js";
+import { inviteStaff, listStaff, removeStaff, resendStaffInvite, setStaffPinFor, updateStaffMember } from "../../services/merchant-staff.js";
 
 type Req<P = object> = FastifyRequest<{ Params: { merchantId: string } & P }>;
 
@@ -56,6 +56,11 @@ export default async function registerTeam(app: FastifyInstance, ctx: AppContext
   app.delete("/merchants/:merchantId/team/:userId", async (req: Req<{ userId: string }>, reply) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
     await removeStaff(ctx, s.merchant.id, s.user.id, req.params.userId);
+    return reply.status(204).send();
+  });
+  app.post("/merchants/:merchantId/team/:userId/resend", async (req: Req<{ userId: string }>, reply) => {
+    const s = await requireStaff(ctx, req, req.params.merchantId, "owner");
+    await resendStaffInvite(ctx, s.merchant.id, s.user.id, req.params.userId);
     return reply.status(204).send();
   });
   app.put("/merchants/:merchantId/team/:userId/pin", async (req: Req<{ userId: string }>, reply) => {

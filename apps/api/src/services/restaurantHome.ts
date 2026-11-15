@@ -198,7 +198,7 @@ export async function restaurantHome(ctx: AppContext, m: Merchant): Promise<rest
     const [h, min] = spans[spans.length - 1]![1].split(":").map(Number) as [number, number];
     const hour24 = h % 24;
     const h12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-    closesAt = `${h12}${min ? `:${String(min).padStart(2, "0")}` : ""} ${hour24 >= 12 ? "pm" : "am"}`;
+    closesAt = `${h12}${min ? `:${String(min).padStart(2, "0")}` : ""} ${hour24 >= 12 ? "p.m." : "a.m."}`;
   }
 
   return {

@@ -46,7 +46,7 @@ export default function BiaPage() {
   return (
     <>
       {/* 1. Hero with the labelled sample board report. */}
-      <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-14 md:px-8 md:pt-24 md:pb-20">
+      <section className="mx-auto max-w-360 px-5 pt-14 pb-14 md:px-10 xl:px-15 md:pt-24 md:pb-20">
         {/* Two columns only from 1024px: at tablet widths the report was squeezed to about 250px and its numbers were cut. */}
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_1fr] lg:gap-14">
           <div>
@@ -135,7 +135,7 @@ export default function BiaPage() {
         <div className="mt-6 rounded-sheet border border-border bg-background p-6 md:p-8">
           <h3 className="text-headline text-foreground">{B.pay.title}</h3>
           <p className="mt-2 max-w-4xl text-body text-muted-foreground">{B.pay.body}</p>
-          <Button size="sm" variant="secondary" href="/for-bias/one-pager" className="mt-5">
+          <Button variant="secondary" href="/for-bias/one-pager" className="mt-5">
             {B.pay.cta}
           </Button>
         </div>

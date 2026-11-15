@@ -1,3 +1,4 @@
+import { InlineScript } from "@/components/ui/ThemeStyle";
 import { BEACON_SCRIPT } from "./beacon-script";
 
 /** English only, like the landing pages it sits on (value-props §3.6: the purpose in plain words, at the point of collection). */
@@ -24,8 +25,8 @@ export function LandingMeasure({ path }: { path: string }) {
           {NOTICE.off}
         </a>
       </p>
-      <script dangerouslySetInnerHTML={{ __html: NOTICE_SWAP_SCRIPT }} />
-      <script dangerouslySetInnerHTML={{ __html: BEACON_SCRIPT }} />
+      <InlineScript html={NOTICE_SWAP_SCRIPT} />
+      <InlineScript html={BEACON_SCRIPT} />
     </>
   );
 }

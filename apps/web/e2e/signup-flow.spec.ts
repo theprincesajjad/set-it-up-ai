@@ -50,7 +50,7 @@ test.describe("at 390", () => {
 
   test("shop: Enter continues, Back keeps the name, refresh keeps the name", async ({ page }) => {
     await page.goto("/signup");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await atStep(page, "shop");
     await expect(page.getByLabel("Shop name")).toBeFocused();
     await page.getByLabel("Shop name").fill("Rose & Thorn Florist");
@@ -73,7 +73,7 @@ test.describe("at 390", () => {
 
   test("kind: eight tiles, search finds the rest, nothing picked is an inline error, Other asks what you sell", async ({ page }) => {
     await page.goto("/signup");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await page.getByLabel("Shop name").fill("Rose & Thorn");
     await cont(page);
     await atStep(page, "kind");
@@ -95,7 +95,7 @@ test.describe("at 390", () => {
 
   test("where: the street only for a storefront, a postal code for a home studio, nothing for a mobile pro", async ({ page }) => {
     await page.goto("/signup?vertical=nails");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await page.getByLabel("Shop name").fill("Nails by Amara");
     await cont(page);
     await cont(page);
@@ -121,7 +121,7 @@ test.describe("at 390", () => {
   test("a deep link past an unanswered step lands on that step", async ({ page }) => {
     await page.goto("/signup?step=card");
     await atStep(page, "link");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await page.getByLabel("Shop name").fill("Corner Café");
     await cont(page);
     await page.goto("/signup?step=account");
@@ -133,7 +133,7 @@ test.describe("at 390", () => {
 
   test("card: the trade's defaults, edited, previewed, and saved to the shop; account last; You're live; then the first stamp", async ({ page }) => {
     await page.goto("/signup");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     const name = `Maple Bean ${rand()}`;
     await page.getByLabel("Shop name").fill(name);
     await cont(page);
@@ -161,7 +161,7 @@ test.describe("at 390", () => {
     await expect(page.getByText("Enter a 10-digit mobile number.")).toBeVisible();
     await expect(page.getByText("Enter a valid email address.")).toBeVisible();
     await expect(page.getByText("Use at least 8 characters.")).toBeVisible();
-    await expect(page.getByText(/14 days of Pro included/)).toBeVisible();
+    await expect(page.getByText(/try Pro free for 14 days/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/legal/terms");
     await page.getByLabel(/Your mobile number/).fill(digits());
     await page.getByLabel("Email").fill(`flow-${rand()}@example.com`);
@@ -200,7 +200,7 @@ test.describe("at 390", () => {
     await signUpThroughFlow(page, { name: `First ${rand()}`, vertical: "cafe", address: "10 Queen St E", phone: digits(), email, password: "signup-flow-2" });
     await page.context().clearCookies();
     await page.goto("/signup");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await page.getByLabel("Shop name").fill("Second shop");
     await cont(page);
     await page.locator("[data-vertical=bakery]").click();
@@ -227,7 +227,7 @@ test.describe("at 390", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await page.waitForURL(/\/signup/);
     await atStep(page, "link");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await page.getByLabel("Shop name").fill(`Back Again ${rand()}`);
     await cont(page);
     await page.locator("[data-vertical=bakery]").click();
@@ -260,7 +260,7 @@ test.describe("at 1440", () => {
     await page.goto("/signup");
     const aside = page.locator("[data-flow-aside]");
     await expect(aside.locator("[data-card-preview]")).toContainText("Your shop");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await page.getByLabel("Shop name").fill("Sunrise Bakery");
     await cont(page);
     await expect(aside.locator("[data-card-name]")).toHaveText("Sunrise Bakery");

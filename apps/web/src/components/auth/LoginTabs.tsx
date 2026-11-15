@@ -6,7 +6,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { EmailSignIn } from "./EmailSignIn";
 
-export function LoginTabs({ signedOut, next, initial, devAutofill, reset, mode, email }: { next?: string | null; initial: "customer" | "shop"; devAutofill: boolean; signedOut?: boolean; reset?: boolean; mode?: "code"; email?: string }) {
+export function LoginTabs({ signedOut, next, initial, devAutofill, reset, mode, email, invite = false }: { next?: string | null; initial: "customer" | "shop"; devAutofill: boolean; signedOut?: boolean; reset?: boolean; mode?: "code"; email?: string; /** Opened from a team invite: the tabs say Email and Phone (not Shop and Customer), and the emailed code is sent on arrival. */ invite?: boolean }) {
   const [tab, setTab] = useState(initial);
   const { t } = useLocaleOrEnglish();
   return (
@@ -18,8 +18,8 @@ export function LoginTabs({ signedOut, next, initial, devAutofill, reset, mode, 
         value={tab}
         onChange={(v) => setTab(v as "customer" | "shop")}
         items={[
-          { id: "shop", label: t("auth.login.tabShop") },
-          { id: "customer", label: t("auth.login.tabCustomer") },
+          { id: "shop", label: t(invite ? "auth.login.tabEmail" : "auth.login.tabShop") },
+          { id: "customer", label: t(invite ? "auth.login.tabPhone" : "auth.login.tabCustomer") },
         ]}
       />
       <div role="tabpanel" id={`login-panel-${tab}`} aria-labelledby={`login-tab-${tab}`}>
@@ -27,8 +27,8 @@ export function LoginTabs({ signedOut, next, initial, devAutofill, reset, mode, 
         <PhoneSignIn heading="h2" next={next ?? undefined} homeByRole devAutofill={devAutofill} />
       ) : (
         <>
-          <EmailSignIn next={next} devAutofill={devAutofill} initialMode={reset ? "reset" : mode === "code" ? "code" : "password"} initialEmail={email} />
-          <p className="mt-4 text-meta text-muted-foreground">{t("auth.shop.hintPhone")}</p>
+          <EmailSignIn next={next} devAutofill={devAutofill} initialMode={reset ? "reset" : mode === "code" ? "code" : "password"} initialEmail={email} autoSend={invite} />
+          <p className="mt-4 text-meta text-muted-foreground">{t(invite ? "auth.shop.hintPhoneInvite" : "auth.shop.hintPhone")}</p>
         </>
       )}
       </div>

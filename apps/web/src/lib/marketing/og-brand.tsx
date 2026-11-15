@@ -67,13 +67,39 @@ function headline(text: string, size: number): ReactNode {
     .filter(Boolean)
     .map((part, i) =>
       part.startsWith("*") ? (
-        <span key={i} style={{ fontFamily: "Newsreader", fontStyle: "italic", fontWeight: 400, fontSize: Math.round(size * 0.9), letterSpacing: -size * 0.03, marginLeft: size * 0.16 }}>
+        <span key={i} style={{ fontFamily: "Newsreader", fontStyle: "italic", fontWeight: 400, fontSize: Math.round(size * 0.9), letterSpacing: -size * 0.03 }}>
           {part.slice(1, -1)}
         </span>
       ) : (
         <span key={i}>{part.trim()}</span>
       ),
     );
+}
+
+/**
+ * The customer's wallet pass, as the home page draws it (Product.tsx), in the card's ink: the shop row, five of eight stamps and the
+ * reward. Sample data, like every pass on the site. It fills the card's right side, which was empty.
+ */
+function Pass() {
+  const dot = (on: boolean, i: number) => (
+    <div key={i} style={{ display: "flex", width: 52, height: 52, borderRadius: 26, background: on ? PAPER : "transparent", border: on ? "none" : `2px solid ${marketing.onBlackMuted}` }} />
+  );
+  return (
+    <div style={{ position: "absolute", right: 72, top: 124, display: "flex", flexDirection: "column", width: 330, padding: "28px 28px 30px", borderRadius: 30, background: INK, color: PAPER, fontFamily: "Halden" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 26, fontWeight: 500 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 20, background: PAPER, color: INK, fontFamily: "Strata", fontWeight: 800, fontSize: 22 }}>Y</div>
+          Your shop
+        </div>
+        <div style={{ display: "flex", fontSize: 26, fontWeight: 500 }}>5/8</div>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 24 }}>{Array.from({ length: 8 }, (_, i) => dot(i < 5, i))}</div>
+      <div style={{ display: "flex", flexDirection: "column", marginTop: 24, paddingTop: 18, borderTop: `2px solid ${marketing.blackHover}` }}>
+        <div style={{ display: "flex", fontSize: 18, fontWeight: 500, color: marketing.onBlackMuted, letterSpacing: 1.5 }}>REWARD</div>
+        <div style={{ display: "flex", fontSize: 28, fontWeight: 500, marginTop: 6 }}>Free drink</div>
+      </div>
+    </div>
+  );
 }
 
 export interface BrandCard {
@@ -83,24 +109,30 @@ export interface BrandCard {
   title: string;
   /** The quiet line under it. */
   foot: string;
+  /** Draw the sample pass on the right (the headline then keeps to the left two thirds). */
+  pass?: boolean;
 }
 
 /** One 1200 by 630 card. The headline steps down a size when it is long, so two lines always fit. */
-export async function brandOgImage({ kicker, title, foot }: BrandCard) {
+export async function brandOgImage({ kicker, title, foot, pass = false }: BrandCard) {
   const fonts = await brandOgFonts();
   const plain = title.replace(/\*/g, "");
-  const size = plain.length <= 28 ? 132 : plain.length <= 44 ? 108 : 88;
+  const full = plain.length <= 28 ? 132 : plain.length <= 44 ? 108 : 88;
+  // Beside the pass the headline has about 700 px: one step smaller.
+  const size = pass ? Math.min(full, plain.length <= 28 ? 112 : 84) : full;
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: PAPER, color: INK, padding: "64px 72px", fontFamily: "Halden" }}>
+      <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: PAPER, color: INK, padding: "64px 72px", fontFamily: "Halden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <Mark size={60} />
           <div style={{ display: "flex", fontSize: 38, fontWeight: 500, letterSpacing: -0.8 }}>{BRAND.name}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           {kicker ? <div style={{ display: "flex", fontSize: 30, fontWeight: 500, color: marketing.body, marginBottom: 14 }}>{kicker}</div> : null}
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", fontFamily: "Strata", fontWeight: 800, fontSize: size, lineHeight: 1.02, letterSpacing: -size * 0.012 }}>{headline(title, size)}</div>
+          {/* The space before the italic phrase is a column gap, so a phrase that wraps to its own line starts flush with the line above. */}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: size * 0.2, maxWidth: pass ? 700 : 1056, fontFamily: "Strata", fontWeight: 800, fontSize: size, lineHeight: 1.02, letterSpacing: -size * 0.012 }}>{headline(title, size)}</div>
         </div>
+        {pass ? <Pass /> : null}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "2px solid #E0E0E0", paddingTop: 26, fontSize: 30, fontWeight: 500, color: marketing.body }}>
           <div style={{ display: "flex" }}>{foot}</div>
         </div>

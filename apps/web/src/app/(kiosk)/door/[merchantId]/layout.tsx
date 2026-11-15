@@ -6,9 +6,12 @@ import { ThemeStyle } from "@/components/ui/ThemeStyle";
 import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
 import { SessionGuard } from "@/components/errors";
-import { ServiceUnreachable } from "@/components/errors/server";
+import { AccessDenied, ServiceUnreachable } from "@/components/errors/server";
 import { currentPath, requireMeOrOutage } from "@/lib/auth/session";
 import { preloadInter } from "@/lib/fonts/inter";
+import { getT } from "@/lib/i18n/server";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The title is set by the page (it reads ?lang=). */
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -21,6 +24,11 @@ export const dynamic = "force-dynamic";
 export default async function DoorLayout({ children, params }: { children: ReactNode; params: Promise<{ merchantId: string }> }) {
   preloadInter();
   const { merchantId } = await params;
+  // A tablet address that is not even shaped like a shop id was cut or mistyped: say so, rather than "this link isn't for your shop".
+  if (!UUID.test(merchantId)) {
+    const t = await getT();
+    return <AccessDenied title={t("err.link.cut.title")} description={t("err.link.cut.body")} goHref="/m" goLabel={t("err.action.counter")} />;
+  }
   const auth = await requireMeOrOutage(await currentPath(`/door/${merchantId}`));
   // The tablet stays signed in through an outage: say we cannot reach Local Loyalty and let it try again, never send it to /login.
   if (auth.outage) return <ServiceUnreachable audience="staff" counterHref={`/m/${merchantId}/counter`} />;

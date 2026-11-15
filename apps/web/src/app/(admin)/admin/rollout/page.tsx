@@ -38,7 +38,7 @@ export default function RolloutPage() {
                       <tr>
                         <Th className="w-[240px]">Feature</Th>
                         <Th className="w-[110px]">Plan</Th>
-                        <Th className="w-[290px]">Stage</Th>
+                        <Th className="w-[270px]">Stage</Th>
                         <Th className="w-[190px]">Unlock target</Th>
                         <Th align="end" className="w-[100px]">Notify requests</Th>
                         <Th className="w-[100px]">Shop exceptions</Th>
@@ -83,7 +83,7 @@ export default function RolloutPage() {
                             {f.freeForever ? (
                               <span className="text-fg-muted">–</span>
                             ) : (
-                              <button type="button" onClick={() => setOverrides(f)} className="rounded-sm text-meta text-fg hover:underline">
+                              <button type="button" onClick={() => setOverrides(f)} className="inline-flex items-center rounded-sm text-meta text-fg hover:underline max-md:min-h-11 max-md:min-w-11">
                                 {f.overrides.enabled + f.overrides.disabled ? `${f.overrides.enabled} on${f.overrides.disabled ? ` · ${f.overrides.disabled} off` : ""}` : "Add"}
                               </button>
                             )}

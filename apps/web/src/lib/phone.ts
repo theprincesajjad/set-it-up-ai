@@ -67,7 +67,7 @@ export function digitsAfterEdit(prevDisplay: string, nextRaw: string, caret?: nu
 
 export const PHONE_ERRORS = {
   incomplete: "Enter a 10-digit mobile number.",
-  invalid: "That doesn't look like a Canadian or US mobile number. Check the area code.",
+  invalid: "That doesn’t look like a Canadian or US mobile number. Check the area code.",
 } as const;
 
 /** The one mask (polish-audit S18): "(647) ••• 1009" from a full number or the API's "(647) ***-1009". */

@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { Platform } from "react-native";
+import { hiddenFromA11y } from "./direction";
 import { create } from "qrcode/lib/core/qrcode";
 import Svg, { Path, Rect } from "react-native-svg";
 
@@ -20,7 +22,7 @@ export function QrCode({ value, size, accessibilityLabel }: { value: string; siz
     return { path: d, count: n };
   }, [value]);
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${count} ${count}`} accessibilityLabel={accessibilityLabel} accessible={!!accessibilityLabel}>
+    <Svg width={size} height={size} viewBox={`0 0 ${count} ${count}`} accessibilityLabel={accessibilityLabel} {...(Platform.OS === "web" ? (accessibilityLabel ? { role: "img" } : hiddenFromA11y) : { accessible: !!accessibilityLabel })}>
       <Rect x={0} y={0} width={count} height={count} fill="#FFFFFF" />
       <Path d={path} fill="#000000" />
     </Svg>

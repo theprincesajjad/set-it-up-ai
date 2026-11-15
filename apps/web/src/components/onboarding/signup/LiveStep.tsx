@@ -32,10 +32,12 @@ export interface LiveStepProps {
   nextSteps: NextStep[];
   primaryHref: string;
   primaryLabel: string;
+  /** The dashboard itself, as a quiet link under the primary button. */
+  dashboardHref: string;
   onLeave: () => void;
 }
 
-export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, onLeave }: LiveStepProps) {
+export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, dashboardHref, onLeave }: LiveStepProps) {
   const { t } = useLocaleOrEnglish();
   const shop = draft.created!;
   const card = cardFor(shop.vertical, draft.card);
@@ -45,20 +47,39 @@ export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, onLeave 
   const link = shop.joinUrl;
   // Kit (wave Q): one confetti burst from the check mark in the shop's colours (lazy canvas-confetti; nothing under reduced motion).
   const check = useRef<HTMLSpanElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    const id = window.setTimeout(() => void celebrate({ origin: check.current }), 350);
+    // Tell a screen reader the shop is live, and keep the keyboard on this page.
+    heading.current?.focus({ preventScroll: true });
+    // Once per shop: a refresh of this screen does not fire the confetti again.
+    const key = `ll_live_celebrated:${shop.id}`;
+    let seen = false;
+    try {
+      seen = !!sessionStorage.getItem(key);
+    } catch {
+      // Storage blocked: celebrate anyway.
+    }
+    if (seen) return;
+    const id = window.setTimeout(() => {
+      try {
+        sessionStorage.setItem(key, "1");
+      } catch {
+        // nothing to do
+      }
+      void celebrate({ origin: check.current });
+    }, 350);
     return () => window.clearTimeout(id);
-  }, []);
+  }, [shop.id]);
   const preview = <CardPreview name={shop.name} vertical={shop.vertical} brandColor={shop.brandColor} logo={shop.logo} card={card} tilt className="animate-in zoom-in-95 fade-in-0 duration-500 motion-reduce:animate-none" />;
   return (
-    <div className="mx-auto flex w-full max-w-[1040px] flex-col px-4 pb-36 pt-8 md:px-6 md:pb-16 md:pt-12" data-step="live">
+    <div className="mx-auto flex w-full max-w-[1040px] flex-col px-4 pb-44 pt-8 md:px-6 md:pb-16 md:pt-12" data-step="live">
       <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:gap-14">
         <div className="flex min-w-0 flex-col animate-in fade-in-0 slide-in-from-bottom-3 duration-500 motion-reduce:animate-none">
           <span ref={check} aria-hidden className="relative grid size-14 place-items-center rounded-full bg-trade text-trade-foreground shadow-float animate-in zoom-in-50 duration-500 motion-reduce:animate-none">
             <span className="absolute inset-0 rounded-full bg-trade opacity-40 animate-ping [animation-iteration-count:2] motion-reduce:hidden" />
             <Check className="relative size-7" strokeWidth={3} />
           </span>
-          <h1 tabIndex={-1} data-autofocus className="mt-5 text-balance text-[30px] font-[700] leading-9 tracking-[-0.02em] text-fg outline-none md:text-[40px] md:leading-11.5">
+          <h1 ref={heading} tabIndex={-1} data-autofocus className="mt-5 text-balance text-[30px] font-[700] leading-9 tracking-[-0.02em] text-fg outline-none md:text-[40px] md:leading-11.5">
             {t("sf.live.title", { name: shop.name })}
           </h1>
           <p className="mt-3 text-[15px] leading-5.5 text-fg-muted">{t("sf.live.body", { days: TRIAL_DAYS })}</p>
@@ -67,7 +88,10 @@ export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, onLeave 
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-headline text-fg">{t("sf.live.next")}</h2>
             </div>
-            <p className="mt-1 text-meta text-fg-muted">{t("sf.live.nextHint")}</p>
+            <p className="mt-1 text-meta text-fg-muted">
+              <span className="lg:hidden">{t("sf.live.nextHint")}</span>
+              <span className="max-lg:hidden">{t("sf.live.nextHintWide")}</span>
+            </p>
             <div className="mt-4" data-live-next>
               <CardCarousel
                 label={t("sf.live.next")}
@@ -82,6 +106,9 @@ export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, onLeave 
             <Link href={primaryHref} onClick={onLeave} className={buttonClasses({ size: "lg", fullWidth: true })} data-live-primary>
               <span>{primaryLabel}</span>
               <ArrowRight aria-hidden className="size-[var(--icon)] shrink-0 rtl:rotate-180" strokeWidth={1.75} />
+            </Link>
+            <Link href={dashboardHref} onClick={onLeave} className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-r2 px-3 text-body font-[550] text-link hover:underline focus-visible:focus-ring" data-live-dashboard>
+              {t("sf.live.go")}
             </Link>
           </div>
         </div>

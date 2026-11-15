@@ -44,12 +44,20 @@ const HINTS: Partial<Record<merchantApi.OnboardingStepKey, string>> = {
   pos: "own.setup.hint.pos",
 };
 
+/** The step names that exist in every language (the API's own labels are English), by step key. The solo path has its own wording for a few. */
+const SOLO_LABELS = new Set(["your_link", "services", "hours", "privacy", "share", "invite", "staff", "profile", "loyalty", "instagram_connect", "site", "promos", "pos"]);
+const SHOP_LABELS = new Set(["program", "first_stamp", "qr_kit", "staff", "profile", "pharmacy_rules", "trade_setup", "pos"]);
+
 export function SetupGuide({ c, base, booking }: { c: merchantApi.OnboardingChecklist; base: string; booking: boolean }) {
   const { t } = useLocaleOrEnglish();
   const steps = guideSteps(c);
+  const labelOf = (s: merchantApi.OnboardingStep) =>
+    booking && SOLO_LABELS.has(s.key) ? t(`ob.solo.step.${s.key}` as "ob.solo.step.pos") : SHOP_LABELS.has(s.key) ? t(`own.setup.step.${s.key}` as "own.setup.step.pos") : SOLO_LABELS.has(s.key) ? t(`ob.solo.step.${s.key}` as "ob.solo.step.pos") : s.label;
   const next = steps.find((s) => !s.done) ?? null;
   const [open, setOpen] = useState<string | null>(next?.key ?? null);
-  const done = steps.filter((s) => s.done).length;
+  // The same count as the setup page and the sidebar: every step of the checklist, including the first-customers goal the activation card below tracks.
+  const done = c.steps.filter((s) => s.done).length;
+  const total = c.steps.length;
   return (
     <section aria-labelledby="setup-guide-h" data-testid="setup-guide" className="rounded-card bg-card p-5 shadow-card sm:p-6">
       <div className="flex flex-col gap-1">
@@ -59,8 +67,8 @@ export function SetupGuide({ c, base, booking }: { c: merchantApi.OnboardingChec
         <p className="text-meta text-fg-muted">{t("own.setup.sub")}</p>
       </div>
       {/* Wave Q: progress is a Base UI Meter (one segment per step would crowd six steps on a phone); the steps are a Base UI Accordion. */}
-      <Meter value={done} max={Math.max(1, steps.length)} aria-label={t("own.setup.progress", { done, total: steps.length })} className="mt-4 flex-row items-center gap-3">
-        <span className="shrink-0 text-meta tabular text-fg-muted">{t("own.setup.progress", { done, total: steps.length })}</span>
+      <Meter value={done} max={Math.max(1, total)} aria-label={t("own.setup.progress", { done, total })} className="mt-4 flex-row items-center gap-3">
+        <span className="shrink-0 text-meta tabular text-fg-muted">{t("own.setup.progress", { done, total })}</span>
         <MeterTrack className="h-1.5 flex-1 rounded-full bg-bg-muted">
           <MeterIndicator className="rounded-full bg-trade" />
         </MeterTrack>
@@ -83,7 +91,7 @@ export function SetupGuide({ c, base, booking }: { c: merchantApi.OnboardingChec
                   {s.done ? <Check className="size-3.5" strokeWidth={2.5} /> : null}
                 </span>
                 <span className={cn("min-w-0 flex-1 text-body", s.done ? "text-fg-muted line-through decoration-fg-subtle" : isOpen ? "font-semibold text-fg" : "text-fg")}>
-                  {s.label}
+                  {labelOf(s)}
                   {s.done ? <span className="sr-only"> · {t("own.setup.done")}</span> : null}
                 </span>
               </AccordionTrigger>

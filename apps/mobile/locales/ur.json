@@ -1,6 +1,6 @@
 {
   "ios": {
-    "NSCameraUsageDescription": "کسی دکان میں شامل ہونے، پوائنٹس حاصل کرنے یا کاؤنٹر پر گاہک کو چیک اِن کرنے کے لیے QR کوڈ اسکین کریں۔",
+    "NSCameraUsageDescription": "دکان کا عملہ کاؤنٹر پر گاہک کا کارڈ یا انعام کا کوڈ اسکین کرتا ہے۔",
     "NSLocationWhenInUseUsageDescription": "نقشے پر اپنے قریب کی دکانیں دیکھیں۔"
   }
 }

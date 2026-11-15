@@ -3,7 +3,7 @@
  * card. Kept free of React so it is unit-tested (test/tickets-board.test.ts).
  */
 import type { serviceApi } from "@ll/shared";
-import { formatMoney } from "@/lib/format";
+import { clockText, formatMoney } from "@/lib/format";
 
 type Ticket = serviceApi.TicketDto;
 type Status = serviceApi.TicketStatus;
@@ -47,7 +47,7 @@ export function deviceTitle(t: Pick<Ticket, "itemDetails" | "itemKind">): string
 }
 
 const day = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-const clock = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(d).replace(/\./g, "").replace(/\s?([ap])\s?m/i, (_, x: string) => ` ${x.toLowerCase()}m`).replace(":00", "");
+const clock = (d: Date) => clockText(d, TZ);
 const weekday = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, weekday: "short" }).format(d);
 
 /** "5 min", "2 h", "3 days": age in the coarsest sensible unit. */

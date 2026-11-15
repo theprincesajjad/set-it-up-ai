@@ -97,7 +97,7 @@ export function CounterHeader({ title, subtitle, staff, onMenu, vertical }: { ti
       {staff ? (
         <Pressable accessibilityRole="button" accessibilityLabel={t("mc.moreSigned", { name: staff.name ?? t("counter.staff") })} onPress={onMenu} style={({ pressed }) => [styles.staffChip, { backgroundColor: c.bgSubtle, opacity: pressed ? 0.8 : 1 }]}>
           <View style={[styles.staffAv, { backgroundColor: c.bg }]}>
-            <Text style={ui(11, 600, 14)}>{initials(staff.name).toLowerCase()}</Text>
+            <Text style={ui(11, 600, 14)}>{initials(staff.name).toUpperCase()}</Text>
           </View>
           <Text style={ui(14, 500, 18)}>{staff.name?.split(" ")[0] ?? t("counter.staff")}</Text>
           <ChevronDownGlyph size={12} strokeWidth={2.4} color={c.fg} />
@@ -156,7 +156,7 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={ui(18, 600, 23)}>{t("counter.new.title")}</Text>
-            <Text style={[ui(13, 400, 17), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted}>{`•• ${customer.digits.slice(-4)}`}</Text>
+            <Text style={[ui(13, 400, 17), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted}>{L.ltr(`•• ${customer.digits.slice(-4)}`)}</Text>
           </View>
           {clear}
         </View>
@@ -200,14 +200,14 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
     <View>
       <View style={styles.row}>
         <View style={[styles.av48, { backgroundColor: c.bgMuted }]}>
-          <Text style={ui(15, 600, 19)}>{initials(m.name).toLowerCase()}</Text>
+          <Text style={ui(15, 600, 19)}>{initials(m.name).toUpperCase()}</Text>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={ui(18, 600, 23)} numberOfLines={1}>
             {m.name ?? t("counter.customer")}
           </Text>
           <Text style={[ui(13, 400, 17), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted} numberOfLines={1}>
-            {[m.maskedPhone ? maskPhone(m.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2") : m.memberCode, visitNthL(L, m.visitCount + 1)].join(" · ")}
+            {[m.maskedPhone ? L.ltr(maskPhone(m.maskedPhone).replace(/(•+)\s(\d{4})$/, "$1-$2")) : m.memberCode, visitNthL(L, m.visitCount + 1)].join(" · ")}
           </Text>
         </View>
         {clear}

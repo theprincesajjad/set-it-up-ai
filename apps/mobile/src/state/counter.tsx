@@ -85,6 +85,8 @@ interface CounterValue {
   touch: () => void;
   cacheMembers: (query: string, members: staffApi.MemberSummaryDto[]) => void;
   cachedMember: (query: string) => staffApi.MemberSummaryDto | null;
+  /** After an award or undo: every cached lookup of this member (by code, phone or last four) takes the new balance. */
+  refreshCachedMember: (member: staffApi.MemberSummaryDto) => void;
 }
 
 const CounterContext = createContext<CounterValue | null>(null);
@@ -238,6 +240,19 @@ export function CounterProvider({ children }: { children: ReactNode }) {
         void setJson(KEYS.memberCache, next);
       },
       cachedMember: (query) => memberCache.current[query] ?? null,
+      refreshCachedMember: (member) => {
+        const next = { ...memberCache.current };
+        let changed = false;
+        for (const [k, v] of Object.entries(next)) {
+          if (v.memberId === member.memberId) {
+            next[k] = member;
+            changed = true;
+          }
+        }
+        if (!changed) return;
+        memberCache.current = next;
+        void setJson(KEYS.memberCache, next);
+      },
     }),
     [ready, config, setConfig, merchant, program, programPaused, merchantQ.isLoading, staff, online, queueState, flush, sentJustNow, recent],
   );

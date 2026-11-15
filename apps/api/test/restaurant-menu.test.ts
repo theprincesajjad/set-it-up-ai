@@ -22,6 +22,44 @@ async function restaurant(tier: "starter" | "growth" | "pro" | null, opts: { slu
 
 const itemsUrl = (m: M) => `/v1/merchants/${m.merchant.id}/catalog/items`;
 
+describe("dish choices", () => {
+  it("a restaurant's choices (spice, size) are offered as option groups, priced at the counter, and survive a sold-out toggle", async () => {
+    const m = await restaurant("starter");
+    const created = await call(env, m.ownerToken, "POST", itemsUrl(m), {
+      name: "Chicken karahi",
+      priceCents: 1850,
+      modifiers: [
+        { name: "Spice", options: [{ name: "Mild", priceCents: 0 }, { name: "Hot", priceCents: 0 }] },
+        { name: "Size", options: [{ name: "Half", priceCents: 0 }, { name: "Full", priceCents: 1200 }] },
+      ],
+    });
+    expect(created.status).toBe(201);
+    const groups = created.body.options.groups as { id: string; name: string; type: string; required: boolean; options: { id: string; name: string; priceCents: number }[] }[];
+    expect(groups.map((g) => [g.name, g.type, g.required])).toEqual([["Spice", "single", true], ["Size", "single", true]]);
+    const full = groups[1]!.options.find((o) => o.name === "Full")!;
+    const hot = groups[0]!.options.find((o) => o.name === "Hot")!;
+
+    // The counter picks by option id; the server prices from the dish.
+    const order = await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/orders/counter`, { items: [{ catalogItemId: created.body.id, quantity: 1, optionIds: [full.id, hot.id] }], tender: "cash" });
+    expect(order.status).toBe(201);
+    expect(order.body.items[0].unitPriceCents).toBe(3050);
+    expect(order.body.items[0].modifiers.map((x: { option: string }) => x.option).sort()).toEqual(["Full", "Hot"]);
+    // Sending nothing falls back to the free first choice of each group.
+    const plain = await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/orders/counter`, { items: [{ catalogItemId: created.body.id, quantity: 1 }], tender: "cash" });
+    expect(plain.body.items[0].unitPriceCents).toBe(1850);
+
+    // Sold out, then a description edit: the choices stay, the dish stays off.
+    await call(env, m.ownerToken, "PATCH", `${itemsUrl(m)}/${created.body.id}`, { orderable: false, available: false });
+    const after = await call(env, m.ownerToken, "PATCH", `${itemsUrl(m)}/${created.body.id}`, { description: "Slow cooked" });
+    expect(after.body).toMatchObject({ orderable: false, available: false });
+    expect(after.body.options.groups).toHaveLength(2);
+    expect(after.body.modifiers).toHaveLength(2);
+    // Clearing the choices clears the groups too.
+    const cleared = await call(env, m.ownerToken, "PATCH", `${itemsUrl(m)}/${created.body.id}`, { modifiers: [] });
+    expect(cleared.body.options).toBeNull();
+  });
+});
+
 describe("dietary tags", () => {
   it("creates and returns dietary tags + translations; gated by tier", async () => {
     const plain = await restaurant(null);

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
@@ -27,6 +27,9 @@ export default function SelectCounter() {
   const roleLabel = (role: string) => (role === "owner" ? t("mc.role.owner") : role === "manager" ? t("mc.role.manager") : role === "staff" ? t("mc.role.staff") : role);
   const detail = useQuery({ queryKey: ["counter", "select", merchantId ?? ""], queryFn: () => api.merchant.detail(merchantId!), enabled: !!merchantId });
   const locations = (detail.data?.locations ?? []).filter((l) => l.active);
+  // One shop, one place: it is already picked, so the only thing left to do is open the counter.
+  const [picked, setPicked] = useState<string | null>(null);
+  const chosen = locations.find((l) => l.id === picked) ?? (locations.length === 1 ? locations[0]! : null);
 
   const start = (locationId: string, locationName: string, locationAddress: string | null) => {
     const me = merchants.find((m) => m.merchantId === merchantId);
@@ -41,7 +44,17 @@ export default function SelectCounter() {
   };
 
   return (
-    <Screen title={t("mc.sel.title")} largeTitle>
+    <Screen
+      title={t("mc.sel.title")}
+      largeTitle
+      footer={
+        merchants.length > 0 && merchantId && locations.length > 0 ? (
+          <Button size="lg" fullWidth disabled={!chosen} onPress={() => chosen && start(chosen.id, chosen.name, chosen.address ?? null)}>
+            {t("err.action.counter")}
+          </Button>
+        ) : undefined
+      }
+    >
       {merchants.length === 0 ? (
         <>
           <EmptyState icon={Store} title={t("mc.sel.notStaff")} body={t("mc.sel.notStaffBody")} />
@@ -72,7 +85,10 @@ export default function SelectCounter() {
                   // Selected = a check, like an iOS picker; a fill inside a padded card looked inset (polish-audit C2).
                   trailing={m.merchantId === merchantId ? <Check size={20} color={fg} strokeWidth={2.25} /> : null}
                   minHeight={64}
-                  onPress={() => setConfig({ merchantId: m.merchantId, merchantName: m.name, locationId: null, locationName: null })}
+                  onPress={() => {
+                    setPicked(null);
+                    setConfig({ merchantId: m.merchantId, merchantName: m.name, locationId: null, locationName: null });
+                  }}
                 />
               ))}
             </Card>
@@ -86,7 +102,7 @@ export default function SelectCounter() {
               ) : (
                 <Card padded={false} style={{ paddingHorizontal: 16 }}>
                   {locations.map((l, i) => (
-                    <ListRow key={l.id} divider={i < locations.length - 1} leadingIcon={MapPin} title={l.name} subtitle={l.address} minHeight={64} chevron onPress={() => start(l.id, l.name, l.address ?? null)} />
+                    <ListRow key={l.id} divider={i < locations.length - 1} leadingIcon={MapPin} title={l.name} subtitle={l.address} minHeight={64} trailing={chosen?.id === l.id ? <Check size={20} color={fg} strokeWidth={2.25} /> : null} onPress={() => setPicked(l.id)} />
                   ))}
                 </Card>
               )}

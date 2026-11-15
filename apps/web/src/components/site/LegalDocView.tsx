@@ -1,5 +1,6 @@
 import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
+import { HtmlLocale } from "@/lib/i18n/HtmlLocale";
 
 const COPY = {
   en: { banner: "DRAFT: not reviewed by a lawyer and not in effect.", legal: "Legal", draft: "Draft", other: "Français", otherLang: "fr-CA", toc: "On this page" },
@@ -31,14 +32,27 @@ function withSectionIds(html: string): { html: string; sections: { id: string; l
 }
 
 /**
+ * The drafts still carry blanks for a person to fill ("[date]", "[address]"). Until they are filled, show each one as a marked blank
+ * rather than stray brackets in running text. The words are unchanged; only text outside tags is touched.
+ */
+function markBlanks(html: string): string {
+  return html
+    .split(/(<[^>]+>)/)
+    .map((part) => (part.startsWith("<") ? part : part.replace(/\[([^\]\[]{1,60})\]/g, '<span class="legal-blank rounded-sm bg-bg-subtle px-0.5 text-fg-muted underline decoration-dotted underline-offset-4">[$1]</span>')))
+    .join("");
+}
+
+/**
  * A legal page: the DRAFT banner (when the source is a draft), the language switch (when there is another language) and the article.
  * Wave Q: on wide screens a sticky "On this page" rail lists the sections (anchors on each h2), so a long policy is easy to move around.
  */
 export function LegalDocView({ html, isDraft, lang, otherHref }: { html: string; isDraft: boolean; lang: "en" | "fr"; otherHref?: string }) {
   const c = COPY[lang];
-  const doc = withSectionIds(html);
+  const doc = withSectionIds(markBlanks(html));
   return (
     <>
+      {/* The root layout says en-CA; the French pages correct <html lang> so screen readers and translation tools read them as French. */}
+      {lang === "fr" ? <HtmlLocale lang="fr-CA" dir="ltr" /> : null}
       {isDraft ? (
         <div role="note" className="sticky top-16 z-banner border-b border-line bg-bg-subtle text-fg">
           <p className="mx-auto flex max-w-[1080px] items-center gap-2 px-4 py-2.5 text-meta-strong md:px-6">
@@ -73,7 +87,7 @@ export function LegalDocView({ html, isDraft, lang, otherHref }: { html: string;
               {isDraft ? ` · ${c.draft}` : ""}
             </p>
             {otherHref ? (
-              <Link href={otherHref} lang={c.otherLang} hrefLang={c.otherLang} prefetch={false} className="text-meta-strong text-fg underline underline-offset-4 focus-visible:focus-ring">
+              <Link href={otherHref} lang={c.otherLang} hrefLang={c.otherLang} prefetch={false} className="inline-flex min-h-11 items-center text-meta-strong text-fg underline underline-offset-4 focus-visible:focus-ring">
                 {c.other}
               </Link>
             ) : null}

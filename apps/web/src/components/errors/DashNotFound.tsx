@@ -1,5 +1,6 @@
 "use client";
 import { SearchX } from "lucide-react";
+import { BRAND } from "@ll/shared";
 import { useParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
@@ -12,14 +13,19 @@ import { GoBackButton } from "./actions";
  */
 export function ConsoleNotFound({ home, title, description }: { home: { href: string; label: string }; title?: string; description?: string }) {
   const { t } = useLocaleOrEnglish();
+  const heading = title ?? t("err.dash.notFound.title");
   return (
-    <FailScreen
-      title={title ?? t("err.dash.notFound.title")}
-      description={description ?? t("err.dash.notFound.body")}
-      icon={SearchX}
-      primary={<Button href={home.href}>{home.label}</Button>}
-      secondary={<GoBackButton label={t("err.action.back")} fallbackHref={home.href} variant="ghost" />}
-    />
+    <>
+      {/* Hoisted into <head>: the tab says what happened, not the name of the console page this URL would have been under. */}
+      <title>{`${heading.replace(/[.。।۔]$/, "")} · ${BRAND.name}`}</title>
+      <FailScreen
+        title={heading}
+        description={description ?? t("err.dash.notFound.body")}
+        icon={SearchX}
+        primary={<Button href={home.href}>{home.label}</Button>}
+        secondary={<GoBackButton label={t("err.action.back")} fallbackHref={home.href} variant="ghost" />}
+      />
+    </>
   );
 }
 

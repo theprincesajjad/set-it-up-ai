@@ -26,7 +26,7 @@ describe("cafe home helpers", () => {
   });
   it("promo window", () => {
     expect(promoHours("14:00", "16:00", [13, 14, 15, 16])).toEqual([14, 15]);
-    expect(windowLabel("14:00", "16:00")).toBe("2–4 pm");
+    expect(windowLabel("14:00", "16:00")).toBe("2–4 p.m.");
     expect(windowLabel(null, null)).toBe("all day");
   });
 });

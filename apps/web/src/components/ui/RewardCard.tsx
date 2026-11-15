@@ -57,7 +57,7 @@ export function RewardCard({ reward, balance = 0, terminology, state, onRedeem, 
           </p>
         </div>
         {state === "available" && onRedeem ? (
-          <Button size="sm" variant={layout === "row" ? "secondary" : "primary"} onClick={onRedeem}>
+          <Button size="md" onClick={onRedeem}>
             {t("sh.rc.redeem")}
           </Button>
         ) : null}

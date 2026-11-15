@@ -55,7 +55,7 @@ describe("owner Today on the phone", () => {
     const rows = needsItems(report(), f);
     expect(rows.map((r) => r.key)).toEqual(["rewards", "slipping"]);
     expect(rows[0]!.title).toBe("5 customers have a reward waiting");
-    expect(rows[1]!.subtitle).toBe("Haven't been in as often as usual");
+    expect(rows[1]!.subtitle).toBe("Haven’t been in as often as usual");
     expect(needsItems(report({}, { rewardsWaiting: { count: 0, goal: null, members: [] }, slipping: { count: 0, canText: 0, members: [] } }), f)).toEqual([]);
     expect(needsItems(null, f)).toEqual([]);
   });

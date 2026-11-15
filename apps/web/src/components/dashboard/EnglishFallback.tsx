@@ -10,9 +10,9 @@ import { Banner } from "@/components/ui/Banner";
  * reorder), so they are shown as a clean left-to-right English page with one translated line that says so. Add a prefix to the
  * translated list below the day a screen is translated.
  */
-const ENGLISH_ONLY = ["restaurant", "grocery", "classes", "queue", "daycare", "wash", "tire-season", "pets", "vehicles", "pharmacy", "tickets", "slots", "orders", "invoices", "payouts", "service-reminders", "food-cards", "discount-cards", "groom-rebooking"];
+const ENGLISH_ONLY = ["restaurant", "grocery", "classes", "queue", "daycare", "wash", "tire-season", "pets", "vehicles", "pharmacy", "tickets", "slots", "orders", "invoices", "payouts", "service-reminders", "food-cards", "discount-cards", "groom-rebooking", "reports", "messages", "promos", "campaigns", "customers", "integrations", "ads", "program", "locations", "calendar", "catalog", "billing", "services"];
 /** Under an English-only prefix, the screens that are translated. */
-const TRANSLATED = ["restaurant/kitchen", "classes/door"];
+const TRANSLATED = ["restaurant/kitchen", "classes/door", "reports/week", "messages/promos"];
 
 export function isEnglishOnlyScreen(pathname: string, base: string): boolean {
   const rest = pathname.startsWith(base) ? pathname.slice(base.length).replace(/^\/+|\/+$/g, "") : "";
@@ -27,7 +27,7 @@ export function EnglishFallback({ base, children }: { base: string; children: Re
   return (
     <>
       <Banner tone="info">{t("dash.englishOnly")}</Banner>
-      <div lang="en" dir="ltr" data-english-screen="" className="mt-4 font-sans leading-normal">
+      <div lang="en" dir="ltr" data-english-screen="" className="mt-4 text-start font-sans leading-normal">
         <LocaleProvider locale="en">{children}</LocaleProvider>
       </div>
     </>

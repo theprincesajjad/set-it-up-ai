@@ -50,6 +50,8 @@ export interface NavItem {
   exact?: boolean;
   /** A count after the label: new orders in points orange, calls and chats waiting in muted text. */
   badge?: { count: number; accent?: boolean };
+  /** Other routes that count as this item (the restaurant Menu & dietary row is also current on the menu items page). */
+  also?: string[];
   /** Drawn indented under the item before it, without an icon (Staff, POS & integrations and Billing under Settings). */
   child?: boolean;
 }
@@ -91,6 +93,7 @@ export interface AppShellProps {
 }
 
 function matches(pathname: string, i: NavItem) {
+  if (i.also?.some((a) => pathname === a || pathname.startsWith(`${a}/`))) return true;
   return i.exact ? pathname === i.href : pathname === i.href || pathname.startsWith(`${i.href}/`);
 }
 /** One row is current: when a longer entry also matches ("/classes/offers" inside "/classes"), the longer one wins. */
@@ -295,7 +298,10 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
   const secs: NavSectionDef[] = sections ?? [{ key: "main", items: nav }];
   const all = secs.flatMap((s) => s.items);
   const bottomItems = bottomNav ?? all.filter((n) => n.bottom).slice(0, 4);
-  const fits = !bottomNav && all.length <= 5;
+  // The footer (language, help, Sign out in the consoles) lives in the More sheet on a phone, so a footer always needs the More tab:
+  // four items and More, never five items with no way to sign out.
+  const fits = !bottomNav && all.length <= (footer ? 4 : 5);
+  const moreTab = !fits || !!footer;
   const bar = fits ? all : (bottomItems.length ? bottomItems : all.filter((i) => !i.child)).slice(0, 4);
   // The phone menu is a sheet that portals out of the shell: put the trade on <html> too so it wears the accent.
   useEffect(() => {
@@ -372,7 +378,7 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
             {bar.length ? (
               <>
                 <div aria-hidden className="scroll-edge-bottom inset-x-0 z-[99] md:hidden print:hidden" />
-                <ClearTabBar items={bar} hasMore={!fits} label={bottomLabel} moreLabel={labels?.more ?? "More"} pathname={pathname} />
+                <ClearTabBar items={bar} hasMore={moreTab} label={bottomLabel} moreLabel={labels?.more ?? "More"} pathname={pathname} />
               </>
             ) : null}
             <LiquidGlassLens />
@@ -408,7 +414,7 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
               {children}
             </main>
           </div>
-          {bar.length ? <BottomBar items={bar} hasMore={!fits} label={bottomLabel} moreLabel={labels?.more ?? "More"} pathname={pathname} /> : null}
+          {bar.length ? <BottomBar items={bar} hasMore={moreTab} label={bottomLabel} moreLabel={labels?.more ?? "More"} pathname={pathname} /> : null}
         </SidebarProvider>
       </TooltipProvider>
     </DirectionProvider>

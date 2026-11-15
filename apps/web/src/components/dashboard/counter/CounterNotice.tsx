@@ -9,14 +9,18 @@ import s from "./CounterClear.module.css";
 export function CounterNotice({ tone = "info", icon: Icon = Info, children, action, onDismiss }: { tone?: "info" | "danger"; icon?: LucideIcon; children: ReactNode; action?: ReactNode; onDismiss?: () => void }) {
   const { t } = useLocaleOrEnglish();
   return (
-    <div role={tone === "danger" ? "alert" : "status"} className={cn(s.notice, "flex min-h-12 items-center gap-3 rounded-tile px-4 py-2 text-meta", tone === "danger" ? "bg-tile-rose text-tile-rose-foreground" : "bg-tile-sky text-tile-sky-foreground")}>
+    <div role={tone === "danger" ? "alert" : "status"} className={cn(s.notice, "flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 rounded-tile px-4 py-2 text-meta", tone === "danger" ? "bg-tile-rose text-tile-rose-foreground" : "bg-tile-sky text-tile-sky-foreground")}>
       <Icon aria-hidden className={cn("size-4.5 shrink-0", "text-current")} strokeWidth={1.75} />
-      <div className="min-w-0 flex-1">{children}</div>
-      {action}
-      {onDismiss ? (
-        <button type="button" aria-label={t("counter.dismiss")} onClick={onDismiss} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring">
-          <X aria-hidden className="size-4" />
-        </button>
+      <div className="min-w-0 flex-1 basis-48">{children}</div>
+      {action || onDismiss ? (
+        <div className="ms-auto flex items-center gap-1">
+          {action}
+          {onDismiss ? (
+            <button type="button" aria-label={t("counter.dismiss")} onClick={onDismiss} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring">
+              <X aria-hidden className="size-4" />
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

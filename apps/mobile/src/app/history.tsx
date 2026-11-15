@@ -3,13 +3,14 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, View } from "react-native";
+import { LoadFailed } from "../features/customer/LoadFailed";
 import { useWallet } from "../features/customer/queries";
 import { activityTitleL, groupByDayL } from "../lib/activity";
 import { signed } from "../lib/format";
 import { formatDateL, formatMoneyL, formatTimeL, termWordL } from "../lib/formatL";
 import { useLocale } from "../lib/i18n";
 import { api } from "../state/api";
-import { Button, Chip, EmptyState, ErrorState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonRows, Text } from "../ui";
+import { Button, Chip, EmptyState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonRows, Text } from "../ui";
 
 type Row = customerApi.LedgerTxDto & { membership: customerApi.MembershipDto };
 
@@ -63,8 +64,10 @@ export default function PointsHistory() {
       ) : null}
       {q.isLoading || wallet.isLoading ? (
         <SkeletonRows rows={6} />
+      ) : wallet.isError && !wallet.data ? (
+        <LoadFailed error={wallet.error} onRetry={() => void wallet.refetch()} />
       ) : q.isError && rows.length === 0 ? (
-        <ErrorState message={t("sh.inbox.loadFail")} onRetry={() => void q.refetch()} />
+        <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
       ) : rows.length === 0 ? (
         <EmptyState icon={History} title={t("sh.activity.emptyTitle")} body={t("cp.empty.activityBody", { terminology: termWordL(L, "points") })} actionLabel={t("sh.wallet.empty")} onAction={() => router.push("/map")} />
       ) : (

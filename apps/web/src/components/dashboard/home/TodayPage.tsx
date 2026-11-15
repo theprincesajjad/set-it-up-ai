@@ -26,7 +26,8 @@ import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { BusyMode } from "@/components/dashboard/restaurant/RestaurantHome";
 import { ActivationCard } from "@/components/dashboard/onboarding/ActivationCard";
 import { UpsellCard } from "@/components/dashboard/onboarding/UpsellCard";
-import { buttonClasses } from "@/components/ui/Button";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { Banner } from "@/components/ui/Banner";
 import { enabledSet, hasGroceryFeature, navVisible } from "@/lib/dashboard/nav";
 import { publishNeedsYou } from "@/lib/dashboard/needsYou";
 import { startOfTorontoDay } from "@/lib/dashboard/time";
@@ -60,18 +61,19 @@ const STAT_ICONS: Record<string, LucideIcon[]> = {
 
 /** What Pro switches on for a trade, in the owner's words (the Today line that sells the plan). */
 // One calendar and online booking are free since phase solo, so the appointment trades are sold more chairs, promos and nudges.
-const TRADE_TOOLS: Record<string, string> = {
+// The values are message keys (own.today.tools.*), so the line reads in the owner's language.
+const TRADE_TOOLS: Record<string, "own.today.tools.waitlist" | "own.today.tools.barber" | "own.today.tools.addons" | "own.today.tools.fitness" | "own.today.tools.pet" | "own.today.tools.repair_auto" | "own.today.tools.car_wash"> = {
   // phase-pro: what Pro itself adds for the trade (the walk-in line, payouts, daycare, the grocer flyer and POS sync are Studio's).
-  salon: "a waitlist that fills cancelled slots and automatic rebooking",
-  barber: "a second calendar, a waitlist and automatic rebooking",
-  spa: "a waitlist that fills cancelled slots and automatic rebooking",
-  nails: "a waitlist that fills cancelled slots, automatic rebooking and add-ons",
-  brows_lashes: "a waitlist that fills cancelled slots, automatic rebooking and add-ons",
-  makeup: "a waitlist that fills cancelled slots, automatic rebooking and add-ons",
-  fitness: "classes and memberships",
-  pet: "pet profiles and groom reminders",
-  repair_auto: "vehicles, service reminders and tire season",
-  car_wash: "wash check-in and plans",
+  salon: "own.today.tools.waitlist",
+  barber: "own.today.tools.barber",
+  spa: "own.today.tools.waitlist",
+  nails: "own.today.tools.addons",
+  brows_lashes: "own.today.tools.addons",
+  makeup: "own.today.tools.addons",
+  fitness: "own.today.tools.fitness",
+  pet: "own.today.tools.pet",
+  repair_auto: "own.today.tools.repair_auto",
+  car_wash: "own.today.tools.car_wash",
 };
 
 export function TodayPage() {
@@ -170,7 +172,8 @@ export function TodayPage() {
     const pickups = pickupRows(orders.data?.items ?? null, f);
     const promo = promoRow(today.data?.promoWindow, f);
     up = pickups.length ? pickups : promo ? [promo] : [];
-    upLabel = pickups.length ? t("shell.today.upNextPickups") : t("shell.today.upNextSchedule");
+    // A shop on stamps has no appointments: its "Up next" is order pickups and promo windows, and says so when there are none.
+    upLabel = pickups.length ? t("shell.today.upNextPickups") : t("shell.today.upNextPromos");
     loading = (today.loading && !today.data) || (ordersOn && orders.loading && !orders.data);
   }
   // Wave P: while the setup guide is up, its next step is not repeated as a Needs you row.
@@ -296,7 +299,7 @@ export function TodayPage() {
             <NumbersCard items={numberItems} icons={STAT_ICONS[family]} loading={loading} className="max-lg:order-first lg:col-span-8 lg:row-start-1" />
             <div className="flex min-w-0 flex-col gap-4 lg:col-span-3 lg:row-start-2">
               {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} currentHour={hour} /> : null}
-              <UpNextCard rows={up} loading={loading} base={base} label={upLabel} />
+              <UpNextCard rows={up} loading={loading} base={base} label={upLabel} empty={family === "loyalty" ? t("shell.today.nothingUpNextShop") : undefined} />
             </div>
             <QuickActionsCard actions={actions} base={base} className="bleed-under-sidebar lg:col-span-8 lg:row-start-3" />
           </div>
@@ -306,13 +309,22 @@ export function TodayPage() {
             <NumbersCard items={numberItems} loading={loading} className="lg:col-span-12 lg:row-start-1" />
             <div className="flex min-w-0 flex-col gap-6 lg:col-span-4 lg:row-start-2">
               {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} /> : null}
-              <UpNextCard rows={up} loading={loading} base={base} label={upLabel} />
+              <UpNextCard rows={up} loading={loading} base={base} label={upLabel} empty={family === "loyalty" ? t("shell.today.nothingUpNextShop") : undefined} />
             </div>
             <QuickActionsCard actions={actions} base={base} className="lg:col-span-12 lg:row-start-3" />
           </div>
         )
       ) : (
         <>
+          {/* A staff member who has no counter PIN yet is asked once, here, before they are at the till. */}
+          {me.merchants.find((x) => x.merchantId === detail.merchant.id)?.hasPin === false && !viewingAsOther ? (
+            <Banner
+              title={t("counter.pin.setTitle")}
+              action={<Button size="sm" variant="secondary" href={`${base}/counter`}>{t("counter.pin.setAction")}</Button>}
+            >
+              {t("counter.pin.setNotice")}
+            </Banner>
+          ) : null}
           {failurePanel}
           {failurePanel ? null : <StatBlock
             label={t("shell.today.atCounter")}
@@ -333,9 +345,9 @@ export function TodayPage() {
           <StreetCard />
           {ob ? <UpsellCard upsell={ob.upsell} base={base} activeLine={ob.activatedAt ? `Your regulars are on the card: ${ob.activeMembers} customers have visited` : undefined} onDismiss={async () => onboarding.setData(await api.dismissUpsell())} /> : null}
           {upsellKeys.length === 3 ? (
-            <p dir="ltr" lang="en" className="border-t border-border pt-4 text-meta text-muted-foreground">
-              More with {PLANS.plus.name}, ${PLANS.plus.priceCents / 100} a month: {TRADE_TOOLS[m.vertical] ? `${TRADE_TOOLS[m.vertical]}, ` : ""}{PROMOS_PER_MONTH_PLUS} promos a month, {PLANS.plus.smsPerMonth} texts, your week every Sunday and the tools for your kind of shop ·{" "}
-              <a href={`${base}/billing?plan=plus`} className="text-foreground underline underline-offset-4">Subscribe</a>
+            <p className="border-t border-border pt-4 text-meta text-muted-foreground">
+              {t("own.today.pro", { plan: PLANS.plus.name, price: loc.money(PLANS.plus.priceCents).replace(/\.00$/, ""), tools: TRADE_TOOLS[m.vertical] ? `${t(TRADE_TOOLS[m.vertical]!)}${loc.dir === "rtl" ? "، " : ", "}` : "", promos: PROMOS_PER_MONTH_PLUS, texts: PLANS.plus.smsPerMonth })}{" "}
+              <a href={`${base}/billing?plan=plus`} className="inline-flex min-h-11 items-center text-foreground underline underline-offset-4">{t("own.today.proSubscribe")}</a>
             </p>
           ) : null}
         </>

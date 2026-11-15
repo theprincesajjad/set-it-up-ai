@@ -35,8 +35,12 @@ const CHIP_KEY: Record<VerticalCategory, MessageKey> = {
 const CHIP_ORDER: VerticalCategory[] = ["coffee", "bakery", "services", "repair", "eat", "shops", "beauty"];
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
-function short(name: string | null | undefined) {
-  return (name ?? "").replace(/\s+(Village|BIA|Neighbourhood)$/i, "").trim().toLowerCase();
+/** The page's English voice is lower case ("coffee on roncesvalles"); a name inside Hindi, Urdu or Punjabi keeps its capitals and sits in its own direction run. */
+const lc = (s: string, locale: Locale) => (locale === "en" ? s.toLowerCase() : s);
+const iso = (s: string, locale: Locale) => (locale === "ur" ? `\u2068${s}\u2069` : s);
+
+function short(name: string | null | undefined, locale: Locale) {
+  return lc((name ?? "").replace(/\s+(Village|BIA|Neighbourhood)$/i, "").trim(), locale);
 }
 
 const ROW_KEY: Record<VerticalCategory, MessageKey> = {
@@ -59,7 +63,7 @@ function hero(c: campaignsApi.MyCampaign | campaignsApi.PublicCampaign, locale: 
   const ask = locale === "en" ? english : prize ? t("sh.disc.heroPassport", { goal: c.goalVisits, prize }) : t("sh.camp.stepVisit", { goal: c.goalVisits });
   const headline = c.kind === "passport" ? ask : c.name;
   const progress = "progress" in c ? { value: Math.min(c.progress.visited, c.progress.goal), max: c.progress.goal } : null;
-  return { eyebrow: `${c.name.toLowerCase()} · ${t("sh.disc.endsOn", { date: ends })}`, headline: headline.toLowerCase(), progress: c.kind === "passport" ? progress : null };
+  return { eyebrow: `${iso(lc(c.name, locale), locale)} · ${t("sh.disc.endsOn", { date: ends })}`, headline: iso(lc(headline, locale), locale), progress: c.kind === "passport" ? progress : null };
 }
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -77,13 +81,30 @@ export default async function DiscoverPage({ searchParams }: Props) {
     api ? api.me.memberships().catch(() => null) : Promise.resolve(null as customerApi.WalletResponse | null),
     api ? api.me.campaigns().then((r) => r.items).catch(() => [] as campaignsApi.MyCampaign[]) : Promise.resolve([] as campaignsApi.MyCampaign[]),
   ]);
-  const hood = hoods.find((h) => h.id === profile?.homeNeighbourhood?.id) ?? hoods[0] ?? null;
+  // The street: one picked here, else the customer's own (home, then where their cards are, then the street of the live campaign), and only then the first on the list.
+  const picked = typeof sp.street === "string" ? (hoods.find((h) => h.slug === sp.street) ?? null) : null;
+  const own =
+    hoods.find((h) => h.id === profile?.homeNeighbourhood?.id) ??
+    hoods.find((h) => h.id === wallet?.items[0]?.merchant.neighbourhoodId) ??
+    hoods.find((h) => h.id === mine.find((c) => c.status === "live")?.neighbourhood.id) ??
+    null;
+  const hood = picked ?? own ?? hoods[0] ?? null;
+  // "near you" is only said when we know where they are; a visitor with no street gets the street's own name and a way to pick another.
+  const knowsStreet = !!own && !picked;
   const locale = await getLocaleForProfile(sp, profile?.locale);
   const t = translator(locale);
+  const qs = (c?: string) => {
+    const q = new URLSearchParams();
+    if (picked) q.set("street", picked.slug);
+    if (c) q.set("c", c);
+    const out = q.toString();
+    return out ? `/discover?${out}` : "/discover";
+  };
+  const streetChoices = hoods.filter((h) => h.status !== "scouting").slice(0, 8);
   const shops = hood ? await (api ?? pub).network.shops({ neighbourhood: hood.slug, limit: 100 }).then((r) => r.items).catch(() => []) : [];
   const live = mine.find((c) => c.status === "live") ?? null;
   const ready = new Set((wallet?.items ?? []).filter((m) => m.rewardsAvailableCount > 0).map((m) => m.merchant.id));
-  const name = short(hood?.name);
+  const name = iso(short(hood?.name, locale), locale);
   const h = live ? hero(live, locale, t) : null;
   const rows = ROWS.filter((r) => !only || r.id === only)
     .map((r) => ({ ...r, shops: shops.filter((s) => verticalCategory(s.merchant.vertical) === r.id).sort((a, b) => Number(ready.has(b.merchant.id)) * 2 + Number(b.isMember) - (Number(ready.has(a.merchant.id)) * 2 + Number(a.isMember))) }))
@@ -113,12 +134,23 @@ export default async function DiscoverPage({ searchParams }: Props) {
         ) : null}
       </section>
 
-      <nav aria-label={t("wp.cat.label")} className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4">
-        <Link href="/discover" aria-current={!only ? "page" : undefined} className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong", !only ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
+      {!knowsStreet && streetChoices.length > 1 ? (
+        <nav aria-label={t("sh.disc.chooseStreet")} className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4">
+          {streetChoices.map((h) => (
+            <Link key={h.id} href={`/discover?street=${encodeURIComponent(h.slug)}`} aria-current={hood?.id === h.id ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong lowercase", hood?.id === h.id ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
+              <MapPin aria-hidden className="size-4" strokeWidth={1.75} />
+              <bdi>{short(h.name, locale)}</bdi>
+            </Link>
+          ))}
+        </nav>
+      ) : null}
+
+      <nav aria-label={t("wp.cat.label")} className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4">
+        <Link href={qs()} aria-current={!only ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong", !only ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
           {t("sh.disc.forYou")}
                   </Link>
         {chips.map((c) => (
-          <Link key={c.id} href={`/discover?c=${c.id}`} aria-current={only === c.id ? "page" : undefined} className={cn("inline-flex h-10 shrink-0 items-center rounded-full px-4 text-meta-strong", only === c.id ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
+          <Link key={c.id} href={qs(c.id)} aria-current={only === c.id ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-meta-strong", only === c.id ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
             {t(CHIP_KEY[c.id])}
           </Link>
         ))}
@@ -126,7 +158,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
 
       <section className="mt-6" aria-labelledby="near">
         <div className="flex items-baseline justify-between">
-          <h2 id="near" className="font-display text-[22px] font-bold leading-7 text-foreground clear:text-[17px] clear:font-semibold clear:leading-6">{t("sh.disc.near")}</h2>
+          <h2 id="near" className="font-display text-[22px] font-bold leading-7 text-foreground clear:text-[17px] clear:font-semibold clear:leading-6">{knowsStreet || !name ? t("sh.disc.near") : name}</h2>
           <span className="text-meta text-muted-foreground">{t("sh.disc.shopsN", { n: shops.length })}</span>
         </div>
         <Link href="/map" className="relative mt-3 block h-[132px] overflow-hidden rounded-card border border-line bg-tile-mint shadow-card focus-visible:focus-ring clear:border-0 clear:card-clear clear:bg-ll-map-land">

@@ -5,8 +5,8 @@ const shop = (id: string, vertical: string, d: number | null, isMember = false) 
 
 describe("discover", () => {
   it("shortens neighbourhood names", () => {
-    expect(shortHood("Roncesvalles Village")).toBe("roncesvalles");
-    expect(shortHood("The Danforth")).toBe("the danforth");
+    expect(shortHood("Roncesvalles Village")).toBe("Roncesvalles");
+    expect(shortHood("The Danforth")).toBe("The Danforth");
     expect(shortHood(null)).toBe("");
   });
 
@@ -32,8 +32,8 @@ describe("discover", () => {
 
   it("hero copy for a passport", () => {
     const h = heroCopy({ name: "Roncesvalles Passport", kind: "passport", endsAt: "2026-10-31T12:00:00Z", goalVisits: 5, bonusPoints: 50, multiplierPct: null, prize: "Win the street's prize basket", progress: { visited: 2, goal: 5 } }, new Date("2026-10-22T12:00:00Z"));
-    expect(h.eyebrow).toBe("roncesvalles passport · ends oct 31");
-    expect(h.headline).toBe("visit 5 shops, win the street's prize basket");
+    expect(h.eyebrow).toBe("Roncesvalles Passport · ends Oct 31");
+    expect(h.headline).toBe("Visit 5 shops, win the street's prize basket");
     expect(h.progress).toEqual({ value: 2, max: 5 });
   });
 

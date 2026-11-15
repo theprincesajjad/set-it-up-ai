@@ -47,7 +47,7 @@ test("rewards: the dispensary categories are locked, with the reason", async ({ 
   await expect(page.getByRole("radio", { name: /One visit|One per visit/ })).toHaveCount(0);
   await expect(page.getByLabel("Referral reward")).toHaveCount(0);
   await page.getByRole("button", { name: "Why?" }).first().click();
-  await expect(page.getByText("inducement under Ontario's pharmacy conflict-of-interest rules")).toBeVisible();
+  await expect(page.getByText("inducement under Ontario’s pharmacy conflict-of-interest rules")).toBeVisible();
   await page.getByTestId("pharmacy-also-blocked").scrollIntoViewIfNeeded();
   await page.screenshot({ path: shot("01-rewards-locked-1440"), fullPage: true });
   // The server says no too: a look-alike name is locked the moment it is made.

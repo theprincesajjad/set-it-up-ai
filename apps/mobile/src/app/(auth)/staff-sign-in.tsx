@@ -1,7 +1,7 @@
 import { emailOtpStartBodySafe } from "../../features/staffAuth";
 import { router } from "expo-router";
-import { useState } from "react";
-import { View } from "react-native";
+import { useRef, useState } from "react";
+import { View, type TextInputInstance } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
 import { IS_DEV } from "../../config";
 import { useLocale } from "../../lib/i18n";
@@ -21,13 +21,29 @@ export default function StaffSignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emailOk = emailOtpStartBodySafe(email);
+  const [fieldError, setFieldError] = useState<{ email?: string; password?: string }>({});
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const done = async (res: Awaited<ReturnType<typeof api.auth.login>>) => {
     await signIn(res, { mode: "counter", email: email.trim().toLowerCase() });
     router.replace("/counter/select");
   };
 
+  /** Name the field, say how to fix it and focus it, before anything is sent. */
+  const signInWithPassword = () => {
+    const next: { email?: string; password?: string } = {};
+    if (!email.trim()) next.email = t("auth.err.required", { field: t("mc.si.email") });
+    else if (!emailOk) next.email = t("mf.field.email");
+    if (!password) next.password = t("auth.err.required", { field: t("mc.si.password") });
+    setFieldError(next);
+    if (next.email) return void emailRef.current?.focus();
+    if (next.password) return void passwordRef.current?.focus();
+    return run(async () => done(await api.auth.login({ email: email.trim(), password })));
+  };
+
   const run = async (fn: () => Promise<void>) => {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -58,14 +74,15 @@ export default function StaffSignIn() {
         onChange={(v) => {
           setMethod(v);
           setError(null);
+          setFieldError({});
         }}
       />
-      <TextField label={t("mc.si.email")} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" />
+      <TextField ref={emailRef} label={t("mc.si.email")} value={email} onChangeText={(v) => { setEmail(v); setFieldError((x) => ({ ...x, email: undefined })); }} error={fieldError.email} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" />
       {method === "password" ? (
         <>
-          <TextField label={t("mc.si.password")} value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={() => run(async () => done(await api.auth.login({ email: email.trim(), password })))} />
+          <TextField ref={passwordRef} label={t("mc.si.password")} value={password} onChangeText={(v) => { setPassword(v); setFieldError((x) => ({ ...x, password: undefined })); }} error={fieldError.password} secureTextEntry autoComplete="current-password" textContentType="password" onSubmitEditing={signInWithPassword} />
           {error ? <Banner variant="danger">{error}</Banner> : null}
-          <Button size="lg" fullWidth loading={busy} onPress={() => run(async () => done(await api.auth.login({ email: email.trim(), password })))}>
+          <Button size="lg" fullWidth loading={busy} onPress={signInWithPassword}>
             {t("mc.si.signIn")}
           </Button>
         </>

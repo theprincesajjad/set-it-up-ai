@@ -8,6 +8,7 @@ import type { LucideIcon } from "lucide-react";
 import { ChevronDown } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Timeline, TimelineContent, TimelineHeader, TimelineIndicator, TimelineItem, TimelineSeparator, TimelineTitle } from "@/components/primitives/timeline";
+import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export interface HistoryEntry {
@@ -38,7 +39,7 @@ function dayLabel(iso: string, now = new Date()): string {
   if (days === 1) return "Yesterday";
   return d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}) });
 }
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" });
+const timeOf = (iso: string) => formatTime(iso);
 
 function Entry({ e, step, open, onToggle }: { e: HistoryEntry; step: number; open: boolean; onToggle: () => void }) {
   const Icon = e.icon;

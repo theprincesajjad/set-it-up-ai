@@ -112,7 +112,7 @@ test("a client asks for a spot from a full day at 390", async ({ page }) => {
   await sheet.getByLabel("Phone or email").fill(ctx.client.phone);
   await page.screenshot({ path: shot("sheet-390") });
   await sheet.getByRole("button", { name: "Put me on the list" }).click();
-  await expect(sheet.getByTestId("wl-joined")).toContainText("You're on the list. We'll message you if a spot opens.");
+  await expect(sheet.getByTestId("wl-joined")).toContainText("You’re on the list. We’ll message you if a spot opens.");
   await page.screenshot({ path: shot("joined-390") });
   // Urdu: the same full day and sheet.
   await openFullDay(page, "?lang=ur");
@@ -182,7 +182,7 @@ test("the client takes the offered slot in one tap", async ({ page }) => {
   await expect(page.getByTestId("wl-offer")).toContainText("Gel manicure");
   await page.screenshot({ path: shot("take-390") });
   await page.getByRole("button", { name: "Take it" }).click();
-  await expect(page.getByTestId("wl-taken")).toContainText("It's yours");
+  await expect(page.getByTestId("wl-taken")).toContainText("It’s yours");
   await page.screenshot({ path: shot("taken-390") });
 
   // The calendar shows the booking; a second tap on the link still says it's theirs.

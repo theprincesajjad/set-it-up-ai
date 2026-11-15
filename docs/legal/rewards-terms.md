@@ -19,9 +19,9 @@ These Rewards Terms explain how points work on Local Loyalty. They form part of 
 
 ## 2. Who issues your points
 
-- **Merchant points** are issued and funded by the merchant where you earned them. The merchant sets the earn rules (per dollar, per visit, stamps or items) and the reward catalog. Each merchant's balance is separate.
+- **Merchant points** are issued and funded by the merchant where you earned them. The merchant sets the earn rules (per dollar, per visit, stamps or items) and the reward catalog. Each merchant’s balance is separate.
 - **Network Rewards** are issued and funded by **[Local Loyalty Inc.]**. Merchants never pay for Network Rewards. When you redeem one at a shop, Local Loyalty reimburses that shop.
-- **Campaign points** come from neighbourhood campaigns, such as a BIA points weekend. They are funded by the campaign sponsor and shown with the sponsor's name. They are redeemable as described in the campaign rules, which are visible before the campaign starts, and **they never expire** either.
+- **Campaign points** come from neighbourhood campaigns, such as a BIA points weekend. They are funded by the campaign sponsor and shown with the sponsor’s name. They are redeemable as described in the campaign rules, which are visible before the campaign starts, and **they never expire** either.
 
 ## 3. Earning
 
@@ -56,7 +56,7 @@ Local Loyalty will not change the value of Network Rewards you already hold.
 
 ## 7. If Local Loyalty shuts down
 
-We will give at least **90 days' notice**:
+We will give at least **90 days’ notice**:
 
 - Merchant points remain redeemable directly with each merchant, which can export its member balances.
 - Network Rewards can be redeemed during the notice period.

@@ -134,7 +134,8 @@ const dto = (e: Entry, pos: number | null, names: Map<string, string>, parents: 
   calledAt: e.calledAt?.toISOString() ?? null,
   calledStaffId: e.calledStaffId,
   waitedMin: Math.max(0, Math.round(((e.finishedAt ?? now).getTime() - e.joinedAt.getTime()) / MIN)),
-  textedNext: !!e.notifiedNextAt,
+  // notifiedNextAt is stamped for everyone who becomes first; only a person with a phone who asked for a text was actually texted.
+  textedNext: !!e.notifiedNextAt && !!e.userId && e.textConsent,
   skips: e.skips,
   appointmentId: e.appointmentId,
   partyId: e.partyId,
@@ -227,10 +228,15 @@ async function estimateFor(ctx: AppContext, s: Snapshot, aheadEntries: Entry[], 
   return estimateWaitMin(aheadEntries.map((e) => personOf(e, pace)), chairsForEstimate(s), staffId);
 }
 
-export async function board(ctx: AppContext, staff: StaffContext): Promise<barberApi.QueueBoardResponse> {
+/**
+ * The line as staff see it. With `tablet` (the door tablet, `?for=tablet`) it is the shop's whole line, because walk-ins pick any chair and see the
+ * real wait: every chair and the full counts, but no names of people waiting or in a chair, and no per-staff privacy restriction on what is shown.
+ */
+export async function board(ctx: AppContext, staff: StaffContext, opts: { tablet?: boolean } = {}): Promise<barberApi.QueueBoardResponse> {
   const merchant = staff.merchant;
   const s = await snapshot(ctx, merchant);
-  const restricted = await isOwnClientsOnly(ctx, staff);
+  const tablet = opts.tablet === true;
+  const restricted = tablet ? false : await isOwnClientsOnly(ctx, staff);
   const now = ctx.now();
   const day0 = zonedToUtc(localParts(now, merchant.timezone).date, 0, merchant.timezone);
   const [today] = await ctx.db
@@ -249,9 +255,9 @@ export async function board(ctx: AppContext, staff: StaffContext): Promise<barbe
   const estimate = await estimateFor(ctx, s, s.waiting, null);
   return {
     settings: s.settings,
-    waiting: waiting.map((e) => dto(e, rank.get(e.id) ?? null, s.names, s.parents, now)),
+    waiting: tablet ? [] : waiting.map((e) => dto(e, rank.get(e.id) ?? null, s.names, s.parents, now)),
     called: s.called.filter(visible).map((e) => dto(e, null, s.names, s.parents, now)),
-    inService: s.inService.filter((e) => !restricted || e.calledStaffId === staff.user.id).map((e) => dto(e, null, s.names, s.parents, now)),
+    inService: tablet ? [] : s.inService.filter((e) => !restricted || e.calledStaffId === staff.user.id).map((e) => dto(e, null, s.names, s.parents, now)),
     chairs,
     stats: { waiting: waiting.length, longestWaitMin: longest, estimateMin: estimate, chairsTaking: s.chairs.filter((c) => c.takesWalkIns).length, chairsTotal: s.chairs.length, servedToday: today?.served ?? 0, noShowsToday: today?.noShows ?? 0 },
     services: services_,
@@ -427,7 +433,8 @@ function assertMayAct(staff: StaffContext, staffId: string) {
 export async function addByStaff(ctx: AppContext, staff: StaffContext, body: z.output<typeof barberApi.staffAddBody>): Promise<barberApi.QueueActionResponse> {
   const r = await join(ctx, staff.merchant, { name: body.name, phone: body.phone, serviceId: body.serviceId, requestedStaffId: body.requestedStaffId, textConsent: body.textConsent, familyMemberIds: [], source: body.source }, null);
   const e = await entryOf(ctx, staff.merchant.id, r.entries[0]!.id);
-  return { entry: await present(ctx, staff.merchant, e) };
+  // `textsYou` is what the entry really has (a repeat join returns the first place and its original choice), so the tablet never promises a text that will not come.
+  return { entry: await present(ctx, staff.merchant, e), textsYou: !!e.userId && e.textConsent };
 }
 
 export async function call(ctx: AppContext, staff: StaffContext, entryId: string, body: z.infer<typeof barberApi.callBody>): Promise<barberApi.QueueActionResponse> {
@@ -446,7 +453,8 @@ export async function call(ctx: AppContext, staff: StaffContext, entryId: string
   if (!row) throw conflict("This place in line was just updated. Refresh and try again.");
   await sendText(ctx, merchant, row, "called", { barber: barber.name });
   await notifyNext(ctx, merchant);
-  return { entry: await present(ctx, merchant, row) };
+  // `textsYou`: whether a text really went out, so the screen says "texted" or just "called".
+  return { entry: await present(ctx, merchant, row), textsYou: !!row.userId && row.textConsent };
 }
 
 /** The called person is in the chair: make the walk-in appointment (the existing calendar, checkout and tip take it from here). */

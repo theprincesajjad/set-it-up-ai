@@ -8,7 +8,7 @@ import { errorMessage, isApiError } from "../../api/client";
 import { counterErrorL } from "../../lib/counterText";
 import { initials, shortName } from "../../lib/award";
 import { signed } from "../../lib/format";
-import { formatMoneyL, formatPtsL, formatTimeL, unitLabelL } from "../../lib/formatL";
+import { formatHhmmL, formatMoneyL, formatPtsL, formatTimeL, unitLabelL } from "../../lib/formatL";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
@@ -169,6 +169,8 @@ function ClearToday() {
   };
 
   const now = new Date();
+  /** An hour of the shop's day ("2 pm"), written like the times in the activity rows below it. */
+  const hourL = (h: number) => formatHhmmL(L, `${h}:00`);
   const f = { t: tr, number, isolate: isRtl ? (v: string) => `\u2066${v}\u2069` : undefined };
   const firstName = (staff?.name ?? user?.name ?? "").split(" ")[0] ?? "";
   const greeting = tr(greetingKey(now.getHours(), !!firstName), { name: firstName });
@@ -301,13 +303,13 @@ function ClearToday() {
               </Text>
               {bars.peakHour != null ? (
                 <Text color="fgMuted" style={{ fontSize: 13, lineHeight: 20 }}>
-                  {tr("shell.today.peakAt", { time: date(new Date(now.getFullYear(), now.getMonth(), now.getDate(), bars.peakHour), { hour: "numeric" }) })}
+                  {tr("shell.today.peakAt", { time: hourL(bars.peakHour) })}
                 </Text>
               ) : null}
             </View>
             <View
               accessible
-              accessibilityLabel={bars.peakHour != null ? tr("shell.today.byHourSummary", { time: date(new Date(now.getFullYear(), now.getMonth(), now.getDate(), bars.peakHour), { hour: "numeric" }) }) : tr("shell.today.byHourEmpty")}
+              accessibilityLabel={bars.peakHour != null ? tr("shell.today.byHourSummary", { time: hourL(bars.peakHour) }) : tr("shell.today.byHourEmpty")}
               style={[clearStyles.bars, { flexDirection: isRtl ? "row-reverse" : "row" }]}
             >
               <View style={[clearStyles.baseline, { backgroundColor: r.border }]} />
@@ -318,7 +320,7 @@ function ClearToday() {
             <View style={[clearStyles.axis, { flexDirection: isRtl ? "row-reverse" : "row" }]}>
               {[bars.hours[0], bars.hours[Math.floor(bars.hours.length / 2)], bars.hours[bars.hours.length - 1]].map((h, i) => (
                 <Text key={i} color="fgMuted" tabular style={{ fontSize: 12, lineHeight: 16 }}>
-                  {h != null ? date(new Date(now.getFullYear(), now.getMonth(), now.getDate(), h), { hour: "numeric" }) : ""}
+                  {h != null ? hourL(h) : ""}
                 </Text>
               ))}
             </View>

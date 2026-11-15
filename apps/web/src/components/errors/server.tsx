@@ -6,6 +6,7 @@ import { roleHome } from "@/lib/auth/home";
 import { getT } from "@/lib/i18n/server";
 import { FailScreen } from "./FailScreen";
 import { RetryButton, SwitchAccountButton } from "./actions";
+import { TabTitle } from "./TabTitle";
 import type { Audience } from "./audience";
 
 /**
@@ -57,6 +58,8 @@ export async function AccessDenied({ title, description, goHref, goLabel, next }
   const t = await getT();
   return (
     <main id="main">
+      {/* The tab and history name the screen the person is looking at, not the area they were refused. */}
+      <TabTitle title={`${title.replace(/[.。।۔]$/, "")} · ${BRAND.name}`} />
       <Container size="public" className="py-16">
       <FailScreen
         title={title}

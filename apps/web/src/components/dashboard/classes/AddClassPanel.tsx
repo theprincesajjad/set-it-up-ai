@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { addDays, startsAtFrom, todayOf } from "@/lib/dashboard/classes";
 import { useApi } from "@/lib/dashboard/useApi";
 import { cn } from "@/lib/cn";
+import { focusFirstInvalid } from "@/lib/api/useErrorText";
 import { useAction } from "@/lib/dashboard/useApi";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -22,7 +23,7 @@ const onOrAfter = (date: string, dow: number) => addDays(date, (dow - dowOf(date
 const NEW = "__new";
 
 /** Add a class: pick a class type (or make one), a day and a time, and repeat it weekly. Women-only is a property of the class. */
-export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { open: boolean; onClose: () => void; types: classesApi.ClassTypeDto[]; onSaved: () => void | Promise<void>; defaultDate?: string }) {
+export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { open: boolean; onClose: () => void; types: classesApi.ClassTypeDto[]; onSaved: (firstDay: string) => void | Promise<void>; defaultDate?: string }) {
   const { api } = useMerchant();
   const toast = useToast();
   const act = useAction();
@@ -40,9 +41,12 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
   const team = useApi(() => api.team(), [api]);
   const teachers = (team.data?.items ?? []).filter((s) => s.role === "instructor");
   const [weeks, setWeeks] = useState("1");
+  const [tried, setTried] = useState(false);
   useEffect(() => {
     // Reset the form each time the panel opens.
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTried(false);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDate(defaultDate ?? todayOf());
       setTypeId((cur) => cur || types[0]?.id || NEW);
@@ -51,6 +55,37 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
   const chosen = types.find((t) => t.id === typeId);
   const making = typeId === NEW || !types.length;
   const valid = (making ? name.trim().length > 0 : !!chosen) && /^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{2}:\d{2}$/.test(time);
+  const save = async () => {
+    setTried(true);
+    if (!valid) return focusFirstInvalid();
+    const r = await act.run(async () => {
+      let id = typeId;
+      if (making) {
+        const t = await api.classes.createType({ name: name.trim(), durationMin: Number(duration) || 60, capacity: Number(capacity) || 16, womenOnly: women });
+        id = t.id;
+      }
+      // Several weekdays at one time ("Mon Wed Fri 6:30"): one entry per day, each repeated weekly.
+      const days = dows.length ? [...dows].sort().map((d) => onOrAfter(date, d)) : [date];
+      const items: classesApi.ClassSessionDto[] = [];
+      for (const day of days) {
+        const res = await api.classes.createSessions({
+          classTypeId: id,
+          startsAt: startsAtFrom(day, time),
+          instructorName: instructor.trim() || null,
+          ...(instructorId ? { instructorUserId: instructorId } : {}),
+          ...(Number(spots) > 0 ? { capacity: Number(spots) } : {}),
+          repeatWeeks: Number(weeks) || 1,
+        });
+        items.push(...res.items);
+      }
+      return { items };
+    });
+    if (r) {
+      toast({ message: r.items.length > 1 ? `${r.items.length} classes added` : "Class added", tone: "success" });
+      await onSaved(date);
+      onClose();
+    }
+  };
   return (
     <SidePanel
       open={open}
@@ -63,36 +98,7 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button
             loading={act.busy}
-            disabled={!valid}
-            onClick={async () => {
-              const r = await act.run(async () => {
-                let id = typeId;
-                if (making) {
-                  const t = await api.classes.createType({ name: name.trim(), durationMin: Number(duration) || 60, capacity: Number(capacity) || 16, womenOnly: women });
-                  id = t.id;
-                }
-                // Several weekdays at one time ("Mon Wed Fri 6:30"): one entry per day, each repeated weekly.
-                const days = dows.length ? [...dows].sort().map((d) => onOrAfter(date, d)) : [date];
-                const items: classesApi.ClassSessionDto[] = [];
-                for (const day of days) {
-                  const res = await api.classes.createSessions({
-                    classTypeId: id,
-                    startsAt: startsAtFrom(day, time),
-                    instructorName: instructor.trim() || null,
-                    ...(instructorId ? { instructorUserId: instructorId } : {}),
-                    ...(Number(spots) > 0 ? { capacity: Number(spots) } : {}),
-                    repeatWeeks: Number(weeks) || 1,
-                  });
-                  items.push(...res.items);
-                }
-                return { items };
-              });
-              if (r) {
-                toast({ message: r.items.length > 1 ? `${r.items.length} classes added` : "Class added", tone: "success" });
-                await onSaved();
-                onClose();
-              }
-            }}
+            onClick={() => void save()}
           >
             Add class
           </Button>
@@ -100,11 +106,11 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
       }
     >
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <div className="flex flex-col gap-4">
+      <form className="flex flex-col gap-4" noValidate onSubmit={(e) => { e.preventDefault(); void save(); }}>
         <Select label="Class" value={making ? NEW : typeId} onChange={(e) => setTypeId(e.target.value)} options={[...types.filter((t) => t.active).map((t) => ({ value: t.id, label: `${t.name}${t.womenOnly ? " (women only)" : ""}` })), { value: NEW, label: "A new class type" }]} />
         {making ? (
           <div className="flex flex-col gap-4 rounded-card bg-card shadow-card p-4">
-            <TextField label="Class name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Bhangra Cardio" />
+            <TextField label="Class name" value={name} error={tried && making && !name.trim() ? "Add a class name." : null} onChange={(e) => setName(e.target.value)} placeholder="Morning flow" />
             <div className="grid grid-cols-2 gap-3">
               <TextField label="Minutes" type="number" min={10} max={240} value={duration} onChange={(e) => setDuration(e.target.value)} />
               <TextField label="Spots" type="number" min={1} max={200} value={capacity} onChange={(e) => setCapacity(e.target.value)} />
@@ -139,7 +145,8 @@ export function AddClassPanel({ open, onClose, types, onSaved, defaultDate }: { 
         <TextField label="Instructor" optionalLabel value={instructor} onChange={(e) => setInstructor(e.target.value)} />
         {!making ? <TextField label="Spots for this class" optionalLabel type="number" min={1} max={200} value={spots} onChange={(e) => setSpots(e.target.value)} hint={chosen ? `Leave empty for ${chosen.capacity}.` : undefined} /> : null}
         <TextField label="Repeat for this many weeks" type="number" min={1} max={26} value={weeks} onChange={(e) => setWeeks(e.target.value)} hint="1 adds just this class." />
-      </div>
+        <button type="submit" hidden aria-hidden tabIndex={-1} />
+      </form>
     </SidePanel>
   );
 }

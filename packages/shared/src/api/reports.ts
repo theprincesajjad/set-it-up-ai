@@ -260,10 +260,10 @@ export const USUALLY_WINDOW = 12;
 /** "8 am", "12 pm", "4 pm" for an hour 0-23. */
 export function hourLabel(hour: number): string {
   const h = ((hour % 24) + 24) % 24;
-  return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "am" : "pm"}`;
+  return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "a.m." : "p.m."}`;
 }
 
-/** "8 to 10 am", "11 am to 1 pm": a two-hour bucket as a range a person can read. */
+/** "8 to 10 a.m.", "11 a.m. to 1 p.m.": a two-hour bucket as a range a person can read. */
 export function hourRangeLabel(from: number, to: number): string {
   const a = hourLabel(from);
   const b = hourLabel(to);

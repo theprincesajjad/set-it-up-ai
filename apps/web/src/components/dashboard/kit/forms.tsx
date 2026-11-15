@@ -25,7 +25,7 @@ export function Capsules<T extends string>({ options, value, onChange, label, cl
             onClick={() => onChange(o.value)}
             className={cn(
               "kit-cap inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-meta transition-colors focus-visible:focus-ring",
-              on ? "border-primary bg-primary font-semibold text-primary-foreground" : cn("border-line bg-bg hover:bg-bg-subtle", o.tone === "info" ? "text-location" : o.tone === "negative" ? "text-negative" : "text-fg"),
+              on ? "border-primary bg-primary font-semibold text-primary-foreground" : cn("border-line bg-bg hover:bg-bg-subtle", o.tone === "info" ? "text-info-text" : o.tone === "negative" ? "text-negative" : "text-fg"),
             )}
           >
             {o.label}
@@ -119,13 +119,15 @@ export function SidePanel({ open, onClose, title, subtitle, children, footer, la
           aria-label={label}
           aria-labelledby={undefined}
           data-slot="side-panel"
+          // Focus lands on the first field of the form, not on Close; a panel with no field keeps the default.
+          initialFocus={() => document.querySelector<HTMLElement>('[data-slot="side-panel"] .kit-sheet-b :is(input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]))') ?? true}
           style={{ maxWidth: width }}
           className="kit-sheet clear:glass-sheet fixed inset-y-0 end-0 z-overlay flex w-full flex-col border-s border-line bg-bg shadow-float outline-none motion-safe:animate-fade-in print:hidden"
         >
           <div className="kit-sheet-h flex items-start justify-between gap-3 border-b border-line px-5 py-4">
             <div className="min-w-0">
               <div className="kit-sheet-t truncate text-headline text-fg">{title}</div>
-              {subtitle ? <div className="mt-0.5 truncate text-meta text-fg-muted">{subtitle}</div> : null}
+              {subtitle ? <div className="mt-0.5 text-meta text-fg-muted">{subtitle}</div> : null}
             </div>
             <DialogPrimitive.Close aria-label={t("forms.panel.close")} className="kit-sheet-x clear:glass-lite relative -me-2 -mt-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-2 after:content-[''] hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
               <X aria-hidden className="size-4" />

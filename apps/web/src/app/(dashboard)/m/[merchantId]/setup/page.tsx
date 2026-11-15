@@ -2,7 +2,7 @@
 import { ArrowLeft, ArrowRight, Check, Copy, Printer } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ONBOARDING_STEPS_UI } from "./steps";
 import { STEP_COPY } from "@/components/dashboard/Checklist";
 import { Dot, Meter, PageHeader, Panel, SkeletonRows } from "@/components/dashboard/kit";
@@ -25,8 +25,9 @@ import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { formatPoints } from "@/lib/format";
 import { draftFromProgram, programSentence } from "@/lib/dashboard/program";
+import { membersLine } from "@/lib/dashboard/onboarding";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
-import { PLANS, tradeSetupFor, type merchantApi } from "@ll/shared";
+import { APPOINTMENT_VERTICALS, PLANS, tradeSetupFor, type merchantApi } from "@ll/shared";
 
 /** Setup guide (merchant-dashboard.md §1): profile → program → rewards → staff → QR kit → first 25 members. */
 export default function SetupPage() {
@@ -34,6 +35,11 @@ export default function SetupPage() {
   const state = useApi(() => api.onboarding(), [api], { pollMs: 8000 });
   // phase-solo B: solo pros and appointment-led storefronts get the six booking-link cards (components/dashboard/onboarding/SoloSetup).
   const solo = !!state.data?.solo && state.data.path !== "storefront";
+  // Tell the sidebar's "Complete your setup" bar when a step finishes, so it does not wait for the next route change.
+  const doneCount = state.data ? state.data.steps.filter((x) => x.done).length : null;
+  useEffect(() => {
+    if (doneCount !== null) window.dispatchEvent(new Event("ll:onboarding-changed"));
+  }, [doneCount]);
   return (
     <div className="flex flex-col gap-6">
       {/* No header until the path is known: a solo pro (in Urdu too) must not see the storefront's English header flash first. */}
@@ -55,19 +61,27 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
   const router = useRouter();
   const core = checklist.steps;
   const steps = [...core, ...checklist.later];
-  const initial = steps.findIndex((s) => s.key === (params.get("step") ?? checklist.currentStep));
-  const [i, setI] = useState(initial === -1 ? 0 : initial);
+  // The step is the one in the address, so the browser's Back and Forward walk through the steps.
+  const found = steps.findIndex((s) => s.key === (params.get("step") ?? checklist.currentStep));
+  const i = found === -1 ? 0 : found;
+  // Opened without a step: pin the one it starts on, so a step completing in the background does not move the page under the owner.
+  const pinned = useRef(false);
+  useEffect(() => {
+    if (pinned.current || params.get("step") || !steps[i]) return;
+    pinned.current = true;
+    router.replace(`${base}/setup?step=${steps[i]!.key}`, { scroll: false });
+  });
   const step = steps[i] ?? steps[0]!;
   const doneCount = core.filter((s) => s.done).length;
   const allDone = checklist.currentStep === "done" || doneCount === core.length;
   const go = (n: number) => {
-    setI(n);
-    router.replace(`${base}/setup?step=${steps[n]!.key}`, { scroll: false });
+    // A push, so the browser's Back button walks back through the steps instead of leaving setup.
+    router.push(`${base}/setup?step=${steps[n]!.key}`, { scroll: false });
   };
 
   return (
     <>
-      {allDone ? <Banner tone="success" title="You're live.">Your first customer can join right now.</Banner> : null}
+      {allDone ? <Banner tone="success" title="You’re live.">Your first customer can join right now.</Banner> : null}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
         <div className="min-w-0">
           <div className="mb-3 flex items-baseline justify-between text-meta">
@@ -130,7 +144,7 @@ function NudgeToggle({ checklist, onChange }: { checklist: merchantApi.Onboardin
       <button
         type="button"
         disabled={act.busy}
-        className="rounded-sm text-fg underline underline-offset-2 focus-visible:focus-ring"
+        className="relative rounded-sm text-fg underline underline-offset-2 focus-visible:focus-ring after:absolute after:-inset-x-1 after:-inset-y-4 after:content-['']"
         onClick={async () => {
           const r = await act.run(() => api.setNudges(!checklist.nudgesOn));
           if (r) onChange(r);
@@ -152,7 +166,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
   const a = checklist.activation;
   const copy =
     rx && step.key === "first_stamp"
-      ? { title: "Record your first front-store sale", body: "Nothing helps more than seeing points work. It takes about three minutes." }
+      ? { title: "Record your first front-store sale", body: "Nothing helps more than seeing points work. It takes a minute." }
       : step.key === "trade_setup" && family
         ? { title: TRADE_COPY[family].title, body: TRADE_COPY[family].body }
         : step.key === "first_members"
@@ -169,13 +183,25 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
   };
 
   const [desc, setDesc] = useState(detail.merchant.description ?? "");
-  const [logo, setLogo] = useState(detail.merchant.logoUrl ?? "");
   const [staffName, setStaffName] = useState("");
   const [staffPhone, setStaffPhone] = useState<string | null>(null);
   const [staffRole, setStaffRole] = useState<"staff" | "manager">("staff");
   const [copied, setCopied] = useState(false);
   const rewards = useApi(step.key === "program" ? () => api.rewards() : null, [api, step.key]);
   const loc = detail.locations[0];
+  // The tax sentence names only what this kind of shop sells.
+  const v = detail.merchant.vertical;
+  const food = ["restaurant", "restaurant_south_asian", "tiffin", "caterer", "banquet_hall", "bar", "cafe", "bakery", "grocery"].includes(v);
+  const taxNote = ["tiffin", "caterer", "banquet_hall"].includes(v)
+    ? undefined
+    : (APPOINTMENT_VERTICALS as readonly string[]).includes(v)
+      ? "Until you do, bookings and invoices are priced with no tax."
+      : "Until you do, your prices and receipts show no tax.";
+  const taxLine = ["tiffin", "caterer", "banquet_hall"].includes(v)
+    ? "Pick one now so your invoices, tiffin bills and catering quotes are right from the first sale."
+    : (APPOINTMENT_VERTICALS as readonly string[]).includes(v)
+      ? "Pick one now so your invoices and appointments are right from the first booking."
+      : "Pick one now so your prices and receipts are right from the first sale.";
 
   return (
     <div className="flex flex-col gap-4">
@@ -289,7 +315,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
           className="flex flex-col gap-4"
           onSubmit={async (e) => {
             e.preventDefault();
-            const d = await act.run(() => api.update({ description: desc.trim() || null, logoUrl: logo.trim() || null }));
+            const d = await act.run(() => api.update({ description: desc.trim() || null }));
             if (d) {
               setDetail(d);
               await complete("profile", false);
@@ -297,7 +323,10 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
           }}
         >
           <TextField type="textarea" label="About your shop" hint="One or two sentences customers see on your shop page." maxLength={2000} showCount value={desc} onChange={(e) => setDesc(e.target.value)} />
-          <TextField type="url" label="Logo URL" optionalLabel hint="A square image works best. Leave empty to use your initials." value={logo} onChange={(e) => setLogo(e.target.value)} />
+          <p className="text-meta text-fg-muted">
+            {detail.merchant.logoUrl ? "Your logo is on your card." : "Until you add a logo, your initials go on your card."}{" "}
+            <Link className="underline underline-offset-2" href={`${base}/settings`}>Add or change your logo in Settings</Link>.
+          </p>
           <div>
             <Button type="submit" loading={act.busy}>
               Save details
@@ -310,9 +339,9 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
         <section aria-label="Tax" className="flex flex-col gap-3 border-t border-line pt-4">
           <div>
             <h3 className="text-body-strong text-fg">Charging GST/HST?</h3>
-            <p className="mt-0.5 text-meta text-fg-muted">Pick one now so invoices, appointments and tiffin bills are right from the first sale. You can change it in Settings.</p>
+            <p className="mt-0.5 text-meta text-fg-muted">{taxLine} You can change it in Settings.</p>
           </div>
-          <TaxStatus owner={detail.role === "owner"} compact />
+          <TaxStatus owner={detail.role === "owner"} compact note={taxNote} meals={food} />
         </section>
       ) : null}
 
@@ -338,7 +367,7 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
               Invite staff
             </Button>
             <Button variant="ghost" onClick={() => complete("staff")}>
-              It&apos;s just me for now
+              It’s just me for now
             </Button>
           </div>
           <p className="text-caption text-fg-muted">Unlimited staff, always free.</p>
@@ -347,8 +376,8 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
 
       {step.key === "qr_kit" ? (
         <div className="flex flex-wrap gap-2">
-          <Button iconStart={Printer} href={`${base}/locations/kit${loc ? `?location=${loc.id}` : ""}`}>
-            Print QR kit
+          <Button iconStart={Printer} href={`${base}/locations/kit?from=setup${loc ? `&location=${loc.id}` : ""}`}>
+            Print QR stand
           </Button>
           <Button variant="secondary" loading={act.busy} onClick={() => complete("qr_kit")}>
             I printed it
@@ -369,14 +398,14 @@ function StepBody({ step, checklist, onChange, base, next }: { step: merchantApi
             <p className="text-body text-fg">
               Connecting your POS is part of {PLANS.studio.name}, ${PLANS.studio.priceCents / 100} a month. Until then, add stamps from the counter.
             </p>
-            <SubscribeButton offer={{ kind: "plan", plan: "plus", name: PLANS.plus.name, priceCents: PLANS.plus.priceCents }} />
+            <SubscribeButton offer={{ kind: "plan", plan: "studio", name: PLANS.studio.name, priceCents: PLANS.studio.priceCents }} />
           </div>
         )
       ) : null}
 
       {step.key === "first_members" ? (
         <>
-          <ProgressBar value={checklist.activeMembers} max={checklist.activationTarget} label="Customers who have visited" valueText={`${checklist.activeMembers} of ${checklist.activationTarget} customers have visited`} />
+          <ProgressBar value={checklist.activeMembers} max={checklist.activationTarget} label="Customers who have visited" valueText={membersLine(checklist.activeMembers, checklist.activationTarget)} />
           <p className="text-meta text-fg-muted">
             {checklist.activation.paceLabel} · {checklist.activation.members >= checklist.activation.leadingMembers ? "past" : "aiming for"} {checklist.activation.leadingMembers} by day {checklist.activation.leadingByDay}
           </p>

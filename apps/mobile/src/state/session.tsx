@@ -21,7 +21,6 @@ export interface Prefs {
   lastEmail: string | null;
   /** Onboarding global consent choice: pre-fills (never pre-ticks for a new shop without the user's choice) per-shop consent. */
   globalConsent: boolean;
-  platformConsent: boolean;
   pushPrompted: boolean;
   locationPrompted: boolean;
   notifications: { rewards: boolean; orders: boolean };
@@ -37,7 +36,6 @@ const DEFAULT_PREFS: Prefs = {
   lastPhone: null,
   lastEmail: null,
   globalConsent: false,
-  platformConsent: false,
   pushPrompted: false,
   locationPrompted: false,
   notifications: { rewards: true, orders: true },

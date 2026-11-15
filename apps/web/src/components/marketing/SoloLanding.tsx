@@ -1,6 +1,8 @@
 import { preload } from "react-dom";
 import { photoSrcSet, type NailTrade, type SoloPageId } from "@/lib/marketing/solo";
 import { soloView } from "@/lib/marketing/solo-view";
+import { marketingFontVars } from "@/lib/marketing/fonts";
+import { marketingSerifVar, preloadSerif } from "@/lib/marketing/serif";
 import { Bookings, CtaBand, Facts, Jobs, PriceBlock, ProFeatures, Promos, Regulars, StickyCta, Week } from "./solo/Blocks";
 import { Hero, WORK_SIZES } from "./solo/Hero";
 import { SoloNav } from "./solo/Nav";
@@ -16,11 +18,13 @@ import "./solo/solo.css";
  */
 export function SoloLanding({ id, trade = "nails", variant }: { id: SoloPageId; trade?: NailTrade; /** A LANDING_VARIANTS id (copy/en-CA.ts) for an A/B test; control by default. */ variant?: string }) {
   const v = soloView(id, trade, variant);
+  // The home page's faces (Strata headlines, the Newsreader italic phrase, Halden text): the hero headline waits for Strata, so ask for it with the HTML.
+  preloadSerif();
   // The hero photo is the largest image above the fold where the stage is wide (300 px beside the phone): ask for it with the HTML.
   // On a phone the headline and lede are the LCP and the photo is a 112 px thumbnail, so it is not preloaded there.
   preload(`/marketing/${v.photos.work.stem}-${v.photos.work.widths[0]}.avif`, { as: "image", type: "image/avif", imageSrcSet: photoSrcSet(v.photos.work, "avif"), imageSizes: WORK_SIZES, fetchPriority: "high", media: "(min-width: 572px)" });
   return (
-    <div className="sl" data-trade={v.vertical} data-solo-page={id} data-solo-trade={v.key} data-variant={v.variant}>
+    <div className={`sl mkt ${marketingFontVars} ${marketingSerifVar}`} data-trade={v.vertical} data-solo-page={id} data-solo-trade={v.key} data-variant={v.variant}>
       <SoloNav current={v.key} />
       <main id="main">
         <Hero v={v} />

@@ -93,7 +93,7 @@ test("an area shop's street is nowhere before booking, and on the confirmation a
   await expect(page.getByText(/We are holding this time until/)).toBeVisible({ timeout: 20_000 });
   await expect(page.locator("body")).not.toContainText(streetRe);
   await page.getByRole("button", { name: "Book and pay $15 deposit" }).click();
-  await expect(page.getByRole("heading", { name: "you are booked" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: "You’re booked", level: 1 })).toBeVisible({ timeout: 20_000 });
   // Confirmed: now, and only now, the street.
   await expect(page.getByTestId("booked-address")).toContainText(s.street);
   await page.screenshot({ path: shot("privacy-booked-390"), fullPage: true });

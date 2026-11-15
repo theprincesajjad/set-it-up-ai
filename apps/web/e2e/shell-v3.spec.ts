@@ -95,8 +95,8 @@ test.describe("phone", () => {
     for (const tab of ["Today", "Counter", "Customers"]) await expect(bar.getByRole("link", { name: tab })).toBeVisible();
     await expect(bar.getByRole("button", { name: "More" })).toBeVisible();
     // Needs you comes before the numbers on a phone
-    const order = await page.evaluate(() => [...document.querySelectorAll("#needs-you, [aria-label=\"Today's numbers\"], #up-next, #quick-actions")].map((n) => n.id || n.getAttribute("aria-label")));
-    expect(order).toEqual(["needs-you", "Today's numbers", "up-next", "quick-actions"]);
+    const order = await page.evaluate(() => [...document.querySelectorAll("#needs-you, [aria-label=\"Today’s numbers\"], #up-next, #quick-actions")].map((n) => n.id || n.getAttribute("aria-label")));
+    expect(order).toEqual(["needs-you", "Today’s numbers", "up-next", "quick-actions"]);
     await page.waitForFunction(() => !document.querySelector(".skeleton"));
     await page.screenshot({ path: shot("cafe-390"), fullPage: true });
     await bar.getByRole("button", { name: "More" }).click();

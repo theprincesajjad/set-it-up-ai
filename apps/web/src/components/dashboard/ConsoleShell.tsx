@@ -2,9 +2,11 @@
 import {
   Activity, BarChart3, Building2, ClipboardList, Filter, HeartPulse, Sparkles, MessageCircle, Coins, FileText, Flag, Footprints, Gauge, History, KanbanSquare, LayoutDashboard, MapPinned, Package, PlusCircle, Rocket, Store, Users, CreditCard, Globe, FlaskConical, type LucideIcon,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useMemo, type ReactNode } from "react";
 import type { authApi, MessageKey } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
+import { useHeadingTitle } from "@/lib/dashboard/useHeadingTitle";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { AccountMenu } from "./AccountMenu";
 import type { CommandSearch } from "./CommandMenu";
@@ -103,11 +105,15 @@ const NAV: Record<ConsoleKind, ConsoleSection[]> = {
   ],
 };
 
+/** The tab suffix: the same names as each console layout's metadata template. */
+const CONSOLE_TAB: Record<ConsoleKind, string> = { rep: "Rep console", admin: "Admin", bia: "BIA" };
 const TITLE: Record<ConsoleKind, MessageKey> = { rep: "shell.console.rep", admin: "shell.console.admin", bia: "shell.console.bia" };
 
 /** Rep console / admin / BIA shell: the merchant dashboard's shell with a console name in place of the shop switcher. */
 export function ConsoleShell({ kind, me, children }: { kind: ConsoleKind; me: authApi.MeResponse; children: ReactNode }) {
   const { t } = useLocaleOrEnglish();
+  const pathname = usePathname() ?? "";
+  useHeadingTitle(CONSOLE_TAB[kind], [pathname]);
   const sections = NAV[kind].map((s) => ({
     key: s.key,
     label: t(s.label),

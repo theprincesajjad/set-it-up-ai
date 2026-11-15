@@ -53,7 +53,7 @@ export function buildGrid(slots: commerceApi.SlotDto[], tz: string, now: Date, d
 }
 
 export function hourLabel(h: number): string {
-  return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "am" : "pm"}`;
+  return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "a.m." : "p.m."}`;
 }
 
 /** "10:00 to 17:00" for a day of a location's hours, or "Closed". */

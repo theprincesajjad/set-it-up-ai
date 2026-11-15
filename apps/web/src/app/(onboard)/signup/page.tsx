@@ -21,10 +21,12 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   // The flow reads in the visitor's language (?lang=ur, the language cookie).
   const locale = await getLocale(sp);
   const me = await getMe();
+  // An owner who is already signed in sees their shop named on the first step (a second shop is allowed).
+  const firstShop = me?.merchants.find((m) => m.role === "owner" && m.status !== "closed") ?? null;
   return (
     <LocaleScope locale={locale}>
       <Suspense fallback={<div className="min-h-dvh bg-bg" />}>
-        <SignupWizard prefill={prefill} signedInName={me ? (me.user.name ?? me.user.email ?? "there") : null} />
+        <SignupWizard prefill={prefill} signedInName={me ? (me.user.name ?? me.user.email ?? "there") : null} signedInShop={firstShop ? { id: firstShop.merchantId, name: firstShop.name } : null} />
       </Suspense>
     </LocaleScope>
   );

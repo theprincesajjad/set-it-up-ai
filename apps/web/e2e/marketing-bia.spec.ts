@@ -193,7 +193,7 @@ test.describe("pricing", () => {
     for (const plan of ["free", "plus", "studio"]) await expect(page.locator(`#shops [data-plan=${plan}]`).first()).not.toContainText(/bookable calendar|per-chair/);
     await expect(page.locator("#booking-apps")).toHaveCount(0);
     await expect(page.getByTestId("booking-plans-link")).toHaveAttribute("href", "/pricing?for=booking#shops");
-    await expect(page.locator("#shops").getByRole("link", { name: "Start Service" })).toHaveAttribute("href", "/signup?plan=pro");
+    await expect(page.locator("#shops").getByRole("link", { name: "Start the Service plan" })).toHaveAttribute("href", "/signup?plan=pro");
     await expect(page.locator("#trades")).toContainText("Pharmacies");
     await expect(page.getByTestId("compare")).not.toHaveAttribute("open", "");
     await page.goto("/pricing?compare=1");

@@ -15,12 +15,12 @@ import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { cn } from "@/lib/cn";
 import { useAction, useApi, useNow } from "@/lib/dashboard/useApi";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatTime } from "@/lib/format";
 import { STATUS_LABEL, STATUS_TONE, guardLabel, languageName, toolLabel, waiting } from "@/lib/sales-agent/console";
 
 type View = "queue" | "all" | "rated_down" | "quality";
 const api = browserApi.admin.salesAgent;
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }).replace(/\./g, "").toLowerCase();
+const timeOf = (iso: string) => formatTime(iso);
 
 export default function SalesAgentPage() {
   const params = useSearchParams();

@@ -4,12 +4,12 @@ import type { networkApi } from "@ll/shared";
 const KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 const LABELS: Record<string, string> = { sun: "Sunday", mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday" };
 
-/** "17:30" → "5:30 pm", "09:00" → "9 am". */
+/** "17:30" → "5:30 p.m.", "09:00" → "9 a.m.". */
 export function hhmmToLabel(t: string): string {
   const [hS, mS] = t.split(":");
   const h = Number(hS);
   const m = Number(mS);
-  const suffix = h >= 12 && h < 24 ? "pm" : "am";
+  const suffix = h >= 12 && h < 24 ? "p.m." : "a.m.";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return m ? `${h12}:${String(m).padStart(2, "0")} ${suffix}` : `${h12} ${suffix}`;
 }
@@ -22,7 +22,7 @@ function localNow(tz: string, now = new Date()) {
   return { day: KEYS.indexOf(wd as (typeof KEYS)[number]), time: `${hh}:${mm}` };
 }
 
-/** "Open · closes 6 pm" / "Closed · opens 8 am" / null when hours aren't set. */
+/** "Open · closes 6 p.m." / "Closed · opens 8 a.m." / null when hours aren't set. */
 export function openStatus(hours: networkApi.OpeningHours | null | undefined, tz = "America/Toronto", now = new Date()): { open: boolean; label: string } | null {
   if (!hours || !Object.keys(hours).length) return null;
   const { day, time } = localNow(tz, now);

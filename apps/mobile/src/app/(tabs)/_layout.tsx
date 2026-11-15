@@ -190,8 +190,10 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
 }
 
 export default function TabsLayout() {
-  const { status } = useSession();
+  const { status, mode, user } = useSession();
   if (status === "signedOut") return <Redirect href="/welcome" />;
+  // A deep link into the tabs for an account that never finished "What’s your name?": finish it first.
+  if (mode !== "counter" && user && !user.name?.trim()) return <Redirect href="/name" />;
   return (
     <Tabs tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="map" />

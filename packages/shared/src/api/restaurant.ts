@@ -190,6 +190,8 @@ export const counterOrderBody = z.object({
         catalogItemId: z.uuid(),
         quantity: z.number().int().min(1).max(50),
         modifiers: z.array(z.object({ name: z.string().min(1), option: z.string().min(1) })).max(20).default([]),
+        /** Ids from the dish's `options` groups (size, spice, add-ons), as the public menu sends them. Prices come from the server. */
+        optionIds: z.array(z.string().min(1).max(40)).max(30).optional(),
       }),
     )
     .min(1)

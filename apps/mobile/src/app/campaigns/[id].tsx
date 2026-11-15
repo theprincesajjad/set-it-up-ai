@@ -52,7 +52,7 @@ export default function CampaignDetail() {
         <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none" }}>
           {cmp.name}
         </Text>
-        <Text variant="meta" color="fgMuted">{`${cmp.neighbourhood.name.toLowerCase()} · ${formatShortDateL(L, cmp.startsAt)}–${formatShortDateL(L, cmp.endsAt)}`}</Text>
+        <Text variant="meta" color="fgMuted">{`${cmp.neighbourhood.name} · ${formatShortDateL(L, cmp.startsAt)}–${formatShortDateL(L, cmp.endsAt)}`}</Text>
         {cmp.prize ? (
           <Text variant="bodyStrong" style={{ marginTop: 6 }}>
             {cmp.prize}

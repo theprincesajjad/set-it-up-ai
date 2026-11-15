@@ -182,7 +182,7 @@ export async function createFestivalDraft(ctx: AppContext, merchant: Merchant, a
   const start = entry.start;
   const scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null;
   // Owners review and schedule every send; nothing goes out overnight.
-  if (scheduledAt && inQuietHours(scheduledAt, merchant.timezone)) throw badRequest("We never send between 9 pm and 8 am. Pick a time between 8 am and 9 pm.");
+  if (scheduledAt && inQuietHours(scheduledAt, merchant.timezone)) throw badRequest("We never send between 9 p.m. and 8 a.m. Pick a time between 8 a.m. and 9 p.m.");
   const subject = fill(body.subject ?? template.subject, start);
 
   let messageId: string | null = null;

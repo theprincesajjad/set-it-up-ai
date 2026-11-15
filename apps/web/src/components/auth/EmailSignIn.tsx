@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { authApi } from "@ll/shared";
 import { browserApi, sessionApi } from "@/lib/api/browser";
 import { isApiError } from "@/lib/api/errors";
 import { staffHome } from "@/lib/auth/home";
 import { otpErrorMessage } from "@/lib/auth/otpErrors";
-import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { rememberLocale, useLocaleOrEnglish } from "@/lib/i18n/client";
+import { useHydrated } from "@/lib/useHydrated";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { OtpField } from "@/components/ui/OtpField";
@@ -20,19 +21,23 @@ const RESEND_SECONDS = 30;
 /**
  * Merchants, reps, admins and BIA managers: email + password, or a one-time email code, or "Forgot password?" (wave P): the emailed
  * code plus a new password, which signs them in. `initialMode="reset"` opens on the reset (/login?reset=1); `initialMode="code"` with
- * `initialEmail` opens on the emailed code (the link in a team invite, /login?mode=code&email=...).
+ * `initialEmail` opens on the emailed code (the link in a team invite, /login?mode=code&email=...); with `autoSend` the code is sent
+ * once on arrival, because the invite already said "we'll email you a code".
  */
 export function EmailSignIn({
   next,
   devAutofill,
   initialMode = "password",
   initialEmail = "",
+  autoSend = false,
 }: {
   next?: string | null;
   devAutofill?: boolean;
   initialMode?: "password" | "code" | "reset";
   initialEmail?: string;
+  autoSend?: boolean;
 }) {
+  const hydrated = useHydrated();
   const router = useRouter();
   const { t, locale } = useLocaleOrEnglish();
   const [mode, setMode] = useState<"password" | "code" | "reset">(initialMode);
@@ -61,18 +66,72 @@ export function EmailSignIn({
     } catch {
       me = null;
     }
+    // The language picked on the sign-in page (?lang=) follows the person into the dashboard: the layouts there read the cookie.
+    if (locale !== "en") rememberLocale(locale);
     router.push(staffHome(me, next));
     router.refresh();
   }
 
   async function sendCode(resend: boolean) {
-    const r = await browserApi.auth.emailOtpStart(email);
-    setCodeSent(true);
-    setDevCode(r.devCode ?? null);
-    setCode(devAutofill && r.devCode ? r.devCode : "");
-    setCooldown(RESEND_SECONDS);
-    setStatus(resend ? t("auth.otp.sent") : null);
+    try {
+      const r = await browserApi.auth.emailOtpStart(email);
+      setCodeSent(true);
+      setDevCode(r.devCode ?? null);
+      setCode(devAutofill && r.devCode ? r.devCode : "");
+      setCooldown(RESEND_SECONDS);
+      setStatus(resend ? t("auth.otp.sent") : null);
+    } catch (err) {
+      // A refresh on the code step asks again while the first code is still good: go to the code box instead of a "too fast" error.
+      const d = isApiError(err) && err.status === 429 ? (err.details as { reason?: string; codeStillValid?: boolean } | undefined) : undefined;
+      if (d?.reason === "otp_cooldown" && d.codeStillValid) {
+        setCodeSent(true);
+        setCode("");
+        setCooldown(Math.max(1, Math.ceil((isApiError(err) && err.retryAfter) || RESEND_SECONDS)));
+        setStatus(t("auth.otp.alreadySent"));
+        return;
+      }
+      throw err;
+    }
   }
+
+  // The invite link says "we'll email you a code", so it does: once, on arrival, and the person lands on the code box.
+  const autoSent = useRef(false);
+  useEffect(() => {
+    if (!autoSend || autoSent.current || initialMode !== "code" || !/^\S+@\S+\.\S+$/.test(initialEmail)) return;
+    autoSent.current = true;
+    // A refresh a few seconds later must not ask for a second code (the API would refuse it and the browser logs the failed request):
+    // remember when this tab last asked and go straight to the code box.
+    const key = `ll_invite_code_${initialEmail.toLowerCase()}`;
+    try {
+      const at = Number(window.sessionStorage.getItem(key) ?? 0);
+      const left = RESEND_SECONDS - Math.floor((Date.now() - at) / 1000);
+      if (at > 0 && left > 0) {
+        queueMicrotask(() => {
+          setCodeSent(true);
+          setCooldown(left);
+          setStatus(t("auth.otp.alreadySent"));
+        });
+        return;
+      }
+      window.sessionStorage.setItem(key, String(Date.now()));
+    } catch {
+      /* storage blocked: the API's cooldown answer still lands on the code box */
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBusy(true);
+    sendCode(false)
+      .catch((err) => {
+        // Nothing was sent: a refresh should try again, not claim a code is on its way.
+        try {
+          window.sessionStorage.removeItem(key);
+        } catch {
+          /* ignore */
+        }
+        setError(otpErrorMessage(err, t, locale));
+      })
+      .finally(() => setBusy(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function resend() {
     if (busy || cooldown > 0) return;
@@ -150,7 +209,7 @@ export function EmailSignIn({
       {noAccount ? (
         <Banner tone="danger">
           {t("auth.shop.noAccount", { email })}{" "}
-          <Link href="/signup" className="font-semibold underline underline-offset-2">
+          <Link href="/signup" className="relative after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-[''] font-semibold underline underline-offset-2">
             {t("auth.shop.noAccountLink")}
           </Link>
           .
@@ -161,7 +220,7 @@ export function EmailSignIn({
   const sentLine = (
     <p className="text-body text-fg-muted">
       {t("auth.shop.codeSentTo", { email })}{" "}
-      <button type="button" className="font-semibold text-fg underline underline-offset-2" onClick={changeEmail}>
+      <button type="button" className="relative after:absolute after:-inset-x-1 after:-inset-y-3.5 after:content-[''] font-semibold text-fg underline underline-offset-2" onClick={changeEmail}>
         {t("auth.shop.changeEmail")}
       </button>
     </p>
@@ -189,13 +248,13 @@ export function EmailSignIn({
           <>
             <OtpField value={code} onChange={setCode} label={t("auth.shop.codeLabel")} />
             {/* l10n-ok: development builds only */}
-            {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
+            {devCode && devAutofill ? <p dir="ltr" className="text-meta text-fg-muted text-start">Dev mode: code {devCode} filled in for you.</p> : null}
             <TextField label={t("auth.shop.newPassword")} type="password" autoComplete="new-password" hint={t("auth.shop.passwordHint")} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
           </>
         ) : (
           <TextField label={t("auth.shop.email")} type="email" autoComplete="email" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} />
         )}
-        <Button type="submit" size="lg" fullWidth loading={busy}>
+        <Button type="submit" size="lg" fullWidth loading={busy} disabled={!hydrated}>
           {codeSent ? t("auth.shop.setPassword") : t("auth.shop.emailCode")}
         </Button>
         {codeSent ? resendRow : null}
@@ -232,10 +291,10 @@ export function EmailSignIn({
         <>
           <OtpField value={code} onChange={setCode} label={t("auth.shop.codeLabel")} />
           {/* l10n-ok: development builds only */}
-          {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
+          {devCode && devAutofill ? <p dir="ltr" className="text-meta text-fg-muted text-start">Dev mode: code {devCode} filled in for you.</p> : null}
         </>
       ) : null}
-      <Button type="submit" size="lg" fullWidth loading={busy}>
+      <Button type="submit" size="lg" fullWidth loading={busy} disabled={!hydrated}>
         {mode === "password" ? t("auth.otp.signIn") : codeSent ? t("auth.otp.signIn") : t("auth.shop.emailCode")}
       </Button>
       {mode === "code" && codeSent ? resendRow : null}

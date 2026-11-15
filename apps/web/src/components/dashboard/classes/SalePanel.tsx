@@ -13,14 +13,14 @@ import { useAction } from "@/lib/dashboard/useApi";
 import { useLocale } from "@/lib/i18n/client";
 
 /** Sell a pack or an intro offer at the desk, paid by hand (cash, e-transfer or the card reader). Carries no platform fee. */
-export function SalePanel({ open, onClose, packs, onSaved, who }: { open: boolean; onClose: () => void; packs: classesApi.ProductDto[]; onSaved: () => void | Promise<void>; /** Selling to the person at the door: no phone to type. */ who?: { memberCode: string; label: string } | null }) {
+export function SalePanel({ open, onClose, packs, onSaved, who, prefill }: { open: boolean; onClose: () => void; packs: classesApi.ProductDto[]; onSaved: () => void | Promise<void>; /** Selling to the person at the door: no phone to type. */ who?: { memberCode: string; label: string } | null; /** Selling from a half-filled form elsewhere (Add a member): keep what was typed. */ prefill?: { phone?: string; name?: string; productId?: string } }) {
   const { api } = useMerchant();
   const { t } = useLocale();
   const toast = useToast();
   const act = useAction();
-  const [productId, setProductId] = useState("");
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
+  const [productId, setProductId] = useState(prefill?.productId ?? "");
+  const [phone, setPhone] = useState(prefill?.phone ?? "");
+  const [name, setName] = useState(prefill?.name ?? "");
   const [method, setMethod] = useState("cash");
   const pid = productId || packs[0]?.id || "";
   return (

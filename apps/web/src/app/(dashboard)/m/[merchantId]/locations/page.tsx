@@ -55,7 +55,7 @@ export default function LocationsPage() {
             </Button>
             {state.data?.items[0] ? (
               <Button size="sm" iconStart={Printer} href={`${base}/locations/kit?location=${state.data.items[0].id}`}>
-                Print QR kit
+                Print QR stand
               </Button>
             ) : null}
           </>
@@ -75,7 +75,11 @@ export default function LocationsPage() {
                       {l.name} {!l.active ? <Dot>Inactive</Dot> : null}
                     </h2>
                     <p className="text-meta text-fg-muted">
-                      {addressLine(l.address, l.city)}
+                      {l.address.trim()
+                        ? addressLine(l.address, l.city)
+                        : l.addressVisibility === "city"
+                          ? `City only: ${l.city}`
+                          : `Area only: ${(() => { const area = l.areaLabel ?? (l.postalCode ? l.postalCode.slice(0, 3) : ""); return [area, area.toLowerCase().includes(l.city.toLowerCase()) ? "" : l.city].filter(Boolean).join(", "); })()}`}
                     </p>
                     <p className="text-meta text-fg-muted">{hoursSummary(l.hours)}{l.phone ? ` · ${formatE164(l.phone)}` : ""}</p>
                     <div className="mt-3 flex max-w-[460px] items-center gap-2 rounded-input border border-line ps-3">
@@ -87,7 +91,7 @@ export default function LocationsPage() {
                           await navigator.clipboard?.writeText(l.joinUrl).catch(() => undefined);
                           toast("Join link copied");
                         }}
-                        className="inline-flex h-8 items-center gap-1.5 border-s border-line px-3 text-meta text-fg-muted hover:text-fg"
+                        className="inline-flex h-8 items-center gap-1.5 border-s border-line px-3 text-meta text-fg-muted hover:text-fg max-md:h-11"
                       >
                         <Copy aria-hidden className="size-3.5" /> Copy
                       </button>
@@ -96,7 +100,7 @@ export default function LocationsPage() {
                   <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
                     {d.items.length > 1 ? (
                       <Button variant="secondary" size="sm" href={`${base}/locations/kit?location=${l.id}`}>
-                        Print QR kit
+                        Print QR stand
                       </Button>
                     ) : null}
                     <Button variant="secondary" size="sm" onClick={() => setEdit({ id: l.id, name: l.name, address: l.address, city: l.city, postalCode: l.postalCode ?? "", phone: l.phone, hours: hoursDraft(l.hours) })}>

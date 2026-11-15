@@ -36,6 +36,7 @@ function Schedule() {
   const sessions = useApi(() => api.classes.sessions({ from: week.from, to: week.to }), [api, week.from, week.to], { pollMs: 60_000 });
   const types = useApi(() => api.classes.types(), [api]);
   const summary = useApi(() => api.classes.summary(), [api]);
+  const products = useApi(() => api.classes.products(), [api]);
   const filtered = (sessions.data?.items ?? []).filter((s) => women === "all" || s.womenOnly);
   const nums = weekNumbers(sessions.data?.items ?? []);
   const days = groupByDay(filtered);
@@ -50,8 +51,9 @@ function Schedule() {
         actions={
           manager ? (
             <>
-              <Button variant="secondary" iconStart={Settings} onClick={() => setSettings(true)}>Class rules</Button>
-              <Button iconStart={Plus} onClick={() => setAdding(true)}>Add class</Button>
+              <Button size="sm" variant="secondary" iconStart={Settings} onClick={() => setSettings(true)}>Class rules</Button>
+              {/* Empty: the card below carries the one primary. */}
+              {sessions.data?.items.length === 0 ? null : <Button size="sm" iconStart={Plus} onClick={() => setAdding(true)}>Add class</Button>}
             </>
           ) : undefined
         }
@@ -67,7 +69,7 @@ function Schedule() {
           <Segmented label="Show" value={women} onChange={setWomen} options={[{ value: "all", label: "All classes" }, { value: "women", label: "Women-only classes" }]} />
         </div>
       </div>
-      <StatBlock tiles
+      {sessions.data ? <StatBlock tiles
         label="This week"
         items={[
           { label: "Booked this week", value: nums.booked, caption: `of ${nums.capacity} spots` },
@@ -75,11 +77,16 @@ function Schedule() {
           { label: "On waitlists", dot: nums.waitlisted ? "accent" : undefined, value: nums.waitlisted, caption: nums.fullClasses ? `${nums.fullClasses} class${nums.fullClasses === 1 ? "" : "es"} full` : "No class is full" },
           { label: "Late cancels", value: summary.data?.lateCancelsThisWeek ?? 0, caption: "This calendar week" },
         ]}
-      />
+      /> : null}
+      {manager && days.length > 0 && products.data && !products.data.items.some((p) => p.active) ? (
+        <p className="rounded-input bg-bg-subtle px-4 py-3 text-meta text-fg-muted">
+          Nobody can book until you add a price. <Link href={`${base}/classes/offers`} className="text-fg underline underline-offset-2 focus-visible:focus-ring">Add a drop-in</Link>
+        </p>
+      ) : null}
       <ListAsync state={sessions} label="Loading classes" errorTitle="Couldn't load your classes.">
         {() =>
           days.length === 0 ? (
-            <EmptyState title="No classes this week" description="Add a class and repeat it weekly. Members can book it as soon as it is on the schedule." action={manager ? <Button onClick={() => setAdding(true)}>Add class</Button> : undefined} />
+            <EmptyState title={sessions.data?.items.length ? "No classes match" : "No classes this week"} description={sessions.data?.items.length ? "Show all classes to see this week's schedule." : "Add a class and repeat it weekly. Members can book it as soon as it is on the schedule. Add a drop-in price too, or nobody can book."} action={manager && !sessions.data?.items.length ? <Button iconStart={Plus} onClick={() => setAdding(true)}>Add your first class</Button> : undefined} />
           ) : (
             <div className="flex flex-col gap-6">
               {days.map((d) => (
@@ -116,7 +123,7 @@ function Schedule() {
           )
         }
       </ListAsync>
-      <AddClassPanel open={adding} onClose={() => setAdding(false)} types={types.data?.items ?? []} onSaved={async () => { await Promise.all([sessions.reload(), types.reload(), summary.reload()]); }} defaultDate={anchor} />
+      <AddClassPanel open={adding} onClose={() => setAdding(false)} types={types.data?.items ?? []} onSaved={async (firstDay) => { setAnchor(firstDay); await Promise.all([sessions.reload(), types.reload(), summary.reload()]); }} defaultDate={anchor} />
       <ClassSettingsPanel open={settings} onClose={() => setSettings(false)} />
     </div>
   );

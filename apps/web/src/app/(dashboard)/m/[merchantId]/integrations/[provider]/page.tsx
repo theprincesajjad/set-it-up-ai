@@ -25,13 +25,35 @@ export default function IntegrationDetailPage() {
   const state = useApi(() => api.integrations.get(provider), [api, provider]);
   return (
     <div className="flex flex-col gap-4">
-      <BackLink href={`${base}/integrations`}>Integrations</BackLink>
-      <Async state={state} fail={{ title: "Integration", back: { href: `${base}/integrations`, label: t("dash.integration.back") }, notFound: { title: t("dash.integration.gone.title"), description: t("dash.integration.gone.body") } }}>{(d) => <Settings d={d} onChange={(n) => state.setData(n)} />}</Async>
+      <BackLink href={`${base}/integrations`}>{t("dash.integration.list")}</BackLink>
+      <Async state={state} fail={{ title: t("dash.integration.one"), back: { href: `${base}/integrations`, label: t("dash.integration.back") }, notFound: { title: t("dash.integration.gone.title"), description: t("dash.integration.gone.body") } }}>{(d) => <Settings d={d} onChange={(n) => state.setData(n)} />}</Async>
     </div>
   );
 }
 
+/** A provider this shop has not connected: nothing to sync, disconnect or switch, so the page says so and sends them to where it is connected. */
+function NotConnected({ d }: { d: integrationsApi.IntegrationDetail }) {
+  const { base } = useMerchant();
+  const { t } = useLocaleOrEnglish();
+  return (
+    <>
+      <PageHeader flush title={d.name} description={<StatusDot domain="integration" status={d.status} />} />
+      <Panel>
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-meta text-fg-muted">{t("dash.integration.off.body")}</p>
+          <Button href={`${base}/integrations`}>{t("dash.integration.back")}</Button>
+        </div>
+      </Panel>
+    </>
+  );
+}
+
 function Settings({ d, onChange }: { d: integrationsApi.IntegrationDetail; onChange: (d: integrationsApi.IntegrationDetail) => void }) {
+  if (d.status === "not_connected") return <NotConnected d={d} />;
+  return <ConnectedSettings d={d} onChange={onChange} />;
+}
+
+function ConnectedSettings({ d, onChange }: { d: integrationsApi.IntegrationDetail; onChange: (d: integrationsApi.IntegrationDetail) => void }) {
   const { api, base, detail } = useMerchant();
   const router = useRouter();
   const toast = useToast();

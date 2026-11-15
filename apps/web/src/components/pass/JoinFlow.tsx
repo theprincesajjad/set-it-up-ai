@@ -18,7 +18,7 @@ import { ArrowUpRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Celebration } from "@/components/ui/Celebrate";
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { authApi, customerApi, networkApi, walletApi } from "@ll/shared";
 import { copy } from "@/copy/en-CA";
 import { otpErrorMessage } from "@/lib/auth/otpErrors";
@@ -28,7 +28,8 @@ import { isApiError } from "@/lib/api/errors";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { firstName, formatNumber, formatPoints, unitFor, withArticle } from "@/lib/format";
 import { unitCaption } from "@/lib/units";
-import { formatE164, toE164, validateNanp } from "@/lib/phone";
+import { formatE164, normalizeDigits, toE164, validateNanp } from "@/lib/phone";
+import { rewardNameIn } from "@/lib/i18n/rewardName";
 import { expiryLineL, howYouEarnL } from "@/lib/i18n/formatL";
 import { formatCurrency } from "@ll/shared";
 import { Banner } from "@/components/ui/Banner";
@@ -103,11 +104,19 @@ export interface JoinFlowProps {
   alsoHere?: { verticals: string[]; total: number } | null;
   /** Rendered under the brand row of the counter-QR page (the language switcher). */
   topSlot?: ReactNode;
+  /** A signed-in customer who already has this shop's card: the flow opens on their card ("Welcome back"), never on "Join". */
+  member?: customerApi.MembershipDto | null;
 }
 
 const RESEND_SECONDS = 30;
+/** How long a texted code stays good on our side of the screen (the API's own window is the same order of size). */
+const CODE_VALID_SECONDS = 300;
+const joinKey = (qr: string) => `ll.join.${qr}`;
 
-export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofill, merchantId, showHeader = true, autoFocus = true, deps = defaultJoinDeps, appStoreUrl, playStoreUrl, street, alsoHere, topSlot }: JoinFlowProps) {
+/** The clock, read only inside event handlers and effects (never while rendering). */
+const nowMs = () => Date.now();
+
+export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofill, merchantId, showHeader = true, autoFocus = true, deps = defaultJoinDeps, appStoreUrl, playStoreUrl, street, alsoHere, topSlot, member }: JoinFlowProps) {
   const { t, rich, locale } = useLocaleOrEnglish();
   const shop = info.merchant.name;
   const program = info.program;
@@ -115,7 +124,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   const unit = unitCaption(locale, 2, program?.terminology ?? "points");
   const consentText = translate(locale, "auth.consent.merchant", { shop, unit });
 
-  const [step, setStep] = useState<JoinStep>(signedIn ? "details" : "phone");
+  const [step, setStep] = useState<JoinStep>(member ? "joined" : signedIn ? "details" : "phone");
   const [digits, setDigits] = useState("");
   const [phoneTried, setPhoneTried] = useState(false);
   const [code, setCode] = useState("");
@@ -127,17 +136,79 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   const [error, setError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
-  const [result, setResult] = useState<customerApi.JoinResponse | null>(null);
+  const [result, setResult] = useState<customerApi.JoinResponse | null>(member ? { membership: member, created: false, bonusPoints: 0, referral: null } : null);
   const [userName, setUserName] = useState<string | null>(signedInName ?? null);
 
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  // Move focus to the new step's heading when the step changes, never on the first render: a signed-in visitor opens a shop page
-  // on the "details" step, and focusing it then scrolled the page past the shop's own header (wave-p).
-  const firstStep = useRef(step);
+  // The step's heading is announced (not focused): focusing it closed the phone keyboard and took the caret out of the code and name fields.
+  const standalone = !signedIn && !member && showHeader;
+  // The last number a code went to and when: "Change" then the same number again does not ask the server for a second text.
+  const sentRef = useRef<{ e164: string; at: number } | null>(null);
+  const storeKey = joinKey(info.qrCode);
+  const [restored, setRestored] = useState(false);
+
+  // A refresh in the middle keeps the number, the consent tick and the code step (never the code itself).
   useEffect(() => {
-    if (step !== "phone" && step !== firstStep.current) headingRef.current?.focus();
-    firstStep.current = "phone";
-  }, [step]);
+    try {
+      const raw = signedIn || member ? null : window.sessionStorage.getItem(storeKey);
+      const saved = raw ? (JSON.parse(raw) as { digits?: string; consent?: boolean; step?: string; sentAt?: number | null }) : null;
+      if (saved) {
+        const d = typeof saved.digits === "string" ? normalizeDigits(saved.digits) : "";
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (d) setDigits(d);
+        if (saved.consent === true) setConsent(true);
+        const at = typeof saved.sentAt === "number" ? saved.sentAt : null;
+        const phone = toE164(d);
+        if (saved.step === "code" && at && phone && nowMs() - at < CODE_VALID_SECONDS * 1000) {
+          sentRef.current = { e164: phone, at };
+          setResendIn(Math.max(0, RESEND_SECONDS - Math.floor((nowMs() - at) / 1000)));
+          setStep("code");
+        }
+      }
+    } catch {
+      /* storage blocked: the flow works without it */
+    }
+    setRestored(true);
+  }, [storeKey, signedIn, member]);
+
+  useEffect(() => {
+    if (!restored || signedIn || member) return;
+    try {
+      if (step === "phone" || step === "code") window.sessionStorage.setItem(storeKey, JSON.stringify({ digits, consent, step, sentAt: step === "code" ? (sentRef.current?.at ?? null) : null }));
+      else if (step === "joined") window.sessionStorage.removeItem(storeKey);
+    } catch {
+      /* storage blocked */
+    }
+  }, [restored, signedIn, member, step, digits, consent, storeKey]);
+
+  // Back and Forward move between the number and the code instead of leaving the page.
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const wantCode = (e.state as { llJoin?: string } | null)?.llJoin === "code";
+      setStep((s) => (s === "code" && !wantCode ? "phone" : s === "phone" && wantCode && sentRef.current && nowMs() - sentRef.current.at < CODE_VALID_SECONDS * 1000 ? "code" : s));
+      if (!wantCode) setCode("");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  function openCodeStep(at: number) {
+    sentRef.current = { e164: e164 ?? sentRef.current?.e164 ?? "", at };
+    setResendIn(Math.max(0, RESEND_SECONDS - Math.floor((nowMs() - at) / 1000)));
+    setStep("code");
+    try {
+      if ((window.history.state as { llJoin?: string } | null)?.llJoin !== "code") window.history.pushState({ ...(window.history.state ?? {}), llJoin: "code" }, "");
+    } catch {
+      /* no history API: Back leaves the page, which is the old behaviour */
+    }
+  }
+
+  function changeNumber() {
+    setCode("");
+    setError(null);
+    // Pop the code entry we pushed so Forward comes back to it; without one, just show the number step.
+    if ((window.history.state as { llJoin?: string } | null)?.llJoin === "code") window.history.back();
+    else setStep("phone");
+  }
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -147,7 +218,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
 
   const e164 = toE164(digits);
 
-  async function sendCode(e?: FormEvent) {
+  async function sendCode(e?: FormEvent, force = false) {
     e?.preventDefault();
     setPhoneTried(true);
     setError(null);
@@ -156,13 +227,20 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
       setError(t(validateNanp(digits) === "invalid" ? "auth.phone.invalid" : "auth.phone.incomplete"));
       return;
     }
+    // Same number, code still good (they tapped "Change" and changed their mind): back to the code step, no second text.
+    const prior = sentRef.current;
+    if (!force && prior && prior.e164 === e164 && nowMs() - prior.at < CODE_VALID_SECONDS * 1000) {
+      setCode("");
+      openCodeStep(prior.at);
+      return;
+    }
     setBusy(true);
     try {
       const r = merchantId ? await deps.otpStart(e164) : await deps.joinStart(info.qrCode, { phone: e164 });
       setDevCode(r.devCode ?? null);
       setCode(devAutofill && r.devCode ? r.devCode : "");
-      setResendIn(RESEND_SECONDS);
-      setStep("code");
+      sentRef.current = { e164, at: nowMs() };
+      openCodeStep(sentRef.current.at);
     } catch (err) {
       if (isApiError(err) && err.status === 400) setError(t("auth.phone.invalid"));
       else if (isApiError(err) && err.status === 404) setBanner(t("auth.err.qrInvalid"));
@@ -196,7 +274,12 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
       }
       setStep("details");
     } catch (err) {
-      setCode("");
+      // Only a wrong, used or locked code is cleared; a server fault, a rate limit or no signal keeps the six digits they typed.
+      const theirs = isApiError(err) && err.status >= 400 && err.status < 500 && err.status !== 429;
+      const closed = isApiError(err) && ((err.status === 429 && /wrong codes|new one/i.test(err.message)) || (err.code === "invalid_code" && /expire|used/i.test(err.message)));
+      if (theirs || closed) setCode("");
+      // "Tap Resend code for a new one" has to be true: a closed or expired code makes the button live.
+      if (closed) setResendIn(0);
       setError(otpErrorMessage(err, t, locale));
     } finally {
       setBusy(false);
@@ -205,7 +288,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
 
   async function resend() {
     setCode("");
-    await sendCode();
+    await sendCode(undefined, true);
   }
 
   async function doJoin(withConsent: boolean, newName: string | null, fromVerify = false) {
@@ -239,7 +322,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   }
 
   if (step === "joined" && result) {
-    return <Joined info={info} result={result} name={userName} deps={deps} appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />;
+    return <Joined embedded={!showHeader} info={info} result={result} name={userName} deps={deps} appStoreUrl={appStoreUrl} playStoreUrl={playStoreUrl} />;
   }
 
   const consentBox = (
@@ -280,18 +363,23 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
             {t("auth.join.textMe")}
           </Button>
         </form>
-        <p className="mt-3.5 text-center text-[12px] leading-[17px] text-fg-muted">
-          {t("auth.join.numberUse")}{" "}
-          <Link href="/legal/rewards" className="text-fg-muted underline">{t("auth.footer.rewards")}</Link> · <Link href="/legal/privacy" className="text-fg-muted underline">{t("auth.footer.privacy")}</Link>
+        <p className="mt-3.5 text-center text-[12px] leading-[17px] text-fg-muted">{t("auth.join.numberUse")}</p>
+        {/* The two links keep their own centred line, so the separator never starts a line of its own. */}
+        <p className="mt-1 flex flex-wrap justify-center gap-x-2 text-center text-[12px] leading-[17px] text-fg-muted">
+          <Link href="/legal/rewards" className="inline-flex min-h-11 items-center text-fg-muted underline focus-visible:focus-ring">{t("auth.footer.rewards")}</Link>
+          <span aria-hidden className="inline-flex items-center">·</span>
+          <Link href="/legal/privacy" className="inline-flex min-h-11 items-center text-fg-muted underline focus-visible:focus-ring">{t("auth.footer.privacy")}</Link>
         </p>
         {also ? (
-          <div className="mt-auto flex items-center gap-2.5 border-t border-line pt-4">
-            <div className="flex shrink-0 gap-0.5">
-              {alsoHere!.verticals.slice(0, 3).map((v, i) => (
-                <CategoryIcon key={i} vertical={v} size={26} />
-              ))}
+          <div className="mt-auto pt-6">
+            <div className="flex items-center gap-2.5 border-t border-line pt-4">
+              <div className="flex shrink-0 gap-0.5">
+                {alsoHere!.verticals.slice(0, 3).map((v, i) => (
+                  <CategoryIcon key={i} vertical={v} size={26} />
+                ))}
+              </div>
+              <span className="text-[13px] leading-[17px] text-fg-muted">{also}</span>
             </div>
-            <span className="text-[13px] leading-[17px] text-fg-muted">{also}</span>
           </div>
         ) : null}
       </div>
@@ -301,6 +389,8 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
   // wave-p: on the counter-QR page the code and name steps keep the first step's frame (brand row, gutter, the shop in its colour)
   // with a step count, so the three screens read as one short flow rather than a different page each time.
   const stepNo = step === "code" ? 2 : 3;
+  // One h1 per page: the shop page that embeds this flow already has the shop's name as its h1.
+  const Hn = showHeader ? "h1" : "h2";
   return (
     <div className={showHeader ? "-mx-4 -mt-4 flex min-h-[calc(100dvh-1px)] flex-col gap-6 px-6 pt-10 pb-[30px]" : "flex flex-col gap-6"}>
       {showHeader ? (
@@ -324,6 +414,8 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
       ) : null}
 
       {banner ? <Banner tone="warning">{banner}</Banner> : null}
+      {/* The new step is announced; focus stays on the field (the phone keyboard stays up, the caret is in the box). */}
+      <p role="status" aria-live="polite" className="sr-only">{step === "code" ? t("auth.join.enterCode") : step === "details" && needsName ? t("cust.join.nameTitle") : ""}</p>
 
       {step === "phone" ? (
         <form onSubmit={sendCode} noValidate className="flex flex-col gap-4">
@@ -349,23 +441,21 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           noValidate
           className="flex flex-col gap-4"
         >
-          <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none">
-            {t("auth.join.enterCode")}
-          </h1>
+          <Hn className="display text-large-title text-fg">{t("auth.join.enterCode")}</Hn>
           <p className="-mt-2 text-body text-fg-muted [&_bdi]:font-semibold [&_bdi]:text-fg [&_bdi]:tabular-nums">
             {rich("auth.otp.sentTo", { phone: formatPhone(digits) })}{" "}
-            <button type="button" className="font-semibold text-fg underline underline-offset-2" onClick={() => { setStep("phone"); setCode(""); setError(null); }}>
+            <button type="button" className="inline-flex min-h-11 items-center font-semibold text-fg underline underline-offset-2 focus-visible:focus-ring" onClick={changeNumber}>
               {t("auth.otp.change")}
             </button>
           </p>
           <OtpField tone="trade" value={code} onChange={(v) => { setCode(v); if (error) setError(null); }} onComplete={(c) => void verify(c)} error={error} disabled={busy} />
           {/* l10n-ok: development builds only (the API sends a devCode only outside production) */}
-          {devCode && devAutofill ? <p className="text-meta text-fg-muted">Dev mode: code {devCode} filled in for you.</p> : null}
+          {devCode && devAutofill ? <p dir="ltr" className="text-meta text-fg-muted text-start">Dev mode: code {devCode} filled in for you.</p> : null}
           <Button type="submit" variant="shop" size="lg" fullWidth loading={busy}>
             {t("auth.join.continue")}
           </Button>
           <div className="flex flex-col items-start gap-1">
-            <Button variant="ghost" size="sm" disabled={resendIn > 0 || busy} onClick={resend} className="-ms-3">
+            <Button variant="ghost" size="sm" disabled={resendIn > 0 || busy} onClick={resend} className="min-h-11">
               {resendIn > 0 ? t("auth.otp.resendIn", { time: `0:${String(resendIn).padStart(2, "0")}` }) : t("auth.otp.resend")}
             </Button>
             {resendIn === 0 ? <p className="text-meta text-fg-muted">{t("auth.join.stillNothing")}</p> : null}
@@ -376,9 +466,9 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
       {step === "details" || step === "joining" ? (
         <form onSubmit={submitDetails} noValidate className="flex flex-col gap-5">
           <div className="flex flex-col gap-1.5">
-            <h1 ref={headingRef} tabIndex={-1} className="display text-large-title text-fg outline-none">
+            <Hn className="display text-large-title text-fg">
               {needsName ? t("cust.join.nameTitle") : signedIn ? t("cust.join.oneTap", { name }) : t("auth.join.welcomeBack", { name })}
-            </h1>
+            </Hn>
             {needsName ? <p className="text-body text-fg-muted">{t("cust.join.nameSub", { shop })}</p> : null}
           </div>
           {needsName ? (
@@ -415,34 +505,48 @@ export function platform(): "ios" | "android" | "other" {
 }
 
 /** Step 4: show the counter. Balance, member QR, wallet pass, the app, nearby network shops. */
-function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info: networkApi.JoinInfoResponse; result: customerApi.JoinResponse; name: string | null; deps: JoinDeps; appStoreUrl?: string | null; playStoreUrl?: string | null }) {
+function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl, embedded = false }: { embedded?: boolean; info: networkApi.JoinInfoResponse; result: customerApi.JoinResponse; name: string | null; deps: JoinDeps; appStoreUrl?: string | null; playStoreUrl?: string | null }) {
   const { t, locale } = useLocaleOrEnglish();
   const m = result.membership;
   const program = m.program;
   const [card, setCard] = useState<customerApi.CardResponse | null>(null);
+  const [cardFailed, setCardFailed] = useState(false);
   const [nearby, setNearby] = useState<networkApi.ShopListItemDto[]>([]);
-  // Only rendered after the join completes (never server-rendered), so reading the UA here is safe.
-  const [os] = useState<"ios" | "android" | "other">(platform);
+  // Server-rendered now too (a member who scans again opens straight on their card), so the phone's kind is read after mount.
+  const [os, setOs] = useState<"ios" | "android" | "other">("other");
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOs(platform());
+  }, []);
   // Only a store with a configured listing gets a button; with none configured the whole "Get the app" label goes too.
   const showApp = (!!appStoreUrl && os !== "android") || (!!playStoreUrl && os !== "ios");
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // One h1 per page: the shop page that embeds this card already has the shop's name as its h1.
+  const Title = embedded ? "h2" : "h1";
 
-  useEffect(() => {
-    headingRef.current?.focus();
+  const loadCard = useCallback(() => {
+    setCardFailed(false);
     deps
       .card()
       .then((c) => {
         setCard(c);
         saveOfflineCard({ code: c.memberCode, qrSvg: c.qrSvg });
       })
-      .catch(() => undefined);
+      .catch(() => setCardFailed(true));
+  }, [deps]);
+
+  useEffect(() => {
+    // On the shop page the card sits mid-page: announce it without scrolling the page away from the shop.
+    headingRef.current?.focus({ preventScroll: embedded });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadCard();
     const { lat, lng } = info.location;
     if (lat != null && lng != null)
       deps
         .nearby({ lat, lng, radiusMetres: 2000, limit: 7 })
         .then((r) => setNearby(r.items.filter((s) => s.merchant.id !== info.merchant.id).slice(0, 6)))
         .catch(() => undefined);
-  }, [deps, info]);
+  }, [deps, info, loadCard, embedded]);
 
   const fname = firstName(name);
   const bonus = result.bonusPoints > 0 ? (locale === "en" ? formatPoints(result.bonusPoints, m.terminology, false) : unitText(t, program, result.bonusPoints)) : null;
@@ -456,14 +560,15 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
   const nums = stamps ? stampCardNumbers(m.balance, program!.stampGoal, m.nextReward?.pointsCost) : null;
   const g = nums?.goal ?? 0;
   const onCard = nums?.onCard ?? 0;
-  const rewardLabel = m.nextReward?.name ?? t("ui.reward").toLowerCase();
+  const nextName = m.nextReward ? rewardNameIn(locale, t, m.nextReward.name) : null;
+  const rewardLabel = nextName ?? t("ui.reward").toLowerCase();
   const stampLine = nums ? (nums.toGo <= 0 ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: nums.toGo, reward: locale === "en" ? withArticle(rewardLabel.charAt(0).toLowerCase() + rewardLabel.slice(1)) : rewardLabel })) : null;
   const pct = goal > 0 ? Math.min(100, Math.round((m.balance / goal) * 100)) : 0;
 
   return (
     <div className="flex flex-col gap-6 pt-2">
       {/* wave-q: joining is the moment: one burst in the shop's colours from the card (nothing under reduced motion). */}
-      <Celebration origin={{ x: 0.5, y: 0.22 }} tokens={["--trade", "--trade-soft", "--points", "--success"]} delay={350} />
+      {result.created ? <Celebration origin={{ x: 0.5, y: 0.22 }} tokens={["--trade", "--trade-soft", "--points", "--success"]} delay={350} /> : null}
       <div className="flex flex-col gap-3">
         {/* The pass, in the shop's colour (brand colour, else its trade): the moment they join is the card they now carry. */}
         <BrandPassCard
@@ -480,10 +585,18 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
           }
         >
           <div className="flex flex-col gap-1">
-            <h1 ref={headingRef} tabIndex={-1} className="text-[30px] font-bold leading-9 tracking-[-0.022em] outline-none" role="status">
-              {bonus && !fname ? t("auth.joined.bonusTitle", { bonus, shop: info.merchant.name.replace(/\.$/, "") }) : fname ? t("auth.joined.title", { name: fname }) : t("auth.joined.plain")}
-            </h1>
-            {bonus && fname ? <p className="text-body">{t("auth.joined.bonusLine", { bonus, shop: info.merchant.name.replace(/\.$/, "") })}</p> : null}
+            <Title ref={headingRef} tabIndex={-1} className="text-[30px] font-bold leading-9 tracking-[-0.022em] outline-none" role="status">
+              {!result.created
+                ? fname
+                  ? t("auth.join.welcomeBack", { name: fname })
+                  : t("auth.joined.welcomeBackPlain")
+                : bonus && !fname
+                  ? t(result.bonusPoints === 1 ? "auth.joined.bonusTitleOne" : "auth.joined.bonusTitle", { bonus, shop: info.merchant.name.replace(/\.$/, "") })
+                  : fname
+                    ? t("auth.joined.title", { name: fname })
+                    : t("auth.joined.plain")}
+            </Title>
+            {result.created && bonus && fname ? <p className="text-body">{t(result.bonusPoints === 1 ? "auth.joined.bonusLineOne" : "auth.joined.bonusLine", { bonus, shop: info.merchant.name.replace(/\.$/, "") })}</p> : null}
           </div>
           {stamps ? (
             <>
@@ -498,7 +611,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
                   <div className="h-full rounded-full bg-trade-pass-text" style={{ width: `${pct}%` }} />
                 </div>
               ) : null}
-              {m.nextReward ? <p className="text-body-strong">{stampsToGoT(t, locale, m.nextReward.pointsNeeded, m.nextReward.name)}</p> : null}
+              {m.nextReward && nextName ? <p className="text-body-strong">{stampsToGoT(t, locale, m.nextReward.pointsNeeded, nextName)}</p> : null}
             </div>
           )}
         </BrandPassCard>
@@ -511,10 +624,19 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
       {os !== "other" ? wallet : null}
 
       {/* wave-q: the rest rises in under the card, one after the other (kit BlurFade; shown as is under reduced motion). */}
-      <Reveal delay={0.25}>
+      <Reveal delay={0.25} still={!result.created}>
         <section aria-label={t("auth.joined.cardLabel")} className="flex flex-col items-center gap-3 rounded-card border border-line bg-card px-4 py-6 shadow-card clear:card-clear clear:border-0">
           <p className="text-body-strong text-fg">{t("auth.joined.showStaff")}</p>
-          {card ? <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={220} caption={t("auth.joined.brightness")} /> : <div className="skeleton aspect-square w-[240px] rounded-card" aria-busy="true" />}
+          {card ? (
+            <MemberQr memberCode={card.memberCode} svg={card.qrSvg} size={220} caption={t("auth.joined.brightness")} />
+          ) : cardFailed ? (
+            <div role="alert" className="flex min-h-[240px] w-full flex-col items-center justify-center gap-3 text-center">
+              <p className="text-body text-fg">{t("auth.joined.cardFail")}</p>
+              <Button variant="secondary" size="md" onClick={loadCard}>{t("sh.act.tryAgain")}</Button>
+            </div>
+          ) : (
+            <div className="skeleton aspect-square w-[240px] rounded-card" aria-busy="true" />
+          )}
         </section>
       </Reveal>
 
@@ -546,7 +668,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl }: { info:
       ) : null}
 
       {nearby.length ? (
-        <Reveal delay={0.35}>
+        <Reveal delay={0.35} still={!result.created}>
         <div className="flex flex-col gap-3">
           <h2 id="also-on" className="text-headline text-fg">
             {t("auth.joined.nearby")}

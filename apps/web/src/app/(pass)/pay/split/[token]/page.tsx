@@ -5,6 +5,7 @@ import { publicServerApi } from "@/lib/api/server";
 import { PassTopBar } from "@/components/pass/PassChrome";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getT } from "@/lib/i18n/server";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,6 +22,8 @@ export default async function SplitPayPage({ params, searchParams }: Props) {
   const data = await publicServerApi()
     .public.split(token)
     .catch((e: unknown) => linkKind(e));
+  // A link that was never issued (or was copied wrong) is a real 404, not a 200 with an apology.
+  if (data === "gone") notFound();
   return (
     <LocaleScope locale={locale} trade="other">
       <div className="flex flex-col gap-4 pb-8">

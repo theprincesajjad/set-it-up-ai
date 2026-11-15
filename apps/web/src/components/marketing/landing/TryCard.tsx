@@ -72,6 +72,9 @@ interface TryState {
   shown: string;
 }
 
+/** This tab's card maker state (name, trade, colour), so Back from sign-up does not empty it. */
+const TRY_STORE = "ll_try_card";
+
 const Ctx = createContext<TryState | null>(null);
 const useTry = () => {
   const c = useContext(Ctx);
@@ -94,6 +97,32 @@ export function TryProvider({ trades, colours, copy, children }: { trades: TryTr
     if (colourAt >= 0 && colours[colourAt]?.base === next.colour.base) setColourAt(-1);
     setRun((n) => n + 1);
   };
+  // Back from sign-up (or a refresh), the card is as the owner left it: name, trade and colour live in this tab's session storage. Read
+  // once after mount (the server HTML is the empty card), written on every change after that.
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      const v = JSON.parse(window.sessionStorage.getItem(TRY_STORE) ?? "null") as { name?: unknown; trade?: unknown; colour?: unknown } | null;
+      /* eslint-disable react-hooks/set-state-in-effect -- browser-only state, readable only after mount */
+      if (typeof v?.name === "string") setName(v.name.slice(0, 40));
+      if (typeof v?.trade === "string" && trades.some((t) => t.key === v.trade)) setTradeKey(v.trade);
+      if (typeof v?.colour === "number" && Number.isInteger(v.colour) && v.colour >= -1 && v.colour < colours.length) setColourAt(v.colour);
+      /* eslint-enable react-hooks/set-state-in-effect */
+    } catch {
+      // storage blocked or unreadable: the empty card
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, on mount
+  useEffect(() => {
+    if (!restored.current) {
+      restored.current = true;
+      return;
+    }
+    try {
+      window.sessionStorage.setItem(TRY_STORE, JSON.stringify({ name, trade: tradeKey, colour: colourAt }));
+    } catch {
+      // storage blocked: the card simply starts empty next time
+    }
+  }, [name, tradeKey, colourAt]);
   // Shop tiles lower on the page ("Make a café card") preset the trade, then the link's #try does the scrolling.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {

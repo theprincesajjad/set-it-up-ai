@@ -21,7 +21,7 @@ import { DateStrip } from "./DateStrip";
 type Appt = appointmentsApi.MyAppointmentDto;
 
 /** One appointment: when, who, what it costs, the policy in words, add to calendar, change the time, cancel. */
-export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug: string; /** What a held booking still needs: the deposit to pay or the card to save. */ pay?: { deposit: { paymentIntentId: string; clientSecret: string; amountCents: number } | null; setup: { setupIntentId: string; clientSecret: string } | null } }) {
+export function ManageAppointment({ initial, slug, pay, justBooked = false }: { initial: Appt; slug: string; /** Opened from the booking flow (?booked=1): the confirmation stays on screen after a refresh or Back. */ justBooked?: boolean; /** What a held booking still needs: the deposit to pay or the card to save. */ pay?: { deposit: { paymentIntentId: string; clientSecret: string; amountCents: number } | null; setup: { setupIntentId: string; clientSecret: string } | null } }) {
   const errText = useErrorText();
   const { t, money, date, time } = useFmt();
   const [appt, setAppt] = useState(initial);
@@ -123,6 +123,7 @@ export function ManageAppointment({ initial, slug, pay }: { initial: Appt; slug:
       <ShopHead shop={m} href={`/shops/${encodeURIComponent(m.slug)}`} />
       {/* wave-p: one ticket in the shop's colour: when (the thing people come here to check), what, with whom, where. */}
       <Heading>{t("bk.manage.title")}</Heading>
+      {justBooked && live && !note ? <Banner tone="success">{t("bk.done.title")}. {t("cust.bk.done.sub")}</Banner> : null}
       {note ? <Banner tone={note.tone}>{note.text}</Banner> : null}
       <section aria-label={t("bk.manage.title")} data-testid="appt-ticket" {...(m.brandColor ? shopColorProps({ brandColor: m.brandColor, vertical: null }) : {})} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
         <div className="flex flex-col gap-1.5">

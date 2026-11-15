@@ -26,8 +26,9 @@ describe("where people land after signing in", () => {
 describe("OTP rate-limit copy", () => {
   const t = translator("en");
   it("tells the wrong-code lockout and the hourly cap apart", () => {
-    expect(otpErrorMessage(new ApiError(429, "rate_limited", "Too many wrong codes. Request a new one."), t, "en")).toMatch(/closed that code.*Resend code/);
-    expect(otpErrorMessage(new ApiError(429, "rate_limited", "Too many codes requested. Try again in an hour."), t, "en")).toMatch(/in an hour/);
+    expect(otpErrorMessage(new ApiError(429, "rate_limited", "Too many wrong codes. Request a new one.", { reason: "otp_locked" }), t, "en")).toMatch(/closed that code.*Resend code/);
+    // The API names the limit (details.reason); its English sentence is never matched.
+    expect(otpErrorMessage(new ApiError(429, "rate_limited", "Too many codes requested. Try again in an hour.", { reason: "otp_target_cap" }), t, "en")).toMatch(/hour/);
     expect(otpErrorMessage(new ApiError(429, "rate_limited", "Too many requests"), t, "en")).not.toMatch(/10 minutes/);
   });
 });

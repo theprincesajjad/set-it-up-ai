@@ -3,6 +3,7 @@ import { Image, Platform, StyleSheet, View, type TextStyle } from "react-native"
 import { useLocale } from "../lib/i18n";
 import { disp, ui, useTheme } from "../theme";
 import { CategoryIcon } from "./CategoryIcon";
+import { dirStyle } from "./direction";
 import { shadow } from "./shadow";
 import { Text } from "./Text";
 
@@ -35,12 +36,12 @@ export function PlaceBubble({ name, subtitle, accent, vertical, category, photoU
   const { isRtl } = useLocale();
   const s = selected ? 46 : size;
   // The pin sits on a geographic point: the bubble/label geometry never mirrors, only the label text runs in the reader's direction.
-  const run: TextStyle = { writingDirection: isRtl ? "rtl" : "ltr", ...({ direction: isRtl ? "rtl" : "ltr" } as object) };
+  const run: TextStyle = { writingDirection: isRtl ? "rtl" : "ltr" };
   const img = selected ? 30 : Math.round(size * (24 / 36));
   // Halo so road labels never read through the name; the web preview stacks it in CSS (theme/webStyles.web.ts).
   const halo: TextStyle = { textShadowColor: c.bg, textShadowRadius: 3, textShadowOffset: { width: 0, height: 0 } };
   return (
-    <View {...({ dir: "ltr" } as object)} style={[styles.row, { direction: "ltr" }, side === "left" ? { flexDirection: "row-reverse" } : null]} pointerEvents="none">
+    <View {...({ dir: "ltr" } as object)} style={[styles.row, dirStyle("ltr"), side === "left" ? { flexDirection: "row-reverse" } : null]} pointerEvents="none">
       <View
         style={[
           styles.bubble,
@@ -63,7 +64,7 @@ export function PlaceBubble({ name, subtitle, accent, vertical, category, photoU
       {bare ? null : (
         <View style={[styles.label, side === "left" ? { alignItems: "flex-end" } : null]}>
           <Text style={[disp(13, 700, 15), halo, run, { textAlign: side === "left" ? "right" : "left" }]} numberOfLines={2}>
-            {name.toLowerCase()}
+            {name}
           </Text>
           {subtitle ? (
             <Text

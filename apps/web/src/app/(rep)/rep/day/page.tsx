@@ -181,8 +181,8 @@ function StreetDay() {
         description={
           <span className="flex flex-wrap items-center gap-2">
             <span>{day.area.name} · {c.left} left · odd side up, even side back</span>
-            {!online ? <span className="inline-flex items-center gap-1 rounded-full bg-location/10 px-2 py-0.5 text-caption font-medium text-location"><WifiOff aria-hidden className="size-3" />Offline</span> : null}
-            {queue.length ? <span role="status" className="rounded-full bg-location/10 px-2 py-0.5 text-caption font-medium text-location">{queue.length} to sync</span> : null}
+            {!online ? <span className="inline-flex items-center gap-1 rounded-full bg-info-soft px-2 py-0.5 text-caption font-medium text-info-text"><WifiOff aria-hidden className="size-3" />Offline</span> : null}
+            {queue.length ? <span role="status" className="rounded-full bg-info-soft px-2 py-0.5 text-caption font-medium text-info-text">{queue.length} to sync</span> : null}
           </span>
         }
         actions={<Button size="sm" variant="secondary" href="/rep/leads">Pipeline</Button>}

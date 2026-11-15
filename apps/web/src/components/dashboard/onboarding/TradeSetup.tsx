@@ -119,7 +119,7 @@ export function TradeSetup({ family, done }: { family: TradeSetupFamily; done: b
         </>
       ) : null}
       <Row title="Then your first stamp">
-        <Button variant="ghost" size="sm" href={`${base}/setup?step=first_stamp`}>Skip to your first stamp</Button>
+        <Button variant="secondary" size="sm" href={`${base}/setup?step=first_stamp`}>Skip to your first stamp</Button>
       </Row>
     </ul>
   );

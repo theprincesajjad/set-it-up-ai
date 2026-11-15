@@ -1,6 +1,7 @@
 import type { restaurantApi } from "@ll/shared";
 import { translator, type MessageKey } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { errorMessage, isApiError } from "../../api/client";
@@ -104,9 +105,12 @@ export default function Kitchen() {
           <Chip key={s} large label={s === "all" ? t("kitchen.all") : stationWord(s)} selected={station === s} onPress={() => setStation(s)} />
         ))}
       </ScrollView>
-      {q.error && !q.data ? (
+      {q.error && !q.data && isApiError(q.error) && q.error.status === 402 ? (
+        // The plan does not include the kitchen display: retrying cannot help, so say so and point back to the counter.
+        <EmptyState icon={UtensilsCrossed} title={t("mc.menu.kitchen")} body={t("mc.kdsPro")} actionLabel={t("err.action.counter")} onAction={() => router.replace("/counter")} />
+      ) : q.error && !q.data ? (
         <Banner variant="danger" actionLabel={t("counter.tryAgain")} onAction={() => void q.refetch()}>
-          {isApiError(q.error) && q.error.status === 402 ? t("mc.kdsPro") : isApiError(q.error) && q.error.isNetwork ? t("auth.err.network") : t("mc.ticketsFail")}
+          {isApiError(q.error) && q.error.isNetwork ? t("auth.err.network") : t("mc.ticketsFail")}
         </Banner>
       ) : !q.data ? (
         <Skeleton height={220} radius={16} />

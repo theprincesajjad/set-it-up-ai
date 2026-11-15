@@ -183,7 +183,7 @@ export function CampaignDetail({ id, base, isAdmin, neighbourhoods }: { id: stri
               <ul className="divide-y divide-line">
                 {x.merchants.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-2 py-2">
-                    <Link href={`/shops/${m.slug}`} className="text-body text-fg hover:underline">{m.name}</Link>
+                    <Link href={`/shops/${m.slug}`} className="inline-flex min-h-11 items-center text-body text-fg hover:underline max-md:-my-2">{m.name}</Link>
                     {editable || isAdmin ? <IconButton icon={Trash2} label={`Remove ${m.name}`} size={40} onClick={async () => { const n = await act.run(() => browserApi.campaigns.removeMerchant(x.id, m.id)); if (n) c.setData(n); }} /> : null}
                   </li>
                 ))}

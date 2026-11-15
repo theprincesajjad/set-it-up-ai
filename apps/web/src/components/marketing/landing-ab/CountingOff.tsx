@@ -1,3 +1,4 @@
+import { InlineScript } from "@/components/ui/ThemeStyle";
 import { COUNTING_OFF_ID } from "@/lib/marketing/landing-off";
 
 /** English only, like the notice it answers (LandingMeasure). */
@@ -14,7 +15,7 @@ export function CountingOff() {
       <p id={COUNTING_OFF_ID} role="status" className="mx-auto hidden max-w-5xl scroll-mt-28 px-4 py-5 text-center text-sm text-muted-foreground target:block" data-landing-off suppressHydrationWarning>
         {COUNTING_OFF_TEXT}
       </p>
-      <script dangerouslySetInnerHTML={{ __html: COUNTING_OFF_SCROLL_SCRIPT }} />
+      <InlineScript html={COUNTING_OFF_SCROLL_SCRIPT} />
     </>
   );
 }

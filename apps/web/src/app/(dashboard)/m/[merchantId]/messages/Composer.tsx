@@ -21,7 +21,7 @@ type When = "now" | "at" | "pick";
  * New message (cafes-retail.md 7.5): who gets it (chips with the count that can be reached on this channel), how, the text
  * with the footer the server adds shown read-only, when, a test to yourself. Text is the default when SMS is on.
  */
-export function Composer({ onSent }: { onSent?: () => void }) {
+export function Composer({ onSent, standalone }: { onSent?: () => void; /** On its own page, under a "New message" page title: the card keeps its name for screen readers and does not say it twice. */ standalone?: boolean }) {
   const { api, base, detail, enabled } = useMerchant();
   const router = useRouter();
   const params = useSearchParams();
@@ -180,7 +180,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
         type="button"
         aria-pressed={on}
         onClick={() => chosen(a.key)}
-        className={cn("h-9 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+        className={cn("h-11 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
       >
         {chipLabel(a, counts[a.key] ?? null, on, channel)}
       </button>
@@ -193,13 +193,13 @@ export function Composer({ onSent }: { onSent?: () => void }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
       <section aria-labelledby="new-message-h" className="flex min-w-0 flex-col gap-4 rounded-card bg-card shadow-card p-6">
-        <h2 id="new-message-h" className="text-[18px] font-semibold text-fg">New message</h2>
+        <h2 id="new-message-h" className={cn("text-[18px] font-semibold text-fg", standalone && "sr-only")}>New message</h2>
         <div className="flex flex-col gap-2.5">
           <p id="who-l" className="text-[14px] font-medium text-fg">Who gets it</p>
           <div role="group" aria-labelledby="who-l" className="flex flex-wrap gap-2">
             {AUDIENCES.filter((a) => !a.more || more || a.key === aud).map(chip)}
             {!more ? (
-              <button type="button" onClick={() => setMore(true)} className="h-9 rounded-full px-3 text-[13px] font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">
+              <button type="button" onClick={() => setMore(true)} className="h-11 rounded-full px-3 text-[13px] font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">
                 More audiences
               </button>
             ) : null}
@@ -207,7 +207,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
         </div>
         <div className="flex flex-col gap-2.5">
           <p id="how-l" className="text-[14px] font-medium text-fg">How</p>
-          <div role="radiogroup" aria-labelledby="how-l" className="inline-flex self-start rounded-[12px] bg-bg-subtle p-1">
+          <div role="radiogroup" aria-labelledby="how-l" className="inline-flex self-start rounded-[12px] bg-bg-subtle p-1 max-md:p-0">
             {channels.map((c) => (
               <button
                 key={c.value}
@@ -218,7 +218,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
                   setChannel(c.value);
                   setDraftId(null);
                 }}
-                className={cn("h-9 rounded-[9px] px-4 text-[14px] transition-colors focus-visible:focus-ring", channel === c.value ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted hover:text-fg")}
+                className={cn("h-11 rounded-[9px] px-4 text-[14px] transition-colors focus-visible:focus-ring", channel === c.value ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted hover:text-fg")}
               >
                 {c.label}
               </button>
@@ -286,7 +286,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
                 role="radio"
                 aria-checked={when === o.v}
                 onClick={() => setWhen(o.v)}
-                className={cn("h-9 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", when === o.v ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                className={cn("h-11 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", when === o.v ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
               >
                 {o.label}
               </button>
@@ -313,7 +313,7 @@ export function Composer({ onSent }: { onSent?: () => void }) {
           </div>
         </div>
         <div>
-          <button type="button" disabled={busy} onClick={() => void submit("draft")} className="text-[13px] font-medium text-fg-muted underline underline-offset-4 hover:text-fg focus-visible:focus-ring">
+          <button type="button" disabled={busy} onClick={() => void submit("draft")} className="inline-flex min-h-11 items-center text-[13px] font-medium text-fg-muted underline underline-offset-4 hover:text-fg focus-visible:focus-ring">
             Save as a draft
           </button>
         </div>

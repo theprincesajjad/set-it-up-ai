@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { Switch } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { focusFirstInvalid } from "@/lib/api/useErrorText";
 import { useAction } from "@/lib/dashboard/useApi";
 import { REMIND_BEFORE_DAYS } from "@/lib/dashboard/rebooking"; // phase-pro: p3
 import { useLocaleOrEnglish } from "@/lib/i18n/client"; // phase-pro: p3
@@ -92,7 +93,7 @@ export function ServiceEditor({
 
   async function save() {
     setTried(true);
-    if (Object.values(errs).some(Boolean)) return;
+    if (Object.values(errs).some(Boolean)) return focusFirstInvalid();
     const translations: Record<string, { name: string }> = {};
     for (const [k, v] of Object.entries(tr)) if (v.trim()) translations[k] = { name: v.trim() };
     const body = {
@@ -130,11 +131,11 @@ export function ServiceEditor({
         <>
           {service ? <Button variant="ghost" onClick={() => setDel(true)} className="me-auto">Delete</Button> : null}
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button loading={act.busy} onClick={save}>{service ? "Save" : `Add ${label}`}</Button>
+          <Button loading={act.busy} onClick={() => void save()}>{service ? "Save" : `Add ${label}`}</Button>
         </>
       }
     >
-      <div className="flex flex-col gap-4">
+      <form className="flex flex-col gap-4" noValidate onSubmit={(e) => { e.preventDefault(); void save(); }}>
         {pharmacy ? (
           <div role="group" aria-label="Appointment type presets" className="flex flex-wrap gap-2" data-testid="pharmacy-presets">
             {PHARMACY_SERVICE_PRESETS.map((p) => (
@@ -158,7 +159,7 @@ export function ServiceEditor({
             <TextField label="Clean-up time after" inputMode="numeric" suffix="min" value={buffer} onChange={(e) => setBuffer(e.target.value.replace(/\D/g, ""))} />
           </div>
         ) : null}
-        {pharmacy ? null : <Select label="Group" value={category} onChange={(e) => setCategory(e.target.value)} hint="Hair, Threading, Nails. A group set to earn no points keeps that rule." options={[{ value: "", label: "No group" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />}
+        {pharmacy ? null : <Select label="Group" value={category} onChange={(e) => setCategory(e.target.value)} hint="Groups come from Rewards. A group set to earn no points keeps that rule." options={[{ value: "", label: "No group" }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />}
         {pharmacy ? null : <TextField label="Rebook after" optionalLabel inputMode="numeric" suffix="days" hint={rebook ? tRb("rb.service.sentence", { days: REMIND_BEFORE_DAYS }) /* phase-pro: p3 */ : "The usual gap between visits. Used for rebooking nudges."} value={rebook} onChange={(e) => setRebook(e.target.value.replace(/\D/g, ""))} />}
         {pharmacy ? null : <Switch label="Charge tax" description="Added at checkout when your shop is registered for GST/HST. Turn it off for a service with no tax." checked={taxable} onChange={setTaxable} />}
         <Switch label={active ? "Bookable" : "Hidden from booking"} checked={active} onChange={setActive} />
@@ -181,7 +182,8 @@ export function ServiceEditor({
           <TextField label="Punjabi" optionalLabel value={tr.pa} onChange={(e) => setTr({ ...tr, pa: e.target.value })} />
         </fieldset>
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      </div>
+        <button type="submit" hidden aria-hidden tabIndex={-1} />
+      </form>
       <ConfirmDialog
         open={del}
         onClose={() => setDel(false)}

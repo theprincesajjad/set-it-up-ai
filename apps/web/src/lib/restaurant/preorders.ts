@@ -1,5 +1,6 @@
 /** Pure helpers for the Pre-orders screen: caps in words, pickup windows, the shopping line and channel counts. */
 import { restaurantApi, type commerceApi } from "@ll/shared";
+import { clockText } from "@/lib/format";
 
 const DAY_NAMES: Record<restaurantApi.Weekday, string> = { mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" };
 
@@ -38,16 +39,16 @@ export function depositInWords(items: Pick<commerceApi.CatalogItemDto, "depositB
   return `${label}, balance at pickup`;
 }
 
-/** "11 am to 6 pm" (or just "6 pm") for the first and last pickup of a dish on a day. */
+/** "11 a.m. to 6 p.m." (or just "6 p.m.") for the first and last pickup of a dish on a day. */
 export function pickupsInWords(first: string, last: string): string {
-  const f = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }).format(new Date(iso)).replace(/[  ]/g, " ").replace(/\./g, "").toLowerCase().replace(":00", "");
+  const f = (iso: string) => clockText(new Date(iso));
   return f(first) === f(last) ? f(first) : `${f(first)} to ${f(last)}`;
 }
 
-/** "4:30 pm" for a fire time. */
+/** "4:30 p.m." for a fire time. */
 export function fireInWords(iso: string | null): string {
   if (!iso) return "–";
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }).format(new Date(iso)).replace(/[  ]/g, " ").replace(/\./g, "").toLowerCase();
+  return clockText(new Date(iso));
 }
 
 /** "2 phone, 4 web link, 3 WhatsApp". */

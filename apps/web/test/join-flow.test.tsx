@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { customerApi, networkApi } from "@ll/shared";
 import { JoinFlow, type JoinDeps } from "@/components/pass/JoinFlow";
 import { ApiError } from "@/lib/api/errors";
@@ -50,6 +50,9 @@ async function enterPhone(digits = "4165550123") {
 }
 
 describe("<JoinFlow> (counter QR join)", () => {
+  // The flow keeps the number and step in sessionStorage so a refresh does not lose them; every test starts clean.
+  beforeEach(() => window.sessionStorage.clear());
+
   it("phone → code (dev autofill) → name + unticked consent → join with QR + referral", async () => {
     const deps = makeDeps();
     render(<JoinFlow info={info} deps={deps} referralCode="REF12345" devAutofill />);
@@ -76,11 +79,11 @@ describe("<JoinFlow> (counter QR join)", () => {
     });
     expect(deps.updateName).toHaveBeenCalledWith("Alex");
     expect(deps.join).toHaveBeenCalledWith({ locationQrCode: "RONCY01", referralCode: "REF12345" });
-    await waitFor(() => expect(screen.getByText("You're in, Alex.")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("You’re in, Alex.")).toBeTruthy());
     // Join success is the pass in the shop's colour: "You're in" on the card, the welcome stamp filled, the reward slot accented.
     const pass = screen.getByTestId("joined-pass");
     expect(pass.className).toContain("bg-trade");
-    expect(pass.contains(screen.getByText("You're in, Alex."))).toBe(true);
+    expect(pass.contains(screen.getByText("You’re in, Alex."))).toBe(true);
     expect(pass.textContent).toContain("1 / 10");
     // The shop's own card: Apple only (Google isn't configured in this mock), plus the open-on-your-phone QR on a computer.
     await waitFor(() => expect(screen.getByRole("button", { name: "Add to Apple Wallet" })).toBeTruthy());
@@ -146,8 +149,73 @@ describe("<JoinFlow> (counter QR join)", () => {
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     });
     expect(deps.join).toHaveBeenCalledWith({ locationQrCode: "RONCY01" });
-    await waitFor(() => expect(screen.getByText("You're in, Riley.")).toBeTruthy());
+    // A returning member is welcomed back, not told they just joined.
+    await waitFor(() => expect(screen.getByText("Welcome back, Riley.")).toBeTruthy());
+    expect(screen.queryByText(/You’re in/)).toBeNull();
     expect(screen.queryByLabelText("First name (optional)")).toBeNull();
+  });
+
+  it("an existing member who scans again opens on their card, never on Join", async () => {
+    const deps = makeDeps();
+    render(<JoinFlow info={info} deps={deps} signedIn signedInName="Ayesha Khan" member={membership(8)} />);
+    expect(screen.getByText("Welcome back, Ayesha.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Join / })).toBeNull();
+    expect(deps.join).not.toHaveBeenCalled();
+  });
+
+  it("keeps the six digits for a server fault and clears them for a wrong code", async () => {
+    const verifyOtp = vi.fn().mockRejectedValueOnce(new ApiError(500, "internal", "boom")).mockRejectedValueOnce(new ApiError(400, "invalid_code", "That code is wrong"));
+    const deps = makeDeps({ verifyOtp });
+    render(<JoinFlow info={info} deps={deps} devAutofill />);
+    await enterPhone();
+    const code = screen.getByLabelText("6-digit code") as HTMLInputElement;
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    });
+    expect((screen.getByLabelText("6-digit code") as HTMLInputElement).value).toBe("123456");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    });
+    expect((screen.getByLabelText("6-digit code") as HTMLInputElement).value).toBe("");
+    expect(code).toBeTruthy();
+  });
+
+  it("the same number after Change does not ask for a second text", async () => {
+    const deps = makeDeps();
+    render(<JoinFlow info={info} deps={deps} devAutofill />);
+    await enterPhone();
+    expect(deps.joinStart).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Change" }));
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Text me a code" })).toBeTruthy());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Text me a code" }));
+    });
+    expect(deps.joinStart).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText("6-digit code")).toBeTruthy();
+  });
+
+  it("a refresh on the code step comes back to the code step with the number kept", async () => {
+    const deps = makeDeps();
+    const first = render(<JoinFlow info={info} deps={deps} devAutofill />);
+    await enterPhone();
+    expect(screen.getByLabelText("6-digit code")).toBeTruthy();
+    first.unmount();
+    render(<JoinFlow info={info} deps={makeDeps()} devAutofill />);
+    await waitFor(() => expect(screen.getByLabelText("6-digit code")).toBeTruthy());
+    expect(screen.getByText(/\(416\) 555-0123/)).toBeTruthy();
+  });
+
+  it("says so and offers Try again when the card cannot load", async () => {
+    const card = vi.fn().mockRejectedValueOnce(new Error("down")).mockResolvedValue({ memberCode: "K7QX2M9P", qrPayload: "LL:K7QX2M9P", qrSvg: "<svg></svg>", name: "Alex" });
+    const deps = makeDeps({ card });
+    render(<JoinFlow info={info} deps={deps} signedIn signedInName="Alex Doe" member={membership(2)} />);
+    await waitFor(() => expect(screen.getByText(/couldn’t load your code/i)).toBeTruthy());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    });
+    expect(card).toHaveBeenCalledTimes(2);
   });
 
   it("rate limit shows a warning banner", async () => {

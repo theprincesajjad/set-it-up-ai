@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { inboxApi } from "@ll/shared";
+import { ErrorScreen } from "@/components/errors";
 import { Button } from "@/components/ui/Button";
 import { browserApi } from "@/lib/api/browser";
 import { cn } from "@/lib/cn";
@@ -15,16 +16,19 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 export function MyThreads() {
   const { t, date, time } = useLocaleOrEnglish();
   const [data, setData] = useState<inboxApi.MyThreadsResponse | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    browserApi.me.threads().then(setData).catch(() => setFailed(true));
+  const [failed, setFailed] = useState<unknown>(null);
+  const load = useCallback(() => {
+    browserApi.me.threads().then((r) => { setFailed(null); setData(r); }).catch((e: unknown) => setFailed(e ?? new Error("failed")));
   }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+  if (failed && !data) return <ErrorScreen error={failed} onRetry={load} back={{ href: "/me", label: t("rc.back") }} />;
   const when = (iso: string) => (new Date(iso).toDateString() === new Date().toDateString() ? time(iso) : date(iso, { month: "short", day: "numeric" }));
   return (
     <div className="flex flex-col gap-4">
       <Link href="/me" className="inline-flex min-h-11 items-center gap-1 self-start text-meta text-fg-muted"><ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />{t("rc.back")}</Link>
       <h1 className="text-large-title text-fg">{t("inbox.me.title")}</h1>
-      {failed ? <p className="text-body text-fg-muted">{t("inbox.me.failed")}</p> : null}
       {data && !data.items.length ? (
         <div className="rounded-card bg-bg-subtle p-5">
           <p className="text-body-strong text-fg">{t("inbox.me.empty")}</p>
@@ -56,22 +60,23 @@ export function MyThreads() {
 export function MyThread({ id }: { id: string }) {
   const { t, time } = useLocaleOrEnglish();
   const [data, setData] = useState<inboxApi.MyThreadResponse | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<unknown>(null);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
   const end = useRef<HTMLDivElement>(null);
-  const load = useCallback(() => browserApi.me.thread(id).then(setData).catch(() => setFailed(true)), [id]);
+  const load = useCallback(() => browserApi.me.thread(id).then((r) => { setFailed(null); setData(r); }).catch((e: unknown) => setFailed(e ?? new Error("failed"))), [id]);
   useEffect(() => {
     void load();
   }, [load]);
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
   }, [data?.messages.length]);
+  // A conversation that is gone, or a failed load: say which, with a way back to the list. Never the "couldn't send" line, which is for the reply box.
+  if (failed && !data) return <ErrorScreen error={failed} onRetry={() => void load()} notFound={{ title: t("err.notFound.title"), description: t("err.notFound.body") }} back={{ href: "/me/messages", label: t("inbox.me.title") }} />;
   return (
     <div className="flex flex-col gap-4">
       <Link href="/me/messages" className="inline-flex min-h-11 items-center gap-1 self-start text-meta text-fg-muted"><ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />{t("inbox.me.title")}</Link>
-      {failed ? <p className="text-body text-fg-muted">{t("inbox.me.failed")}</p> : null}
       {data ? (
         <>
           <h1 className="text-title text-fg"><bdi>{data.thread.merchant.name}</bdi></h1>

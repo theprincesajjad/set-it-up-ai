@@ -6,11 +6,12 @@
  */
 import { Check, Palette } from "lucide-react";
 import { useMemo, useState } from "react";
-import { VERTICALS, VERTICAL_TEMPLATES, merchantApi, normalizePostal, unitWord, type Locale, type MessageKey } from "@ll/shared";
+import { VERTICALS, VERTICAL_TEMPLATES, merchantApi, normalizePostal, onboardingPath, unitWord, type Locale, type MessageKey } from "@ll/shared";
 import type { Icon3dName } from "@ll/design-tokens";
 import { cn } from "@/lib/cn";
 import { shopColorProps } from "@/lib/shopColor";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { prizePhrase } from "@/lib/dashboard/program";
 import { ColorField } from "@/components/ui/ColorField";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { Icon3d } from "@/components/ui/Icon3d";
@@ -65,8 +66,8 @@ export function KindStep({ draft, update, next }: StepProps) {
     <StepFrame id="kind" title={t("sf.kind.title")} body={t("sf.kind.body")} onSubmit={go} primary={t("sf.continue")}>
       <div className="flex flex-col gap-2">
         <ChoiceGroup aria-label={t("su.kind")} value={v || null} onValueChange={pick} className="grid-cols-2 gap-3 sm:grid-cols-4">
-          {tiles.map((x) => (
-            <TradeTile key={x} value={x} label={tradeLabel(t, x)} checked={v === x} onPick={pick} badge={v === x && draft.verticalGuess ? t("sf.kind.suggested") : null} />
+          {tiles.map((x, i) => (
+            <TradeTile key={x} value={x} label={tradeLabel(t, x)} checked={v === x} onPick={pick} badge={v === x && draft.verticalGuess ? t("sf.kind.suggested") : null} first={i === 0 && !v} />
           ))}
         </ChoiceGroup>
         {error ? (
@@ -92,12 +93,12 @@ export function KindStep({ draft, update, next }: StepProps) {
           )
         ) : null}
       </div>
-      {v === "other" ? <TextField label={t("su.sells")} optionalLabel maxLength={300} value={draft.sells} onChange={(e) => update({ sells: e.target.value })} /> : null}
+      {v === "other" ? <TextField label={t("su.sells")} optionalLabel maxLength={300} dir="auto" value={draft.sells} onChange={(e) => update({ sells: e.target.value })} /> : null}
     </StepFrame>
   );
 }
 
-function TradeTile({ value, label, checked, onPick, badge }: { value: string; label: string; checked: boolean; onPick: (v: string) => void; badge: string | null }) {
+function TradeTile({ value, label, checked, onPick, badge, first }: { value: string; label: string; checked: boolean; onPick: (v: string) => void; badge: string | null; first?: boolean }) {
   // Wave Q: a raised tile. The 3D object sits on a soft disc in its own trade colour; picked, the tile takes that colour's soft fill and
   // ring with a check in the corner, and the object lifts a little. Hover lifts the tile (not under reduced motion).
   return (
@@ -108,6 +109,7 @@ function TradeTile({ value, label, checked, onPick, badge }: { value: string; la
       data-value={value}
       data-vertical={value}
       data-trade={value}
+      data-autofocus={first || undefined}
       tabIndex={checked ? 0 : -1}
       onClick={() => onPick(value)}
       className={cn(
@@ -120,7 +122,7 @@ function TradeTile({ value, label, checked, onPick, badge }: { value: string; la
       </span>
       <span className="flex flex-col gap-1">
         <span className="text-sm font-[600] leading-5 text-fg">{label}</span>
-        {badge ? <span className="self-start rounded-full bg-card px-2 py-0.5 text-caption font-[550] text-trade-deep ring-1 ring-trade/20">{badge}</span> : null}
+        {badge ? <span className="self-start whitespace-nowrap rounded-full bg-card px-2 py-0.5 text-caption font-[550] text-trade-deep ring-1 ring-trade/20">{badge}</span> : null}
       </span>
       <span aria-hidden className={cn("absolute end-2.5 top-2.5 grid size-6 place-items-center rounded-full bg-trade text-trade-foreground transition-[opacity,transform] duration-200 motion-reduce:transition-none", checked ? "scale-100 opacity-100" : "scale-50 opacity-0")}>
         <Check className="size-3.5" strokeWidth={3} />
@@ -144,18 +146,20 @@ export function WhereStep({ draft, update, next }: StepProps) {
     setErrors(e);
     if (!Object.keys(e).length) next();
   };
+  // "A shop or salon" is for the beauty trades; a cafe or a store is just "A shop".
+  const plainShop = !!draft.vertical && onboardingPath(draft.vertical, "shop") === "storefront";
   return (
     <StepFrame id="where" title={t("sf.where.title")} body={t("sf.where.body")} onSubmit={go} primary={t("sf.continue")}>
-      <ChoiceGroup aria-label={t("su.where")} value={draft.work} onValueChange={(w) => { setErrors({}); update({ work: w as Work, workTouched: true }); }} className="sm:grid-cols-1">
+      <ChoiceGroup aria-label={t("su.where")} value={draft.work} onValueChange={(w) => { setErrors({}); update({ work: w as Work, workTouched: true }); }} columns={1}>
         {(["shop", "home", "mobile"] as const).map((w) => (
-          <ChoiceTile key={w} value={w} icon={WORK_ICON[w]} trade={draft.vertical || null} label={t(`su.where.${w}`)} hint={t(`su.where.${w}Hint`)} className="sm:flex-row sm:items-center sm:gap-4" />
+          <ChoiceTile key={w} value={w} icon={WORK_ICON[w]} trade={draft.vertical || null} label={w === "shop" && plainShop ? t("su.where.shopPlain") : t(`su.where.${w}`)} hint={w === "shop" && plainShop ? t("su.where.shopPlainHint") : t(`su.where.${w}Hint`)} layout="row" />
         ))}
       </ChoiceGroup>
       <div key={draft.work} className="animate-in fade-in-0 duration-200 motion-reduce:animate-none">
-        {draft.work === "shop" ? <TextField name="street" label={t("su.street")} autoComplete="street-address" hint={t("su.streetHint")} value={draft.address} onChange={(e) => update({ address: e.target.value })} error={errors.address} /> : null}
+        {draft.work === "shop" ? <TextField name="street" label={t("su.street")} autoComplete="street-address" hint={t("su.streetHint")} dir="auto" value={draft.address} onChange={(e) => { setErrors((x) => ({ ...x, address: undefined })); update({ address: e.target.value }); }} error={errors.address} /> : null}
         {draft.work === "home" ? (
           <div className="flex flex-col gap-3">
-            <TextField name="postal" label={t("su.postal")} autoComplete="postal-code" autoCapitalize="characters" spellCheck={false} hint={t("su.postalHint")} value={draft.postal} onChange={(e) => update({ postal: e.target.value.toUpperCase() })} error={errors.postal} maxLength={7} dir="ltr" className="max-w-55" />
+            <TextField name="postal" label={t("su.postal")} autoComplete="postal-code" autoCapitalize="characters" spellCheck={false} hint={t("su.postalHint")} value={draft.postal} onChange={(e) => { setErrors((x) => ({ ...x, postal: undefined })); update({ postal: e.target.value.toUpperCase() }); }} error={errors.postal} maxLength={7} dir="ltr" className="max-w-55" />
             <p className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg">{t("su.privateNote")}</p>
           </div>
         ) : null}
@@ -183,6 +187,10 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
     if (!Object.keys(e).length) next();
   };
   const earn = card.earnType === "stamps" ? t("sf.card.earnStamp") : card.earnType === "per_visit" ? t("sf.card.earnVisit", { n: card.rate, unit }) : t("sf.card.earnDollar", { n: card.rate, unit });
+  // The hint uses the trade's own first reward as its example in English ("like $10 off a service" for a barber); other languages keep a neutral line,
+  // because the template's reward names are English.
+  const example = card.defaults.reward ? prizePhrase(card.defaults.reward) : "";
+  const rewardHint = locale === "en" && example ? t("sf.card.rewardHintEg", { example }) : t("sf.card.rewardHint");
   const changed = card.goal !== card.defaults.goal || card.reward !== card.defaults.reward;
   // The colour: what "Is this you?" kept from the website, else the owner's pick here (wave Q, ColorField), else the trade's.
   const imported = draft.link === "read" && !!draft.accepted;
@@ -211,11 +219,11 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
         increaseLabel={t("sf.card.more")}
       />
       <div className="flex flex-col gap-2">
-        <TextField name="reward" label={t("sf.card.reward")} hint={t("sf.card.rewardHint")} value={card.reward} maxLength={120} onChange={(e) => set({ reward: e.target.value })} error={errors.reward} />
+        <TextField name="reward" label={t("sf.card.reward")} hint={rewardHint} dir="auto" value={card.reward} maxLength={120} onChange={(e) => { setErrors((x) => ({ ...x, reward: undefined })); set({ reward: e.target.value }); }} error={errors.reward} />
         {card.suggestions.length > 1 || changed ? (
           <div className="flex flex-wrap gap-2">
             {[...new Set([card.defaults.reward, ...card.suggestions])].filter(Boolean).map((s) => (
-              <button key={s} type="button" onClick={() => set({ reward: s })} aria-pressed={card.reward === s} className={cn("inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-meta font-[550] transition-colors duration-150 focus-visible:focus-ring motion-reduce:transition-none", card.reward === s ? "border-fg bg-fg text-bg" : "border-border bg-card text-fg hover:bg-bg-subtle")}>
+              <button key={s} type="button" onClick={() => { setErrors((x) => ({ ...x, reward: undefined })); set({ reward: s }); }} aria-pressed={card.reward === s} className={cn("inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-meta font-[550] transition-colors duration-150 focus-visible:focus-ring motion-reduce:transition-none", card.reward === s ? "border-fg bg-fg text-bg" : "border-border bg-card text-fg hover:bg-bg-subtle")}>
                 {card.reward === s ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : null}
                 {s}
               </button>
@@ -247,7 +255,7 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
               </span>
             </button>
           )}
-          <p className="text-meta text-fg-muted">{t("sf.card.colourHint")}</p>
+          {colourOpen ? <p className="text-meta text-fg-muted">{t("sf.card.colourHint")}</p> : null}
         </div>
       ) : null}
       {draft.vertical === "pharmacy" ? <p className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg">{t("sf.card.pharmacy")}</p> : null}

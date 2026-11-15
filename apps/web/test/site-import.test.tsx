@@ -46,9 +46,9 @@ const row = (id: string) => document.querySelector<HTMLElement>(`[data-import-ro
 describe("SiteImportReview", () => {
   it("shows every value with its source, a keep tick and an edit control", () => {
     renderReview();
-    expect(screen.getByRole("heading", { name: "Here's what we found" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Here’s what we found" })).toBeTruthy();
     expect(within(row("name")).getByText("Priya Nails")).toBeTruthy();
-    expect(within(row("name")).getByText("From your site's sharing details")).toBeTruthy();
+    expect(within(row("name")).getByText("From your site’s sharing details")).toBeTruthy();
     expect(within(row("phone")).getByText("(416) 555-0142")).toBeTruthy();
     expect(within(row("phone")).getByText("From a call link on your site")).toBeTruthy();
     expect(within(row("brandColor")).getByText("From your logo")).toBeTruthy();
@@ -88,7 +88,7 @@ describe("SiteImportReview", () => {
     const user = userEvent.setup();
     const ig: siteImportApi.SiteImportResult = { ...RESULT, kind: "instagram", url: "https://www.instagram.com/priya.nails/", pages: [], notes: ["instagram_handle_only"], fields: { ...Object.fromEntries(Object.keys(RESULT.fields).map((k) => [k, null])), instagram: { value: "priya.nails", source: "instagram_url" } } as siteImportApi.SiteImportResult["fields"] };
     const onConfirm = renderReview(vi.fn(), ig);
-    expect(screen.getByText("We'll use your handle; add your logo below.")).toBeTruthy();
+    expect(screen.getByText("We’ll use your handle. You can add your logo later in Settings.")).toBeTruthy();
     const logo = screen.getByLabelText(/Logo link/);
     await user.type(logo, "http://insecure.example/logo.png");
     expect((screen.getByRole("button", { name: "Use these details" }) as HTMLButtonElement).disabled).toBe(true);
@@ -127,10 +127,10 @@ describe("SiteImportStep", () => {
     expect(importer).toHaveBeenCalledWith("priyanails.example");
     expect(await screen.findByRole("heading", { name: "Reading your website" }, { timeout: 5000 })).toBeTruthy();
     resolve(RESULT);
-    expect(await screen.findByRole("heading", { name: "Here's what we found" }, { timeout: 5000 })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Here’s what we found" }, { timeout: 5000 })).toBeTruthy();
     expect(phases).toEqual(["form", "loading", "review"]);
     await user.click(screen.getByRole("button", { name: "Try another link" }));
-    await user.click(screen.getByRole("button", { name: "Skip, I'll type it" }));
+    await user.click(screen.getByRole("button", { name: "Skip, I’ll type it" }));
     expect(onSkip).toHaveBeenCalled();
   });
 

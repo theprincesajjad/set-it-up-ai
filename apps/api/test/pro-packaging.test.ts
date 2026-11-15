@@ -163,7 +163,7 @@ describe("the 14-day Pro trial", () => {
 
   it("the receipt says what the trial did, with the price from PLANS", () => {
     const msg = trialReceiptMessage({ days: 14, bookings: 31, amountCents: 170500, fills: 3, rebooked: 5, reviews: 22, addons: 7, chasedCents: 61000 }, { locale: "en", billingUrl: "https://x.test/billing" });
-    expect(msg.subject).toBe(`${PLANS.plus.name} ended today. Here's what it did.`);
+    expect(msg.subject).toBe(`${PLANS.plus.name} ended today. Here’s what it did.`);
     expect(msg.text).toContain("14 days · 31 bookings · $1,705");
     expect(msg.text).toContain("3 cancelled slots filled · 5 rebooked from reminders · 22 review requests · 7 add-ons");
     expect(msg.text).toContain(`Turn ${PLANS.plus.name} on, $29`);

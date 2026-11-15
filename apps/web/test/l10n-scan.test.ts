@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 // @ts-expect-error plain .mjs script, no types
-import { scan, scanSource } from "../../../scripts/l10n-scan.mjs";
+import { scan, scanApostrophes, scanSource } from "../../../scripts/l10n-scan.mjs";
 
 type Hit = { file: string; line: number; why: string; text: string };
 const hits = (src: string, file = "apps/web/src/app/(pass)/x.tsx"): Hit[] => scanSource(file, src);
@@ -40,5 +40,10 @@ describe("l10n scanner (customer-facing code goes through t())", () => {
 
   it("flags imports of the English-only copy library", () => {
     expect(hits(`import { copy } from "@ll/shared/copy/en-CA";\nexport const x = copy.home.title;`).length).toBeGreaterThan(0);
+  });
+
+  it("keeps word apostrophes curly in the catalogues and the English copy (SMS texts stay straight by key)", () => {
+    const found: Hit[] = scanApostrophes();
+    expect(found.map((h) => `${h.file}:${h.line} ${h.text}`)).toEqual([]);
   });
 });

@@ -214,7 +214,7 @@ test("settings: how you get paid, tax status and food safety save", async ({ pag
   await page.goto(`/m/${shree.id}/restaurant/payments`);
   await expect(page.getByRole("heading", { name: "How you get paid" })).toBeVisible();
   await expect(page.getByLabel("E-transfer email")).toHaveValue("pay@shreethali.ca");
-  await page.getByRole("radio", { name: /Yes, I'm registered/ }).click();
+  await page.getByRole("radio", { name: /Yes, I’m registered/ }).click();
   await page.getByLabel("GST/HST number").fill(`${Math.floor(100000000 + Math.random() * 899999999)} RT0001`);
   await page.getByRole("button", { name: "Save" }).nth(1).click();
   await expect(page.getByText("Tax status saved")).toBeVisible();

@@ -82,7 +82,7 @@ export function AddOnsEditor({ services, manager }: { services: Service[]; manag
           error={list.error}
           onRetry={list.reload}
           onRowClick={manager ? (a) => setEdit(a) : undefined}
-          empty={<span className="text-fg-muted">{t("addon.empty", { examples: addOnExamples(t, vertical) })}</span>}
+          empty={<span className="block px-4 py-3 text-fg-muted">{t("addon.empty", { examples: addOnExamples(t, vertical) })}</span>}
         />
       </div>
       {manager ? <AddOnPanel open={!!edit} addOn={edit && edit !== "new" ? edit : null} services={services} onClose={() => setEdit(null)} onSaved={list.reload} /> : null}

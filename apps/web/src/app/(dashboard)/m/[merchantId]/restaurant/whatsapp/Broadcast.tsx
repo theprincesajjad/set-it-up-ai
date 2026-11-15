@@ -59,7 +59,7 @@ export function Broadcast({ settings, loading, onSetup }: { settings: whatsappAp
   const [sent, setSent] = useState<whatsappApi.BroadcastResult | null>(null);
   const [confirm, setConfirm] = useState(false);
 
-  if (loading || !settings) return <div className="skeleton h-64 w-full rounded-card" aria-busy="true" aria-label="Loading" />;
+  if (loading || !settings) return <div role="status" className="skeleton h-64 w-full rounded-card" aria-busy="true" aria-label="Loading" />;
   if (!settings.features.marketing) return <TierTeaser inline featureKey="restaurant.whatsapp_marketing" />;
   if (!settings.connected || !settings.approvedTemplates.length)
     return (

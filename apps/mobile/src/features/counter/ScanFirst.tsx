@@ -12,7 +12,7 @@ import { cameInTextL, carryOverLineL, matchesHeadingL, visitThisMonthL } from ".
 import { formatPtsL, rewardInSentenceL, termWordL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
 import { disp, ui, useTheme } from "../../theme";
-import { Avatar, Button, CountUp, Text, haptic } from "../../ui";
+import { Avatar, Button, CountUp, Text, dirStyle, haptic } from "../../ui";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"] as const;
 
@@ -52,7 +52,7 @@ export function ScanViewfinder({ onScan, hint, lastScanGuardMs = 4000 }: { onSca
           <Pressable
             accessibilityRole="button"
             onPress={() => (permission.canAskAgain ? request() : Linking.openSettings())}
-            style={{ marginTop: 10, minHeight: 36, justifyContent: "center" }}
+            style={{ marginTop: 6, minHeight: 44, paddingHorizontal: 12, justifyContent: "center" }}
           >
             <Text style={[ui(13, 600, 18), { textDecorationLine: "underline" }]} rawColor={c.bg}>
               {permission.canAskAgain ? t("mc.cam.turnOn") : t("mc.cam.openSettings")}
@@ -69,7 +69,7 @@ export function DigitBoxes({ digits, boxWidth = 62 }: { digits: string; boxWidth
   const { c } = useTheme();
   const { t } = useLocale();
   return (
-    <View accessible accessibilityLabel={digits ? t("mc.entered", { digits: digits.split("").join(" ") }) : t("counter.digits.group")} style={styles.boxes}>
+    <View accessible accessibilityLabel={digits ? t("mc.entered", { digits: digits.split("").join(" ") }) : t("counter.digits.group")} style={[styles.boxes, dirStyle("ltr")]} {...({ dir: "ltr" } as object)}>
       {[0, 1, 2, 3].map((i) => (
         <View key={i} style={[styles.box, { width: boxWidth, borderColor: i === digits.length ? c.fg : c.line, backgroundColor: c.bg }]}>
           <Text style={[ui(28, 500, 34), { fontVariant: ["tabular-nums"] }]}>{digits[i] ?? ""}</Text>
@@ -89,7 +89,7 @@ export function ScanKeypad({ onKey, disabled }: { onKey: (k: "back" | string) =>
       ? { height: 56, borderRadius: 12, backgroundColor: pressed ? c.bgMuted : "transparent" }
       : ({ height: 56, borderRadius: 12, borderCurve: "continuous", backgroundColor: pressed ? c.bgSubtle : r.card, boxShadow: `inset 0 0 0 1px ${r.border}, ${x.shadowCard}` } as object);
   return (
-    <View style={styles.pad}>
+    <View {...({ dir: "ltr" } as object)} style={[styles.pad, dirStyle("ltr")]}>
       {KEYS.map((k, i) =>
         k === "" ? (
           <View key={`gap-${i}`} style={styles.padKey} />
@@ -160,7 +160,7 @@ export function MatchList({ digits, items, program, now, onPick, onNew }: { digi
                 {m.name ?? t("counter.member")}
               </Text>
               <Text style={[ui(14, 400, 19), { fontVariant: ["tabular-nums"] }]} rawColor={c.fgMuted}>
-                {maskedRow(m.maskedPhone)}
+                {L.ltr(maskedRow(m.maskedPhone))}
               </Text>
               <Text style={ui(13, 400, 18)} rawColor={c.fgMuted}>
                 {program?.earnType === "stamps" && program.stampGoal ? t("counter.ofGoal", { n: Math.min(m.balance, program.stampGoal), goal: program.stampGoal }) : formatPtsL(L, m.balance, m.terminology)} · {cameInTextL(L, m.lastVisitAt, now)}

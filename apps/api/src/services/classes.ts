@@ -653,6 +653,8 @@ async function bookCore(ctx: AppContext, b: BookInput): Promise<BookResult> {
       if (problem === "past_due") throw new HttpError(409, "membership_past_due", `Your membership payment${amountDueCents ? ` of ${money(amountDueCents)}` : ""} did not go through. Update your card to keep booking.`);
       if (problem === "frozen") throw new HttpError(409, "membership_frozen", "Your membership is frozen on that day.");
       if (problem === "month_used") throw new HttpError(409, "month_used", "You have used every class in this month of your membership.");
+      // The desk is the reader when staff add someone: say it in the owner's words, not the customer's.
+      if (b.source === "staff") throw new HttpError(409, "no_pass", "They have no membership or pass yet. Sell a drop-in, or add them as a guest.");
       throw new HttpError(409, "no_pass", "You need a membership, a pass or a drop-in to book this class.");
     }
     // Drop-in: hold the spot while the card payment is confirmed.

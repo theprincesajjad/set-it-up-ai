@@ -45,6 +45,8 @@ function configProblems(env, variant) {
   if (api) problems.push(api);
   const web = checkUrl("EXPO_PUBLIC_WEB_URL", trim(env.EXPO_PUBLIC_WEB_URL));
   if (web) problems.push(web);
+  // Without the EAS project id the app cannot register for push: a store build would ship with notifications permanently off.
+  if (!trim(env.EAS_PROJECT_ID)) problems.push("EAS_PROJECT_ID is not set (push notifications cannot register without it)");
   const mail = trim(env.EXPO_PUBLIC_SUPPORT_EMAIL);
   if (!mail) problems.push("EXPO_PUBLIC_SUPPORT_EMAIL is not set");
   else if (isPlaceholderEmail(mail)) problems.push(`EXPO_PUBLIC_SUPPORT_EMAIL is a placeholder (${mail}); use a real, monitored address`);

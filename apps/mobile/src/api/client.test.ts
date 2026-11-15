@@ -138,6 +138,15 @@ describe("api client", () => {
     expect(onTokens).toHaveBeenCalledWith(tokens(2));
   });
 
+  it("a wrong staff PIN (401 invalid_pin) is sent once: no refresh, no replay", async () => {
+    const store = memoryStore(tokens(1));
+    const { fn, calls } = mockFetch(() => json(401, { error: { code: "invalid_pin", message: "That PIN is not right." } }));
+    const api = createApiClient({ baseUrl: "http://api", tokenStore: store, fetch: fn });
+    await expect(createEndpoints(api).auth.verifyStaffPin("m1", { pin: "9999" } as never)).rejects.toMatchObject({ status: 401, code: "invalid_pin" });
+    expect(calls.map((c) => c.url)).toEqual(["http://api/v1/merchants/m1/staff-pin/verify"]);
+    expect(store.value).toEqual(tokens(1));
+  });
+
   it("parallel 401s share one refresh (refresh tokens are single use)", async () => {
     const store = memoryStore(tokens(1));
     let refreshes = 0;

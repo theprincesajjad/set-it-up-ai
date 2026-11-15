@@ -46,7 +46,7 @@ test.describe("customer, 390 wide", () => {
   test("the shop's promo cards say which days and hours, in stamps", async ({ page }) => {
     await page.goto("/shops/pinecone-coffee");
     await page.getByRole("tab", { name: /Offers/ }).click();
-    await expect(page.getByText("Weekdays · 2 pm to 4 pm").first()).toBeVisible();
+    await expect(page.getByText("Weekdays · 2 p.m. to 4 p.m.").first()).toBeVisible();
     await expect(page.getByText("2x stamps").first()).toBeVisible();
     await expect(page.getByText("2x points")).toHaveCount(0);
     await page.screenshot({ path: shot("02-promo-cards") });

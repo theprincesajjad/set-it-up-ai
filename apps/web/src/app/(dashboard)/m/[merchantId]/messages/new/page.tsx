@@ -23,7 +23,7 @@ function ComposePage() {
     <div className="flex flex-col gap-4">
       <BackLink href={`${base}/messages`}>Messages</BackLink>
       <PageHeader title="New message" />
-      <Composer />
+      <Composer standalone />
     </div>
   );
 }

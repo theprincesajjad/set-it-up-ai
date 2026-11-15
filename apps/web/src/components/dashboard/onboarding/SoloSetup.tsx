@@ -29,7 +29,7 @@ type Solo = merchantApi.SoloSetupDto;
 type T = ReturnType<typeof useLocale>["t"];
 
 /** The card's name in the owner's language (the API sends English labels for some steps). */
-const LABELLED = new Set(["your_link", "services", "hours", "privacy", "share", "invite", "staff", "profile", "loyalty", "instagram_connect", "site", "promos"]);
+const LABELLED = new Set(["your_link", "services", "hours", "privacy", "share", "invite", "staff", "profile", "loyalty", "instagram_connect", "site", "promos", "pos"]);
 const stepLabel = (t: T, s: { key: string; label: string }) => (LABELLED.has(s.key) ? t(`ob.solo.step.${s.key}` as Parameters<T>[0]) : s.label);
 
 export function SoloSetup({ checklist, onChange, footer }: { checklist: Checklist; onChange: (c: Checklist) => void; footer?: ReactNode }) {

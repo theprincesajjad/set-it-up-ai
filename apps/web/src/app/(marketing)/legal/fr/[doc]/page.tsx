@@ -5,7 +5,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LegalDocView } from "@/components/site/LegalDocView";
-import { LEGAL_DOCS_FR, hasFrench, loadLegalDoc } from "@/lib/legal";
+import { BRAND } from "@ll/shared";
+import { LEGAL_DOCS_FR, hasFrench, loadLegalDoc, type LegalFrSlug } from "@/lib/legal";
 import { preloadInter } from "@/lib/fonts/inter";
 
 export const dynamicParams = false;
@@ -16,10 +17,16 @@ export function generateStaticParams() {
 
 type Props = { params: Promise<{ doc: string }> };
 
+/** The French pages' own line for search results and link previews (the layout's default is the English site description). */
+const DESCRIPTIONS: Record<LegalFrSlug, string> = {
+  privacy: `Ce que ${BRAND.name} recueille, comment c’est utilisé, qui y a accès, combien de temps c’est conservé et vos choix sur vos renseignements.`,
+  rewards: `Le fonctionnement des points, des timbres et des récompenses sur ${BRAND.name} : qui les émet, comment les gagner et les échanger, et ce qui arrive si un commerce part.`,
+};
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { doc } = await params;
   if (!hasFrench(doc)) return {};
-  return { title: LEGAL_DOCS_FR[doc].title, robots: { index: false, follow: true }, alternates: { canonical: `/legal/${doc}?lang=fr`, languages: { "en-CA": `/legal/${doc}` } } };
+  return { title: LEGAL_DOCS_FR[doc].title, description: DESCRIPTIONS[doc], robots: { index: false, follow: true }, alternates: { canonical: `/legal/${doc}?lang=fr`, languages: { "en-CA": `/legal/${doc}` } } };
 }
 
 export default async function LegalPageFr({ params }: Props) {

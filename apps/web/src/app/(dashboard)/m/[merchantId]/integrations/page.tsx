@@ -123,7 +123,7 @@ export default function IntegrationsPage() {
                   <span aria-hidden>·</span>
                   <span>part of {PLANS.studio.name}, ${PLANS.studio.priceCents / 100} a month</span>
                   <span aria-hidden>·</span>
-                  <a href={`${base}/billing?plan=studio`} className="text-fg underline underline-offset-4">Subscribe</a>
+                  <a href={`${base}/billing?plan=studio`} className="inline-flex items-center text-fg underline underline-offset-4 max-md:min-h-11 max-md:min-w-11">Subscribe</a>
                 </p>
               ) : null}
             </>

@@ -47,7 +47,7 @@ test.describe("desktop 1440", () => {
     expect((await box(page, "[data-step-card] header svg")).width).toBe(64);
     // footer controls are 40 px on desktop
     expect((await page.locator("[data-step-card] footer").getByRole("button", { name: "Continue" }).first().boundingBox())!.height).toBe(40);
-    expect((await page.locator("[data-step-card] footer").getByRole("button", { name: "I'll do this later" }).boundingBox())!.height).toBe(40);
+    expect((await page.locator("[data-step-card] footer").getByRole("button", { name: "I’ll do this later" }).boundingBox())!.height).toBe(40);
     // ChoiceTile: radius 12, 16 padding, a 40 px object; a selected tile has a 2 px black ring
     const tile = page.getByRole("radio").first();
     expect(await tile.evaluate((e) => getComputedStyle(e).borderTopLeftRadius)).toBe("12px");

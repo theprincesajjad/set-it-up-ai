@@ -50,9 +50,9 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 /** 10 px radius for small buttons, a capsule for the big one, 16 for the counter key. */
-// Clear scale (audit #13): sm = slim 28 / 12, md = default 32 / 16 (44 on a phone), lg = large 48 / 20, counter = 56 / 24 r16. Labels 13 at 550.
+// Clear scale (audit #13): sm = slim 28 / 12 (44 on a phone), md = default 32 / 16 (44 on a phone), lg = large 48 / 20, counter = 56 / 24 r16. Labels 13 at 550.
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-9 px-4 text-meta-strong rounded-full gap-1.5 [--icon:16px] clear:h-7 clear:px-3 clear:text-body clear:font-[550] clear:after:-inset-y-2 clear:[--icon:14px]",
+  sm: "h-9 px-4 text-meta-strong rounded-full gap-1.5 [--icon:16px] clear:h-11 clear:px-3 clear:text-body clear:font-[550] clear:after:-inset-y-2 clear:[--icon:14px] clear:md:h-7",
   md: "h-11 px-5 text-body-strong rounded-full gap-2 [--icon:18px] clear:px-4 clear:text-body clear:font-[550] clear:gap-1.5 clear:md:h-8 clear:[--icon:16px]",
   lg: "h-[52px] px-6 text-body-strong rounded-full gap-2 [--icon:20px] clear:h-12 clear:px-5 clear:text-[15px] clear:font-[550]",
   counter: "min-h-18 px-6 text-headline rounded-card gap-2.5 w-full [--icon:24px] clear:min-h-14 clear:rounded-r5 clear:text-[17px] clear:font-[650] clear:tracking-[-0.014em]",
@@ -138,7 +138,7 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
 
 export function IconButton({ icon: Icon, label, variant = "ghost", size = 48, className, type = "button", ...rest }: IconButtonProps) {
   const v = { ghost: "text-fg hover:bg-bg-subtle", secondary: "bg-card border border-border text-foreground hover:bg-muted clear:border-0 clear:glass-tint", primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover clear:shadow-primary clear:hover:bg-primary-hover" }[variant];
-  const s = { 40: "size-10", 48: "size-11", 64: "size-16" }[size];
+  const s = { 40: "size-10 max-md:size-11", 48: "size-11", 64: "size-16" }[size];
   return (
     <button type={type} aria-label={label} title={label} className={cn("inline-flex items-center justify-center rounded-full transition-colors duration-150 ease-out focus-visible:focus-ring", v, s, className)} {...rest}>
       <Icon aria-hidden className={size === 64 ? "size-7" : "size-5"} strokeWidth={1.75} />

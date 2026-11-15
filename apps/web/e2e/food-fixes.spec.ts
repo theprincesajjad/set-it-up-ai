@@ -53,7 +53,7 @@ test.describe("customer, 390 wide", () => {
     await page.waitForURL(/\/o\/[0-9a-f-]{36}/);
     const details = page.getByRole("region", { name: "Pickup details" });
     await expect(details).toBeVisible();
-    await expect(details.getByText(/^Pickup |As soon as it's ready/)).toBeVisible();
+    await expect(details.getByText(/^Pickup |As soon as it’s ready/)).toBeVisible();
     await expect(details.getByText(/Say your order number, #\d+, at the counter/)).toBeVisible();
     await expect(details.getByRole("link", { name: /^Call / })).toHaveAttribute("href", /^tel:\+?\d+/);
     await expect(details.getByRole("link", { name: "Directions" })).toBeVisible();

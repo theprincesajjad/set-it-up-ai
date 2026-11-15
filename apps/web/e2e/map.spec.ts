@@ -8,7 +8,7 @@ test("network map renders object pins, the category rail and a shop sheet (or fa
   await page.goto("/map");
   await expect(page.getByRole("heading", { name: "Shops near you" })).toBeVisible();
   const map = page.getByRole("region", { name: "Map of shops" });
-  const fallback = page.getByText("The map couldn't load on this device");
+  const fallback = page.getByText("The map couldn’t load on this device");
   await expect(map.or(fallback)).toBeVisible({ timeout: 15000 });
   if (await map.isVisible()) {
     // Corner chrome: the category rail of objects floats over the map until a shop sheet opens.

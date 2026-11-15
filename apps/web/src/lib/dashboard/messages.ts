@@ -3,6 +3,7 @@
  * the length count that includes the footer the server adds. Pure so it is unit-tested.
  */
 import { messagingApi } from "@ll/shared";
+import { clockText } from "@/lib/format";
 
 const { LAPSED_DEFAULT_DAYS, QUIET_HOURS_LABEL, smsFooterText } = messagingApi;
 
@@ -104,14 +105,14 @@ export function defaultSendTime(now: Date): { at: Date; label: string } {
   const inWindow = sameDay && nextHour >= 8 && (nextHour < 20 || (nextHour === 20 && nextMinutes === 0));
   if (inWindow) return { at: next, label: `Today ${timeLabel(next)}` };
   // Before 8 am today: 9 am today. Otherwise 9 am tomorrow.
-  if (hourOf(now) < 8 && sameDay) return { at: torontoInstant(today, 9, 0), label: "Today 9:00 am" };
+  if (hourOf(now) < 8 && sameDay) return { at: torontoInstant(today, 9, 0), label: "Today 9 a.m." };
   const tomorrow = ymd(new Date(now.getTime() + 24 * 3600_000));
-  return { at: torontoInstant(tomorrow, 9, 0), label: "Tomorrow 9:00 am" };
+  return { at: torontoInstant(tomorrow, 9, 0), label: "Tomorrow 9 a.m." };
 }
 
-/** "10:30 am". */
+/** "10:30 a.m.", "9 a.m." (the dashboard's one time style). */
 export function timeLabel(d: Date): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(d).replace(/\./g, "").replace("a m", "am").replace("p m", "pm");
+  return clockText(d, TZ);
 }
 
 /** Is this instant inside quiet hours (9 pm to 8 am Toronto)? */

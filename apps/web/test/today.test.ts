@@ -25,6 +25,12 @@ describe("today family", () => {
     expect(todayFamily("repair_electronics", on("service.tickets"), { vertical: "repair_electronics" })).toBe("service");
     expect(todayFamily("grocery", on())).toBe("loyalty");
   });
+  it("a restaurant without a restaurant plan stays on its stamp card, not an appointments layout", () => {
+    // Free includes one bookable calendar, but a kitchen has no appointments: no "New booking", no "Appointments 0".
+    expect(todayFamily("restaurant", on("booking.appointments"), { vertical: "restaurant", plan: "free" })).toBe("loyalty");
+    expect(todayFamily("tiffin", on("booking.appointments", "booking.walkin_queue"), { vertical: "tiffin", plan: "free" })).toBe("loyalty");
+    expect(todayFamily("restaurant", on("restaurant.kds"), { vertical: "restaurant", plan: "free" })).toBe("restaurant");
+  });
 });
 
 describe("small formats", () => {

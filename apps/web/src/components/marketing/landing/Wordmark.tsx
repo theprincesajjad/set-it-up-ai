@@ -17,7 +17,7 @@ export function MarketingWordmark({ className, onBlack = false }: { id?: string;
         <circle cx="16" cy="16" r="8.5" fill="none" stroke={mark} strokeWidth="2.5" />
         <circle cx="16" cy="16" r="3.5" fill={mark} />
       </svg>
-      <span className="font-mkt-display text-lg leading-none tracking-tight">{BRAND.name}</span>
+      <span className="whitespace-nowrap font-mkt-display text-lg leading-none tracking-tight">{BRAND.name}</span>
     </Link>
   );
 }

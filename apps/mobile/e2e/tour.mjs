@@ -131,11 +131,11 @@ await step("onboarding", async () => {
   const { context, page } = await newPhone({ geo: false });
   const phone = `+1647555${String(Math.floor(7000 + Math.random() * 2999))}`;
   await signInByPhone(page, phone, { shots: true });
-  await page.getByText("What's your name?").waitFor();
+  await page.getByText("What’s your name?").waitFor();
   await page.getByLabel("First name").fill("Alex");
   await shot(page, "04-name-consent");
   await page.getByRole("button", { name: "Done" }).click();
-  await page.getByText("open now", { exact: true }).first().waitFor();
+  await page.getByText(/^open now$/i).first().waitFor();
   await page.waitForTimeout(2500);
   await shot(page, "05-explore-new-member");
   await page.goto(`${WEB}/wallet`);
@@ -151,7 +151,7 @@ const cp = customer.page;
 let custState;
 await step("customer-sign-in", async () => {
   await signInByPhone(cp, CUSTOMER);
-  await cp.getByText("open now", { exact: true }).first().waitFor();
+  await cp.getByText(/^open now$/i).first().waitFor();
   custState = await customer.context.storageState();
 });
 
@@ -187,7 +187,7 @@ await step("wallet-progress", async () => {
   if (!phone) throw new Error("no seeded customer without a reward ready");
   const { context, page } = await newPhone();
   await signInByPhone(page, phone);
-  await page.getByText("open now", { exact: true }).first().waitFor();
+  await page.getByText(/^open now$/i).first().waitFor();
   await page.goto(`${WEB}/wallet`);
   await walletReady(page);
   const notNow = page.getByText("Not now", { exact: true });
@@ -265,7 +265,7 @@ await step("shop-join", async () => {
   await cp.getByRole("button", { name: "Join free" }).click();
   await shot(cp, "12b-join-sheet", { settle: 800 });
   await cp.getByRole("button", { name: "Join Bloom Hair Studio" }).last().click();
-  await cp.getByText(/^You're in at /).first().waitFor({ timeout: 10000 });
+  await cp.getByText(/^You[’']re in at /).first().waitFor({ timeout: 10000 });
   await shot(cp, "12c-join-success", { settle: 900 });
   await cp.getByRole("button", { name: "Done", exact: true }).click();
 });

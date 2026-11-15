@@ -45,7 +45,32 @@ function hasBrokenEscape(pathname: string): boolean {
   }
 }
 
+/**
+ * The door tablet stays on the door. Opening /door/<shop> puts a cookie on that device; while it is there, any page of that shop's
+ * dashboard (/m/<shop>/...: the client list, the counter, settings) sends the tablet back to the door. Leaving takes a staff PIN, and only
+ * then does the tablet call /api/door/release to clear the cookie (components/dashboard/queue/DoorTablet.tsx). Not a lock against a
+ * determined person with a keyboard: it keeps a walk-in who taps the browser's Back or types an address out of the shop's data.
+ */
+const DOOR_COOKIE = "ll_door";
+const DOOR_PATH = /^\/door\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i;
+const SHOP_PATH = /^\/m\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i;
+
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const shop = SHOP_PATH.exec(pathname)?.[1]?.toLowerCase();
+  if (shop && request.cookies.get(DOOR_COOKIE)?.value?.toLowerCase() === shop) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/door/${shop}`;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  const res = await proxyInner(request);
+  const door = DOOR_PATH.exec(pathname)?.[1]?.toLowerCase();
+  if (door) res.cookies.set({ name: DOOR_COOKIE, value: door, path: "/", maxAge: 12 * 3600, sameSite: "lax", secure: process.env.NODE_ENV === "production", httpOnly: true });
+  return res;
+}
+
+async function proxyInner(request: NextRequest) {
   // A cut-off link would be a bare "Internal Server Error" from the router. Answer with the 404 page instead: "That link looks cut off".
   if (hasBrokenEscape(request.nextUrl.pathname)) {
     const headers = new Headers(request.headers);

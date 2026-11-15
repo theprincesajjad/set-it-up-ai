@@ -266,11 +266,11 @@ async function halalMenus(db: DbOrTx, shops: Merchant[]): Promise<Map<string, "a
 // ---------------------------------------------------------------------------
 const DAY_NAMES = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
 
-/** "4 pm", "4:30 pm" from "16:00". */
+/** "4 p.m.", "4:30 p.m." from "16:00". */
 function clockWord(hhmm: string): string {
   const h = Number(hhmm.slice(0, 2));
   const m = Number(hhmm.slice(3, 5));
-  return `${h % 12 === 0 ? 12 : h % 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h >= 12 ? "pm" : "am"}`;
+  return `${h % 12 === 0 ? 12 : h % 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h >= 12 ? "p.m." : "a.m."}`;
 }
 
 /**
@@ -544,12 +544,15 @@ export async function foundingCorridors(ctx: AppContext): Promise<networkApi.Fou
   return { corridors: rows.map((r) => ({ slug: r.slug, name: r.name, taken: Math.min(Number(r.taken), total), total })) };
 }
 
-async function resolveQr(db: DbOrTx, qrCode: string): Promise<{ merchant: Merchant; location: Location }> {
+async function resolveQr(db: DbOrTx, rawQrCode: string): Promise<{ merchant: Merchant; location: Location }> {
+  // Counter codes are upper case; a link typed or retyped in lower case is the same code (the exact spelling still matches first).
+  const exact = rawQrCode.trim();
+  const qrCodes = [...new Set([exact, exact.toUpperCase()])];
   const [row] = await db
     .select({ location: locations, merchant: merchants })
     .from(locations)
     .innerJoin(merchants, eq(merchants.id, locations.merchantId))
-    .where(and(eq(locations.qrCode, qrCode), eq(locations.active, true), inArray(merchants.status, [...JOINABLE_STATUSES])))
+    .where(and(inArray(locations.qrCode, qrCodes), eq(locations.active, true), inArray(merchants.status, [...JOINABLE_STATUSES])))
     .limit(1);
   if (!row) throw notFound("Shop");
   return row;

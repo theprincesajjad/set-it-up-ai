@@ -61,7 +61,7 @@ export default function RepToday() {
                   {t.setupSessions.map((s) => (
                     <li key={s.leadId} className="flex flex-wrap items-center gap-3 px-4 py-3">
                       <div className="min-w-0 flex-1">
-                        <Link href={`/rep/leads/${s.leadId}`} className="block truncate text-body font-medium text-fg hover:underline">{s.businessName}</Link>
+                        <Link href={`/rep/leads/${s.leadId}`} className="block truncate text-body font-medium text-fg hover:underline max-md:leading-11">{s.businessName}</Link>
                         <p className="truncate text-meta text-fg-muted">Setup session · {formatTime(s.setupAt)} · {s.setupChannel ? CHANNEL[s.setupChannel] : "phone"}</p>
                       </div>
                       {s.phone ? <Button size="sm" variant="secondary" href={`tel:${s.phone}`}>Call</Button> : null}
@@ -71,7 +71,7 @@ export default function RepToday() {
                   {[...t.checkInsDue].sort((a, b) => b.daysSinceSignup - a.daysSinceSignup).slice(0, showAll ? undefined : 8).map((c) => (
                     <li key={`${c.merchantId}-${c.day}`} className="flex flex-wrap items-center gap-3 px-4 py-3">
                       <div className="min-w-0 flex-1">
-                        <Link href={`/rep/merchants/${c.merchantId}`} className="block truncate text-body font-medium text-fg hover:underline">{c.name}</Link>
+                        <Link href={`/rep/merchants/${c.merchantId}`} className="block truncate text-body font-medium text-fg hover:underline max-md:leading-11">{c.name}</Link>
                         <p className="truncate text-meta text-fg-muted">Day {c.day} call · {c.activeMembers} {c.activeMembers === 1 ? "member" : "members"} (goal {c.target}) · signed {c.daysSinceSignup} days ago</p>
                       </div>
                       <Button size="sm" variant="secondary" onClick={() => setLog(c)}>Log call</Button>
@@ -91,7 +91,7 @@ export default function RepToday() {
                     <li key={l.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                       <span aria-hidden className="size-2 shrink-0 rounded-full bg-points" />
                       <div className="min-w-0 flex-1">
-                        <Link href={`/rep/leads/${l.id}`} className="block truncate text-body font-medium text-fg hover:underline">{l.businessName}</Link>
+                        <Link href={`/rep/leads/${l.id}`} className="block truncate text-body font-medium text-fg hover:underline max-md:leading-11">{l.businessName}</Link>
                         <p className="truncate text-meta text-fg-muted">{[l.vertical?.replace(/_/g, " "), l.language ? { en: "English", hi: "Hindi", ur: "Urdu", pa: "Punjabi" }[l.language] : null, `asked ${formatTime(l.createdAt)}`].filter(Boolean).join(" · ")}</p>
                       </div>
                       {l.phone ? <Button size="sm" variant="secondary" href={`tel:${l.phone}`}>Call</Button> : null}
@@ -109,7 +109,7 @@ export default function RepToday() {
                   {t.leadsDue.map((l) => (
                     <li key={l.id} className="flex flex-wrap items-center gap-2 px-4 py-3">
                       <div className="min-w-0 flex-1">
-                        <Link href={`/rep/leads/${l.id}`} className="block truncate text-body font-medium text-fg hover:underline">{l.businessName}</Link>
+                        <Link href={`/rep/leads/${l.id}`} className="block truncate text-body font-medium text-fg hover:underline max-md:leading-11">{l.businessName}</Link>
                         <p className="truncate text-meta text-fg-muted">{l.address ?? ""}{l.nextActionAt ? ` · due ${formatDate(l.nextActionAt, true)}` : ""}</p>
                       </div>
                       <Tag>{l.stage.replace("_", " ")}</Tag>

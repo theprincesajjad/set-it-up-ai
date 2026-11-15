@@ -62,7 +62,7 @@ test.describe("typing before hydration (3 s JS delay)", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel("First name").fill("Sam");
     await page.getByRole("button", { name: "Join Pinecone Coffee Co." }).click();
-    await expect(page.getByText("You're in, Sam.")).toBeVisible();
+    await expect(page.getByText("You’re in, Sam.")).toBeVisible();
   });
 
   test("join flow: a consent box ticked before hydration stays ticked", async ({ page }) => {

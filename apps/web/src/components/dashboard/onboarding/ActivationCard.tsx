@@ -27,7 +27,8 @@ function MembersActivationCard({ c, base, guide }: { c: merchantApi.OnboardingCh
   const pct = a.target > 0 ? Math.min(100, (a.members / a.target) * 100) : 0;
   const mark = leadingMarkPct(a);
   const left = stepsLeft(c);
-  const showMove = !(guide && a.nextMove.path.startsWith("/setup"));
+  // A next move that is a setup step is already a row in Needs you (or a step in the guide above): it is not offered a third time here.
+  const showMove = !/^\/(setup|locations\/kit)/.test(a.nextMove.path);
   return (
     <section aria-label={t(L, "ob.card.title", { days: a.windowDays })} dir={L === "ur" ? "rtl" : "ltr"} lang={L} className="flex flex-col gap-5 rounded-card bg-card shadow-card p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">

@@ -54,11 +54,11 @@ test("a guest joins the line from a phone, sees a place and an estimate, and lea
   await fillPhone(page, who);
   await page.getByRole("button", { name: "Kids' cut" }).click();
   await page.getByRole("button", { name: "Marcus" }).click();
-  await page.getByLabel(/Text me when I'm next/).check();
+  await page.getByLabel(/Text me when I’m next/).check();
   await page.screenshot({ path: shot("m1-join-390"), fullPage: true });
   await page.getByRole("button", { name: "Join the line" }).click();
   await page.waitForURL(/\/line\//);
-  await expect(page.getByRole("heading", { name: /You're (number \d+|next)/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /You’re (number \d+|next)/ })).toBeVisible();
   await expect(page.getByText(/\d+ people? ahead of you|\d+ person ahead of you/)).toBeVisible();
   await expect(page.getByText("Kids' cut", { exact: false }).first()).toBeVisible();
   await page.screenshot({ path: shot("m2-status-390"), fullPage: true });

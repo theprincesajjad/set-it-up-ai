@@ -78,7 +78,7 @@ export const PLAN_COPY = {
     sub: "{pro} adds the tools that fill gaps and bring clients back.",
     caption: "Illustrative examples, not a promise of earnings.",
     items: [
-      { id: "waitlist", title: "A waitlist that fills cancellations.", body: "When someone cancels, the next client on the list is offered the slot.", sample: "Sat 1:00 pm cancelled", sampleLine: "Offered to the waitlist · filled" },
+      { id: "waitlist", title: "A waitlist that fills cancellations.", body: "When someone cancels, the next client on the list is offered the slot.", sample: "Sat 1:00 p.m. cancelled", sampleLine: "Offered to the waitlist · filled" },
       { id: "rebook", title: "Rebooking that runs itself.", body: "Clients get a reminder when they are due, and a win-back if they go quiet.", sample: "Due for the next visit", sampleLine: "Rebooking reminder sent · booked" },
       { id: "reviews", title: "More Google reviews.", body: "A review request goes out after every visit, so happy clients say so.", sample: "How was your visit?", sampleLine: "Review request sent after the visit" },
       { id: "report", title: "Your week in dollars.", body: "A weekly report with your total, your goal and your best day.", sample: "$1,240 of $1,500 goal", sampleLine: "Best day: Saturday" },

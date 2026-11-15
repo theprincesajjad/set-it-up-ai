@@ -10,7 +10,7 @@ export interface StatTileProps {
   label: string;
   value: ReactNode;
   /** e.g. { pct: 12, good: true, text: "+12% vs last 30 days" }. `good` decides the colour on a plain tile; on a toned tile it decides the arrow. */
-  delta?: { pct: number; good?: boolean | null; text?: string } | null;
+  delta?: { pct: number; good?: boolean | null; text?: string; /** "vs previous 4 weeks": shown beside the change from the small-tablet width up; screen readers always get it. */ context?: string } | null;
   /** Optional sparkline values (a plain tile draws it under the numbers; a toned tile draws it at the end of the number). */
   spark?: number[];
   href?: string;
@@ -33,7 +33,7 @@ export function StatTile({ label, value, delta, spark, href, loading, caption, f
       <p className="text-meta text-fg-muted">{label}</p>
       {loading ? <Skeleton className="mt-2 h-8 w-24" /> : <p className="display mt-1 text-stat tabular-nums text-fg">{value ?? "–"}</p>}
       {delta && !loading ? (
-        <p className={cn("mt-1 text-meta tabular-nums", delta.good === true ? "text-positive-text" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${delta.pct >= 0 ? "+" : ""}${delta.pct}%`}</p>
+        <p className={cn("mt-1 text-meta tabular-nums", delta.good === true ? "text-positive-text" : delta.good === false ? "text-negative" : "text-fg-muted")}>{delta.text ?? `${delta.pct >= 0 ? "+" : ""}${delta.pct}%`}{delta.context ? <span className="max-sm:sr-only"> {delta.context}</span> : null}</p>
       ) : null}
       {caption ? <p className="mt-1 text-meta text-fg-muted">{caption}</p> : null}
       {spark && !loading ? <Sparkline values={spark} area={false} className="mt-3 h-7 w-full text-fg" strokeWidth={1.5} /> : null}
@@ -64,21 +64,23 @@ function ToneTile({ label, value, delta, spark, href, loading, caption, tone }: 
         className={cn(
           "mt-2.5 flex min-h-4 items-center gap-1 text-meta-strong tabular-nums",
           // Clear: the same 24px comparison chip as the Today stat cards (success / destructive / neutral), 8 under the number.
-          "clear:mt-2 clear:h-6 clear:w-fit clear:max-w-full clear:rounded-r4 clear:px-2 clear:text-xs clear:font-semibold clear:leading-4",
-          // A comparison is a chip; a caption (an explanation, sometimes two lines) stays plain muted 12/16 text.
+          "clear:mt-2 clear:min-h-6 clear:text-xs clear:leading-4",
+          // A comparison is a chip; a caption (an explanation, sometimes two lines) stays plain muted 12/16 text with no chip padding.
           !loading && text
-            ? delta?.good === true
-              ? "clear:bg-success-soft clear:text-success-text"
-              : delta?.good === false
-                ? "clear:bg-destructive-soft clear:text-destructive-text"
-                : "clear:bg-muted clear:text-foreground"
-            : "clear:h-auto clear:min-h-6 clear:w-auto clear:rounded-none clear:bg-transparent clear:px-0 clear:font-normal clear:text-muted-foreground",
+            ? cn(
+                "clear:w-fit clear:max-w-full clear:rounded-r4 clear:px-2 clear:py-1 clear:font-semibold",
+                delta?.good === true ? "clear:bg-success-soft clear:text-success-text" : delta?.good === false ? "clear:bg-destructive-soft clear:text-destructive-text" : "clear:bg-muted clear:text-foreground",
+              )
+            : "clear:font-normal clear:text-muted-foreground",
         )}
       >
         {!loading && text ? (
           <>
             {showArrow ? <Arrow aria-hidden className="size-3.5 shrink-0" strokeWidth={2.5} /> : null}
-            <span>{text}</span>
+            <span>
+              {text}
+              {delta?.context ? <span className="max-sm:sr-only"> {delta.context}</span> : null}
+            </span>
           </>
         ) : !loading && caption ? (
           <span>{caption}</span>

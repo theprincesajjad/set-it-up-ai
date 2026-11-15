@@ -5,6 +5,7 @@ import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/TextField";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useMerchant } from "../MerchantContext";
 
 /**
@@ -12,33 +13,37 @@ import { useMerchant } from "../MerchantContext";
  * when one of the two did not work, and lets the owner fix it (try the address again, or ask for their street). Nothing shows when both are fine.
  */
 export function StreetCard() {
-  const { api, base, role } = useMerchant();
+  const { api, base, role, detail } = useMerchant();
+  const { t } = useLocaleOrEnglish();
   const state = useApi(role === "staff" ? null : () => api.street(), [api, role]);
   const act = useAction();
   const [name, setName] = useState("");
   const s = state.data;
   if (!s || (s.onMap && s.open)) return null;
   const owner = role === "owner";
-  // English-only copy: dir and lang keep its punctuation in order on an Urdu (right-to-left) page.
+  const work = detail.merchant.workSetting;
+  // A pro who travels to clients has no address to pin, so there is nothing to fix here.
+  if (!s.onMap && work === "mobile") return null;
+  const home = work === "home";
   return (
-    <section aria-label="Your place on the map" dir="ltr" lang="en" className="flex flex-col gap-3 rounded-card bg-card shadow-card p-5">
+    <section aria-label={t("own.street.label")} className="flex flex-col gap-3 rounded-card bg-card shadow-card p-5">
       <div className="flex items-start gap-3">
         <MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-fg-muted" strokeWidth={1.75} />
         <div className="min-w-0">
           {!s.onMap ? (
             <>
-              <h2 className="text-body-strong text-fg">Your shop is not on the map yet</h2>
-              <p className="mt-1 text-meta text-fg-muted">We couldn&apos;t find your address, so shoppers can&apos;t see a pin yet. Check the street address in Locations, then try again.</p>
+              <h2 className="text-body-strong text-fg">{t("own.street.notOnMap")}</h2>
+              <p className="mt-1 text-meta text-fg-muted">{t(home ? "own.street.notOnMapHome" : "own.street.notOnMapBody")}</p>
             </>
           ) : !s.neighbourhood ? (
             <>
-              <h2 className="text-body-strong text-fg">Your street is not live yet</h2>
-              <p className="mt-1 text-meta text-fg-muted">Tell us your street or business area. We open a street when {s.opensAt} shops join, and we will tell you.</p>
+              <h2 className="text-body-strong text-fg">{t("own.street.notLive")}</h2>
+              <p className="mt-1 text-meta text-fg-muted">{t("own.street.notLiveBody", { n: s.opensAt })}</p>
             </>
           ) : (
             <>
-              <h2 className="text-body-strong text-fg">{s.neighbourhood.name} is not live yet</h2>
-              <p className="mt-1 text-meta text-fg-muted">{s.shops} of {s.opensAt} shops so far. Your shop is already on the map. We will tell you when your street opens.</p>
+              <h2 className="text-body-strong text-fg"><bdi>{t("own.street.hoodNotLive", { name: s.neighbourhood.name })}</bdi></h2>
+              <p className="mt-1 text-meta text-fg-muted">{t("own.street.hoodBody", { shops: s.shops, n: s.opensAt })}</p>
             </>
           )}
         </div>
@@ -46,16 +51,16 @@ export function StreetCard() {
       {act.error ? <Banner tone="warning">{act.error}</Banner> : null}
       {owner && !s.onMap ? (
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" loading={act.busy} onClick={async () => { const r = await act.run(() => api.locateShop()); if (r) state.setData(r); }}>Find us on the map</Button>
-          <Button size="sm" variant="secondary" href={`${base}/locations`}>Check the address</Button>
+          <Button size="sm" loading={act.busy} onClick={async () => { const r = await act.run(() => api.locateShop()); if (r) state.setData(r); }}>{t("own.street.find")}</Button>
+          <Button size="sm" variant="secondary" href={`${base}/locations`}>{t(home ? "own.street.checkHome" : "own.street.check")}</Button>
         </div>
       ) : null}
       {owner && s.onMap && !s.neighbourhood ? (
         <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={async (e) => { e.preventDefault(); const r = await act.run(() => api.requestStreet(name)); if (r) { state.setData(r); setName(""); } }}>
           <div className="min-w-0 flex-1">
-            <TextField label="Your street or business area" placeholder="Lake Shore Village" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+            <TextField label={t("own.street.area")} placeholder="Lake Shore Village" dir="auto" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
           </div>
-          <Button type="submit" size="md" loading={act.busy} disabled={name.trim().length < 3}>Ask for my street</Button>
+          <Button type="submit" size="md" loading={act.busy} disabled={name.trim().length < 3}>{t("own.street.ask")}</Button>
         </form>
       ) : null}
     </section>

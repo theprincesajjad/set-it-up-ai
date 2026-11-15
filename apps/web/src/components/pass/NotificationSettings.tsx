@@ -17,7 +17,8 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Switch } from "@/components/ui/Switch";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
-import { isApiError } from "@/lib/api/errors";
+import { isApiError, isSessionEnded } from "@/lib/api/errors";
+import { SessionEndedCard } from "./SessionEnded";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish, saveProfileLocale } from "@/lib/i18n/client";
 
@@ -43,7 +44,7 @@ export function InboxList({ limit = 20 }: { limit?: number }) {
   const { t, time, date } = useLocaleOrEnglish();
   const [inbox, setInbox] = useState<customerApi.NotificationsResponse | null>(null);
   const [limits, setLimits] = useState<number>(customerApi.ROUTINE_PUSHES_PER_DAY);
-  const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "missing" | "error" | "session">("loading");
 
   const load = useCallback(async () => {
     setState("loading");
@@ -53,7 +54,7 @@ export function InboxList({ limit = 20 }: { limit?: number }) {
       if (p?.limits) setLimits(p.limits.routinePushesPerDay);
       setState("ready");
     } catch (e) {
-      setState(isApiError(e) && e.status === 404 ? "missing" : "error");
+      setState(isApiError(e) && e.status === 404 ? "missing" : isSessionEnded(e) ? "session" : "error");
     }
   }, [limit]);
   useEffect(() => {
@@ -80,6 +81,7 @@ export function InboxList({ limit = 20 }: { limit?: number }) {
         ))}
       </SkeletonGroup>
     );
+  if (state === "session") return <SessionEndedCard />;
   if (state === "error")
     return (
       <div className="flex items-center justify-between gap-4 rounded-card border border-line p-4">
@@ -173,7 +175,7 @@ export function NotificationSettings() {
   const toast = useToast();
   const { t, locale } = useLocaleOrEnglish();
   const [prefs, setPrefs] = useState<customerApi.NotificationPrefsResponse | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "missing" | "error" | "session">("loading");
 
   const load = useCallback(async () => {
     setState("loading");
@@ -181,7 +183,7 @@ export function NotificationSettings() {
       setPrefs(await browserApi.me.notificationPrefs());
       setState("ready");
     } catch (e) {
-      setState(isApiError(e) && e.status === 404 ? "missing" : "error");
+      setState(isApiError(e) && e.status === 404 ? "missing" : isSessionEnded(e) ? "session" : "error");
     }
   }, []);
   useEffect(() => {
@@ -230,6 +232,13 @@ export function NotificationSettings() {
         </SkeletonGroup>
       </div>
     );
+  if (state === "session")
+    return (
+      <div className="flex flex-col gap-7">
+        {language}
+        <SessionEndedCard />
+      </div>
+    );
   if (state === "error")
     return (
       <div className="flex flex-col gap-7">
@@ -252,7 +261,8 @@ export function NotificationSettings() {
   const label = (type: customerApi.NotificationType, fallback: string) => {
     const key = `sh.nt.${type}` as MessageKey;
     const out = t(key);
-    return out === key ? fallback : out;
+    // Urdu wraps a missing key in direction marks; compare without them. 
+    return out.replace(/[\u200e\u200f\u2066-\u2069]/g, "") === key ? fallback : out;
   };
 
   const row = (item: customerApi.NotificationPrefDto) => {

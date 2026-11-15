@@ -56,13 +56,13 @@ test("catering inquiry → reference number → quote approval with typed signat
   // 4. Deposit through the dev fake provider, then the confirmed state.
   await expect(page.getByRole("heading", { name: "Pay your deposit" })).toBeVisible();
   await page.getByRole("button", { name: "Pay $1,240.74 deposit" }).click();
-  await expect(page.getByRole("heading", { name: "You're booked" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "You’re booked" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/We received your \$1,240\.74 deposit/)).toBeVisible();
   await expectNoHorizontalScroll(page);
 
   // Reloading shows the confirmed state, not the form.
   await page.reload();
-  await expect(page.getByRole("heading", { name: "You're booked" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You’re booked" })).toBeVisible();
   await expect(page.getByLabel("Type your full name to sign")).toHaveCount(0);
 });
 
@@ -80,7 +80,7 @@ test("quote with no deposit confirms on approval; Urdu lays out right to left", 
   await expect(page.getByText(/Deposit due now/)).toHaveCount(0);
   await page.getByLabel("Type your full name to sign").fill("Sana Malik");
   await page.getByRole("button", { name: "Approve quote" }).click();
-  await expect(page.getByRole("heading", { name: "You're booked" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You’re booked" })).toBeVisible();
   await expect(page.getByText("No deposit is needed for this event.")).toBeVisible();
 });
 

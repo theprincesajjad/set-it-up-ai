@@ -1,8 +1,8 @@
 "use client";
 import { useHydratedValue } from "@/lib/useHydratedValue";
-import { ChevronLeft, ChevronRight, CircleCheck, CreditCard } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, CreditCard, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { appointmentsApi as apptApi, serviceFitsSize, type appointmentsApi, type petApi } from "@ll/shared";
+import { appointmentsApi as apptApi, serviceFitsSize, unitWord, type appointmentsApi, type petApi } from "@ll/shared";
 import { ShopWalletCard } from "./ShopWalletCard";
 import { Reveal } from "./Reveal";
 import { NextVisitCard } from "@/components/pass/NextVisitCard";
@@ -68,6 +68,11 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const [banner, setBanner] = useState<{ tone: "danger" | "info"; text: string } | null>(null);
   const [booked, setBooked] = useState<Booked | null>(null);
   const [finished, setFinished] = useState<appointmentsApi.MyAppointmentDto | null>(null);
+  // After booking: is this customer in the shop's rewards yet? (A first booking makes a customer, not a member.) null = not known yet.
+  const [member, setMember] = useState<boolean | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const bookedRef = useRef<HTMLElement>(null);
   const [wantsSignIn, setWantsSignIn] = useState(false);
   const pending = useRef(false);
   const signInRef = useRef<HTMLDivElement>(null);
@@ -178,6 +183,44 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const shownStaff = slot ? (data.staff.find((s) => s.id === slot.staffId)?.name ?? staffName) : staffName;
   const servicesText = [...picked, ...pickedAddOns].map((s) => pick(s).name).join(", "); // phase-pro: P5 names the add-ons
 
+  /** The confirmation lives at the booking's own address: a refresh (or Back) lands on it, never on a blank "Step 1 of 3" that invites a second booking. */
+  function rememberBooked(id: string) {
+    try {
+      const lang = new URLSearchParams(window.location.search).get("lang");
+      window.history.replaceState(window.history.state, "", `/shops/${encodeURIComponent(shop.slug)}/book/${encodeURIComponent(id)}?booked=1${lang ? `&lang=${encodeURIComponent(lang)}` : ""}`);
+    } catch {
+      /* no history API: the confirmation still shows */
+    }
+  }
+
+  // The confirmation is announced and focused when it opens (the page had no heading to land on).
+  useEffect(() => {
+    if (step !== "done") return;
+    bookedRef.current?.focus({ preventScroll: true });
+    if (!finished) return;
+    let alive = true;
+    browserApi.me
+      .memberships()
+      .then((r) => alive && setMember(r.items.some((m) => m.merchant.id === finished.merchant.id)))
+      .catch(() => alive && setMember(null));
+    return () => {
+      alive = false;
+    };
+  }, [step, finished]);
+
+  async function joinShop(merchantId: string) {
+    setJoining(true);
+    setJoinError(null);
+    try {
+      await browserApi.me.join({ merchantId });
+      setMember(true);
+    } catch (e) {
+      setJoinError(errText(e));
+    } finally {
+      setJoining(false);
+    }
+  }
+
   async function afterPay(id: string) {
     for (let i = 0; i < 12; i++) {
       try {
@@ -185,6 +228,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         if (!r.appointment.pending) {
           setFinished(r.appointment);
           setStep("done");
+          rememberBooked(r.appointment.id);
           return;
         }
       } catch {
@@ -215,6 +259,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       if (r.confirmed) {
         setFinished(r.appointment);
         setStep("done");
+        rememberBooked(r.appointment.id);
       } else setStep("pay");
       window.scrollTo?.({ top: 0 });
     } catch (e) {
@@ -292,11 +337,11 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       <div className="flex flex-col gap-6">
         {head}
         {/* The confirmation in the shop's colour (lib/shopColor.ts): text on it is the computed --trade-pass-text. */}
-        <section data-testid="booked-card" data-brand-card="" className="flex flex-col gap-3 rounded-[28px] bg-trade p-5 text-trade-pass-text shadow-card clear:rounded-r8 [&_h2]:!text-current" aria-label={t("bk.done.title")}>
+        <section ref={bookedRef} tabIndex={-1} data-testid="booked-card" data-brand-card="" className="flex flex-col gap-3 rounded-[28px] bg-trade p-5 text-trade-pass-text shadow-card outline-none clear:rounded-r8 [&_h1]:!text-current" aria-label={t("bk.done.title")}>
           <span aria-hidden className="flex size-11 items-center justify-center rounded-full bg-trade-pass-text text-trade-pass-from motion-safe:animate-stamp-pop">
             <CircleCheck className="size-6" strokeWidth={2} />
           </span>
-          <Heading level={2}>{t("bk.done.title")}</Heading>
+          <Heading level={1}>{t("bk.done.title")}</Heading>
           {/* wave-p: one sentence; the when, where and with whom are on the next-visit card right under this (never twice). */}
           <p className="text-body">{t("cust.bk.done.sub")}</p>
           {finished.depositCents > 0 && finished.depositPaidAt ? <p className="text-meta-strong">{t("bk.card.deposit", { amount: money(finished.depositCents) })}</p> : null}
@@ -311,7 +356,18 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         {/* wave-q: what follows rises in under the confirmation, one card after the other (kit BlurFade, lazy; static under reduced motion). */}
         {!pharmacy ? <Reveal delay={0.1}><NextVisitCard appt={finished} showManage={false} /></Reveal> : null}
         {/* The shop's wallet card, with this visit on it (pharmacies keep visits off the card). */}
-        <Reveal delay={0.2}><ShopWalletCard merchantId={finished.merchant.id} shopName={shop.name} slug={shop.slug} terminology={shop.terminology} className="rounded-sheet bg-trade-soft p-5" /></Reveal>
+        {member === false && !pharmacy ? (
+          <Reveal delay={0.2}>
+            <section aria-label={t("auth.join.joinShop", { shop: shop.name })} data-testid="join-after-booking" className="flex flex-col gap-3 rounded-sheet bg-trade-soft p-5">
+              <h2 className="text-body-strong text-fg">{t("auth.join.joinShop", { shop: shop.name })}</h2>
+              <p className="text-meta text-fg-muted">{t("cust.bk.joinBody", { unit: unitWord(f.locale, shop.terminology ?? "points") })}</p>
+              {joinError ? <Banner tone="danger">{joinError}</Banner> : null}
+              <Button size="lg" variant="shop" fullWidth loading={joining} onClick={() => void joinShop(finished.merchant.id)}>{t("auth.join.joinShop", { shop: shop.name })}</Button>
+            </section>
+          </Reveal>
+        ) : (
+          <Reveal delay={0.2}><ShopWalletCard merchantId={finished.merchant.id} shopName={shop.name} slug={shop.slug} terminology={shop.terminology} className="rounded-sheet bg-trade-soft p-5" /></Reveal>
+        )}
         <ReminderCard text={finished.reminderText} />
         {/* phase-solo D: the free reminder channel for a client who booked on the web. */}
         <NotifyPrompt />
@@ -404,7 +460,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         <div className="flex flex-col gap-3">
           {back(offeredAddOns.length ? "addons" : "services") /* phase-pro: P5 */}
           <Heading>{t("bk.time.title")}</Heading>
-          <p className="text-body text-fg-muted">{t("bk.time.sub", { services: servicesText, staff: staffName || t("bk.anyone").toLowerCase(), duration: dur(av?.blockMin ?? sel.durationMin) })}</p>
+          <p className="text-body text-fg-muted">{t("bk.time.sub", { services: servicesText, staff: staffName || t("bk.anyStaffWith"), duration: dur(av?.blockMin ?? sel.durationMin) })}</p>
         </div>
         <DateStrip
           days={days}
@@ -426,7 +482,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           </div>
         ) : (
           <div className="flex flex-col gap-4" aria-live="polite" aria-busy={avLoading}>
-            <p className="text-meta-strong text-fg">{times.length ? t("bk.time.count", { day: date(dayDate(day), { weekday: "long" }, "UTC"), n: times.length, staff: staffName || t("bk.anyone") }) : t("bk.time.none", { day: date(dayDate(day), { weekday: "long" }, "UTC") })}</p>
+            <p className="text-meta-strong text-fg">{times.length ? t("bk.time.count", { day: date(dayDate(day), { weekday: "long" }, "UTC"), n: times.length, staff: staffName || t("bk.anyStaffWith") }) : t("bk.time.none", { day: date(dayDate(day), { weekday: "long" }, "UTC") })}</p>
             {parts.map(({ part, items }) => (
               <div key={part} className="flex flex-col gap-2" data-testid={`times-${part}`}>
                 <p className="text-caption uppercase tracking-[0.06em] text-fg-muted">{t(`cust.bk.part.${part}`)}</p>
@@ -561,11 +617,11 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       </div>
       {solo ? null : <p className="-mb-3 text-meta-strong text-fg">{t("cust.bk.who")}</p>}
       {solo ? null : <div role="radiogroup" aria-label={t("bk.anyone")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        {[{ id: null as string | null, name: t("bk.anyone"), initials: "Any" }, ...data.staff].map((s) => {
+        {[{ id: null as string | null, name: t("bk.anyone"), initials: null as string | null }, ...data.staff].map((s) => {
           const on = s.id === staffId;
           return (
             <button key={s.id ?? "any"} type="button" role="radio" aria-checked={on} onClick={() => setStaffId(s.id)} className={cn("flex h-11 shrink-0 items-center gap-2 rounded-full border ps-1.5 pe-4 text-body focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
-              <span aria-hidden className={cn("flex size-8 items-center justify-center rounded-full text-[11px] font-semibold", on ? "bg-bg text-fg" : "bg-bg-muted text-fg")}>{s.initials}</span>
+              <span aria-hidden className={cn("flex size-8 items-center justify-center rounded-full text-[11px] font-semibold", on ? "bg-bg text-fg" : "bg-bg-muted text-fg")}>{s.initials ?? <Users aria-hidden className="size-4" strokeWidth={1.75} />}</span>
               <bdi>{s.name}</bdi>
             </button>
           );
@@ -576,11 +632,11 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           <p className="text-meta-strong text-fg">{t("bk.pet.title")}</p>
           <div role="radiogroup" aria-label={t("bk.pet.title")} className="flex flex-wrap gap-2">
             {myPets.map((p) => (
-              <button key={p.id} type="button" role="radio" aria-checked={petId === p.id} onClick={() => setPetId(p.id)} className={cn("h-10 rounded-full border px-4 text-body focus-visible:focus-ring", petId === p.id ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+              <button key={p.id} type="button" role="radio" aria-checked={petId === p.id} onClick={() => setPetId(p.id)} className={cn("h-11 rounded-full border px-4 text-body focus-visible:focus-ring", petId === p.id ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
                 <bdi>{p.name}</bdi>
               </button>
             ))}
-            <a href={`/me/pets?next=${encodeURIComponent(`/shops/${shop.slug}/book`)}`} className="inline-flex h-10 items-center rounded-full border border-dashed border-line-strong px-4 text-body text-fg focus-visible:focus-ring">+ {t("bk.pet.add")}</a>
+            <a href={`/me/pets?next=${encodeURIComponent(`/shops/${shop.slug}/book`)}`} className="inline-flex h-11 items-center rounded-full border border-dashed border-line-strong px-4 text-body text-fg focus-visible:focus-ring">+ {t("bk.pet.add")}</a>
           </div>
           {pickedPet ? <p className="text-meta text-fg-muted">{t("bk.pet.sizeNote", { pet: pickedPet.name })}</p> : null}
         </div>
@@ -588,7 +644,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       {categories.length > 1 ? (
         <div role="radiogroup" aria-label={t("bk.all")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {["all", ...categories].map((c) => (
-            <button key={c} type="button" role="radio" aria-checked={category === c} onClick={() => setCategory(c)} className={cn("h-9 shrink-0 rounded-full border px-4 text-meta-strong focus-visible:focus-ring", category === c ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+            <button key={c} type="button" role="radio" aria-checked={category === c} onClick={() => setCategory(c)} className={cn("h-11 shrink-0 rounded-full border px-4 text-meta-strong focus-visible:focus-ring", category === c ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
               {c === "all" ? t("bk.all") : c}
             </button>
           ))}

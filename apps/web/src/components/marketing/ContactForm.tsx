@@ -94,6 +94,15 @@ export function ContactForm({ kind }: { kind: Kind }) {
   return <StandardForm kind={kind} />;
 }
 
+/** The thank-you that replaces a sent form takes the focus, so keyboard and screen-reader users stay where they were (not back at the top). */
+function Sent({ children }: { children: ReactNode }) {
+  return (
+    <div tabIndex={-1} ref={(el) => el?.focus()} className="outline-none">
+      {children}
+    </div>
+  );
+}
+
 function StandardForm({ kind }: { kind: Exclude<Kind, "restaurant"> }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [phone, setPhone] = useState("");
@@ -151,9 +160,11 @@ function StandardForm({ kind }: { kind: Exclude<Kind, "restaurant"> }) {
 
   if (sent)
     return (
-      <Banner tone="success" title={kind === "visit" ? copy.forms.visitSent : copy.forms.biaSent}>
-        {copy.forms.sentQuestions} <SupportEmail />.
-      </Banner>
+      <Sent>
+        <Banner tone="success" title={kind === "visit" ? copy.forms.visitSent : copy.forms.biaSent}>
+          {copy.forms.sentQuestions} <SupportEmail />.
+        </Banner>
+      </Sent>
     );
 
   return (
@@ -222,7 +233,12 @@ function RestaurantForm() {
     }
   }
 
-  if (sent) return <Banner tone="success">{t("mkt.rest.form.thanks")}</Banner>;
+  if (sent)
+    return (
+      <Sent>
+        <Banner tone="success">{t("mkt.rest.form.thanks")}</Banner>
+      </Sent>
+    );
 
   return (
     <form ref={form} onSubmit={submit} noValidate className="flex flex-col gap-4">

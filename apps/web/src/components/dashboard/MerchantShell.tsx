@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { authApi } from "@ll/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
 import { Button } from "@/components/ui/Button";
+import { formatTime } from "@/lib/format";
+import { useHeadingTitle } from "@/lib/dashboard/useHeadingTitle";
 import { buildMerchantNav, canOpen, isBareRoute, navSections } from "@/lib/dashboard/nav";
 import { navLabel } from "@/lib/dashboard/navLabels";
 import { placeLabel } from "@/lib/dashboard/today";
@@ -91,7 +93,16 @@ function SetupProgress() {
   const { t } = useLocaleOrEnglish();
   const { clear } = useThemeStyle();
   const pathname = usePathname();
-  const ob = useApi((role === "owner" || role === "manager") ? () => api.onboarding() : null, [api, role, pathname]);
+  // Re-read when the route changes, when the setup page sees a step finish (it fires this window event), and when the tab comes back.
+  const [bump, setBump] = useState(0);
+  useEffect(() => {
+    const again = () => setBump((n) => n + 1);
+    const onVisible = () => { if (document.visibilityState === "visible") again(); };
+    window.addEventListener("ll:onboarding-changed", again);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { window.removeEventListener("ll:onboarding-changed", again); document.removeEventListener("visibilitychange", onVisible); };
+  }, []);
+  const ob = useApi((role === "owner" || role === "manager") ? () => api.onboarding() : null, [api, role, pathname, bump]);
   const steps = ob.data?.steps ?? [];
   const done = steps.filter((x) => x.done).length;
   if (!ob.data || steps.length === 0 || done >= steps.length) return null;
@@ -143,7 +154,7 @@ function SupportBanner({ viewingAs }: { viewingAs: "admin" | "rep" }) {
         <span className="flex min-w-0 items-center gap-2">
           <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${session ? "bg-success" : "bg-destructive"}`} />
           <span className="truncate">
-            {session ? `Support session open until ${new Date(session.expiresAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}. Changes are logged.` : `Viewing ${detail.merchant.name} as ${viewingAs}. You can look around; to change anything, start a support session.`}
+            {session ? `Support session open until ${formatTime(session.expiresAt)}. Changes are logged.` : `Viewing ${detail.merchant.name} as ${viewingAs}. You can look around; to change anything, start a support session.`}
           </span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
@@ -178,15 +189,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
   // Wave P: every dashboard page was titled "Dashboard". The browser tab and history now read "<page heading> · <shop>", taken from
   // the page's own h1 once it has rendered (client pages cannot export metadata).
   const shopName = detail.merchant.name;
-  useEffect(() => {
-    const set = () => {
-      const h = document.querySelector("main h1")?.textContent?.trim();
-      if (h) document.title = `${h} · ${shopName}`;
-    };
-    set();
-    const id = window.setTimeout(set, 800);
-    return () => window.clearTimeout(id);
-  }, [pathname, shopName]);
+  useHeadingTitle(shopName, [pathname]);
   const entries = buildMerchantNav(base, role, new Set(features.features.filter((f) => f.enabled).map((f) => f.key)), {
     vertical: detail.merchant.vertical,
     plan: features.plan,
@@ -202,7 +205,7 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
   const sections = navSections(entries).map((s) => ({
     key: s.key,
     label: t(`shell.section.${s.key}` as const),
-    items: s.entries.map((e): ShellNavItem => ({ href: e.href, label: navLabel(t, e.label), icon: ICONS[e.key] ?? Store, exact: e.exact, badge: badgeFor(e.badge), child: !!e.parent })),
+    items: s.entries.map((e): ShellNavItem => ({ href: e.href, label: navLabel(t, e.label), icon: ICONS[e.key] ?? Store, exact: e.exact, also: e.also, badge: badgeFor(e.badge), child: !!e.parent })),
   }));
   // The phone bottom bar: Today, Counter, Customers, the trade's main module (the first row of run), More.
   const flat = navSections(entries);

@@ -53,6 +53,20 @@ export function pctDelta(cur: number, prev: number): number | null {
   return Math.round(((cur - prev) / prev) * 100);
 }
 
+/**
+ * The growth chip under a number on the reports page. A percentage off a tiny base reads as a bug ("+1933%"), so below
+ * `MIN_BASE` in the earlier period, or past +500%, it shows the plain change ("+59") instead. Null when there is nothing to compare with.
+ */
+export const DELTA_MIN_BASE = 10;
+export function changeChip(cur: number, prev: number): { text: string; direction: -1 | 0 | 1 } | null {
+  const pct = pctDelta(cur, prev);
+  if (pct === null) return null;
+  const direction = cur > prev ? 1 : cur < prev ? -1 : 0;
+  const plain = prev < DELTA_MIN_BASE || Math.abs(pct) > 500;
+  const text = direction === 0 ? "0%" : plain ? `${cur - prev > 0 ? "+" : ""}${cur - prev}` : `${pct > 0 ? "+" : ""}${pct}%`;
+  return { text, direction };
+}
+
 /** `<input type="datetime-local">` value (Toronto) ↔ ISO. */
 export function toLocalInput(iso: string | Date | null | undefined): string {
   if (!iso) return "";

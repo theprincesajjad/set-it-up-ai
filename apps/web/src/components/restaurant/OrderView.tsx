@@ -12,6 +12,7 @@ import { TextField } from "@/components/ui/TextField";
 import { browserApi, browserClient } from "@/lib/api/browser";
 import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
+import { openStatusL } from "@/lib/i18n/formatL";
 import { restaurantCustomerApi } from "@/lib/restaurant/api";
 import { cartCount, cartSubtotal, idempotencyKeyFor, pickupDays, priceDish, pruneCart, taxOf, type CartLine, type Item, type PickupDay } from "@/lib/restaurant/order";
 import { dayDate } from "@/lib/restaurant/util";
@@ -61,6 +62,9 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
 
   const quotedWait = restaurant?.quotedWaitMin ?? 20;
   const hours = menu.locations[0]?.hours ?? null;
+  // Closed right now (the shop has set hours and it is outside them): there is no "as soon as possible", only a time when it is open.
+  const closedNow = useMemo(() => openStatusL({ locale, t }, hours)?.open === false, [hours, locale, t]);
+  const feeCents = restaurant?.customerFeeCents ?? 0;
   function chooseLater() {
     const d = pickupDays(hours, new Date(), quotedWait);
     setDays(d);
@@ -78,14 +82,17 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
   const anyZeroRated = lines.some((l) => byId.get(l.itemId)?.taxable === false);
   // Meat cut to order is never "ready in 20 minutes": the customer picks a time.
   const cutToOrder = lines.some((l) => isWeighedLine(byId.get(l.itemId)!));
-  const laterOk = (when === "asap" && !cutToOrder) || (when === "later" && !!time && dayTimes.some((x) => x.iso === time));
+  const laterOk = (when === "asap" && !cutToOrder && !closedNow) || (when === "later" && !!time && dayTimes.some((x) => x.iso === time));
   useEffect(() => {
     // Cut to order has no "as soon as possible": open the time picker.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (cutToOrder && when === "asap") chooseLater();
+    if ((cutToOrder || closedNow) && when === "asap") chooseLater();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cutToOrder, when]);
+  }, [cutToOrder, closedNow, when]);
   const total = subtotal + tax;
+  // The card service fee is part of what the customer pays when they pay in the app: shown here, before they commit, and in the button.
+  const fee = method === "in_app" && menu.payInApp ? feeCents : 0;
+  const payTotal = total + fee;
   const canPickup = restaurant ? restaurant.features.pickup && restaurant.acceptingOrders : true;
   const base = `/shops/${encodeURIComponent(shop.slug)}`;
   const location = menu.locations[0];
@@ -184,9 +191,9 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
           label={t("rs.order.when")}
           value={when}
           onChange={(v) => (v === "later" ? chooseLater() : setWhen("asap"))}
-          options={[...(cutToOrder ? [] : [{ value: "asap" as const, label: t("rs.order.asap", { min: number(quotedWait) }) }]), { value: "later" as const, label: t("rs.order.later") }]}
+          options={[...(cutToOrder || closedNow ? [] : [{ value: "asap" as const, label: t("rs.order.asap", { min: number(quotedWait) }) }]), { value: "later" as const, label: t("rs.order.later") }]}
         />
-        {cutToOrder ? <p className="text-meta text-fg-muted">{t("gr.order.cutToOrder")}</p> : null}
+        {cutToOrder ? <p className="text-meta text-fg-muted">{t("gr.order.cutToOrder")}</p> : closedNow ? <p className="text-meta text-fg-muted">{t("rs.order.closedNow", { shop: shop.name })}</p> : null}
         {when === "later" ? (
           days && days.length ? (
             <div className="flex flex-col gap-3">
@@ -264,9 +271,15 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
         ) : (
           <p className="text-meta text-fg-muted">{t("gr.order.zeroRated")}</p>
         )}
+        {fee > 0 ? (
+          <div className="flex justify-between text-fg-muted">
+            <span>{t("rs.order.cardFee")}</span>
+            <span className="tabular-nums">{money(fee)}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between text-body-strong text-fg">
           <span>{t("orderPay.total")}</span>
-          <span className="tabular-nums">{money(total)}</span>
+          <span className="tabular-nums">{money(payTotal)}</span>
         </div>
         {menu.dualPricing ? <p className="pt-1 text-meta text-fg-muted">{t("rs.menu.cashNote", { pct: number(Math.round(menu.dualPricing.cashDiscountBps / 100)) })}</p> : null}
       </section>
@@ -274,7 +287,7 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
       {error ? <Banner tone="danger">{error}</Banner> : null}
       {signedIn ? (
         <Button size="lg" fullWidth loading={busy} disabled={!canPickup || !laterOk} onClick={() => void place()}>
-          {method === "in_app" ? t("rs.order.placePay", { price: money(total), n: number(cartCount({ lines })) }) : t("rs.order.place", { price: money(total) })}
+          {method === "in_app" ? t("rs.order.placePay", { price: money(payTotal), n: number(cartCount({ lines })) }) : t("rs.order.place", { price: money(total) })}
         </Button>
       ) : (
         <p className="text-center text-meta text-fg-muted">{t("rs.order.signInFirst")}</p>

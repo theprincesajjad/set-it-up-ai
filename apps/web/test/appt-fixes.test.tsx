@@ -19,9 +19,9 @@ describe("home hours note", () => {
   const hours = { wed: [["09:00", "19:00"]] } as Record<string, [string, string][]>;
   it("says closes while the shop is open and closed once it has shut", () => {
     // 2026-10-28 is a Wednesday. 15:00Z is 11:00 in Toronto; 01:00Z next day is 21:00 the same evening.
-    expect(hoursNote(hours, "close", new Date("2026-10-28T19:00:00Z"))).toBe("closes 7:00 pm");
-    expect(hoursNote(hours, "close", new Date("2026-10-29T01:00:00Z"))).toBe("closed 7:00 pm");
-    expect(hoursNote(hours, "morning", new Date("2026-10-28T11:00:00Z"))).toBe("opens 9:00 am");
+    expect(hoursNote(hours, "close", new Date("2026-10-28T19:00:00Z"))).toBe("closes 7:00 p.m.");
+    expect(hoursNote(hours, "close", new Date("2026-10-29T01:00:00Z"))).toBe("closed 7:00 p.m.");
+    expect(hoursNote(hours, "morning", new Date("2026-10-28T11:00:00Z"))).toBe("opens 9:00 a.m.");
   });
 });
 

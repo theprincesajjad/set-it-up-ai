@@ -84,9 +84,9 @@ function UsageMeter({ used, limit, label }: { used: number; limit: number; label
 /** Shops that sell food on a restaurant tier see that ladder first (verticals set at signup). */
 const RESTAURANT_VERTICALS = ["restaurant", "restaurant_south_asian", "tiffin", "caterer", "banquet_hall", "bakery"];
 const FAQ = [
-  ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That's a promise in our terms."],
-  [`What's the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name}, ${PLANS.studio.name} or ${PLANS.pro.name}. The Free plan has no subscription and no fee on loyalty. Online orders on Free carry ${FEES.orderBpsFree / 100}%.`],
-  [`Can I subscribe to ${PLANS.plus.name} today?`, `Yes. Subscribe below and your shop's tools switch on at once. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns) open once ${NETWORK_GATE_SHOPS} shops have joined.`],
+  ["Will loyalty ever cost money?", "No. Your loyalty program and its reports stay free. That’s a promise in our terms."],
+  [`What’s the ${PLATFORM_PAYMENT_FEE_BPS / 100}% fee?`, `Only on deposits and invoices you take in the app with ${PLANS.plus.name}, ${PLANS.studio.name} or ${PLANS.pro.name}. The Free plan has no subscription and no fee on loyalty. Online orders on Free carry ${FEES.orderBpsFree / 100}%.`],
+  [`Can I subscribe to ${PLANS.plus.name} today?`, `Yes. Subscribe below and your shop’s tools switch on at once. A few extras that need many shops nearby (sponsored promos and listings, map pins, BIA campaigns) open once ${NETWORK_GATE_SHOPS} shops have joined.`],
   ["What happens if I cancel?", "Your loyalty program keeps running on Free. Your customers, their balances and history all stay."],
 ];
 
@@ -148,8 +148,8 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
     <>
       {params.get("welcome") === "restaurant" ? (
         <Banner tone="success" title="Your shop is created.">
-          Pick the plan that turns on ordering, tiffin or catering, or add your menu first. Nothing is charged until you subscribe.{" "}
-          <a className="underline" href={`${base}/setup?step=trade_setup`}>Set up my menu first</a>
+          Pick the plan that turns on ordering, tiffin or catering, or start with your free stamp card. Nothing is charged until you subscribe.{" "}
+          <a className="underline" href={`${base}/setup?step=first_stamp`}>Start with my stamp card</a>
         </Banner>
       ) : null}
       {params.get("checkout") === "success" ? <Banner tone="success">Thanks. Your plan updates as soon as the payment confirms.</Banner> : null}
@@ -163,10 +163,10 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
         <h2 className="mt-1 text-title text-fg">
           {/* On the free trial the shop is still on Free underneath: say the trial, not "Free. Forever." (the line below has the date). */}
           {b.plan === "free" && b.usage?.trial ? (
-            <>You&apos;re on the {PLANS[b.usage.trial.plan].name} trial.</>
+            <>You’re on the {PLANS[b.usage.trial.plan].name} trial.</>
           ) : (
             <>
-              You&apos;re on {b.plan === "free" ? "Free" : b.plans.find((p) => p.id === b.plan)?.name}
+              You’re on {b.plan === "free" ? "Free" : b.plans.find((p) => p.id === b.plan)?.name}
               {b.plan === "free" ? ". Forever." : "."}
             </>
           )}

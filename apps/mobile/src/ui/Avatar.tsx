@@ -14,7 +14,7 @@ export function Avatar({ name, size = 40, imageUrl }: { name: string | null | un
         allowFontScaling={false}
         style={[typo("displayNumber"), { fontSize: Math.round(size * 0.4), lineHeight: Math.round(size * 0.5), letterSpacing: 0 }]}
       >
-        {initials(name).toLowerCase()}
+        {initials(name).toUpperCase()}
       </Text>
     </View>
   );

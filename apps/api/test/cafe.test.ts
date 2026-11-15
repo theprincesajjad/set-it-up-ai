@@ -155,12 +155,12 @@ describe("reports/today", () => {
     expect(t.slipping.count).toBe(2);
     expect(t.slipping.canText).toBe(1);
     const sue = t.slipping.members.find((m: { name: string }) => m.name === "Sue Slipping");
-    expect(sue).toMatchObject({ canText: true, usually: "Weekdays 10 am to 12 pm" });
+    expect(sue).toMatchObject({ canText: true, usually: "Weekdays 10 a.m. to 12 p.m." });
     expect(t.slipping.members.find((m: { name: string }) => m.name === "Sol Slipping").canText).toBe(false);
 
     expect(t.staff).toHaveLength(1);
     expect(t.staff[0]).toMatchObject({ name: "Sam Barista", visits: 4, stamps: 5, undone: 1 });
-    expect(t.staff[0].shift).toBe("8 am to 4 pm");
+    expect(t.staff[0].shift).toBe("8 a.m. to 4 p.m.");
 
     // Double stamps 2 to 4 pm: Rae's 3 pm visit is the only one in the window; four Thursdays had 1 visit in it (0.25 a day).
     expect(t.promoWindow).toMatchObject({ title: "Double stamps on slow afternoons", windowVisits: 1, typicalVisits: 0, extraVisits: 1 });
@@ -345,8 +345,8 @@ describe("customers: segments and rhythm fields", () => {
     const m = await seedPeople();
     const body = await list(m);
     const by = (n: string) => body.items.find((i: { name: string }) => i.name === n);
-    expect(by("Rae Regular")).toMatchObject({ visits30d: 4, isRegular: true, isSlipping: false, usually: "Weekdays 8 to 10 am" });
-    expect(by("Sue Slipping")).toMatchObject({ visits30d: 2, isRegular: false, isSlipping: true, usually: "Weekdays 10 am to 12 pm" });
+    expect(by("Rae Regular")).toMatchObject({ visits30d: 4, isRegular: true, isSlipping: false, usually: "Weekdays 8 to 10 a.m." });
+    expect(by("Sue Slipping")).toMatchObject({ visits30d: 2, isRegular: false, isSlipping: true, usually: "Weekdays 10 a.m. to 12 p.m." });
     expect(by("Cam Casual")).toMatchObject({ visits30d: 1, isRegular: false, isSlipping: false, usually: null });
   });
 

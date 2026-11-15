@@ -1,4 +1,4 @@
-import { Wordmark } from "@/components/site/Brand";
+import { MarketingWordmark } from "@/components/marketing/landing/Wordmark";
 import { copy } from "@/copy/en-CA";
 import type { SoloKey } from "@/lib/marketing/solo";
 
@@ -9,7 +9,7 @@ export function SoloNav({ current }: { current: SoloKey }) {
   return (
     <header className="sl-nav">
       <div className="sl-nav-in glass">
-        <Wordmark />
+        <MarketingWordmark />
         <nav aria-label={N.label} className="sl-nav-links">
           {N.links.map((l) => (
             <a key={l.href} href={l.href} aria-current={l.page === current ? "page" : undefined}>

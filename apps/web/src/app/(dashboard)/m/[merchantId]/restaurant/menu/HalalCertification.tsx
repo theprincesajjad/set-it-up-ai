@@ -102,7 +102,7 @@ export function HalalCertification({ state }: { state: ApiState<restaurantWebApi
             <h2 className="text-body-strong text-fg">Add your halal certificate</h2>
             <p className="text-meta text-fg-muted">Say who certifies you, what it covers and when it ends. Guests see it once on your shop page and menu, and we remind you before it expires.</p>
           </div>
-          <Button size="sm" onClick={() => setEditing(true)}>
+          <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
             Add certification
           </Button>
         </div>

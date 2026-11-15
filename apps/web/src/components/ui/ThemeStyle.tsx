@@ -27,8 +27,17 @@ export function useThemeStyle(): Ctx {
 }
 
 /** The Next.js "preventing flash" helper: runs during HTML parsing on a hard load, inert (text/plain) when React renders it on the client. */
-function InlineScript({ html }: { html: string }) {
+export function InlineScript({ html }: { html: string }) {
   return <script type={typeof window === "undefined" ? "text/javascript" : "text/plain"} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+/**
+ * The root layout's <head> script (lib/theme.ts `themeInitScript`). It has to be a client component: the `type` switch only works where it is
+ * evaluated again in the browser. A server component's `type="text/javascript"` is serialised into the page's payload, and when a not-found
+ * boundary makes React build the document on the client that script is created live and logs "Encountered a script tag while rendering React component".
+ */
+export function ThemeInitScript({ html }: { html: string }) {
+  return <InlineScript html={html} />;
 }
 
 export function ThemeStyle({ style, dark = false, merchantId, children }: { style?: Style | null; dark?: boolean | null; merchantId?: string; children?: ReactNode }) {

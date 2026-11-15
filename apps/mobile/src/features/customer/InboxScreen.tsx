@@ -11,6 +11,9 @@ import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { shopInitials, readableOn } from "../../ui/ShopTile";
+// l10n-ok: English branch (locale === "en") keeps the hand-written formats
+import { formatTime } from "../../lib/format";
+import { formatTimeL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
 import { useOnline } from "../../state/network";
 import { disp, ui, useTheme } from "../../theme";
@@ -20,11 +23,11 @@ import { inboxSections, openNotification, useInbox, useMarkRead } from "./inbox"
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** "9:41" today, "Tue" this week, "Oct 12" before (canvas times are bare, no am/pm). */
+/** "9:41 am" today (the same clock as Points history and the counter), "Tue" this week, "Oct 12" before. */
 export function inboxTime(iso: string, now = new Date()): string {
   const d = new Date(iso);
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  if (d.getTime() >= startOfDay) return `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (d.getTime() >= startOfDay) return formatTime(d);
   if (d.getTime() >= startOfDay - 6 * 86_400_000) return DAYS[d.getDay()]!;
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
@@ -54,9 +57,10 @@ function Lead({ n }: { n: customerApi.NotificationDto }) {
 
 function Row({ n, last, onPress }: { n: customerApi.NotificationDto; last: boolean; onPress: () => void }) {
   const { c } = useTheme();
-  const { locale, time, date } = useLocale();
-  // English keeps the canvas style (bare 9:41, Tue, Oct 12); other languages use their own digits and month names.
-  const when = locale === "en" ? inboxTime(n.createdAt) : new Date(n.createdAt).toDateString() === new Date().toDateString() ? time(n.createdAt) : date(n.createdAt, { month: "short", day: "numeric" });
+  const L = useLocale();
+  const { locale, date } = L;
+  // Today shows the time of day in the phone's own clock, in every language (never the shop's zone in one language and the phone's in another).
+  const when = locale === "en" ? inboxTime(n.createdAt) : new Date(n.createdAt).toDateString() === new Date().toDateString() ? formatTimeL(L, n.createdAt) : date(n.createdAt, { month: "short", day: "numeric" });
   return (
     <Pressable
       accessibilityRole="button"
@@ -95,6 +99,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
   const unread = inbox.data?.pages[0]?.unreadCount ?? items.filter((n) => !n.read).length;
   const sections = inboxSections(items, new Date(), [t("sh.inbox.today"), t("sh.inbox.week"), t("sh.inbox.earlier")]);
   const missingApi = inbox.error && (inbox.error as { status?: number }).status === 404;
+  const failed = inbox.isError && !missingApi && items.length === 0;
   const topPad = insets.top > 0 ? insets.top + 9 : 56;
 
   return (
@@ -126,10 +131,10 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
       </Text>
       <View style={styles.sub}>
         <Text style={ui(14, 400, 18)} rawColor={c.fgMuted}>
-          {unread > 0 ? t("sh.inbox.newN", { n: unread }) : t("sh.inbox.caughtUp")}
+          {unread > 0 ? t("sh.inbox.newN", { n: unread }) : failed || inbox.isLoading ? "" : t("sh.inbox.caughtUp")}
         </Text>
         {unread > 0 ? (
-          <Pressable accessibilityRole="button" onPress={() => markRead.mutate(null)} hitSlop={8}>
+          <Pressable accessibilityRole="button" onPress={() => markRead.mutate(null)} hitSlop={{ top: 13, bottom: 13, left: 8, right: 8 }}>
             <Text style={ui(14, 600, 18)} rawColor={c.brand}>{t("sh.set.markAllRead")}</Text>
           </Pressable>
         ) : null}
@@ -142,7 +147,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
       ) : inbox.isError && !missingApi && items.length === 0 ? (
         <ErrorState offline={!online} message={online ? t("sh.inbox.loadFail") : t("sh.inbox.offline")} onRetry={() => void inbox.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState body={t("sh.set.inboxEmpty")} actionLabel={t("sh.inbox.settings")} onAction={() => router.push("/settings/notifications")} />
+        <EmptyState body={t("sh.set.inboxEmpty")} actionLabel={t("err.action.findShops")} onAction={() => router.push("/map")} />
       ) : (
         sections.map((s) => (
           <WarmCard key={s.title} style={{ marginTop: 16 }}>
@@ -167,7 +172,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
         </Button>
       ) : null}
       {inTab ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push("/history")} style={{ marginTop: 24, alignSelf: "flex-start" }} hitSlop={8}>
+        <Pressable accessibilityRole="button" onPress={() => router.push("/history")} style={{ marginTop: 24, alignSelf: "flex-start" }} hitSlop={{ top: 13, bottom: 13, left: 8, right: 8 }}>
           <Text style={ui(14, 600, 18)} rawColor={c.brand}>{t("sh.inbox.history")}</Text>
         </Pressable>
       ) : null}

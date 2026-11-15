@@ -44,7 +44,7 @@ export function RestaurantHome() {
         actions={
           <>
             <BusyMode state={d?.busy ?? null} onChanged={() => void home.reload()} />
-            <Button size="md" href={`${base}/counter`} className="h-[38px] rounded-[10px] px-4 text-[14px] font-medium">
+            <Button size="md" href={`${base}/counter`} className="max-md:h-11 md:h-[38px] rounded-[10px] px-4 text-[14px] font-medium">
               Open counter
             </Button>
           </>
@@ -300,7 +300,7 @@ export function BusyMode({ state, onChanged }: { state: restaurantApi.BusyState 
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-[38px] items-center rounded-full border border-line bg-bg px-4 text-[14px] font-medium text-fg hover:bg-bg-subtle focus-visible:focus-ring"
+        className="inline-flex max-md:h-11 md:h-[38px] items-center rounded-full border border-line bg-bg px-4 text-[14px] font-medium text-fg hover:bg-bg-subtle focus-visible:focus-ring"
       >
         {on ? `Busy mode: add ${state!.addMinutes} min` : "Busy mode: off"}
       </button>

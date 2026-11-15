@@ -30,15 +30,18 @@ export interface OrderTrackerProps {
   refundCents?: number | null;
   /** A butcher cuts to order: the middle step reads "Cutting". */
   cutting?: boolean;
+  /** The status line is the page's heading when the tracker is the whole page (1); 2 inside a larger page (default). */
+  headingLevel?: 1 | 2;
 }
 
 /** 4-step order tracker (system.md §6 OrderTracker). v2: large title + big order number, thin black progress. */
-export function OrderTracker({ status, statusLabel, number, pickupAt, shopName, cancelReason, refundCents, cutting }: OrderTrackerProps) {
+export function OrderTracker({ status, statusLabel, number, pickupAt, shopName, cancelReason, refundCents, cutting, headingLevel = 2 }: OrderTrackerProps) {
   const { t, locale, money, time } = useLocaleOrEnglish();
+  const H = headingLevel === 1 ? "h1" : "h2";
   if (status === "cancelled" || status === "refunded") {
     return (
       <div className="flex flex-col gap-1">
-        <h2 className="display text-large-title text-fg">{statusLabel}</h2>
+        <H className="display text-large-title text-fg">{statusLabel}</H>
         {cancelReason ? <p className="text-body text-fg">{cancelReason}</p> : null}
         {refundCents ? <p className="text-meta text-fg-muted">{t("wp.os.refund", { amount: locale === "en" ? formatMoney(refundCents) : money(refundCents) })}</p> : null}
       </div>
@@ -50,9 +53,9 @@ export function OrderTracker({ status, statusLabel, number, pickupAt, shopName, 
     <div className="flex flex-col gap-5">
       <div role={ready ? "status" : undefined} className="flex flex-col gap-1">
         <p className="text-meta text-fg-muted">
-          {ready ? <StatusDot tone="positive">{t("ui.order.showAtCounter")}</StatusDot> : <>{shopName}{pickupAt ? ` · ${t("wp.os.pickupShort", { time: locale === "en" ? formatTime(pickupAt) : time(pickupAt) })}` : ""}</>}
+          {ready ? <StatusDot tone="positive">{t("ui.order.showAtCounter")}</StatusDot> : <><bdi>{shopName}</bdi>{pickupAt ? ` · ${t("wp.os.pickupShort", { time: locale === "en" ? formatTime(pickupAt) : time(pickupAt) })}` : ""}</>}
         </p>
-        <h2 className="display text-large-title text-trade-deep">{ready ? t("ui.order.ready") : statusLabel}</h2>
+        <H className="display text-large-title text-trade-deep">{ready ? t("ui.order.ready") : statusLabel}</H>
         <p className="display mt-2 text-[56px] leading-none tabular-nums text-trade">#{number}</p>
       </div>
       <ol aria-label={t("wp.os.progress")} className="grid grid-cols-4 gap-1.5">

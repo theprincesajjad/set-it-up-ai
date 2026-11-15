@@ -90,7 +90,9 @@ export function usePhase2() {
     ordersOn,
     ticketsOn,
     loading: (ordersOn && orders.isLoading) || (ticketsOn && tickets.isLoading),
-    refetch: () => Promise.all([ordersOn ? orders.refetch() : null, ticketsOn ? tickets.refetch() : null]),
+    /** A list that could not load (so "no orders yet" would be untrue): the error to show, or null. */
+    failure: wallet.isError && !wallet.data ? wallet.error : ordersOn && orders.isError ? orders.error : ticketsOn && tickets.isError ? tickets.error : null,
+    refetch: wallet.isError && !wallet.data ? () => Promise.all([wallet.refetch()]) : () => Promise.all([ordersOn ? orders.refetch() : null, ticketsOn ? tickets.refetch() : null]),
   };
 }
 

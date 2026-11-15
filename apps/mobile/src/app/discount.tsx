@@ -25,7 +25,7 @@ export default function DiscountFull() {
         {t("ui.order.showAtCounter")}
       </Text>
       <View>
-        <Button variant="secondary" fullWidth onPress={() => router.back()}>
+        <Button variant="secondary" fullWidth onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))}>
           {t("sh.card.close")}
         </Button>
       </View>

@@ -188,7 +188,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
         ) : null}
       </Section>
 
-      <Section title="What you pay on payments" description="Card processing is Stripe's standard rate, passed through at cost. These are our fees on top.">
+      <Section title="What you pay on payments" description="Card processing is Stripe’s standard rate, passed through at cost. These are our fees on top.">
         <TableWrap>
           <Table label="Payment fees">
             <thead>

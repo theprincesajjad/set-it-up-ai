@@ -133,7 +133,7 @@ export default function AdminBusinessPage() {
               </div>
               <Panel title="Plan and billing" description={d.billing.trial ? `Trial of ${planLabel(d.billing.trial.plan ?? "plus")}${d.billing.trial.startedAt ? ` from ${formatDate(d.billing.trial.startedAt)}` : ""}${d.billing.trial.endsAt ? ` to ${formatDate(d.billing.trial.endsAt)}` : ""}` : "No trial"} padded={false}>
                 {d.billing.subscriptions.length ? (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto focus-visible:focus-ring" tabIndex={0} role="region" aria-label="Subscriptions, scrollable">
                     <Table label="Subscriptions">
                       <thead>
                         <tr>

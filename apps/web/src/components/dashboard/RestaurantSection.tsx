@@ -6,6 +6,7 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import type { ReactNode } from "react";
 import type { FeatureKey } from "@ll/shared";
 import { cn } from "@/lib/cn";
@@ -29,6 +30,7 @@ const PAGE_FEATURE: Record<string, FeatureKey> = {
 export function RestaurantSection({ children }: { children: ReactNode }) {
   const { base, features } = useMerchant();
   const pathname = usePathname() ?? "";
+  const { locale } = useLocaleOrEnglish();
   const enabled = enabledSet(features.features);
   if (!hasRestaurantFeature(enabled)) {
     // Name the plan the page the owner opened really needs: tiffin and catering are Growth, banquet is Pro, the rest Starter.
@@ -39,7 +41,7 @@ export function RestaurantSection({ children }: { children: ReactNode }) {
   const tabs = [...unlocked, ...(locked.length ? [RESTAURANT_MORE] : [])];
   return (
     <div className="flex flex-col gap-6">
-      <nav aria-label="Restaurant" className="-mx-4 overflow-x-auto border-b border-line px-4 [scrollbar-width:none] md:mx-0 md:px-0 lg:hidden">
+      <nav aria-label="Restaurant" {...(locale !== "en" ? { lang: "en", dir: "ltr" as const } : {})} className="-mx-4 overflow-x-auto border-b border-line px-4 [scrollbar-width:none] md:mx-0 md:px-0 lg:hidden">
         <ul className="flex gap-5">
           {tabs.map((r) => {
             const href = `${base}/restaurant/${r.slug}`;

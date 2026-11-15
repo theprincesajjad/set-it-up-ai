@@ -343,9 +343,39 @@ export function scan(root = ROOT, targets = SCAN_TARGETS) {
   return out;
 }
 
+/**
+ * Typography: a word's apostrophe in a shown string is the curly one (don’t, You’re). The catalogues and the English copy file are read line
+ * by line, and a straight apostrophe between two letters is reported. Texts that go out as an SMS stay straight on purpose (a curly one makes
+ * a message UCS-2, which halves how much fits in one segment): they are listed in STRAIGHT_OK by key.
+ */
+export const APOSTROPHE_FILES = [
+  "packages/shared/src/i18n/messages/en.ts",
+  "packages/shared/src/i18n/messages/hi.ts",
+  "packages/shared/src/i18n/messages/ur.ts",
+  "packages/shared/src/i18n/messages/pa.ts",
+  "apps/web/src/copy/en-CA.ts",
+  "apps/web/src/lib/phone.ts",
+];
+export const STRAIGHT_OK = /^(q\.msg\.|door\.joinedText$|ob\.solo\.invite\.message$|ob\.solo\.nudge\.d3\.body$|promo\.tpl\..*\.body$)/;
+export function scanApostrophes(root = ROOT, files = APOSTROPHE_FILES) {
+  const out = [];
+  for (const rel of files) {
+    const file = path.join(root, rel);
+    if (!fs.existsSync(file)) continue;
+    fs.readFileSync(file, "utf8").split("\n").forEach((line, i) => {
+      const t = line.trim();
+      if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) return;
+      const key = /^"([^"]+)":/.exec(t)?.[1];
+      if (key && STRAIGHT_OK.test(key)) return;
+      if (/[A-Za-z]'[a-z]/.test(line)) out.push({ file: rel, line: i + 1, why: "straight apostrophe (use \u2019)", text: t.slice(0, 100) });
+    });
+  }
+  return out;
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const only = process.argv.slice(2);
-  const hits = scan(ROOT, only.length ? only : SCAN_TARGETS);
+  const hits = [...scan(ROOT, only.length ? only : SCAN_TARGETS), ...(only.length ? [] : scanApostrophes())];
   const byFile = new Map();
   for (const h of hits) byFile.set(h.file, (byFile.get(h.file) ?? 0) + 1);
   for (const h of hits) console.log(`${h.file}:${h.line}  [${h.why}]  ${h.text}`);

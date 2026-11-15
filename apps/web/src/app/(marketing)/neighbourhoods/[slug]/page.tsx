@@ -11,6 +11,7 @@ import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { formatDate } from "@/lib/format";
 import { preloadInter } from "@/lib/fonts/inter";
+import { LocaleScope } from "@/lib/i18n";
 
 export const revalidate = 300;
 
@@ -50,11 +51,11 @@ export default async function NeighbourhoodPage({ params }: Props) {
   const n = detail.neighbourhood;
   return (
     <>
-      <section className="mx-auto max-w-[1200px] px-4 pt-10 pb-12 md:px-8 md:pt-16 md:pb-16">
-        <Link href="/neighbourhoods" className="text-meta-strong text-muted-foreground hover:text-foreground">
+      <section className="mx-auto max-w-360 px-5 pt-10 pb-12 md:px-10 xl:px-15 md:pt-16 md:pb-16">
+        <Link href="/neighbourhoods" className="inline-flex min-h-11 items-center text-meta-strong text-muted-foreground hover:text-foreground">
           ← All neighbourhoods
         </Link>
-        <h1 className="display mt-8 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">Welcome to {n.name}</h1>
+        <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">Welcome to {n.name}</h1>
         <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">
           {n.shopCount} {n.shopCount === 1 ? "shop" : "shops"} on one card{n.biaName ? `, with the ${n.biaName}` : ""}. {copy.misc.joinTagline}
         </p>
@@ -69,7 +70,7 @@ export default async function NeighbourhoodPage({ params }: Props) {
       </section>
 
       {detail.liveCampaigns.length || detail.perks.length || detail.livePromoCount ? (
-        <section className="mx-auto max-w-[1200px] px-4 pb-12 md:px-8">
+        <section className="mx-auto max-w-360 px-5 pb-12 md:px-10 xl:px-15">
           <div className="grid gap-4 md:grid-cols-3">
             {detail.liveCampaigns.map((c: networkApi.CampaignBriefDto) => (
               <Link key={c.id} href={`/c/${c.id}`} className="card-clear mkt-lift flex flex-col gap-2 rounded-sheet p-6 focus-visible:focus-ring">
@@ -100,8 +101,10 @@ export default async function NeighbourhoodPage({ params }: Props) {
       ) : null}
 
       <MSection tone="subtle">
-        <h2 className="display mb-8 text-mkt-sm md:text-mkt-md">shops on {n.name.toLowerCase()}.</h2>
+        <h2 className="display mb-8 text-mkt-sm md:text-mkt-md">Shops on {n.name}</h2>
         {shops.length ? (
+          // ShopTile reads the locale; this page is English, so give it an English scope (outside one it would load the catalogue mid-render).
+          <LocaleScope locale="en">
           <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {shops.map((s) => (
               <li key={s.merchant.id}>
@@ -119,6 +122,7 @@ export default async function NeighbourhoodPage({ params }: Props) {
               </li>
             ))}
           </ul>
+          </LocaleScope>
         ) : (
           <p className="text-body text-muted-foreground">Shops are joining now. Check back soon.</p>
         )}

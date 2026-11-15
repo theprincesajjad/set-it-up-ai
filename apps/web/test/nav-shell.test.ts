@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { FEATURES, VERTICALS, type FeatureKey } from "@ll/shared";
 import legacyJson from "./fixtures/nav-legacy.json";
 import { NAV_LABEL_KEYS } from "@/lib/dashboard/navLabels";
-import { NAV_SECTIONS, buildMerchantNav, navSections, type StaffRole } from "@/lib/dashboard/nav";
+import { APPOINTMENT_VERTICALS, LOYALTY_FIRST_VERTICALS, NAV_SECTIONS, REPAIR_VERTICALS, STUDIO_VERTICALS, WASH_VERTICALS, buildMerchantNav, navSections, type StaffRole } from "@/lib/dashboard/nav";
+import { RESTAURANT_VERTICALS } from "@/lib/signupRoute";
 
 /**
  * The v3 shell has five sections for every trade. Two promises are tested here:
@@ -33,6 +34,18 @@ const nav = (vertical: string | undefined, role: StaffRole, profile: string) => 
   return buildMerchantNav("/m/x", role, new Set(p.enabled), { vertical, plan: p.plan, stages: STAGES, onOpenStreet: true });
 };
 
+/**
+ * Routes the sidebar now leaves out on purpose because the trade never uses them (launch polish, trade first run): class tools for
+ * trades that do not teach classes, Rebooking for cafés, restaurants, studios and washes, and drop-off slots for appointment shops.
+ */
+const ON_PURPOSE_GONE = (vertical: string | undefined, href: string): boolean => {
+  if (!vertical) return false;
+  if (href === "/classes/offers" && WASH_VERTICALS.includes(vertical)) return false; // a car wash keeps its plans page
+  if (["/classes", "/classes/door", "/classes/offers"].includes(href)) return [...APPOINTMENT_VERTICALS.filter((x) => x !== "spa"), ...REPAIR_VERTICALS, ...WASH_VERTICALS, ...RESTAURANT_VERTICALS, ...LOYALTY_FIRST_VERTICALS].includes(vertical);
+  if (href === "/rebooking") return [...LOYALTY_FIRST_VERTICALS, ...RESTAURANT_VERTICALS, ...STUDIO_VERTICALS, ...WASH_VERTICALS].includes(vertical);
+  return false;
+};
+
 describe("every route in the old sidebar is still in the new one", () => {
   it("covers every vertical in packages/shared, every role and every feature profile", () => {
     const verticals = new Set(Object.keys(legacy.cases).map((k) => k.split("|")[0]));
@@ -47,7 +60,7 @@ describe("every route in the old sidebar is still in the new one", () => {
         for (const profile of Object.keys(PROFILES)) {
           const was = legacy.sets[legacy.cases[`${v ?? "none"}|${role}|${profile}`]!]!;
           const now = new Set(nav(v, role, profile).map((e) => e.href.replace("/m/x", "")));
-          for (const href of was) if (!now.has(href)) missing.push(`${role}|${profile}: ${href || "/"}`);
+          for (const href of was) if (!now.has(href) && !ON_PURPOSE_GONE(v, href)) missing.push(`${role}|${profile}: ${href || "/"}`);
         }
       expect(missing).toEqual([]);
     });

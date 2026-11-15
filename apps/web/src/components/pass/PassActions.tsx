@@ -34,12 +34,12 @@ export function PassActions({ card, profile }: { card: customerApi.CardResponse 
       <div className={cn("grid gap-3", w.canAdd ? "grid-cols-2" : "grid-cols-1")}>
         <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className={cn(base, "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover active:bg-brand-pressed", clear, "clear:shadow-none clear:hover:bg-primary-hover clear:active:bg-primary-hover")}>
           <QrCode aria-hidden className="size-5 shrink-0" strokeWidth={1.9} />
-          <span className="text-center leading-tight">{t("pass.showCode")}</span>
+          <span className="text-center leading-tight [:lang(ur)_&]:leading-normal">{t("pass.showCode")}</span>
         </button>
         {w.canAdd ? (
           <button type="button" onClick={addToWallet} disabled={!!w.busy} aria-busy={!!w.busy || undefined} className={cn(base, "bg-forest text-forest-foreground hover:brightness-110 disabled:opacity-60", clear, "clear:glass-lite clear:text-foreground clear:hover:brightness-100")}>
             <Wallet aria-hidden className="size-5 shrink-0" strokeWidth={1.9} />
-            <span className="text-center leading-tight">{t("pass.addWallet")}</span>
+            <span className="text-center leading-tight [:lang(ur)_&]:leading-normal">{t("pass.addWallet")}</span>
           </button>
         ) : null}
       </div>

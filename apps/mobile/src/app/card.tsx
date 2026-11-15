@@ -134,7 +134,7 @@ export default function CardSheet() {
                 <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>
                   {lt("sh.card.forgot")}
                 </Text>
-                <Pressable accessibilityRole="button" accessibilityLabel={`${lt("sh.card.forgot")} ${lt("sh.card.claim")}`} onPress={() => setClaimOpen(true)} hitSlop={10}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`${lt("sh.card.forgot")} ${lt("sh.card.claim")}`} onPress={() => setClaimOpen(true)} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }}>
                   <Text style={ui(13, 600, 17)} rawColor={c.brand}>{lt("sh.card.claim")}</Text>
                 </Pressable>
               </View>

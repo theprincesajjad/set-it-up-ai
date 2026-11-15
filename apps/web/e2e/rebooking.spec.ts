@@ -51,10 +51,10 @@ test.describe("owner", () => {
     await expect(group.getByRole("radio")).toHaveCount(3);
     await expect(group.getByRole("radio", { name: "Remind them for me" })).toBeVisible();
     // Choosing "I'll send them myself" is kept after a reload.
-    await group.getByRole("radio", { name: "I'll send them myself" }).click();
-    await expect(group.getByRole("radio", { name: "I'll send them myself" })).toHaveAttribute("aria-checked", "true");
+    await group.getByRole("radio", { name: "I’ll send them myself" }).click();
+    await expect(group.getByRole("radio", { name: "I’ll send them myself" })).toHaveAttribute("aria-checked", "true");
     await page.reload();
-    await expect(page.getByRole("radiogroup", { name: "Reminders" }).getByRole("radio", { name: "I'll send them myself" })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByRole("radiogroup", { name: "Reminders" }).getByRole("radio", { name: "I’ll send them myself" })).toHaveAttribute("aria-checked", "true");
     await page.screenshot({ path: shot("rebooking-1440") });
     await call("PUT", `/v1/merchants/${id}/rebooking/settings`, { mode: "review" }, token);
   });

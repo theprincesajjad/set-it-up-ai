@@ -72,7 +72,7 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
   // The four standard cards, from the same data the old Home used.
   for (const card of ["Needs you", "Up next", "Quick actions"]) await expect(page.getByRole("heading", { level: 2, name: card })).toBeVisible();
-  await expect(page.getByRole("group", { name: "Today's numbers" }).or(page.getByLabel("Today's numbers"))).toBeVisible();
+  await expect(page.getByRole("group", { name: "Today’s numbers" }).or(page.getByLabel("Today’s numbers"))).toBeVisible();
   await expect(page.getByText(/New customers/).first()).toBeVisible();
   // Free plan: paid tools are not in the sidebar; Home carries the one quiet upsell line.
   const nav = page.getByRole("navigation", { name: "Main" }).first();
@@ -180,7 +180,7 @@ test("owner: create and publish a promo (pilot override)", async ({ page }) => {
   // Locked: the deep link names the plan and its price and offers the checkout, not the editor (trade tools self-serve).
   await signIn(page, OWNER, `/m/${id}/promos/new`);
   await expect(page.getByText("Included in Pro · $29 a month")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Subscribe to Pro, $29/mo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subscribe to Pro, $29 a month" })).toBeVisible();
   await pilot(id, ["promos.basic", "promos.double_points"], true);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Create a promo" })).toBeVisible();
@@ -207,7 +207,7 @@ test("owner: QR kit print page", async ({ page }) => {
   await signIn(page, OWNER, `/m/${id}/locations`);
   await expect(page.getByRole("heading", { level: 1, name: "Locations & QR kit" })).toBeVisible();
   await page.screenshot({ path: shot("13-locations"), fullPage: true });
-  await page.getByRole("link", { name: "Print QR kit" }).first().click();
+  await page.getByRole("link", { name: "Print QR stand" }).first().click();
   await expect(page.getByRole("img", { name: /QR stand for Pinecone Coffee Co\./ })).toBeVisible();
   await expect(page.getByRole("img", { name: /QR code to join Pinecone Coffee Co\./ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Print or save as PDF" })).toBeVisible();
@@ -320,7 +320,7 @@ test("admin: flip a paid feature to beta, override a pilot shop, merchant nav ch
 test("owner: billing and plans, integrations, messages, reports", async ({ page }) => {
   const id = await pineconeId();
   await signIn(page, OWNER, `/m/${id}/billing`);
-  await expect(page.getByRole("heading", { name: /You're on/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /You’re on/ })).toBeVisible();
   // One honest status: both paid plans can be bought today, with a working button.
   await expect(page.getByText("Coming soon")).toHaveCount(0);
   // Wave Q: the questions are accordion buttons now ("Can I subscribe to Pro today?"), so the plan button is matched exactly.

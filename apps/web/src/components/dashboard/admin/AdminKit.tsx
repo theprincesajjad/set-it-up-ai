@@ -73,7 +73,7 @@ export function DeltaChip({ delta, className }: { delta: KpiDelta; className?: s
         <Icon aria-hidden className="size-3.5" strokeWidth={2.5} />
         {delta.text}
       </span>
-      {delta.context ? <span className="truncate text-muted-foreground">{delta.context}</span> : null}
+      {delta.context ? <span className="truncate text-muted-foreground max-sm:sr-only">{delta.context}</span> : null}
     </span>
   );
 }

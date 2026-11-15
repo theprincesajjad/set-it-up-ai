@@ -209,10 +209,11 @@ export function ShopFinder({ initial, neighbourhoods, neighbourhood: initialHood
 export function ShopLine({ s }: { s: networkApi.ShopListItemDto }) {
   const L = useLocaleOrEnglish();
   const { t, locale } = L;
-  const bits = [locale === "en" ? verticalLabel(s.merchant.vertical) : placeKindLabel(locale, s.merchant.vertical), s.distanceMetres != null ? distanceL(L, s.distanceMetres) : s.location?.address].filter(Boolean);
+  const kind = locale === "en" ? verticalLabel(s.merchant.vertical) : placeKindLabel(locale, s.merchant.vertical);
+  const where = s.distanceMetres != null ? distanceL(L, s.distanceMetres) : s.location?.address ? <bdi>{s.location.address}</bdi> : null;
   return (
     <span className="inline-flex min-w-0 items-center gap-x-2">
-      <span className="truncate">{bits.join(" · ")}</span>
+      <span className="truncate">{kind}{kind && where ? " · " : ""}{where}</span>
       {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"} className="shrink-0">{s.openNow ? t("ui.hours.open") : t("ui.hours.closed")}</StatusDot> : null}
       {s.isMember && s.myBalance != null ? <span className="shrink-0 font-semibold text-points-text">{unitsText(locale, s.myBalance, s.terminology)}</span> : null}
     </span>

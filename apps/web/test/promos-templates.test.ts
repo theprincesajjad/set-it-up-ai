@@ -23,12 +23,12 @@ describe("promo templates", () => {
 
 describe("promo table text", () => {
   it("says when a promo runs", () => {
-    expect(promoWhen(p({ daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00" }))).toBe("Weekdays 2 to 4 pm");
+    expect(promoWhen(p({ daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00" }))).toBe("Weekdays 2 to 4 p.m.");
     expect(promoWhen(p({ daysOfWeek: [2] }))).toBe("Tuesdays, all day");
     expect(promoWhen(p({ startsAt: "2026-10-01T04:00:00Z", endsAt: "2026-10-12T20:00:00Z" }))).toBe("Oct 1 to 12, all day");
     expect(promoWhen(p({ startsAt: "2026-09-28T04:00:00Z", endsAt: "2026-10-12T20:00:00Z" }))).toBe("Sep 28 to Oct 12, all day");
-    expect(promoWhen(p({ daysOfWeek: [0, 6], startTime: "08:00", endTime: "12:00" }))).toBe("Weekends 8 am to 12 pm");
-    expect(promoWhen(p({ daysOfWeek: [1, 3], startTime: "09:30", endTime: "11:00" }))).toBe("Mon, Wed 9:30 to 11 am");
+    expect(promoWhen(p({ daysOfWeek: [0, 6], startTime: "08:00", endTime: "12:00" }))).toBe("Weekends 8 a.m. to 12 p.m.");
+    expect(promoWhen(p({ daysOfWeek: [1, 3], startTime: "09:30", endTime: "11:00" }))).toBe("Mon, Wed 9:30 to 11 a.m.");
     expect(promoWhen(p())).toBe("Every day, all day");
   });
 

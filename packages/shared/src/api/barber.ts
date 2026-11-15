@@ -163,6 +163,8 @@ export interface QueueActionResponse {
   appointmentId?: string | null;
   /** Present on a skip: send it back to undo the skip within a minute. */
   undo?: SkipUndo;
+  /** On an add: whether this place gets a text when it is their turn (a repeat join keeps the first place and its first choice). On a call: whether the "you are called" text went out. */
+  textsYou?: boolean;
 }
 
 // ---- pay and payouts
