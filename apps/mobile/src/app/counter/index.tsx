@@ -50,7 +50,7 @@ export default function Counter() {
   const { t } = L;
   const tr = t;
   const ctx = useCounter();
-  const { config, merchant, program, programPaused, staff, online, queue, queueState, flush, recent, addRecent, markUndone, touch, cacheMembers, cachedMember } = ctx;
+  const { config, merchant, program, programPaused, staff, online, queue, queueState, flush, recent, addRecent, markUndone, touch, cacheMembers, cachedMember, refreshCachedMember } = ctx;
   const merchantId = config.merchantId ?? "";
   const [state, dispatch] = useReducer(counterReducer, initialCounterState);
   const [panel, setPanel] = useState<Panel>(null);
@@ -275,6 +275,8 @@ export default function Counter() {
       setLastStamp({ at: Date.now(), name: res.member.name, transactionId: res.transactionId, queuedKey: null, key });
       addRecent({ key, transactionId: res.transactionId, label: view.title, who: who({ kind: "member", member: res.member }), at: Date.now() });
       cacheMembers(`code:${res.member.memberCode}`, [res.member]);
+      // The last-four and phone lookups cached earlier would still show the old balance when the signal drops.
+      refreshCachedMember(res.member);
       AccessibilityInfo.announceForAccessibility(view.announcement);
       scheduleReturn();
     } catch (e) {
@@ -285,6 +287,8 @@ export default function Counter() {
         scheduleReturn();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+        // The server said no, so nothing was stamped: take the "Stamp added" strip and its Undo away.
+        setLastStamp(null);
         const message = counterErrorL(L, isApiError(e) ? e : null, { last4: cust.kind === "member" ? last4(cust.member.maskedPhone) : undefined, terminology: program.terminology, firstName: cust.kind === "member" ? firstName(cust.member.name) : null });
         if (opts.fromScan) {
           // Stamped on scan and refused (cooldown, paused): say so and go back to scan. Never a second stamp.
@@ -322,6 +326,7 @@ export default function Counter() {
       } else if (target.transactionId) {
         const res = await api.counter.undo(merchantId, target.transactionId);
         if (target.key) markUndone(target.key);
+        refreshCachedMember(res.member);
         dispatch({ type: "notice", tone: "neutral", message: t("counter.undoneAnnounce", { name: firstName(res.member.name) ?? t("counter.who"), balance: formatPtsL(L, res.member.balance, res.member.terminology) }) });
       } else {
         dispatch({ type: "notice", tone: "neutral", message: t("mc.stillSending") });
@@ -648,7 +653,7 @@ export default function Counter() {
         subtitle={(() => {
           // "counter · 412 Roncesvalles" (canvas): the street address without its "Ave", else the location's name.
           const where = config.locationAddress?.replace(/\s+(Ave|Avenue|St|Street|Rd|Road|Blvd)\.?$/i, "") ?? (config.locationName !== config.merchantName ? config.locationName : null);
-          return where ? t("mc.hdrCounterAt", { where }) : t("mc.hdrCounter");
+          return where ? t("mc.hdrCounterAt", { where: L.ltr(where) }) : t("mc.hdrCounter");
         })()}
         staff={staff}
         canSwitch={config.sharedDevice}

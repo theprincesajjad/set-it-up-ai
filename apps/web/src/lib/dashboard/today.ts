@@ -11,6 +11,7 @@
 import type { appointmentsApi, barberApi, classesApi, commerceApi, merchantApi, reportsApi, restaurantApi, serviceApi, MessageKey, Vars } from "@ll/shared";
 import type { StatItem } from "@/components/dashboard/kit";
 import { STUDIO_VERTICALS, hasRestaurantFeature, navVisible, type ShopNavContext } from "@/lib/dashboard/nav";
+import { RESTAURANT_VERTICALS } from "@/lib/signupRoute";
 import type { FeatureKey } from "@ll/shared";
 
 export const SHOP_TZ = "America/Toronto";
@@ -72,6 +73,9 @@ export type TodayFamily = "restaurant" | "studio" | "appointments" | "service" |
 export function todayFamily(vertical: string | undefined, enabled: Set<FeatureKey>, shop?: ShopNavContext): TodayFamily {
   if (hasRestaurantFeature(enabled)) return "restaurant";
   if (vertical && STUDIO_VERTICALS.includes(vertical) && enabled.has("booking.classes")) return "studio";
+  // A restaurant that has not taken a restaurant plan yet runs on its stamp card: Today does not draw an appointments layout (a "New booking"
+  // button, "Appointments 0") for a kitchen that has none.
+  if (vertical && RESTAURANT_VERTICALS.includes(vertical) && !enabled.has("service.tickets")) return "loyalty";
   if (navVisible("calendar", enabled, shop) && enabled.has("booking.appointments")) return "appointments";
   if (enabled.has("booking.walkin_queue")) return "appointments";
   if (navVisible("tickets", enabled, shop) && enabled.has("service.tickets")) return "service";

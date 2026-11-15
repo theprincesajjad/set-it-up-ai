@@ -1,10 +1,9 @@
 "use client";
-import { KeyRound, Languages, Link2, MoreHorizontal, UserMinus, UserPlus, Wallet } from "lucide-react";
-import { useState } from "react";
+import { KeyRound, Languages, Link2, MailPlus, MoreHorizontal, UserMinus, UserPlus, Wallet } from "lucide-react";
+import { useRef, useState } from "react";
 import { LOCALE_LIST, type merchantApi } from "@ll/shared";
 import { StaffScheduleSheet } from "@/components/dashboard/calendar/StaffScheduleSheet";
 import { PaySheet } from "@/components/dashboard/queue/PaySheet";
-import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { EmptyState, PageHeader, SkeletonRows, Tag } from "@/components/dashboard/kit";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
@@ -17,18 +16,61 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { isApiError } from "@/lib/api/errors";
+import { focusFirstInvalid, useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
-import { formatDate } from "@/lib/format";
 import { maskPhone } from "@/lib/dashboard/customers";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
-const ROLES: { value: merchantApi.StaffRole; label: string; desc: string }[] = [
-  { value: "staff", label: "Staff", desc: "Counter and Today only. Can undo their own awards for 15 minutes." },
-  { value: "instructor", label: "Instructor", desc: "Their own classes, class lists and check-in. No sales, customers or money." },
-  { value: "manager", label: "Manager", desc: "Everything except billing and removing staff." },
-  { value: "owner", label: "Owner", desc: "Everything, including billing and staff." },
-];
+const ROLE_VALUES: merchantApi.StaffRole[] = ["staff", "instructor", "manager", "owner"];
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+
+/** A dialog that confirms one action: Cancel and the action, Enter saves, a failure stays inside the dialog. The words are the page's own, in its language. */
+function Confirm({ open, onClose, title, body, confirmLabel, danger, onConfirm, children, disabled }: { open: boolean; onClose: () => void; title: string; body?: string; confirmLabel: string; danger?: boolean; onConfirm: () => Promise<unknown>; children?: React.ReactNode; disabled?: boolean }) {
+  const { t } = useLocaleOrEnglish();
+  const text = useErrorText();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const close = () => {
+    setError(null);
+    onClose();
+  };
+  async function go() {
+    if (busy || disabled) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onConfirm();
+      close();
+    } catch (e) {
+      setError(text(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      title={title}
+      description={body}
+      actions={
+        <>
+          <Button variant="secondary" onClick={close}>{t("own.staff.cancel")}</Button>
+          <Button variant={danger ? "danger" : "primary"} loading={busy} disabled={disabled} onClick={() => void go()}>{confirmLabel}</Button>
+        </>
+      }
+    >
+      <form onSubmit={(e) => { e.preventDefault(); void go(); }} className="flex flex-col gap-4">
+        {children}
+        {error ? <Banner tone="danger">{error}</Banner> : null}
+        {/* Enter in a field saves; the visible button is in the dialog's footer. */}
+        <button type="submit" hidden tabIndex={-1} aria-hidden />
+      </form>
+    </Modal>
+  );
+}
 
 export default function StaffPage() {
   const { api, role, me, enabled, detail } = useMerchant();
@@ -38,8 +80,29 @@ export default function StaffPage() {
   const [invite, setInvite] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState<string | null>(null);
+  const [phoneDigits, setPhoneDigits] = useState("");
   const [email, setEmail] = useState("");
   const [newRole, setNewRole] = useState<merchantApi.StaffRole>("staff");
+  // The invite has its own action state, so its error shows once, inside its sheet, and never on the page behind it.
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [fieldErr, setFieldErr] = useState<{ email?: string }>({});
+  const [triedInvite, setTriedInvite] = useState(false);
+  const inviteForm = useRef<HTMLFormElement>(null);
+  const resetInvite = () => {
+    setName("");
+    setEmail("");
+    setPhone(null);
+    setPhoneDigits("");
+    setNewRole("staff");
+    setFieldErr({});
+    setTriedInvite(false);
+    setInviteError(null);
+  };
+  const closeInvite = () => {
+    setInvite(false);
+    resetInvite();
+  };
   const [pinFor, setPinFor] = useState<merchantApi.StaffMember | null>(null);
   const [pin, setPin] = useState("");
   const [remove, setRemove] = useState<merchantApi.StaffMember | null>(null);
@@ -49,7 +112,8 @@ export default function StaffPage() {
   const [locale, setLocale] = useState<merchantApi.StaffMember["locale"]>("en");
   const [station, setStation] = useState("");
   const act = useAction();
-  const { t } = useLocaleOrEnglish();
+  const { t, date: dateL } = useLocaleOrEnglish();
+  const errText = useErrorText();
   const menuItem = "min-h-11 gap-2.5 text-body md:min-h-9";
   const roleLabel = (r: merchantApi.StaffRole) => t(`own.staff.role.${r}` as "own.staff.role.staff");
   const copyLink = async (userId: string) => {
@@ -57,11 +121,48 @@ export default function StaffPage() {
     toast({ message: t("people.linkCopied"), tone: "success" });
   };
   // Instructors only make sense where the studio runs classes.
-  const roles = ROLES.filter((r) => r.value !== "instructor" || enabled("booking.classes"));
+  const showSolo = owner && !!state.data && state.data.items.length <= 1;
+  const roles = ROLE_VALUES.filter((r) => r !== "instructor" || enabled("booking.classes"));
+
+  async function sendInvite() {
+    if (inviteBusy) return;
+    setTriedInvite(true);
+    setInviteError(null);
+    const em = email.trim();
+    const errs: { email?: string } = {};
+    // A mobile number typed but not whole is the phone field's own problem (it shows its message); otherwise one contact is enough.
+    const phoneBad = phoneDigits.length > 0 && !phone;
+    if (em && !EMAIL_RE.test(em)) errs.email = t("own.staff.err.email");
+    else if (!phone && !em && !phoneBad) errs.email = t("own.staff.err.contact");
+    setFieldErr(errs);
+    if (errs.email || phoneBad) return focusFirstInvalid(inviteForm.current);
+    setInviteBusy(true);
+    try {
+      await api.invite({ name: name.trim() || undefined, phone: phone ?? undefined, email: em || undefined, role: newRole });
+      toast({ message: name.trim() ? t("own.staff.inviteSent", { name: name.trim() }) : t("own.staff.inviteSentNoName"), tone: "success" });
+      closeInvite();
+      await state.reload();
+    } catch (e) {
+      // Said once, in the sheet, in our words: an existing member is named; anything else is the shared sentence for that kind of failure.
+      setInviteError(isApiError(e) && e.status === 409 ? (name.trim() ? t("own.staff.err.exists", { name: name.trim() }) : t("own.staff.err.existsNoName")) : errText(e));
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
+  async function resendInvite(s: merchantApi.StaffMember) {
+    try {
+      await api.resendInvite(s.userId);
+      toast({ message: t("own.staff.resent", { name: s.name ?? s.email ?? s.phone ?? t("own.staff.someone") }), tone: "success" });
+    } catch (e) {
+      toast({ message: errText(e), tone: "error" });
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title={t("own.staff.title")} description={t("own.staff.desc")} actions={owner ? <Button size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>{t("own.staff.invite")}</Button> : undefined} />
+      {/* One primary "Invite staff" per view: the header's is the primary one; the empty card's repeats it as a secondary button. */}
+      <PageHeader flush title={t("own.staff.title")} description={t("own.staff.desc")} actions={owner ? <Button size="sm" iconStart={UserPlus} className="max-sm:min-h-11" onClick={() => setInvite(true)}>{t("own.staff.invite")}</Button> : undefined} />
       <Async state={state} skeleton={<SkeletonRows rows={3} />}>
         {(d) => (
           <>
@@ -82,10 +183,11 @@ export default function StaffPage() {
                         <span className="min-w-0 break-words">{display}</span>
                         {self ? <span className="text-meta font-normal text-fg-muted">({t("own.staff.you")})</span> : null}
                         {!owner || self ? <Tag>{roleLabel(s.role)}</Tag> : null}
+                        {!s.signedIn ? <Tag>{t("own.staff.notSignedIn")}</Tag> : null}
                       </p>
                       <p className="break-words text-meta text-fg-muted">{s.phone ? maskPhone(s.phone) : s.email}</p>
                       <p className="text-meta text-fg-muted tabular">
-                        {[t("own.staff.added", { date: formatDate(s.createdAt) }), s.hasPin ? t("own.staff.pinSet") : t("own.staff.noPin"), lang, s.station ? t("own.staff.station", { station: s.station }) : null].filter(Boolean).join(" · ")}
+                        {[t("own.staff.added", { date: dateL(s.createdAt, { month: "short", day: "numeric" }, "America/Toronto") }), s.hasPin ? t("own.staff.pinSet") : t("own.staff.noPin"), lang, s.station ? t("own.staff.station", { station: s.station }) : null].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                     <div className="flex w-full items-center justify-end gap-2 ps-[52px] sm:w-auto sm:ps-0">
@@ -97,8 +199,8 @@ export default function StaffPage() {
                             if (r) await state.reload();
                           }} className="h-11 w-full rounded-input border border-line bg-bg px-2.5 text-meta text-fg hover:bg-bg-subtle sm:h-9 sm:w-auto">
                             {roles.map((r) => (
-                              <option key={r.value} value={r.value}>
-                                {roleLabel(r.value)}
+                              <option key={r} value={r}>
+                                {roleLabel(r)}
                               </option>
                             ))}
                           </select>
@@ -140,6 +242,12 @@ export default function StaffPage() {
                             <Languages aria-hidden />
                             {t("own.staff.langStation")}
                           </DropdownMenuItem>
+                          {owner && !self && !s.signedIn && (s.email || s.phone) ? (
+                            <DropdownMenuItem className={menuItem} onClick={() => void resendInvite(s)}>
+                              <MailPlus aria-hidden />
+                              {t("own.staff.resend")}
+                            </DropdownMenuItem>
+                          ) : null}
                           {owner && !self ? (
                             <>
                               <DropdownMenuSeparator />
@@ -156,12 +264,12 @@ export default function StaffPage() {
                 );
               })}
             </ul>
-            {d.items.length <= 1 && owner ? (
+            {showSolo ? (
               <EmptyState
                 icon={UserPlus}
                 title={t("own.staff.soloTitle")}
                 description={enabled("booking.appointments") ? t("own.staff.soloBodyBooking") : t("own.staff.soloBody")}
-                action={<Button size="sm" iconStart={UserPlus} onClick={() => setInvite(true)}>{t("own.staff.invite")}</Button>}
+                action={<Button size="sm" variant="secondary" iconStart={UserPlus} className="max-sm:min-h-11" onClick={() => setInvite(true)}>{t("own.staff.invite")}</Button>}
               />
             ) : null}
           </>
@@ -173,95 +281,88 @@ export default function StaffPage() {
 
       <Modal
         open={invite}
-        onClose={() => setInvite(false)}
-        title="Invite staff"
+        onClose={closeInvite}
+        title={t("own.staff.invite")}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setInvite(false)}>
-              Cancel
+            <Button variant="secondary" onClick={closeInvite}>
+              {t("own.staff.cancel")}
             </Button>
-            <Button
-              loading={act.busy}
-              onClick={async () => {
-                if (!phone && !email.trim()) return act.setError("Add a mobile number or email.");
-                const r = await act.run(() => api.invite({ name: name.trim() || undefined, phone: phone ?? undefined, email: email.trim() || undefined, role: newRole }));
-                if (r) {
-                  toast({ message: `Invite sent to ${name || "your new staff member"}`, tone: "success" });
-                  setInvite(false);
-                  setName("");
-                  setEmail("");
-                  setPhone(null);
-                  await state.reload();
-                }
-              }}
-            >
-              Send invite
+            <Button loading={inviteBusy} onClick={() => void sendInvite()}>
+              {t("own.staff.inviteSend")}
             </Button>
           </>
         }
       >
-        <div className="flex flex-col gap-4">
-          <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <PhoneField label="Mobile number" hint="We text them a link to sign in." onChangeE164={setPhone} />
-          <TextField type="email" label="Email" optionalLabel value={email} onChange={(e) => setEmail(e.target.value)} />
-          <fieldset className="flex flex-col divide-y divide-line rounded-input border border-line">
-            <legend className="mb-1 text-meta-strong text-fg">Role</legend>
-            {roles.map((r) => (
-              <label key={r.value} className={cn("flex cursor-pointer items-start gap-3 px-3 py-2.5", newRole === r.value && "bg-bg-subtle")}>
-                <input type="radio" name="role" checked={newRole === r.value} onChange={() => setNewRole(r.value)} className="mt-0.5 size-4 accent-[var(--ll-color-fg)]" />
-                <span>
-                  <span className="block text-meta-strong text-fg">{r.label}</span>
-                  <span className="block text-meta text-fg-muted">{r.desc}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          <p className="text-caption text-fg-muted">Unlimited staff, always free.</p>
-          {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-        </div>
+        <form ref={inviteForm} noValidate onSubmit={(e) => { e.preventDefault(); void sendInvite(); }} className="flex flex-col gap-4">
+          <TextField label={t("own.staff.inviteName")} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
+          <div role="group" aria-labelledby="invite-contact" className="flex flex-col gap-4">
+            <div>
+              <p id="invite-contact" className="text-meta-strong text-fg">{t("own.staff.contactLegend")}</p>
+              <p className="mt-0.5 text-meta text-fg-muted">{t("own.staff.contactHint")}</p>
+            </div>
+            <PhoneField label={t("own.staff.phone")} onChangeE164={setPhone} onChangeDigits={setPhoneDigits} forceValidate={triedInvite && phoneDigits.length > 0} />
+            <TextField type="email" label={t("own.staff.email")} autoComplete="off" autoCapitalize="none" value={email} onChange={(e) => { setEmail(e.target.value); setFieldErr((f) => ({ ...f, email: undefined })); }} error={fieldErr.email} />
+          </div>
+          <div role="radiogroup" aria-labelledby="invite-role">
+            <p id="invite-role" className="mb-2 text-meta-strong text-fg">{t("own.staff.roleLegend")}</p>
+            <div className="flex flex-col divide-y divide-line overflow-hidden rounded-input border border-line">
+              {roles.map((r) => (
+                <label key={r} className={cn("flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2.5", newRole === r && "bg-bg-subtle")}>
+                  <input type="radio" name="role" checked={newRole === r} onChange={() => setNewRole(r)} className="mt-0.5 size-4 shrink-0 accent-[var(--ll-color-fg)]" />
+                  <span className="min-w-0">
+                    <span className="block text-meta-strong text-fg">{roleLabel(r)}</span>
+                    <span className="block text-meta text-fg-muted">{t(`own.staff.role.${r}.desc` as "own.staff.role.staff.desc")}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <p className="text-caption text-fg-muted">{t("own.staff.free")}</p>
+          {inviteError ? <Banner tone="danger">{inviteError}</Banner> : null}
+          <button type="submit" hidden tabIndex={-1} aria-hidden />
+        </form>
       </Modal>
 
-      <ConfirmDialog
+      <Confirm
         open={!!edit}
         onClose={() => setEdit(null)}
-        title={`Language and station for ${edit?.name ?? "staff"}`}
-        body="Their counter app and kitchen screen open in this language and show this station's tickets first."
-        confirmLabel="Save"
+        title={t("own.staff.langTitle", { name: edit?.name ?? t("own.staff.someone") })}
+        body={t("own.staff.langBody")}
+        confirmLabel={t("own.staff.save")}
         onConfirm={async () => {
           await api.setStaffProfile(edit!.userId, { locale, station: station.trim() || null });
-          toast({ message: "Saved", tone: "success" });
+          toast({ message: t("own.staff.saved"), tone: "success" });
           await state.reload();
         }}
       >
-        <div className="flex flex-col gap-4">
-          <Select label="Language" value={locale} onChange={(e) => setLocale(e.target.value as merchantApi.StaffMember["locale"])} options={LOCALE_LIST.map((l) => ({ value: l.code, label: `${l.englishName} (${l.name})` }))} />
-          <TextField label="Kitchen station" optionalLabel hint="For example tandoor, curry or chai. Leave empty to see every station." maxLength={60} value={station} onChange={(e) => setStation(e.target.value)} />
-        </div>
-      </ConfirmDialog>
-      <ConfirmDialog
+        <Select label={t("own.staff.language")} value={locale} onChange={(e) => setLocale(e.target.value as merchantApi.StaffMember["locale"])} options={LOCALE_LIST.map((l) => ({ value: l.code, label: `${l.englishName} (${l.name})` }))} />
+        <TextField label={t("own.staff.kitchenStation")} optionalLabel hint={t("own.staff.stationHint")} maxLength={60} value={station} onChange={(e) => setStation(e.target.value)} />
+      </Confirm>
+      <Confirm
         open={!!pinFor}
         onClose={() => {
           setPinFor(null);
           setPin("");
         }}
-        title={`Counter PIN for ${pinFor?.name ?? "staff"}`}
-        body="4 to 6 digits. They use it to switch to themselves on a shared counter device."
-        confirmLabel="Save PIN"
-        disabled={!/^\d{4,6}$/.test(pin)}
+        title={t("own.staff.pinTitle", { name: pinFor?.name ?? t("own.staff.someone") })}
+        body={t("own.staff.pinBody")}
+        confirmLabel={t("own.staff.pinSave")}
+        disabled={!/^\d{4}$/.test(pin)}
         onConfirm={async () => {
           await api.setPin(pinFor!.userId, pin);
-          toast({ message: "PIN saved", tone: "success" });
+          toast({ message: t("own.staff.pinSaved"), tone: "success" });
           await state.reload();
         }}
       >
-        <TextField label="PIN" type="password" inputMode="numeric" autoComplete="new-password" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
-      </ConfirmDialog>
-      <ConfirmDialog
+        <TextField label={t("own.staff.pinLabel")} type="password" inputMode="numeric" autoComplete="new-password" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} autoFocus />
+      </Confirm>
+      <Confirm
         open={!!remove}
         onClose={() => setRemove(null)}
-        title={`Remove ${remove?.name ?? "this person"} from staff?`}
-        body={`${remove?.name ?? "They"} can't award points after this. Their past activity stays in your reports.`}
-        confirmLabel="Remove"
+        title={remove?.name ? t("own.staff.removeTitle", { name: remove.name }) : t("own.staff.removeTitleNoName")}
+        body={remove?.name ? t("own.staff.removeBody", { name: remove.name }) : t("own.staff.removeBodyNoName")}
+        confirmLabel={t("own.staff.removeConfirm")}
         danger
         onConfirm={async () => {
           await api.removeStaff(remove!.userId);

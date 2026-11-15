@@ -37,7 +37,7 @@ export function FlowShell({ step, total, onBack, exitHref = "/", colors, aside, 
         <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-2 px-2 md:px-6">
           <div className="flex w-24 items-center">
             {onBack ? (
-              <button type="button" onClick={onBack} className="inline-flex h-11 items-center gap-1.5 rounded-r2 px-2 text-body font-[550] text-fg hover:bg-bg-subtle focus-visible:focus-ring" data-flow-back>
+              <button type="button" onClick={onBack} className="inline-flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-r2 px-2 text-body font-[550] text-fg hover:bg-bg-subtle focus-visible:focus-ring" data-flow-back>
                 <ArrowLeft aria-hidden className="size-5 rtl:rotate-180" strokeWidth={1.75} />
                 <span className="max-sm:sr-only">{t("sf.back")}</span>
               </button>
@@ -56,7 +56,7 @@ export function FlowShell({ step, total, onBack, exitHref = "/", colors, aside, 
           </div>
           <div className="flex w-24 justify-end">
             {exitHref ? (
-              <Link href={exitHref} className="inline-flex h-11 items-center rounded-r2 px-2 text-body font-[550] text-fg-muted hover:text-fg focus-visible:focus-ring" data-flow-exit>
+              <Link href={exitHref} className="inline-flex h-11 min-w-11 items-center justify-center rounded-r2 px-2 text-body font-[550] text-fg-muted hover:text-fg focus-visible:focus-ring" data-flow-exit>
                 {t("sf.exit")}
               </Link>
             ) : null}
@@ -90,6 +90,8 @@ export interface StepFrameProps {
   id: string;
   title: ReactNode;
   body?: ReactNode;
+  /** A second line under the body (who is signed in). */
+  bodyExtra?: ReactNode;
   onSubmit: () => void;
   primary: ReactNode;
   busy?: boolean;
@@ -108,7 +110,7 @@ export interface StepFrameProps {
  * One question: the heading (focus target when the step has no field), a helper line, the fields, then the primary button. Enter in any
  * field continues (it is a form); Enter on a tile picks it and continues. Focus moves to the first field when the step appears.
  */
-export function StepFrame({ id, title, body, onSubmit, primary, busy, secondary, note, children, eyebrow, after }: StepFrameProps) {
+export function StepFrame({ id, title, body, bodyExtra, onSubmit, primary, busy, secondary, note, children, eyebrow, after }: StepFrameProps) {
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
     const root = ref.current;
@@ -141,6 +143,7 @@ export function StepFrame({ id, title, body, onSubmit, primary, busy, secondary,
           {title}
         </h1>
         {body ? <p className="mt-3 text-pretty text-[15px] leading-5.5 text-fg-muted">{body}</p> : null}
+        {bodyExtra ? <p className="mt-1 text-pretty text-meta font-[550] text-fg">{bodyExtra}</p> : null}
         {children ? <div className="mt-8 flex flex-col gap-5">{children}</div> : null}
       </div>
       <div className="z-sticky mt-8 flex flex-col gap-2 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:mt-0 max-md:border-t max-md:border-border max-md:bg-bg/95 max-md:px-4 max-md:pb-[calc(12px+env(safe-area-inset-bottom))] max-md:pt-3 max-md:backdrop-blur-md" data-flow-footer>
@@ -152,7 +155,7 @@ export function StepFrame({ id, title, body, onSubmit, primary, busy, secondary,
             {secondary.label}
           </button>
         ) : null}
-        {note ? <div className="text-center text-meta text-fg-muted max-md:text-caption">{note}</div> : null}
+        {note ? <div className="text-balance text-center text-meta text-fg-muted max-md:text-caption">{note}</div> : null}
       </div>
       {after ? <div className="mt-8 flex justify-center">{after}</div> : null}
     </form>

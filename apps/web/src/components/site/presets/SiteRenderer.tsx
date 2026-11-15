@@ -35,13 +35,15 @@ export interface SiteRendererProps {
 type Ctx = SiteRendererProps & { t: ReturnType<typeof useLocaleOrEnglish>["t"]; locale: ReturnType<typeof useLocaleOrEnglish>["locale"] };
 
 /** A line of the owner's words; selectable in the builder. */
-function Line({ ctx, field, as: As = "span", className, children }: { ctx: Ctx; field: SiteCopyField; as?: "span" | "p" | "h1" | "h2"; className?: string; children: ReactNode }) {
+function Line({ ctx, field, as: Wanted = "span", className, children }: { ctx: Ctx; field: SiteCopyField; as?: "span" | "p" | "h1" | "h2"; className?: string; children: ReactNode }) {
   if (!ctx.onPick)
     return (
-      <As dir="auto" className={className}>
+      <Wanted dir="auto" className={className}>
         {children}
-      </As>
+      </Wanted>
     );
+  // The builder's preview sits under the dashboard's own h1 ("Website"): its headline is an h2 there, so the page keeps one h1.
+  const As = Wanted === "h1" ? "h2" : Wanted;
   const pick = () => ctx.onPick!(field);
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {

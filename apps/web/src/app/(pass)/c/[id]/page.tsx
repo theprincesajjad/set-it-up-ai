@@ -13,6 +13,7 @@ import { getMe } from "@/lib/auth/session";
 // l10n-ok: English branch (locale === "en") keeps the hand-written formats
 import { formatDate, formatTime } from "@/lib/format";
 import { PassTopBar } from "@/components/pass/PassChrome";
+import { PhoneSignIn } from "@/components/pass/PhoneSignIn";
 import { LocaleScope } from "@/lib/i18n";
 import { getLocale, getLocaleForProfile } from "@/lib/i18n/server";
 import { URDU_LEADING } from "@/components/restaurant/PageFrame";
@@ -104,9 +105,16 @@ export default async function CampaignPage({ params, searchParams }: Props) {
         ))}
       </ListGroup>
       {!mine?.progress ? (
-        <Button href={me ? "/map" : "/me"} size="lg" fullWidth>
-          {me ? t("sh.camp.find") : t("sh.camp.signIn")}
-        </Button>
+        me ? (
+          <Button href="/map" size="lg" fullWidth>
+            {t("sh.camp.find")}
+          </Button>
+        ) : (
+          // Signed out: sign in right here and come back to this event (the old button sent them to the wallet, which forgot it).
+          <section aria-label={t("sh.camp.signIn")} className="rounded-card border border-line p-4">
+            <PhoneSignIn next={`/c/${encodeURIComponent(id)}`} heading="h2" title={t("sh.camp.signIn")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
+          </section>
+        )
       ) : null}
       <ListGroup title={t("sh.camp.shops", { n: c.merchants.length })}>
         {c.merchants.map((m) => (

@@ -62,15 +62,15 @@ export function SampleReportCard({ variant = "hero", className }: { variant?: "h
       <ReportSummary report={R} goal={5} headingLevel={2} maxShops={variant === "page" ? undefined : 4} footnote={copy.bia.sample.caption} />
       <div className="flex flex-wrap gap-2 print:hidden">
         {variant === "page" ? (
-          <Button size="sm" iconStart={Printer} onClick={() => window.print()}>
+          <Button iconStart={Printer} onClick={() => window.print()}>
             Print or save as PDF
           </Button>
         ) : (
-          <Button size="sm" iconStart={Download} href="/for-bias/sample-report">
+          <Button iconStart={Download} href="/for-bias/sample-report">
             {copy.bia.sample.pdf}
           </Button>
         )}
-        <Button size="sm" variant="secondary" onClick={() => downloadCsv("sample-board-report.csv", [["sample_data"], ...campaignReportRows(R)])}>
+        <Button variant="secondary" onClick={() => downloadCsv("sample-board-report.csv", [["sample_data"], ...campaignReportRows(R)])}>
           {copy.bia.sample.csv}
         </Button>
       </div>

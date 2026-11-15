@@ -100,7 +100,7 @@ export function MiniStamps({ goal, filled = 0, className }: { goal: number; fill
  * The top of a shop's page: its cover (when it has one) and a card in its colour with the mark, the name (the page's h1), what kind of
  * place it is, and the card on offer ("6 stamps = $10 off your next visit") over a row of stamps with the reward slot accented.
  */
-export function ShopHero({ shop, subtitle, offer, goal = 0, coverUrl }: { shop: BrandShop; subtitle?: ReactNode; offer?: ReactNode; goal?: number; coverUrl?: string | null }) {
+export function ShopHero({ shop, subtitle, offer, goal = 0, filled = 0, coverUrl }: { shop: BrandShop; subtitle?: ReactNode; offer?: ReactNode; goal?: number; /** A member's stamps so far: their card is shown filled, not empty. */ filled?: number; coverUrl?: string | null }) {
   const [coverFailed, setCoverFailed] = useState(false);
   return (
     <div className="flex flex-col gap-3">
@@ -120,7 +120,7 @@ export function ShopHero({ shop, subtitle, offer, goal = 0, coverUrl }: { shop: 
         </div>
         {offer ? (
           <div className="flex flex-col gap-2.5 border-t border-trade-pass-text/30 pt-4">
-            {goal > 0 ? <MiniStamps goal={goal} /> : null}
+            {goal > 0 ? <MiniStamps goal={goal} filled={filled} /> : null}
             <p className="text-body-strong">{offer}</p>
           </div>
         ) : null}

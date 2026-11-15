@@ -7,11 +7,11 @@ const en = { locale: "en" as const, t: translator("en") };
 
 describe("promoWhenL (the promo card says when)", () => {
   it("names the days and hours", () => {
-    expect(promoWhenL(en, { daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00" })).toBe("Weekdays · 2 pm to 4 pm");
+    expect(promoWhenL(en, { daysOfWeek: [1, 2, 3, 4, 5], startTime: "14:00", endTime: "16:00" })).toBe("Weekdays · 2 p.m. to 4 p.m.");
     expect(promoWhenL(en, { daysOfWeek: [2], startTime: null, endTime: null })).toBe("Tuesdays · all day");
-    expect(promoWhenL(en, { daysOfWeek: [0, 6], startTime: "08:00", endTime: "12:00" })).toBe("Weekends · 8 am to 12 pm");
+    expect(promoWhenL(en, { daysOfWeek: [0, 6], startTime: "08:00", endTime: "12:00" })).toBe("Weekends · 8 a.m. to 12 p.m.");
     expect(promoWhenL(en, { daysOfWeek: [1, 3, 5], startTime: null, endTime: null })).toBe("Mon, Wed, Fri · all day");
-    expect(promoWhenL(en, { daysOfWeek: null, startTime: "07:00", endTime: "09:00" })).toBe("Every day · 7 am to 9 am");
+    expect(promoWhenL(en, { daysOfWeek: null, startTime: "07:00", endTime: "09:00" })).toBe("Every day · 7 a.m. to 9 a.m.");
   });
   it("says nothing for a promo with no weekday or hours rule", () => {
     expect(promoWhenL(en, { daysOfWeek: null, startTime: null, endTime: null })).toBeNull();

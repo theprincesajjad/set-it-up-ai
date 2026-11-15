@@ -16,7 +16,7 @@ export function AudienceRouter() {
   const r = copy.landing.router;
   return (
     <section aria-label={r.label} className="pb-12 md:pb-20">
-      <div className="mx-auto max-w-[1200px] px-4 md:px-8">
+      <div className="mx-auto max-w-360 px-5 md:px-10 xl:px-15">
         <ul className="grid gap-4 md:grid-cols-3">
           {r.items.map((i, n) => {
             const d = DOORS[n] ?? DOORS[0]!;

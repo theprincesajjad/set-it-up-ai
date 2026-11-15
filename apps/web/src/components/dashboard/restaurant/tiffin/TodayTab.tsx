@@ -94,7 +94,7 @@ function Kitchen({ d, go, awaiting, revenue }: { d: tiffinApi.KitchenResponse; g
               label: "Money to confirm",
               value: formatMoney(d.awaiting.cents),
               caption: d.awaiting.count ? (
-                <button type="button" onClick={() => go("subscribers-awaiting")} className="text-location underline-offset-4 hover:underline focus-visible:focus-ring">
+                <button type="button" onClick={() => go("subscribers-awaiting")} className="text-info-text underline-offset-4 hover:underline focus-visible:focus-ring">
                   {d.awaiting.count} {d.awaiting.count === 1 ? "e-transfer" : "e-transfers"} awaiting
                 </button>
               ) : (

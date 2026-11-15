@@ -46,7 +46,7 @@ export function NextVisitCard({ appt, showManage = true }: { appt: appointmentsA
         </div>
       ) : null}
       <p className="text-meta text-fg-muted">{policy}</p>
-      {showManage ? <Button variant="secondary" size="sm" className="self-start" href={`/shops/${encodeURIComponent(appt.merchant.slug)}/book/${appt.id}`}>{t("bk.done.manage")}</Button> : null}
+      {showManage ? <Button variant="secondary" size="md" className="self-start" href={`/shops/${encodeURIComponent(appt.merchant.slug)}/book/${appt.id}`}>{t("bk.done.manage")}</Button> : null}
     </section>
   );
 }

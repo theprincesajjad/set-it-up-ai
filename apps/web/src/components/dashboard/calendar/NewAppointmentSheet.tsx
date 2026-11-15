@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { serviceFitsSize, type appointmentsApi, type inboxApi } from "@ll/shared";
 import Link from "next/link";
 import { SidePanel } from "@/components/dashboard/kit";
@@ -13,6 +13,8 @@ import { useToast } from "@/components/ui/Toast";
 import { clock, instantAt } from "@/lib/dashboard/calendar";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 import { ServicePicker } from "./ServicePicker";
+import { useIsDesktop } from "./useIsDesktop";
+import { focusFirstInvalid } from "@/lib/api/useErrorText";
 
 type Staff = appointmentsApi.BookableStaffDto;
 type Service = appointmentsApi.ServiceDto;
@@ -45,7 +47,13 @@ export function NewAppointmentSheet({
   const petList = useApi(open && petShop ? () => api.pets.list() : null, [api, open, petShop]);
   const pet = useApi(open && petShop && petId ? () => api.pets.get(petId) : null, [api, open, petShop, petId]);
   const toast = useToast();
+  const desktop = useIsDesktop();
   const act = useAction();
+  // The message sits under the form: on a phone it starts out of sight, so bring it in.
+  const errRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (act.error) errRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [act.error]);
   const [phone, setPhone] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [staffId, setStaffId] = useState<string>("");
@@ -62,7 +70,8 @@ export function NewAppointmentSheet({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDate(defaults.date);
     setTime(minutesToTime(defaults.minutes));
-    setStaffId(defaults.staffId ?? "");
+    // One person takes bookings: it is theirs, not "place it later".
+    setStaffId(defaults.staffId ?? (staff.length === 1 ? staff[0]!.userId : ""));
     setPetId(defaults.petId ?? "");
     setForce(false);
     setTried(false);
@@ -72,7 +81,7 @@ export function NewAppointmentSheet({
       setClientNote(prefill.clientNote ?? "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaults.date, defaults.minutes, defaults.staffId, defaults.petId, prefill?.conversationId]);
+  }, [open, defaults.date, defaults.minutes, defaults.staffId, defaults.petId, prefill?.conversationId, staff.length]);
 
   const reset = () => {
     setPhone(null);
@@ -82,12 +91,12 @@ export function NewAppointmentSheet({
     setClientNote("");
     setPetId("");
   };
-  const errs = { client: !phone && !name.trim() && !petId ? "Pick a dog, or add the client's name or phone." : undefined, services: !ids.length ? "Pick at least one service." : undefined };
+  const errs = { client: !phone && !name.trim() && !petId ? petShop ? "Pick a dog, or add the client’s name or phone." : "Add the client’s name or phone." : undefined, services: !ids.length ? "Pick at least one service." : undefined };
   const manager = role !== "staff";
 
   async function submit() {
     setTried(true);
-    if (errs.client || errs.services) return;
+    if (errs.client || errs.services) return focusFirstInvalid();
     const [hh, mm] = time.split(":").map(Number) as [number, number];
     const r = await act.run(() =>
       api.appointments.create({
@@ -102,7 +111,8 @@ export function NewAppointmentSheet({
       }),
     );
     if (r) {
-      toast({ message: `Booked ${r.customer.name} at ${clock(hh * 60 + mm)}`, tone: "success" });
+      // Below the desktop layout the visit opens in a full-screen sheet right away; a toast would sit on its buttons.
+      if (desktop) toast({ message: `Booked ${r.customer.name} at ${clock(hh * 60 + mm)}`, tone: "success" });
       reset();
       onCreated(r);
       onClose();
@@ -124,7 +134,7 @@ export function NewAppointmentSheet({
         </>
       }
     >
-      <div className="flex flex-col gap-4">
+      <form className="flex flex-col gap-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
         {prefill ? (
           <div className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg" data-testid="from-message">
             <p className="font-semibold">{prefill.source === "instagram" ? `From Instagram${prefill.handle ? ` · ${prefill.handle}` : ""}` : "From a message"}</p>
@@ -141,7 +151,7 @@ export function NewAppointmentSheet({
         {petId ? null : <PhoneField label="Client phone" hint="Finds or adds the client. They get reminders and earn points." onChangeE164={setPhone} forceValidate={tried && !!phone} />}
         {petId ? null : <TextField label="Client name" value={name} onChange={(e) => setName(e.target.value)} error={tried ? errs.client : undefined} />}
         {petId && tried && errs.client ? <p className="text-meta text-negative">{errs.client}</p> : null}
-        <Select label="Stylist" value={staffId} onChange={(e) => setStaffId(e.target.value)} options={[{ value: "", label: "Anyone (place it later)" }, ...staff.map((s) => ({ value: s.userId, label: s.name }))]} />
+        <Select label="Stylist" value={staffId} onChange={(e) => setStaffId(e.target.value)} options={[...(staff.length > 1 ? [{ value: "", label: "Anyone (place it later)" }] : []), ...staff.map((s) => ({ value: s.userId, label: s.name }))]} />
         <div className="grid grid-cols-2 gap-3">
           <TextField label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <TextField label="Time" type="time" step={900} value={time} onChange={(e) => setTime(e.target.value)} />
@@ -152,14 +162,15 @@ export function NewAppointmentSheet({
         </div>
         {prefill ? <TextField type="textarea" label="Client note" hint="From their message." value={clientNote} onChange={(e) => setClientNote(e.target.value)} maxLength={1000} /> : null}
         <TextField label="Note for the shop" optionalLabel value={notes} onChange={(e) => setNotes(e.target.value)} />
-        {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+        {act.error ? <div ref={errRef}><Banner tone="danger">{act.error}</Banner></div> : null}
         {outside && manager ? (
           <label className="flex items-center gap-2 text-meta text-fg">
             <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} className="size-4" />
             Book anyway, outside working hours
           </label>
         ) : null}
-      </div>
+        <button type="submit" hidden aria-hidden tabIndex={-1} />
+      </form>
     </SidePanel>
   );
 }

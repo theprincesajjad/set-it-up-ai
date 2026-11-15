@@ -289,14 +289,14 @@ function ShopSheetBody({ s, onClose }: { s: networkApi.ShopListItemDto; onClose:
   const L = useLocaleOrEnglish();
   const { t, locale } = L;
   const kind = placeKindLabel(locale, s.merchant.vertical);
-  const where = s.distanceMetres != null ? distanceL(L, s.distanceMetres) : s.location?.address;
+  const where = s.distanceMetres != null ? distanceL(L, s.distanceMetres) : s.location?.address ? <bdi>{s.location.address}</bdi> : null;
   return (
     <>
       <div className="flex items-start gap-3">
         <ShopLogo shop={s.merchant} size={56} />
         <div className="min-w-0 flex-1 pt-0.5">
           <h2 className="font-display text-title font-bold text-trade-deep clear:text-foreground"><bdi>{s.merchant.name}</bdi></h2>
-          <p className="truncate text-meta text-fg-muted">{[kind, where].filter(Boolean).join(" · ")}</p>
+          <p className="truncate text-meta text-fg-muted">{kind}{kind && where ? " · " : ""}{where}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-fg">
             {s.openNow != null ? <StatusDot tone={s.openNow ? "positive" : "neutral"}>{s.openNow ? t("ms.map.openNow").replace(/^./, (ch) => ch.toUpperCase()) : t("ui.hours.closed")}</StatusDot> : null}
             {s.memberCount ? <span className="text-fg-muted">{t("shop.membersCount", { n: s.memberCount })}</span> : null}

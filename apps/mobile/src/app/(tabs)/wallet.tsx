@@ -21,6 +21,7 @@ import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { disp, ui, useTheme } from "../../theme";
 import { placeKindLabel } from "@ll/shared";
+import { capFirst } from "../../lib/sentenceCase";
 import { verticalVisual } from "@ll/design-tokens";
 import { shortName } from "../../lib/award";
 import { Glass, QrCodeIcon, ActionPill, Awning, Trophy, Banner, BellOff, Button, CardTitle, categorySource, IconTile, PassCard, verticalIcon, WarmCard, ChevronRightGlyph, CountUp, EmptyState, ErrorState, hairline, ListRow, OfflineBanner, ORDER_STATUS_KEYS, PromoCard, SearchGlyph, ShopLogo, SkeletonRows, Store, Text, Ticket, TICKET_STATUS_KEYS, useTabBarSpace } from "../../ui";
@@ -273,7 +274,7 @@ export default function Wallet() {
                 {passM!.merchant.name}
               </Text>
               <Text rawColor={clearPass.foreground} numberOfLines={1} style={{ fontSize: 13, lineHeight: 20, opacity: 0.9 }}>
-                {placeKindLabel(locale, passM!.merchant.vertical)}
+                {capFirst(placeKindLabel(locale, passM!.merchant.vertical))}
               </Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => router.navigate({ pathname: "/map", params: { search: "1" } })}>
@@ -317,7 +318,7 @@ export default function Wallet() {
           <View style={{ marginTop: 16, gap: 14 }}>
             <PassCard
               shop={passM.merchant}
-              subtitle={placeKindLabel(locale, passM.merchant.vertical)}
+              subtitle={capFirst(placeKindLabel(locale, passM.merchant.vertical))}
               count={passPass.stamps ? passM.balance : passM.balance}
               goal={passPass.goal}
               mode={passPass.stamps ? "stamps" : "points"}

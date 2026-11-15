@@ -2,12 +2,13 @@ import type { customerApi } from "@ll/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
+import { LoadFailed } from "../features/customer/LoadFailed";
 import { useCampaigns, useMembershipDetails, useWallet } from "../features/customer/queries";
 import { RedeemConfirmSheet } from "../features/customer/sheets";
 import { promoEndsL } from "../lib/formatL";
 import { useLocale } from "../lib/i18n";
 import { useOnline } from "../state/network";
-import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonRows, Text, Trophy, WarmCard } from "../ui";
+import { Badge, Card, EmptyState, Gift, ProgressBar, RewardCard, Screen, SegmentedControl, ShopTile, SkeletonRows, Store, Text, Trophy, WarmCard } from "../ui";
 
 /** 6.1 Rewards: Ready / All shops / Passport. */
 export default function Rewards() {
@@ -23,6 +24,12 @@ export default function Rewards() {
   const campaigns = useCampaigns();
   const [redeeming, setRedeeming] = useState<{ m: customerApi.MembershipDto; r: customerApi.MemberRewardDto } | null>(null);
   const ready = loaded.filter((d) => d.rewards.some((r) => r.affordable));
+  // A request that failed is not "nothing yet": show the failure (and Try again) instead of an empty list. No shops yet is its own first-run state.
+  const walletFailed = wallet.isError && !wallet.data;
+  const detailsFailed = memberships.length > 0 && details.some((d) => d.isError && !d.data);
+  const retryAll = () => void Promise.all([wallet.refetch(), ...details.map((d) => d.refetch())]);
+  const noShops = !wallet.isLoading && !walletFailed && memberships.length === 0;
+  const firstRun = <EmptyState icon={Store} title={t("sh.wallet.emptyTitle")} body={t("cp.empty.walletBody")} actionLabel={t("err.action.findShops")} onAction={() => router.push("/map")} />;
 
   return (
     <Screen back largeTitle title={t("sh.tab.rewards")} refreshing={wallet.isRefetching} onRefresh={() => Promise.all([wallet.refetch(), campaigns.refetch(), ...details.map((d) => d.refetch())])}>
@@ -37,8 +44,13 @@ export default function Rewards() {
       />
       {wallet.isLoading ? <SkeletonRows rows={4} /> : null}
 
-      {tab === "ready" && !wallet.isLoading ? (
-        ready.length === 0 ? (
+      {walletFailed && tab !== "passport" ? <LoadFailed error={wallet.error} onRetry={retryAll} /> : null}
+      {noShops && tab !== "passport" ? firstRun : null}
+
+      {tab === "ready" && !wallet.isLoading && !walletFailed && !noShops ? (
+        ready.length === 0 && detailsFailed ? (
+          <LoadFailed error={details.find((d) => d.isError)?.error} onRetry={retryAll} />
+        ) : ready.length === 0 ? (
           <EmptyState icon={Gift} title={t("sh.rewards.emptyTitle")} body={t("sh.rewards.emptyBody")} actionLabel={t("sh.rewards.seeShops")} onAction={() => setTab("all")} />
         ) : (
           ready.map((d) => {
@@ -64,7 +76,7 @@ export default function Rewards() {
         )
       ) : null}
 
-      {tab === "all"
+      {tab === "all" && !walletFailed
         ? loaded.map((d) => {
             const rs = [...d.rewards].sort((a, b) => Number(b.affordable) - Number(a.affordable) || a.pointsCost - b.pointsCost);
             return (
@@ -96,7 +108,9 @@ export default function Rewards() {
         : null}
 
       {tab === "passport" ? (
-        (campaigns.data?.items ?? []).length === 0 ? (
+        campaigns.isError && !campaigns.data ? (
+          <LoadFailed error={campaigns.error} onRetry={() => void campaigns.refetch()} />
+        ) : (campaigns.data?.items ?? []).length === 0 ? (
           <EmptyState icon={Trophy} title={t("cp.empty.campaignsTitle")} body={t("cp.empty.campaignsBody")} />
         ) : (
           (campaigns.data?.items ?? []).map((cmp) => (

@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AGENT_TEXTS, BRAND, WIDGET_TEXTS, type AgentLang, type salesAgentApi } from "@ll/shared";
 import { browserApi } from "@/lib/api/browser";
+import { isApiError } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { marketingFontVars } from "@/lib/marketing/fonts";
 import { afterReply, chatLang, lastRemoteAt, loadChat, mergeLines, saveChat, shouldPoll, type Line } from "@/lib/marketing/salesChat";
@@ -24,9 +25,23 @@ const store = (): Storage | null => {
 
 /** The sign-up buttons and links the launcher must never cover. The sticky bar's own button is beside it, not under it. */
 const CTA = "[data-cta], .lp-btn, main a[href^='/signup']";
+/** The visit form's fields and button (home #book, the restaurant and BIA forms): the launcher steps aside at every width while they pass under it. */
+const FORM = "main form :is(input, select, textarea, button)";
 
-/** Is any sign-up button under the launcher (with an 8px margin)? What lies under the sticky bar is hidden by it, so it does not count. */
-function coversCta(el: HTMLElement): boolean {
+/**
+ * A send our server failed (5xx) is not the visitor's connection: say so, in the panel's language. Kept beside the widget's other words
+ * (WIDGET_TEXTS) until it moves into @ll/shared with them.
+ */
+const SERVER_ERROR: Record<AgentLang, string> = {
+  en: "Something went wrong on our side. Your message is still here; try again in a minute, or email {email}.",
+  fr: "Un problème est survenu de notre côté. Votre message est toujours là; réessayez dans une minute, ou écrivez à {email}.",
+  hi: "हमारी तरफ़ से कुछ गड़बड़ हो गई। आपका संदेश अभी यहीं है; एक मिनट में फिर से कोशिश करें, या {email} पर ईमेल करें।",
+  ur: "ہماری طرف سے کچھ خرابی ہو گئی۔ آپ کا پیغام ابھی یہیں ہے؛ ایک منٹ میں دوبارہ کوشش کریں، یا {email} پر ای میل کریں۔",
+  pa: "ਸਾਡੇ ਪਾਸੇ ਕੁਝ ਗੜਬੜ ਹੋ ਗਈ। ਤੁਹਾਡਾ ਸੁਨੇਹਾ ਅਜੇ ਇੱਥੇ ਹੀ ਹੈ; ਇੱਕ ਮਿੰਟ ਵਿੱਚ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ, ਜਾਂ {email} ਤੇ ਈਮੇਲ ਕਰੋ।",
+};
+
+/** Is any sign-up button (or, `sel`, form field) under the launcher (with an 8px margin)? What lies under the sticky bar is hidden by it, so it does not count. */
+function coversCta(el: HTMLElement, sel: string): boolean {
   const r = el.getBoundingClientRect();
   const xs = [r.left - 8, r.left + r.width / 2, r.right + 8];
   const ys = [r.top - 8, r.top + r.height / 2, r.bottom + 8];
@@ -35,14 +50,14 @@ function coversCta(el: HTMLElement): boolean {
       for (const hit of document.elementsFromPoint(x, y)) {
         if (el.contains(hit)) continue;
         if (hit.closest(".lp-sticky")) break;
-        if (hit.closest(CTA)) return true;
+        if (hit.closest(sel)) return true;
       }
   return false;
 }
 
 /**
- * Phones only: marks the launcher `data-covered` (it fades out) while a sign-up button scrolls under it, and clears it when the button
- * has passed. Checked once a frame on scroll and resize, and when the sticky bar shows or hides. Never while it has focus.
+ * Marks the launcher `data-covered` (it fades out) while something it must not cover scrolls under it (phones: a sign-up button or a
+ * form field; wider screens: a form field), and clears it when that has passed. Checked once a frame on scroll and resize, and when the sticky bar shows or hides. Never while it has focus.
  */
 function useOffCtas(ref: RefObject<HTMLButtonElement | null>, on: boolean) {
   useEffect(() => {
@@ -52,7 +67,7 @@ function useOffCtas(ref: RefObject<HTMLButtonElement | null>, on: boolean) {
     let raf = 0;
     const check = () => {
       raf = 0;
-      el.toggleAttribute("data-covered", phone.matches && document.activeElement !== el && coversCta(el));
+      el.toggleAttribute("data-covered", document.activeElement !== el && coversCta(el, phone.matches ? `${CTA}, ${FORM}` : FORM));
     };
     const queue = () => {
       if (!raf) raf = requestAnimationFrame(check);
@@ -87,7 +102,7 @@ export function SalesChat() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   /** A message that did not send: why ("offline" when the browser has no connection), and the words, to send again. */
-  const [failed, setFailed] = useState<{ why: "offline" | "failed"; text: string } | null>(null);
+  const [failed, setFailed] = useState<{ why: "offline" | "server" | "failed"; text: string } | null>(null);
   const wasOpen = useRef(false);
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -168,13 +183,13 @@ export function SalesChat() {
           saveChat(store(), { token: r.sessionToken, lines: next, status: r.status });
           return next;
         });
-      } catch {
+      } catch (err) {
         // Nothing was delivered, so nothing may look delivered: the bubble comes back out of the thread (the disclosure stays first on a
         // new chat, and sending again cannot leave two copies), the words go back in the box unless the visitor has typed something
         // new, and the note under the thread says what happened with a way to try again and a way to reach a person.
         setLines((cur) => cur.filter((l) => l.id !== mine.id));
         setText((cur) => cur || body);
-        setFailed({ why: typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "failed", text: body });
+        setFailed({ why: typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : isApiError(err) && err.status >= 500 ? "server" : "failed", text: body });
       } finally {
         setBusy(false);
       }
@@ -190,7 +205,7 @@ export function SalesChat() {
   // Before the first message the panel already says what this is.
   const shown: Line[] = lines.length ? lines : [{ id: "preview-disclosure", role: "assistant", text: AGENT_TEXTS[lang].disclosure({ whatsapp: false }), at: "" }];
   const fresh = lines.length === 0;
-  const errorParts = T.error.split("{email}");
+  const errorParts = (failed?.why === "server" ? SERVER_ERROR[lang] : T.error).split("{email}");
 
   return (
     <>
@@ -204,14 +219,14 @@ export function SalesChat() {
           onClick={() => setOpen(true)}
           aria-label={T.launcher}
           data-chat-launcher=""
-          className={`mkt ${marketingFontVars} fixed bottom-4 end-4 z-50 inline-flex h-11 items-center gap-2 rounded-r2 bg-primary px-4 text-meta-strong text-primary-foreground shadow-float transition-[opacity,visibility] duration-200 hover:bg-primary/90 focus-visible:focus-ring data-covered:invisible data-covered:opacity-0 max-sm:bottom-[calc(6px+env(safe-area-inset-bottom))] max-sm:size-12 max-sm:justify-center max-sm:rounded-full max-sm:px-0 max-sm:ring-1 max-sm:ring-white/20 motion-reduce:transition-none font-mkt-sans`}
+          className={`mkt ${marketingFontVars} fixed bottom-4 end-4 z-50 inline-flex h-11 items-center gap-2 rounded-r2 bg-primary px-4 text-meta-strong text-primary-foreground shadow-float transition-[opacity,visibility] duration-200 hover:bg-primary/90 focus-visible:focus-ring data-covered:invisible data-covered:opacity-0 max-sm:bottom-[calc(6px+env(safe-area-inset-bottom))] max-sm:size-12 max-sm:justify-center max-sm:rounded-full max-sm:px-0 ring-1 ring-white/20 motion-reduce:transition-none font-mkt-sans`}
         >
           <MessageCircle aria-hidden className="size-4 max-sm:size-5" />
           <span className="max-sm:hidden">{T.launcher}</span>
         </button>
       ) : null}
       {open ? (
-        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} className="fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-border bg-background shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]">
+        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} className={`mkt ${marketingFontVars} font-mkt-sans fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-border bg-background shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]`}>
           <header className="flex items-center gap-3 border-b border-border px-4 py-3">
             <div className="min-w-0 flex-1">
               <h2 className="text-body font-semibold text-foreground">{T.title}</h2>

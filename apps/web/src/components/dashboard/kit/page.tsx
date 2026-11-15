@@ -17,8 +17,8 @@ export function PageHeader({ title, description, actions, back, className, flush
     <header className={cn("kit-ph", !flush && "mb-6", "flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="min-w-0">
         {back ? (
-          <Link href={back.href} className="kit-back mb-1 inline-flex items-center gap-1 text-meta text-fg-muted hover:text-fg">
-            <ChevronRight aria-hidden className="size-3.5 rotate-180" />
+          <Link href={back.href} className="kit-back mb-1 inline-flex items-center gap-1 text-meta text-fg-muted hover:text-fg max-md:-mt-3 max-md:-mb-2 max-md:min-h-11">
+            <ChevronRight aria-hidden className="size-3.5 rotate-180 rtl:rotate-0" />
             {back.label}
           </Link>
         ) : null}
@@ -130,8 +130,8 @@ export function Kbd({ children }: { children: ReactNode }) {
 /** Quiet "‹ Parent" link above a page title. */
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="kit-back -mb-2 inline-flex items-center gap-1 self-start text-meta text-fg-muted hover:text-fg print:hidden">
-      <ChevronRight aria-hidden className="size-3.5 rotate-180" />
+    <Link href={href} className="kit-back -mb-2 inline-flex items-center gap-1 self-start text-meta text-fg-muted hover:text-fg max-md:-my-3 max-md:min-h-11 print:hidden">
+      <ChevronRight aria-hidden className="size-3.5 rotate-180 rtl:rotate-0" />
       {children}
     </Link>
   );

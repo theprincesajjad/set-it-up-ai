@@ -74,7 +74,7 @@ export function Overview({ hood }: { hood: networkApi.NeighbourhoodDto }) {
               <div className="flex min-w-0 flex-col gap-5">
                 <VisitsChart weekly={o.weekly} hoodId={hood.id} />
                 <CampaignsPanel hoodId={hood.id} />
-                <Panel title="Shops on your street" action={<Link href="/bia/shops" className="text-meta-strong text-fg-muted hover:text-fg">View all {o.shopsTable.length}</Link>}>
+                <Panel title="Shops on your street" action={<Link href="/bia/shops" className="text-meta-strong text-fg-muted hover:text-fg max-md:-my-3 max-md:inline-flex max-md:min-h-11 max-md:items-center">View all {o.shopsTable.length}</Link>}>
                   <ShopsTable rows={o.shopsTable} limit={6} />
                 </Panel>
               </div>

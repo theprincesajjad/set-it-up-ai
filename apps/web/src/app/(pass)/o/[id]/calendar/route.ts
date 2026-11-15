@@ -9,12 +9,13 @@ import { pickupCode } from "@/lib/restaurant/order";
 export const dynamic = "force-dynamic";
 
 /** GET /o/<orderId>/calendar: the pickup as an .ics file ("Add to calendar" on the reservation page). Signed-in customer's own order only. */
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!(await getMe())) return new NextResponse("Sign in to add this to your calendar.", { status: 401 });
+  // This is a link a person taps, so a refusal lands on a page, never on bare text: the order's own page says what it can (and has the sign-in).
+  const back = () => NextResponse.redirect(new URL(`/o/${encodeURIComponent(id)}`, req.url));
+  if (!(await getMe())) return back();
   const order = await (await getServerApi()).me.order(id).catch((e: unknown) => (isApiError(e) && e.status === 404 ? null : undefined));
-  if (order === null) return new NextResponse("Not found", { status: 404 });
-  if (order === undefined || !order.pickupAt) return new NextResponse("Not available", { status: 404 });
+  if (!order || !order.pickupAt) return back();
   const t = await getT();
   const ics = buildIcs({
     uid: order.id,

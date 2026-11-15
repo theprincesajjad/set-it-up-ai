@@ -39,7 +39,7 @@ export async function FoundingStrip({ c = restaurantCopy("en") }: { c?: Restaura
   const [first, ...rest] = open;
   return (
     <section aria-label={F.label} className="mkt-band-butter">
-      <div className="mx-auto grid max-w-[1200px] gap-6 px-4 py-10 md:grid-cols-[1fr_1fr] md:items-center md:gap-14 md:px-8 md:py-12">
+      <div className="mx-auto grid max-w-360 gap-6 px-5 py-10 md:grid-cols-[1fr_1fr] md:items-center md:gap-14 md:px-10 xl:px-15 md:py-12">
         <div>
           <h2 data-testid="founding-headline" className="display text-mkt-sm text-balance md:text-mkt-md">
             {foundingHeadline(first!, F.headline)}

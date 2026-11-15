@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APPOINTMENT_VERTICALS, PHARMACY_FRONT_STORE_CAPTION_EN, PHARMACY_FRONT_STORE_TICK_EN, type authApi, type staffApi } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
+import { ShopMark } from "@/components/dashboard/ShopMark";
 import { Awning } from "@/components/ui/Awning";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { IconTile } from "@/components/ui/IconTile";
@@ -86,15 +87,15 @@ type Phase =
   | { kind: "idle" }
   /** Two or more members end in these digits. */
   | { kind: "pick"; items: staffApi.MemberSummaryDto[]; digits: string }
-  | { kind: "nomatch"; digits: string }
-  | { kind: "new"; phone: string }
+  | { kind: "nomatch"; digits: string; offline?: boolean }
+  | { kind: "new"; phone: string; digits?: string }
   /** Stamp on scan is off (or the program takes an amount): confirm with one tap. */
   | { kind: "member"; member: staffApi.MemberSummaryDto }
   /** Goal reached: redeem, or stamp on purpose and keep the reward. */
   | { kind: "reward"; member: staffApi.MemberSummaryDto }
   | { kind: "awarded"; res: staffApi.AwardResponse; at: number; from: number }
   /** Saved on this device (offline / network error); sends with the same idempotency key. */
-  | { kind: "queued"; label: string; who: string }
+  | { kind: "queued"; label: string; who: string; key: string }
   | { kind: "redeemed"; res: staffApi.CounterRedemptionResponse };
 
 /** The staff member who signed in with a 4-digit PIN on this counter (their token tags every award). */
@@ -121,7 +122,13 @@ export interface CounterAppProps {
       body: authApi.StaffPinVerifyBody,
     ) => Promise<authApi.StaffPinVerifyResponse>;
     apiAs: (token: string) => CounterApi;
+    /** Whether the signed-in person already has a counter PIN. With `setOwn`, someone who has none is asked to choose one. */
+    hasPin?: boolean;
+    /** Save the signed-in person's own PIN (four digits). */
+    setOwn?: (pin: string) => Promise<void>;
   };
+  /** The shop's mark as the dashboard shows it (colour and logo), so the counter wears the same one. */
+  shopMark?: { brandColor: string | null; logoUrl: string | null };
   /** Where the toast and auto-return timers read the clock (tests). */
   clock?: () => number;
   /**
@@ -169,11 +176,12 @@ export function CounterApp({
   exitHref,
   vertical,
   earnPicks,
+  shopMark,
 }: CounterAppProps) {
   const errText = useErrorText();
   const ct = useCounterText();
   const { t } = ct;
-  const { time } = useLocaleOrEnglish();
+  const { time, date } = useLocaleOrEnglish();
   const stampIcon = vertical ? verticalIcon(vertical) : undefined;
   const [mode, setMode] = useState<"scan" | "verify">("scan");
   /** Bumped by the keypad's scan key: the scan panel opens the camera. */
@@ -188,6 +196,10 @@ export function CounterApp({
   }, []);
   const [staff, setStaff] = useState<CounterStaff | null>(null);
   const [pinOpen, setPinOpen] = useState(false);
+  /** Someone with no counter PIN yet: the chip and a notice offer to choose one (they use it to sign in here and to have awards under their name). */
+  const [hasOwnPin, setHasOwnPin] = useState(pin?.hasPin ?? true);
+  const [pinNoticeOff, setPinNoticeOff] = useState(false);
+  const needsOwnPin = !!pin?.setOwn && !hasOwnPin;
   const api = staff && pin ? pin.apiAs(staff.token) : baseApi;
   const [locationId, setLocationId] = useState<string | undefined>(
     locations[0]?.id,
@@ -199,7 +211,7 @@ export function CounterApp({
     setEntryState(v);
   }, []);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
-  const [cents, setCents] = useState("");
+  const [cents, setCentsState] = useState("");
   const [qty, setQty] = useState(1);
   const [showRewards, setShowRewards] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -209,6 +221,7 @@ export function CounterApp({
   const [overrideReason, setOverrideReason] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [phoneErr, setPhoneErr] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
   const [frontStore, setFrontStore] = useState(false);
   const [notCounted, setNotCounted] = useState("");
@@ -231,8 +244,17 @@ export function CounterApp({
   const [toast, setToast] = useState<{
     res: staffApi.AwardResponse;
     at: number;
+    /** Everything this award added to the balance (the purchase plus any bonus), so the toast and the balance agree. */
+    added: number;
   } | null>(null);
   const awardKey = useRef<string | null>(null);
+  /** A key press clears the "enter the amount" notice: it stops being true the moment an amount is typed. */
+  const setCents = useCallback((fn: (c: string) => string) => {
+    setCentsState(fn);
+    setError(null);
+    // A different amount is a different request: it must not reuse the key of one that failed.
+    awardKey.current = null;
+  }, []);
   const redeemKey = useRef<string | null>(null);
   const scanner = useRef(EMPTY_SCANNER);
   const perDollar = program.earnType === "per_dollar";
@@ -246,6 +268,7 @@ export function CounterApp({
   const online = browserOnline && reachable;
   const reachableRef = useRef(true);
   const loadRecentRef = useRef<() => Promise<void>>(async () => undefined);
+  const resetRef = useRef<() => void>(() => undefined);
   // eslint-disable-next-line react-hooks/refs
   reachableRef.current = reachable;
   const [sending, setSending] = useState(false);
@@ -296,6 +319,8 @@ export function CounterApp({
         sent += 1;
         setReachable(true);
         saveQueue(queueRef.current.filter((x) => x.key !== item.key));
+        // The "saved on this device" card for this very award is no longer true: back to scanning, with "Back online · 1 sent" below.
+        if (phaseRef.current.kind === "queued" && phaseRef.current.key === item.key) resetRef.current();
       } catch (e) {
         if (isApiError(e) && e.isNetwork) {
           setReachable(false);
@@ -317,6 +342,8 @@ export function CounterApp({
   useEffect(() => {
     const up = () => {
       setOnline(true);
+      // "You're offline" stops being true the moment the connection is back.
+      setError(null);
       void flush();
       void loadRecentRef.current();
     };
@@ -386,7 +413,7 @@ export function CounterApp({
   const reset = useCallback(() => {
     setPhase({ kind: "idle" });
     setEntry("");
-    setCents("");
+    setCentsState("");
     setNotCounted("");
     setBulk([]);
     setBulkRemind(false);
@@ -395,12 +422,17 @@ export function CounterApp({
     setError(null);
     setNewName("");
     setNewPhone("");
+    setPhoneErr(null);
     setConsent(false);
     tickFrontStore(false);
     awardKey.current = null;
     redeemKey.current = null;
     scanner.current = EMPTY_SCANNER;
   }, [setEntry, tickFrontStore]);
+
+  useEffect(() => {
+    resetRef.current = reset;
+  }, [reset]);
 
   // The stamped screen goes back to scan after 3 s on its own (Next customer does it now).
   useEffect(() => {
@@ -422,7 +454,9 @@ export function CounterApp({
       extra: { customerName?: string; consent?: { text: string }; override?: { reason: string }; lines?: { amountCents: number; itemId?: string; serviceId?: string; categoryId?: string }[] } = {},
       from?: number,
     ) => {
-      if (perDollar && centsFromKeypad(cents) <= 0) {
+      // A per-dollar shop needs an amount, except for a brand-new customer: they are added with the welcome bonus and the first purchase comes next visit.
+      const newCustomer = !!ref.phone && !ref.memberId;
+      if (perDollar && centsFromKeypad(cents) <= 0 && !newCustomer) {
         setError(t("counter.err.amount"));
         return;
       }
@@ -473,13 +507,13 @@ export function CounterApp({
           from: res.duplicate ? res.balance : before,
         });
         setNow(at);
-        if (res.transactionId && !res.duplicate) setToast({ res, at });
+        if (res.transactionId && !res.duplicate) setToast({ res, at, added: Math.max(res.pointsEarned + res.extraPoints, res.balance - before) });
+        const what = res.duplicate ? t("counter.alreadyAdded") : t(addedKey, { name: firstName(res.member.name) || t("counter.theCustomer") });
+        // Undo is only on offer when something was posted for the purchase (a new customer added with no amount has nothing to undo).
         setAnnounce(
-          t("counter.announce.award", {
-            what: res.duplicate ? t("counter.alreadyAdded") : t(addedKey, { name: firstName(res.member.name) || t("counter.theCustomer") }),
-            balance: pointsText(res.balance, program.terminology, ct),
-            n: undoSeconds,
-          }),
+          res.transactionId && !res.duplicate
+            ? t("counter.announce.award", { what, balance: pointsText(res.balance, program.terminology, ct), n: undoSeconds })
+            : t("counter.announce.added", { what, balance: pointsText(res.balance, program.terminology, ct) }),
         );
         void loadRecent();
       } catch (e) {
@@ -501,14 +535,20 @@ export function CounterApp({
               at: Date.now(),
             },
           ]);
+          const queuedKey = awardKey.current!;
           awardKey.current = null;
-          setPhase({ kind: "queued", label, who });
+          setPhase({ kind: "queued", label, who, key: queuedKey });
           setAnnounce(t("counter.announce.queued", { label }));
         } else if (isApiError(e) && e.code === "earn_rule" && !extra.override && !extra.lines) {
           // wave-n: rules. The shop's rules say this doesn't earn: staff may pick what was bought, or add it anyway with a reason (audited).
           awardKey.current = null;
           setOverrideAsk({ ref, extra, from, message: e.message, scope: (e.details as { rule?: string } | undefined)?.rule === "earn_scope" });
           setOverrideReason("");
+        } else if (!isApiError(e) || e.status >= 500 || e.status === 0) {
+          // Our side failed, not the request: stay on the customer and the amount, keep the same idempotency key, and let one tap send it again.
+          if (p.kind === "member" || p.kind === "reward") setPhase(p);
+          else if (p.kind !== "new") awardKey.current = null;
+          setError(errText(e));
         } else {
           awardKey.current = null;
           setPhase({ kind: "idle" });
@@ -530,6 +570,7 @@ export function CounterApp({
     [
       api,
       addedKey,
+      errText,
       ct,
       t,
       cents,
@@ -578,13 +619,19 @@ export function CounterApp({
           return;
         } else setPhase({ kind: "member", member: r.items[0]! });
       } catch (e) {
+        if (isApiError(e) && e.isNetwork) {
+          // Finding someone needs the internet; adding a new customer does not (the award is saved on this device). Say so and offer that.
+          setReachable(false);
+          setPhase({ kind: "nomatch", digits, offline: true });
+          return;
+        }
         setEntry("");
         setError(errText(e));
       } finally {
         setBusy(false);
       }
     },
-    [api, program, award, setEntry, t],
+    [api, program, award, setEntry, t, errText],
   );
 
   const onDigit = useCallback(
@@ -754,7 +801,7 @@ export function CounterApp({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [mode, perDollar, award, reset, onDigit, onScan]);
+  }, [mode, perDollar, award, reset, onDigit, onScan, setCents]);
 
   const secondsLeft = toast
     ? Math.max(0, Math.ceil((undoSeconds * 1000 - (now - toast.at)) / 1000))
@@ -774,19 +821,26 @@ export function CounterApp({
         <Awning size="sm" className="rounded-none rounded-b-lg" />
         <header className={cn(s.top, "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-card px-4 py-3 lg:px-6")}>
           <div className="flex min-w-0 items-center gap-3">
-            <span aria-hidden className={cn(s.mark, "inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-trade text-meta-strong font-bold uppercase text-trade-foreground")}>
-              {initialsOf(shopName)}
-            </span>
+            <ShopMark name={shopName} brandColor={shopMark?.brandColor} logoUrl={shopMark?.logoUrl} size={40} className={cn(s.mark, "rounded-xl")} />
             <div className={cn(s.who, "flex min-w-0 flex-wrap items-baseline gap-x-2.5")}>
-              <span className={cn(s.shop, "truncate text-body-strong text-foreground")}>
-                <bdi>{shopName}</bdi>
+              {/* dir="auto": a Latin shop name in a right-to-left screen must be cut at its end, not its start. */}
+              <span dir="auto" className={cn(s.shop, "truncate text-body-strong text-foreground")}>
+                {shopName}
               </span>
               <h1 className="font-sans text-body font-normal text-muted-foreground">{t("counter.title")}</h1>
               <span className={cn(s.status, "flex items-center gap-1.5 text-meta text-muted-foreground")}>
-                <span aria-hidden className={cn("size-2 rounded-full", online ? "bg-success" : "bg-destructive")} />
+                <span aria-hidden className={cn("size-2 shrink-0 rounded-full", online ? "bg-success" : "bg-destructive")} />
                 {statusText}
-                {stampsToday != null ? ` · ${t("counter.today", { points: pointsText(stampsToday, program.terminology, ct) })}` : ""}
               </span>
+              {/* Beside the status from sm up; on a phone the day's total is its own line under the shop name, never split mid-phrase. */}
+              {stampsToday != null ? (
+                <>
+                  <span aria-hidden className="font-sans text-xs leading-4 text-muted-foreground max-sm:hidden">·</span>
+                  <span className="whitespace-nowrap font-sans text-xs leading-4 text-muted-foreground max-sm:basis-full">
+                    {t("counter.today", { points: pointsText(stampsToday, program.terminology, ct) })}
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -823,7 +877,7 @@ export function CounterApp({
                   {(staff?.name ?? signedInName ?? "?").trim()[0]}
                 </span>
                 {firstName(staff?.name ?? signedInName ?? "") || t("counter.staff")}
-                <span className="sr-only">. {staff ? t("counter.stampingAs", { name: staff.name ?? t("counter.staff") }) : t("counter.signInPin")}</span>
+                <span className="sr-only">. {staff ? t("counter.stampingAs", { name: staff.name ?? t("counter.staff") }) : needsOwnPin ? t("counter.pin.setAction") : t("counter.signInPin")}</span>
               </button>
             ) : null}
             {exitHref ? (
@@ -840,7 +894,7 @@ export function CounterApp({
           </div>
         ) : null}
 
-        {queue.length || !online || sentNote || error ? (
+        {queue.length || !online || sentNote || error || (needsOwnPin && !pinNoticeOff && !pinOpen) ? (
           <div className={cn(s.notices, "flex flex-col gap-2 border-b border-border px-4 py-3 lg:px-6")}>
             {queue.length || !online || sentNote ? (
               <div
@@ -867,7 +921,24 @@ export function CounterApp({
                 ) : null}
               </div>
             ) : null}
-            {error ? <CounterNotice tone="danger" onDismiss={() => setError(null)}>{error}</CounterNotice> : null}
+            {needsOwnPin && !pinNoticeOff && !pinOpen ? (
+              <CounterNotice
+                icon={KeyRound}
+                onDismiss={() => setPinNoticeOff(true)}
+                action={
+                  <Button size="sm" variant="ghost" className="min-h-11" onClick={() => setPinOpen(true)}>
+                    {t("counter.pin.setAction")}
+                  </Button>
+                }
+              >
+                {t("counter.pin.setNotice")}
+              </CounterNotice>
+            ) : null}
+            {error ? (
+              <CounterNotice tone="danger" onDismiss={() => setError(null)}>
+                {error}
+              </CounterNotice>
+            ) : null}
           </div>
         ) : null}
         {overrideAsk ? (
@@ -926,14 +997,29 @@ export function CounterApp({
           {/* Left: find the customer. On a phone it is only there while there is nobody on screen. */}
           <div className={cn(s.lookup, "min-w-0 flex-col gap-4 bg-sidebar p-4 lg:flex lg:border-e lg:border-border lg:p-6", lookupShown || pinOpen ? "flex" : "hidden")}>
             {pinOpen && pin ? (
-              <PinPad
-                verify={pin.verify}
-                onDone={(s) => {
-                  setStaff(s);
-                  setPinOpen(false);
-                }}
-                onCancel={() => setPinOpen(false)}
-              />
+              needsOwnPin ? (
+                <ChoosePin
+                  save={pin.setOwn!}
+                  onDone={() => {
+                    setHasOwnPin(true);
+                    setPinOpen(false);
+                    setSentNote(t("counter.pin.saved"));
+                    setTimeout(() => setSentNote(null), 6000);
+                  }}
+                  onCancel={() => setPinOpen(false)}
+                />
+              ) : (
+                <PinPad
+                  verify={pin.verify}
+                  signedInName={staff?.name ?? signedInName ?? null}
+                  stamps={program.earnType === "stamps" || program.terminology === "stamps"}
+                  onDone={(s) => {
+                    setStaff(s);
+                    setPinOpen(false);
+                  }}
+                  onCancel={() => setPinOpen(false)}
+                />
+              )
             ) : null}
             {lookupShown ? (
               <>
@@ -1133,8 +1219,8 @@ export function CounterApp({
               </ul>
               <button
                 type="button"
-                onClick={() => setPhase({ kind: "new", phone: "" })}
-                className="text-center text-sm font-medium text-fg hover:underline focus-visible:focus-ring"
+                onClick={() => setPhase({ kind: "new", phone: "", digits: phase.digits })}
+                className="min-h-11 text-center text-sm font-medium text-fg hover:underline focus-visible:focus-ring"
               >
                 {t("counter.pick.notHere")}
               </button>
@@ -1151,10 +1237,10 @@ export function CounterApp({
                 id="nomatch-title"
                 className="font-display text-title font-bold leading-7 text-fg"
               >
-                {t("counter.nomatch.title", { digits: phase.digits })}
+                {phase.offline ? t("err.offline.title") : t("counter.nomatch.title", { digits: phase.digits })}
               </h2>
               <p className="text-sm text-fg-muted">
-                {t("counter.nomatch.body")}
+                {phase.offline ? t("counter.offline.body") : t("counter.nomatch.body")}
               </p>
               <div className={cn(s.actions, "flex flex-wrap gap-2.5")}>
                 <Button size="md" variant="secondary" onClick={reset}>
@@ -1162,7 +1248,7 @@ export function CounterApp({
                 </Button>
                 <Button
                   size="md"
-                  onClick={() => setPhase({ kind: "new", phone: "" })}
+                  onClick={() => setPhase({ kind: "new", phone: "", digits: phase.digits })}
                 >
                   {t("counter.addNew")}
                 </Button>
@@ -1173,12 +1259,17 @@ export function CounterApp({
 
           {mode === "scan" && phase.kind === "new" ? (
             <form
+              noValidate
               className={cn(s.card, s.pad, "flex flex-col gap-3 rounded-card bg-card p-5 shadow-card")}
               onSubmit={(e) => {
                 e.preventDefault();
                 const phone = phase.phone || newPhone.replace(/\D/g, "");
-                if (!phase.phone && phone.replace(/^1/, "").length !== 10)
-                  return setError(t("counter.new.phoneErr"));
+                if (!phase.phone && phone.replace(/^1/, "").length !== 10) {
+                  // The problem is on the phone field itself, and focus goes there.
+                  setPhoneErr(t("counter.new.phoneErr"));
+                  document.getElementById("new-phone")?.focus();
+                  return;
+                }
                 void award(
                   {
                     phone:
@@ -1203,18 +1294,35 @@ export function CounterApp({
                 {phase.phone ? t("counter.new.titlePhone", { phone: formatNanp(phase.phone.replace(/^\+1/, "")) }) : t("counter.new.title")}
               </p>
               {!phase.phone ? (
-                <label className="flex flex-col gap-1.5 text-meta-strong text-fg">
-                  {t("counter.new.phone")}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="new-phone" className="text-meta-strong text-fg">
+                    {t("counter.new.phone")}
+                  </label>
                   <input
+                    id="new-phone"
                     value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
+                    onChange={(e) => {
+                      setNewPhone(e.target.value);
+                      setPhoneErr(null);
+                    }}
                     inputMode="tel"
                     autoComplete="off"
                     autoFocus
                     placeholder="(416) 555-0123"
+                    aria-invalid={phoneErr ? true : undefined}
+                    aria-describedby={phoneErr ? "new-phone-err" : phase.digits && !newPhone.replace(/\D/g, "").endsWith(phase.digits) ? "new-phone-hint" : undefined}
                     className={inputBase}
                   />
-                </label>
+                  {phoneErr ? (
+                    <p id="new-phone-err" role="alert" className="text-meta text-destructive-text">
+                      {phoneErr}
+                    </p>
+                  ) : phase.digits && !newPhone.replace(/\D/g, "").endsWith(phase.digits) ? (
+                    <p id="new-phone-hint" className="text-meta text-muted-foreground">
+                      {t("counter.new.endsIn", { digits: phase.digits })}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
               <label className="flex flex-col gap-1.5 text-meta-strong text-fg">
                 {t("counter.new.name")}
@@ -1234,12 +1342,13 @@ export function CounterApp({
               {perDollar ? (
                 <AmountPad cents={cents} setCents={setCents} />
               ) : null}
-              <div className={cn(s.actions, "flex gap-2.5")}>
-                <Button type="button" variant="secondary" onClick={reset}>
-                  {t("counter.cancel")}
+              {/* The primary first (the dock puts the first action widest); stacked on a phone so neither is cut off. */}
+              <div className={cn(s.actions, "flex flex-col gap-2.5 sm:flex-row")}>
+                <Button type="submit" size="counter" className="min-w-0 rounded-full" loading={busy}>
+                  {perDollar && centsFromKeypad(cents) <= 0 ? t("counter.new.submitNoAmount") : t("counter.new.submit")}
                 </Button>
-                <Button type="submit" size="counter" className="rounded-full" loading={busy}>
-                  {t("counter.new.submit")}
+                <Button type="button" variant="secondary" className="max-sm:min-h-11" onClick={reset}>
+                  {t("counter.cancel")}
                 </Button>
               </div>
             </form>
@@ -1252,7 +1361,8 @@ export function CounterApp({
               program={program}
               busy={busy}
               onRedeem={(id) => void redeem(phase.member, id)}
-              onStamp={() => void award({ memberId: phase.member.memberId })}
+              // A per-dollar shop needs an amount to give points: go to the screen that has the amount pad, never straight to an error.
+              onStamp={() => (perDollar ? setPhase({ kind: "member", member: phase.member }) : void award({ memberId: phase.member.memberId }))}
               onBack={reset}
               icon={stampIcon}
             />
@@ -1378,7 +1488,7 @@ export function CounterApp({
                 // Fixed trailing columns so every number lines up whether or not the row can be undone (D7).
                 <li
                   key={a.transactionId}
-                  className={cn(s.recentRow, "grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto_60px] items-center gap-3 rounded-tile bg-muted px-3 py-2")}
+                  className={cn(s.recentRow, "grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto_64px] items-center gap-3 rounded-tile bg-muted px-3 py-2")}
                 >
                   <IconTile icon={kind.icon} tone={a.reversed ? "peach" : kind.tone} size="md" />
                   <div className="min-w-0">
@@ -1389,8 +1499,8 @@ export function CounterApp({
                         <span className="font-normal text-fg-muted"> · {t("counter.undoneTag")}</span>
                       ) : null}
                     </p>
-                    <p dir="auto" className="truncate text-caption text-muted-foreground">
-                      {time(a.createdAt)} · {counterTypeLabel(a.type, ct)}
+                    <p dir="auto" className="line-clamp-2 text-caption text-muted-foreground">
+                      {isToday(a.createdAt, clock()) ? time(a.createdAt) : `${date(a.createdAt, { month: "short", day: "numeric" })}, ${time(a.createdAt)}`} · {counterTypeLabel(a.type, ct)}
                       {a.staffName ? ` · ${a.staffName}` : ""}
                     </p>
                   </div>
@@ -1413,7 +1523,7 @@ export function CounterApp({
                         type="button"
                         onClick={() => void undo(a.transactionId)}
                         disabled={busy}
-                        className="min-h-11 rounded-sm px-2 text-meta text-muted-foreground hover:text-foreground hover:underline focus-visible:focus-ring"
+                        className="min-h-11 whitespace-nowrap rounded-sm px-1 text-meta text-muted-foreground hover:text-foreground hover:underline focus-visible:focus-ring"
                       >
                         {t("counter.undo")}
                       </button>
@@ -1445,7 +1555,7 @@ export function CounterApp({
               >
                 <span className="flex items-center gap-2">
                   <Check aria-hidden className="size-4 shrink-0" strokeWidth={2.5} />
-                  {awardSuccess(program, toast.res.pointsEarned, ct)}.{" "}
+                  {awardSuccess(program, toast.added, ct)}.{" "}
                   {toast.res.member.name ? t("counter.toast.now", { name: firstName(toast.res.member.name), balance: toast.res.balance }) : t("counter.toast.balance", { balance: toast.res.balance })}
                 </span>
                 <button
@@ -1492,6 +1602,12 @@ function EscHint({ lead = "" }: { lead?: string }) {
     </span>
   );
 }
+
+/** True when the time falls on the same calendar day as `now` on this device (the counter's clock is the shop's). */
+const isToday = (iso: string, now: number): boolean => new Date(iso).toDateString() === new Date(now).toDateString();
+
+/** A sentence starts with a capital in English; other scripts have none, so this leaves them as they are. */
+const upperFirst = (text: string): string => (text ? text.charAt(0).toLocaleUpperCase() + text.slice(1) : text);
 
 /** "Emma Wong" to "EW". */
 function initialsOf(name: string | null): string {
@@ -1566,6 +1682,7 @@ function Stamped({
   const n = res.balance;
   const ready = res.rewardsAvailable[0] ?? null;
   const left = Math.max(0, (res.member.nextReward?.pointsCost ?? goal) - n);
+  const bonus = Math.max(0, n - from - res.pointsEarned);
   return (
     <section role="status" aria-labelledby="ok-title" className={cn(s.state, "flex flex-col gap-5")}>
       {/* A reward unlocked by this very stamp: one burst in the reward colours (nothing under reduced motion). */}
@@ -1573,7 +1690,7 @@ function Stamped({
       <CustomerHeader
         name={res.duplicate ? t("counter.alreadyAdded") : res.member.name}
         titleId="ok-title"
-        detail={res.memberCreated ? t("counter.firstStamp") : visitThisMonth(res.visitsThisMonth, ct)}
+        detail={res.memberCreated ? t(stamps ? "counter.firstStamp" : "counter.firstVisit") : visitThisMonth(res.visitsThisMonth, ct)}
       />
       <p className={cn(s.bigNumber, "font-display text-9xl font-extrabold leading-none tracking-tighter tabular-nums lining-nums", stamps ? "text-trade-deep" : "text-points-text")}>
         {/* The fraction reads "8 / 10" left to right in every language. */}
@@ -1587,12 +1704,16 @@ function Stamped({
       </p>
       {stamps ? <StampRow goal={goal} filled={n} size="md" popFrom={res.duplicate ? undefined : Math.min(from, goal)} icon={icon} /> : null}
       <p className="text-body-strong text-foreground">
-        {ready
-          ? t("counter.readyNext", { reward: rewardIn(ready.name, ct) })
-          : res.member.nextReward
-            ? stampsLeft(left, res.member.nextReward.name, ct)
-            : pointsText(n, program.terminology, ct)}
+        {upperFirst(
+          ready
+            ? t("counter.readyNext", { reward: rewardIn(ready.name, ct) })
+            : res.member.nextReward
+              ? stampsLeft(left, res.member.nextReward.name, ct)
+              : pointsText(n, program.terminology, ct),
+        )}
       </p>
+      {/* The balance includes what the purchase earned and any bonus on top (welcome, street campaign): name the bonus so the numbers add up. */}
+      {!stamps && !res.duplicate && bonus > 0 ? <p className="text-meta text-muted-foreground">{res.pointsEarned > 0 ? t("counter.bonusAdded", { earned: res.pointsEarned, bonus }) : t("counter.bonusOnly", { bonus })}</p> : null}
       {/* The big number already says "1 stamp"; only the extras (boosts, VIP) are worth a line. */}
       {res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).length ? (
         <p className="text-meta text-muted-foreground">{res.breakdown.filter((b) => !/^\d+ stamps?$/.test(b)).join(" · ")}</p>
@@ -1675,7 +1796,7 @@ function RewardReady({
           </Button>
         )}
         <Button size="lg" variant="secondary" disabled={busy} onClick={onStamp} className="min-h-14 rounded-full">
-          {t("counter.stampInstead")}
+          {t(program.earnType === "stamps" ? "counter.stampInstead" : "counter.pointsInstead")}
         </Button>
         <button type="button" data-text="" onClick={onBack} className="mt-1 min-h-11 text-meta-strong text-muted-foreground hover:text-foreground focus-visible:focus-ring">
           {t("counter.notThem")}
@@ -1771,8 +1892,8 @@ function MemberPanel({
             <span className="text-title text-muted-foreground"> {pointsText(member.balance, member.terminology, ct).replace(/^[\d,]+ /, "")}</span>
           </p>
           <p className={cn("mt-1 text-meta", member.rewardsAffordable.length ? "text-points-text" : "text-muted-foreground")}>
-            {member.terminology}
-            {next ? ` · ${next}` : ""}
+            {/* The number above already says "points"; the line only says what is next. */}
+            {next ? upperFirst(next) : member.terminology}
           </p>
         </div>
       )}
@@ -1818,8 +1939,9 @@ function MemberPanel({
       )}
 
       <div className={cn(s.actions, "flex flex-col gap-2", !!extras && "sticky bottom-0 z-raised -mx-4 border-t border-border bg-background px-4 pb-3 pt-3 lg:-mx-6 lg:px-6")}>
-        <Button size="counter" className="rounded-full" loading={busy} onClick={onAward}>
-          {awardLabel(program, Math.max(0, centsFromKeypad(cents) - excludedCents), qty, ct)}
+        {/* A per-dollar award with no amount is nothing to award: the button says what is missing and stays off until there is one. */}
+        <Button size="counter" className="rounded-full" loading={busy} disabled={perDollar && centsFromKeypad(cents) - excludedCents <= 0} onClick={onAward}>
+          {perDollar && centsFromKeypad(cents) - excludedCents <= 0 ? t("counter.amountFirst") : awardLabel(program, Math.max(0, centsFromKeypad(cents) - excludedCents), qty, ct)}
         </Button>
         <div className="flex gap-2">
           <Button
@@ -1866,28 +1988,115 @@ function MemberPanel({
   );
 }
 
+/** The PIN dialog's chrome: a title, one line, four boxes, the notice, the keypad. Digits arrive from the keypad or a hardware keyboard through `onKey`. */
+function PinSheet({
+  title,
+  body,
+  value,
+  err,
+  disabled,
+  onKey,
+  onCancel,
+}: {
+  title: string;
+  body: string;
+  value: string;
+  err: string | null;
+  disabled: boolean;
+  onKey: (k: string) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useCounterText();
+  const dialogRef = useRef<HTMLElement>(null);
+  // Focus moves into the dialog when it opens, so a physical keyboard or a screen reader starts here.
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
+  return (
+    <section
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      tabIndex={-1}
+      aria-label={title}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") return onCancel();
+        if (disabled || e.metaKey || e.ctrlKey || e.altKey) return;
+        if (/^\d$/.test(e.key)) {
+          e.preventDefault();
+          onKey(e.key);
+        } else if (e.key === "Backspace") {
+          e.preventDefault();
+          onKey("back");
+        }
+      }}
+      className="flex flex-col gap-3 rounded-card bg-card p-4 shadow-card outline-none"
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-body-strong text-fg">
+          <KeyRound aria-hidden className="size-4 text-fg-muted" strokeWidth={1.75} /> {title}
+        </h2>
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label={t("counter.close")}
+          className="inline-flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring"
+        >
+          <X aria-hidden className="size-4" />
+        </button>
+      </div>
+      <p className="text-meta text-fg-muted">{body}</p>
+      <div role="group" aria-label={t("counter.pin.label")} dir="ltr" className="flex justify-center gap-2.5">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className={cn("flex h-12 w-12 items-center justify-center rounded-lg border text-2xl", i === value.length ? "border-fg" : "border-line")}>
+            {value[i] ? "•" : ""}
+          </span>
+        ))}
+      </div>
+      {err ? (
+        <p role="alert" className="text-center text-meta text-negative">
+          {err}
+        </p>
+      ) : null}
+      <ScanKeypad disabled={disabled} onKey={onKey} />
+    </section>
+  );
+}
+
 /** Four-digit PIN to say who is stamping: awards are then attributed to that person (Stamps by staff on Home). */
 function PinPad({
   verify,
   onDone,
   onCancel,
+  signedInName,
+  stamps,
 }: {
   verify: (
     body: authApi.StaffPinVerifyBody,
   ) => Promise<authApi.StaffPinVerifyResponse>;
   onDone: (s: CounterStaff) => void;
   onCancel: () => void;
+  /** Who is signed in on this device: they keep working as themselves while PIN sign-in is paused. */
+  signedInName: string | null;
+  /** A stamp shop says "stamping"; a points shop says "at the counter". */
+  stamps: boolean;
 }) {
   const errText = useErrorText();
-  const { t } = useCounterText();
+  const { t, time } = useLocaleOrEnglish();
   const [pin, setPin] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const dialogRef = useRef<HTMLElement>(null);
-  // Focus moves into the dialog when it opens, so a physical keyboard or a screen reader starts here.
+  /** After too many wrong PINs the keypad stays off until the lockout ends (the API says when), so nobody keeps guessing into it. */
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   useEffect(() => {
-    dialogRef.current?.focus();
-  }, []);
+    if (lockedUntil === null) return;
+    const id = window.setTimeout(() => {
+      setLockedUntil(null);
+      setErr(null);
+    }, Math.max(0, lockedUntil - Date.now()));
+    return () => window.clearTimeout(id);
+  }, [lockedUntil]);
+  const locked = lockedUntil !== null;
   const submit = useCallback(
     async (value: string) => {
       setBusy(true);
@@ -1901,94 +2110,86 @@ function PinPad({
         });
       } catch (e) {
         setPin("");
-        setErr(
-          isApiError(e) && e.status === 401
-            ? t("counter.err.pin")
-            : isApiError(e) && e.status === 429
-              ? t("counter.err.pinLocked")
-              : errText(e),
-        );
+        if (isApiError(e) && e.status === 429) {
+          const wait = e.retryAfter && e.retryAfter > 0 ? e.retryAfter : 15 * 60;
+          const until = Date.now() + wait * 1000;
+          setLockedUntil(until);
+          setErr(t("counter.err.pinLocked", { time: time(until), name: signedInName?.trim() ? firstName(signedInName) : t("counter.staff") }));
+        } else setErr(isApiError(e) && e.status === 401 ? t("counter.err.pin") : errText(e));
       } finally {
         setBusy(false);
       }
     },
-    [verify, onDone, t, errText],
+    [verify, onDone, t, time, errText, signedInName],
   );
   return (
-    <section
-      ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      tabIndex={-1}
-      aria-label={t("counter.pin.title")}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") return onCancel();
-        if (busy || e.metaKey || e.ctrlKey || e.altKey) return;
-        if (/^\d$/.test(e.key)) {
-          e.preventDefault();
-          const next = pushDigit(pin, e.key as never);
-          setPin(next);
-          if (next.length === 4 && next !== pin) void submit(next);
-        } else if (e.key === "Backspace") {
-          e.preventDefault();
-          setPin((p) => p.slice(0, -1));
-        }
+    <PinSheet
+      title={t(stamps ? "counter.pin.title" : "counter.pin.titlePoints")}
+      body={t(stamps ? "counter.pin.body" : "counter.pin.bodyPoints")}
+      value={pin}
+      err={err}
+      disabled={busy || locked}
+      onCancel={onCancel}
+      onKey={(k) => {
+        const next = pushDigit(pin, k);
+        setPin(next);
+        if (next.length === 4 && next !== pin) void submit(next);
       }}
-      className="flex flex-col gap-3 rounded-card bg-card p-4 shadow-card outline-none"
-    >
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-body-strong text-fg">
-          <KeyRound
-            aria-hidden
-            className="size-4 text-fg-muted"
-            strokeWidth={1.75}
-          />{" "}
-          {t("counter.pin.title")}
-        </h2>
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label={t("counter.close")}
-          className="inline-flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring"
-        >
-          <X aria-hidden className="size-4" />
-        </button>
-      </div>
-      <p className="text-meta text-fg-muted">
-        {t("counter.pin.body")}
-      </p>
-      <div
-        role="group"
-        aria-label={t("counter.pin.label")}
-        dir="ltr"
-        className="flex justify-center gap-2.5"
-      >
-        {[0, 1, 2, 3].map((i) => (
-          <span
-            key={i}
-            className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-lg border text-2xl",
-              i === pin.length ? "border-fg" : "border-line",
-            )}
-          >
-            {pin[i] ? "•" : ""}
-          </span>
-        ))}
-      </div>
-      {err ? (
-        <p role="alert" className="text-center text-meta text-negative">
-          {err}
-        </p>
-      ) : null}
-      <ScanKeypad
-        disabled={busy}
-        onKey={(k) => {
-          const next = pushDigit(pin, k);
-          setPin(next);
-          if (next.length === 4 && next !== pin) void submit(next);
-        }}
-      />
-    </section>
+    />
+  );
+}
+
+/** Someone with no counter PIN yet chooses one: four digits, typed twice. They use it to sign in at this counter, and awards then carry their name. */
+function ChoosePin({ save, onDone, onCancel }: { save: (pin: string) => Promise<void>; onDone: () => void; onCancel: () => void }) {
+  const errText = useErrorText();
+  const { t } = useCounterText();
+  const [first, setFirst] = useState<string | null>(null);
+  const [pin, setPin] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const finish = useCallback(
+    async (value: string) => {
+      if (first === null) {
+        setFirst(value);
+        setPin("");
+        setErr(null);
+        return;
+      }
+      if (value !== first) {
+        setFirst(null);
+        setPin("");
+        setErr(t("counter.pin.mismatch"));
+        return;
+      }
+      setBusy(true);
+      setErr(null);
+      try {
+        await save(value);
+        onDone();
+      } catch (e) {
+        setFirst(null);
+        setPin("");
+        setErr(isApiError(e) && e.status === 409 ? t("counter.pin.taken") : errText(e));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [first, save, onDone, t, errText],
+  );
+  return (
+    <PinSheet
+      title={t(first === null ? "counter.pin.setTitle" : "counter.pin.confirmTitle")}
+      body={t(first === null ? "counter.pin.setBody" : "counter.pin.confirmBody")}
+      value={pin}
+      err={err}
+      disabled={busy}
+      onCancel={onCancel}
+      onKey={(k) => {
+        const next = pushDigit(pin, k);
+        setPin(next);
+        if (next.length === 4 && next !== pin) void finish(next);
+      }}
+    />
   );
 }
 

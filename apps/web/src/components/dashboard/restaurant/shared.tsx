@@ -6,6 +6,7 @@
 import { Check, Copy } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { FEATURES, RESTAURANT_PLANS, featureOffer, type FeatureKey } from "@ll/shared";
+import { buttonClasses } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { PageHeader } from "../kit";
 import { useMerchant } from "../MerchantContext";
@@ -31,7 +32,7 @@ export function TierTeaser({ featureKey, title, description, inline, stacked }: 
       </div>
       {role === "owner" ? (
         <span className={cn("flex shrink-0 flex-col items-start gap-1.5 self-start", !stacked && "sm:self-auto")}>
-          {offer.kind === "restaurant" ? <SubscribeButton offer={offer} label={`Subscribe to ${plan.name}`} /> : null}
+          {offer.kind === "restaurant" ? <SubscribeButton offer={offer} variant={inline ? "secondary" : "primary"} /> : null}
           <a href={`${base}/billing`} className="text-meta text-fg-muted underline decoration-line underline-offset-4 hover:text-fg">
             See restaurant plans
           </a>
@@ -58,7 +59,7 @@ export function RestaurantGate({ featureKey, title, children }: { featureKey: Fe
 }
 
 /** Copy text to the clipboard; the label flips to "Copied" for two seconds. */
-export function CopyButton({ text, label = "Copy", className }: { text: string; label?: string; className?: string }) {
+export function CopyButton({ text, label = "Copy", className, secondary }: { text: string; label?: string; className?: string; /** Drawn as a secondary action button, to sit beside one. */ secondary?: boolean }) {
   const [done, setDone] = useState(false);
   return (
     <button
@@ -72,7 +73,7 @@ export function CopyButton({ text, label = "Copy", className }: { text: string; 
           /* clipboard blocked: the text stays visible to select by hand */
         }
       }}
-      className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-input border border-line bg-bg px-3 text-meta font-medium text-fg hover:bg-bg-subtle focus-visible:focus-ring", className)}
+      className={secondary ? buttonClasses({ variant: "secondary", size: "sm" }) : cn("inline-flex h-8 shrink-0 items-center gap-1.5 rounded-input border border-line bg-bg px-3 text-meta font-medium text-fg hover:bg-bg-subtle focus-visible:focus-ring", className)}
     >
       {done ? <Check aria-hidden className="size-3.5 text-positive" strokeWidth={1.75} /> : <Copy aria-hidden className="size-3.5 text-fg-muted" strokeWidth={1.75} />}
       <span aria-live="polite">{done ? "Copied" : label}</span>

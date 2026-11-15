@@ -4,6 +4,7 @@ import { UserPlus } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import type { classesApi } from "@ll/shared";
+import { SalePanel } from "@/components/dashboard/classes/SalePanel";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
 import { Dot, PageHeader, SidePanel, Tag } from "@/components/dashboard/kit";
@@ -18,6 +19,7 @@ import { errorMessage, isApiError } from "@/lib/api/errors";
 import { money } from "@/lib/dashboard/calendar";
 import { dayHeading, rosterState, timeLabel, todayOf } from "@/lib/dashboard/classes";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
+import { formatTime } from "@/lib/format";
 
 export default function ClassRosterPage() {
   return (
@@ -27,8 +29,9 @@ export default function ClassRosterPage() {
   );
 }
 
+/** "Thu 5:30 p.m.": the weekday and the dashboard's one time style. */
 function when(iso: string) {
-  return new Date(iso).toLocaleString("en-CA", { timeZone: "America/Toronto", weekday: "short", hour: "numeric", minute: "2-digit" }).replace(/\s?([ap])\.m\./i, (_, x: string) => ` ${x.toUpperCase()}M`);
+  return `${new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "short" })} ${formatTime(iso)}`;
 }
 
 function Roster() {
@@ -63,6 +66,7 @@ function Roster() {
         const ended = !cancelled && new Date(s.endsAt).getTime() < nowMs();
         const dayLabel = dayHeading(new Date(s.startsAt).toLocaleDateString("en-CA", { timeZone: "America/Toronto" }), todayOf());
         const endedWhen = dayLabel.startsWith("Today") ? "earlier today" : `on ${dayLabel}`;
+        const cutoff = when(d.policy.freeCancelUntil);
         const attendedCount = d.rows.filter((r) => r.status === "attended").length;
         return (
           <div className="flex flex-col gap-6">
@@ -91,7 +95,7 @@ function Roster() {
               </p>
             ) : (
               <p className="rounded-input bg-bg-subtle px-4 py-3 text-meta text-fg-muted">
-                Free to cancel until {when(d.policy.freeCancelUntil)}. After that the class is used up
+                Free to cancel until {cutoff}{cutoff.endsWith(".") ? "" : "."} After that the class is used up
                 {d.policy.lateFeeCents ? `, and members pay a ${money(d.policy.lateFeeCents)} late fee` : ""}.
               </p>
             )}
@@ -119,7 +123,7 @@ function Roster() {
                               {desk ? <Button size="sm" variant="ghost" onClick={() => setDropping(r)}>Cancel booking</Button> : null}
                             </>
                           ) : r.status === "attended" ? (
-                            <span className="text-meta text-fg-muted">{r.checkedInAt ? new Date(r.checkedInAt).toLocaleTimeString("en-CA", { timeZone: "America/Toronto", hour: "numeric", minute: "2-digit" }) : ""}</span>
+                            <span className="text-meta text-fg-muted">{r.checkedInAt ? formatTime(r.checkedInAt) : ""}</span>
                           ) : r.status === "late_cancelled" || r.status === "no_show" ? (
                             manager ? <Button size="sm" variant="ghost" onClick={() => run(() => api.classes.markBooking(r.bookingId, "excused"), "Excused: credit back, fee refunded")}>Excuse</Button> : null
                           ) : null}
@@ -183,7 +187,17 @@ function Roster() {
                 await run(() => api.classes.bookIn(guest.bookingId, { comp: true, overCapacity: s.booked >= s.capacity }), "Booked in as a guest");
               }}
             />
-            <AddMember open={adding} onClose={() => setAdding(false)} full={s.booked >= s.capacity} onAdd={(b) => run(() => api.classes.addToSession(sessionId, b), "Added to the class")} />
+            <AddMember
+              open={adding}
+              onClose={() => setAdding(false)}
+              full={s.booked >= s.capacity}
+              sessionId={sessionId}
+              offersHref={`${base}/classes/offers`}
+              onAdded={(r) => {
+                state.setData(r);
+                toast({ message: "Added to the class", tone: "success" });
+              }}
+            />
             <ConfirmDialog
               open={cancelling}
               onClose={() => setCancelling(false)}
@@ -204,41 +218,86 @@ function Roster() {
   );
 }
 
-function AddMember({ open, onClose, full, onAdd }: { open: boolean; onClose: () => void; full: boolean; onAdd: (b: Record<string, unknown>) => Promise<void> }) {
+function AddMember({ open, ...rest }: { open: boolean; onClose: () => void; full: boolean; sessionId: string; offersHref: string; onAdded: (r: classesApi.RosterResponse) => void }) {
+  return open ? <AddMemberBody {...rest} /> : null;
+}
+
+/**
+ * Add someone to a class by phone. With no membership or pass the sheet stays open with what was typed, says so in the
+ * owner's words and offers the two ways forward in place: sell a drop-in (then book), or add them as a guest.
+ */
+function AddMemberBody({ onClose, full, sessionId, offersHref, onAdded }: { onClose: () => void; full: boolean; sessionId: string; offersHref: string; onAdded: (r: classesApi.RosterResponse) => void }) {
+  const { api } = useMerchant();
+  const act = useAction();
+  const products = useApi(() => api.classes.products(), [api]);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [comp, setComp] = useState(false);
   const [over, setOver] = useState(false);
+  const [selling, setSelling] = useState(false);
+  const offers = (products.data?.items ?? []).filter((p) => (p.kind === "pack" || p.kind === "drop_in") && p.active).sort((a, b) => Number(b.kind === "drop_in") - Number(a.kind === "drop_in"));
+  const dropIn = offers.find((p) => p.kind === "drop_in");
+  const who = name.trim() || "They";
+  const phoneOk = phone.replace(/\D/g, "").length >= 10;
+  const submit = async (asGuest = comp) => {
+    const r = await act.run(() => api.classes.addToSession(sessionId, { phone, customerName: name.trim() || undefined, comp: asGuest, overCapacity: over }));
+    if (r) {
+      onAdded(r);
+      onClose();
+    }
+  };
+  // The error says why: only a missing pass keeps the sheet open with next steps.
+  const missing = isApiError(act.cause) && act.cause.code === "no_pass";
   return (
-    <SidePanel
-      open={open}
-      onClose={onClose}
-      title="Add a member"
-      subtitle="Uses their membership or pass. Turn on Guest for no charge."
-      label="Add a member"
-      footer={
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button
-            disabled={phone.replace(/\D/g, "").length < 10}
-            onClick={async () => {
-              await onAdd({ phone, customerName: name.trim() || undefined, comp, overCapacity: over });
-              setPhone("");
-              setName("");
-              onClose();
-            }}
-          >
-            Add to class
-          </Button>
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <TextField label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="416 555 0100" />
-        <TextField label="Name, if new" optionalLabel value={name} onChange={(e) => setName(e.target.value)} />
-        <div className="flex items-center justify-between gap-4"><p className="text-body text-fg">Guest (no pass used)</p><SwitchControl checked={comp} onChange={setComp} ariaLabel="Guest" /></div>
-        {full ? <div className="flex items-center justify-between gap-4"><p className="text-body text-fg">Add above capacity</p><SwitchControl checked={over} onChange={setOver} ariaLabel="Add above capacity" /></div> : null}
-      </div>
-    </SidePanel>
+    <>
+      {selling ? (
+        <SalePanel
+          open
+          onClose={() => setSelling(false)}
+          packs={offers}
+          prefill={{ phone, name, productId: dropIn?.id }}
+          onSaved={async () => {
+            setSelling(false);
+            await submit(false);
+          }}
+        />
+      ) : null}
+      <SidePanel
+        open={!selling}
+        onClose={onClose}
+        title="Add a member"
+        subtitle="Uses their membership or pass. Turn on Guest for no charge."
+        label="Add a member"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button disabled={!phoneOk} loading={act.busy} onClick={() => void submit()}>Add to class</Button>
+          </div>
+        }
+      >
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (phoneOk) void submit(); }}>
+          {missing ? (
+            <Banner tone="danger" title={`${who === "They" ? "This person" : who} has no membership or pass yet`}>
+              <div className="flex flex-col gap-3">
+                <p>
+                  {offers.length
+                    ? "Sell a drop-in to book them in, or add them as a guest with no charge."
+                    : "You have nothing for sale yet, so nobody can book a spot. Add a drop-in price first, or add them as a guest for now."}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {offers.length ? <Button size="sm" onClick={() => setSelling(true)}>{dropIn ? `Sell a drop-in (${money(dropIn.priceCents)})` : "Sell a pass"}</Button> : <Button size="sm" href={offersHref}>Add a drop-in price</Button>}
+                  <Button size="sm" variant="secondary" loading={act.busy} onClick={() => void submit(true)}>Add as a guest</Button>
+                </div>
+              </div>
+            </Banner>
+          ) : act.error ? <Banner tone="danger">{act.error}</Banner> : null}
+          <TextField label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="416 555 0100" />
+          <TextField label="Name, if new" optionalLabel value={name} onChange={(e) => setName(e.target.value)} />
+          <div className="flex items-center justify-between gap-4"><p className="text-body text-fg">Guest (no pass used)</p><SwitchControl checked={comp} onChange={setComp} ariaLabel="Guest" /></div>
+          {full ? <div className="flex items-center justify-between gap-4"><p className="text-body text-fg">Add above capacity</p><SwitchControl checked={over} onChange={setOver} ariaLabel="Add above capacity" /></div> : null}
+          <button type="submit" hidden aria-hidden tabIndex={-1} />
+        </form>
+      </SidePanel>
+    </>
   );
 }

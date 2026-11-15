@@ -41,7 +41,7 @@ async function join(page: Page) {
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("First name").fill("Priya");
   await page.getByRole("button", { name: "Join Pinecone Coffee Co." }).click();
-  await expect(page.getByText("You're in, Priya.")).toBeVisible();
+  await expect(page.getByText("You’re in, Priya.")).toBeVisible();
 }
 
 async function phone(browser: Browser, device: string) {

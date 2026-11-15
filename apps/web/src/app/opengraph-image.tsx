@@ -13,5 +13,5 @@ export const contentType = "image/png";
 
 /** The default share card: the home page's headline in the site's own identity (lib/marketing/og-brand.tsx). */
 export default function OgImage() {
-  return brandOgImage({ title: L.hero.title, foot: FOOT });
+  return brandOgImage({ title: L.hero.title, foot: FOOT, pass: true });
 }

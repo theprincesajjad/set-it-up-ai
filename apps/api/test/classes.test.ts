@@ -211,6 +211,17 @@ describe("classes: booking with a pack, a drop-in and an intro offer", () => {
     expect((await call(env, other.token, "GET", `/v1/public/shops/${s.shop}/classes`)).body.products.some((p: { introOnly: boolean }) => p.introOnly)).toBe(true);
   });
 
+  it("the desk adding someone with no pass is told in the owner's words, then can add them as a guest", async () => {
+    const s = await studio({ capacity: 3 });
+    const cls = await s.session(iso(2 * DAY));
+    const add = await call(env, s.m.ownerToken, "POST", `${s.base}/sessions/${cls.id}/bookings`, { phone: "+14165559010", customerName: "Asha" });
+    expect(add.status).toBe(409);
+    expect(add.body.error.code).toBe("no_pass");
+    expect(add.body.error.message).toBe("They have no membership or pass yet. Sell a drop-in, or add them as a guest.");
+    const guest = await call(env, s.m.ownerToken, "POST", `${s.base}/sessions/${cls.id}/bookings`, { phone: "+14165559010", customerName: "Asha", comp: true });
+    expect(guest.status).toBe(201);
+  });
+
   it("refuses a booking with nothing to pay with, and a second booking of the same class", async () => {
     const s = await studio({ capacity: 3 });
     const c = await member();

@@ -51,7 +51,7 @@ export default async function ManageAppointmentPage({ params, searchParams }: Pr
   const shop = await loadShopBrief(slug).catch(() => null);
   return (
     <PageFrame locale={locale} trade={shop?.vertical} brandColor={shop?.brandColor}>
-      <ManageAppointment initial={appointment} slug={slug} pay={pay} />
+      <ManageAppointment initial={appointment} slug={slug} pay={pay} justBooked={sp.booked === "1"} />
       {/* slot: PoweredBy (phase-solo E): the confirmation and manage page. */}
       <PoweredBy locale={locale} vertical={shop?.vertical} show={shop?.poweredBy ?? false} />
     </PageFrame>

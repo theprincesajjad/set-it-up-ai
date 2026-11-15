@@ -44,7 +44,7 @@ test("a member's unsubscribe link asks first; only the button withdraws consent"
   expect(await consented()).toBe(true);
 
   await page.getByRole("button", { name: "Unsubscribe" }).click();
-  await expect(page.getByRole("heading", { name: "You're unsubscribed" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You’re unsubscribed" })).toBeVisible();
   expect(await consented()).toBe(false);
 
   // A link with a wrong token is refused without touching anything.

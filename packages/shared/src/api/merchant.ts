@@ -450,7 +450,7 @@ export const updateStaffBody = z
     station: z.string().trim().max(60).nullable().optional(),
   })
   .refine((b) => b.role !== undefined || b.locale !== undefined || b.station !== undefined, { message: "Provide a role, locale or station to change" });
-export const setPinBody = z.object({ pin: z.string().regex(/^\d{4,6}$/, "PIN must be 4–6 digits") });
+export const setPinBody = z.object({ pin: z.string().regex(/^\d{4}$/, "PIN must be 4 digits") });
 
 export interface StaffMember {
   userId: string;
@@ -463,6 +463,8 @@ export interface StaffMember {
   locale: (typeof LOCALE_CODES)[number];
   /** Kitchen station they work (KDS default filter), e.g. "tandoor". Null = all stations. */
   station: string | null;
+  /** False for an invite nobody has signed in from yet: the owner can send it again. */
+  signedIn: boolean;
   createdAt: string;
 }
 

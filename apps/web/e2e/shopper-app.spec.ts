@@ -14,7 +14,7 @@ async function joinAsShopper(page: Page) {
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("First name").fill("Alex");
   await page.getByRole("button", { name: "Join Pinecone Coffee Co." }).click();
-  await expect(page.getByText("You're in, Alex.")).toBeVisible();
+  await expect(page.getByText("You’re in, Alex.")).toBeVisible();
 }
 
 test("/for-shoppers: English, then Hindi, Urdu (right to left) and Punjabi, with one card and live street counts", async ({ page }) => {

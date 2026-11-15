@@ -49,3 +49,4 @@ export * from "./shadow";
 export * from "./Warm";
 export * from "./PassCard";
 export * from "./Glass";
+export * from "./direction";

@@ -45,14 +45,14 @@ describe("messages composer logic", () => {
 
   it("defaults the send time to the next half hour inside 8 am to 9 pm, never in quiet hours", () => {
     // 10:04 am Toronto (14:04Z, EDT) -> 10:30 am today.
-    expect(defaultSendTime(new Date("2026-10-23T14:04:00Z"))).toMatchObject({ label: "Today 10:30 am" });
+    expect(defaultSendTime(new Date("2026-10-23T14:04:00Z"))).toMatchObject({ label: "Today 10:30 a.m." });
     // 9:00 pm exactly is quiet: tomorrow 9:00 am.
-    expect(defaultSendTime(new Date("2026-10-24T01:00:00Z")).label).toBe("Tomorrow 9:00 am");
+    expect(defaultSendTime(new Date("2026-10-24T01:00:00Z")).label).toBe("Tomorrow 9 a.m.");
     // 11 pm: tomorrow 9 am.
-    expect(defaultSendTime(new Date("2026-10-24T03:00:00Z")).label).toBe("Tomorrow 9:00 am");
+    expect(defaultSendTime(new Date("2026-10-24T03:00:00Z")).label).toBe("Tomorrow 9 a.m.");
     // 6:10 am: 9:00 am today.
     const early = defaultSendTime(new Date("2026-10-23T10:10:00Z"));
-    expect(early.label).toBe("Today 9:00 am");
+    expect(early.label).toBe("Today 9 a.m.");
     expect(early.at.toISOString()).toBe("2026-10-23T13:00:00.000Z");
     // Never inside quiet hours.
     for (let h = 0; h < 24; h++) expect(inQuiet(defaultSendTime(new Date(Date.UTC(2026, 9, 23, h, 7))).at)).toBe(false);

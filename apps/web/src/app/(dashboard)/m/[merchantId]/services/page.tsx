@@ -6,7 +6,7 @@ import { AddOnsEditor } from "@/components/dashboard/calendar/AddOnsEditor"; // 
 import { PolicyCard } from "@/components/dashboard/calendar/PolicyCard";
 import { ServiceEditor } from "@/components/dashboard/calendar/ServiceEditor";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
-import { EmptyState, PageHeader, Segmented, Tag } from "@/components/dashboard/kit";
+import { EmptyState, PageHeader, Panel, Segmented, Tag } from "@/components/dashboard/kit";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Button } from "@/components/ui/Button";
@@ -69,7 +69,8 @@ function Services() {
         actions={
           <>
             {both ? <Segmented label="Kind" value={kind} onChange={setKind} options={[{ value: "appointment", label: "Services" }, { value: "repair_line", label: "Price list" }]} /> : null}
-            {manager ? <Button size="sm" iconStart={Plus} onClick={() => setEdit("new")}>{repair ? "Add a line" : pharmacy ? "Add appointment type" : "Add a service"}</Button> : null}
+            {/* With nothing added yet the empty card holds the one primary. */}
+            {manager && !(list.data && !list.data.items.length && !repair) ? <Button size="sm" iconStart={Plus} onClick={() => setEdit("new")}>{repair ? "Add a line" : pharmacy ? "Add appointment type" : "Add a service"}</Button> : null}
           </>
         }
       />
@@ -89,6 +90,8 @@ function Services() {
           secondaryAction={manager && starters.length ? <Button size="sm" variant="secondary" onClick={() => setEdit("new")}>{t("own.svc.addOwn")}</Button> : null}
         />
       ) : (
+        <Panel padded={false} as="div">
+        <div className="max-md:px-4 max-md:[&_ul]:border-y-0 max-md:[&_ul]:bg-transparent">
         <DataTable
         caption={repair ? "Price list" : "Services"}
         columns={columns}
@@ -109,6 +112,8 @@ function Services() {
           </span>
         }
       />
+        </div>
+        </Panel>
       )}
       {!repair && !pharmacy && enabled("booking.appointments") ? <AddOnsEditor services={list.data?.items ?? []} manager={manager} /> /* phase-pro: P5 */ : null}
       {!repair && !pharmacy && enabled("booking.appointments") && manager ? <PolicyCard /> : null}

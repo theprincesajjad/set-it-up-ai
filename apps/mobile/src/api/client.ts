@@ -243,15 +243,18 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       observeServerDate(res.headers?.get?.("date"));
 
       if (res.status === 401 && headers.authorization && !retried) {
+        const refused = await parseError(res);
+        // A wrong staff PIN also answers 401, but the session is fine: replaying it would count every mistake twice toward the lockout.
+        if (refused.code === "invalid_pin") throw refused;
         if (usedStaffToken) {
           // PIN tokens can't be refreshed: drop it and ask for the PIN again.
           options.staffToken?.clear();
           options.onStaffTokenExpired?.();
-          throw await parseError(res);
+          throw refused;
         }
         const fresh = await refresh();
         if (fresh) return attempt(true);
-        throw await parseError(res);
+        throw refused;
       }
       if (!res.ok) throw await parseError(res);
       if (res.status === 204) return undefined as T;

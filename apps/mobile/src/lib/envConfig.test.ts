@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { APP_LINK_PREFIXES, assertConfig, configProblems, isPlaceholderHost, linkHost, variantOf } from "../../config/envConfig.cjs";
 
-const good = { EXPO_PUBLIC_API_URL: "https://api.shop.test-real.app", EXPO_PUBLIC_WEB_URL: "https://shop.test-real.app", EXPO_PUBLIC_SUPPORT_EMAIL: "help@shop.test-real.app" };
+const good = { EXPO_PUBLIC_API_URL: "https://api.shop.test-real.app", EXPO_PUBLIC_WEB_URL: "https://shop.test-real.app", EXPO_PUBLIC_SUPPORT_EMAIL: "help@shop.test-real.app", EAS_PROJECT_ID: "00000000-0000-4000-8000-000000000000" };
 
 describe("envConfig", () => {
   it("never blocks development", () => {
@@ -9,7 +9,7 @@ describe("envConfig", () => {
   });
   it("fails a production build with nothing set, naming every missing value", () => {
     const p = configProblems({}, "production");
-    expect(p).toHaveLength(3);
+    expect(p).toHaveLength(4);
     expect(() => assertConfig({}, "production")).toThrow(/EXPO_PUBLIC_API_URL is not set/);
   });
   it("rejects placeholder and local hosts and non-https", () => {
@@ -17,6 +17,12 @@ describe("envConfig", () => {
       expect(configProblems({ ...good, EXPO_PUBLIC_API_URL: bad }, "production")).toHaveLength(1);
     }
     expect(configProblems({ ...good, EXPO_PUBLIC_SUPPORT_EMAIL: "hello@localloyalty.example" }, "preview")).toHaveLength(1);
+  });
+  it("needs the EAS project id for push in preview and production", () => {
+    const { EAS_PROJECT_ID: _omit, ...withoutId } = good;
+    expect(configProblems(withoutId, "production")).toEqual([expect.stringMatching(/EAS_PROJECT_ID/)]);
+    expect(configProblems(withoutId, "preview")).toHaveLength(1);
+    expect(configProblems(withoutId, "development")).toEqual([]);
   });
   it("accepts real values", () => {
     expect(configProblems(good, "production")).toEqual([]);

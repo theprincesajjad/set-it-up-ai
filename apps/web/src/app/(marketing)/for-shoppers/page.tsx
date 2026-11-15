@@ -72,7 +72,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
   return (
     <LocaleScope locale={locale}>
       <section className="overflow-hidden">
-        <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-4 pt-14 pb-16 md:px-8 md:pt-20 lg:grid-cols-[1.05fr_1fr] lg:pt-24 lg:pb-28">
+        <div className="mx-auto grid max-w-360 grid-cols-[minmax(0,1fr)] items-center gap-14 px-5 pt-14 pb-16 md:px-10 xl:px-15 md:pt-20 lg:grid-cols-[1.05fr_1fr] lg:pt-24 lg:pb-28">
           <div>
             <p className="mkt-rise inline-flex rounded-full bg-tile-peach px-4 py-2 text-meta-strong text-tile-peach-foreground">{t("sh.fs.meta.title")}</p>
             <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{sentenceCase(t("sh.fs.h1"))}</h1>
@@ -134,7 +134,7 @@ export default async function ShoppersPage({ searchParams }: Props) {
               {hoods.map((h) => (
                 <li key={h.slug}>
                   <Link href={`/neighbourhoods/${h.slug}`} className="inline-flex h-11 items-center gap-2 rounded-full bg-card px-4 text-meta-strong text-foreground shadow-card transition-colors hover:bg-muted focus-visible:focus-ring">
-                    <span className="display lowercase">{h.name}</span>
+                    <span className="display">{h.name}</span>
                     <span className="font-normal tabular-nums text-muted-foreground">{t("sh.fs.shopsN", { n: h.shopCount })}</span>
                   </Link>
                 </li>
@@ -149,10 +149,10 @@ export default async function ShoppersPage({ searchParams }: Props) {
                 {campaign.kind === "passport"
                   ? t("sh.fs.passportLine", { goal: campaign.goalVisits, date: endsOn })
                   : campaign.bonusPoints > 0
-                    ? `${t("sh.camp.stepBonus", { n: campaign.bonusPoints })} ${t("sh.disc.endsOn", { date: endsOn })}`
+                    ? sentenceCase(`${t("sh.camp.stepBonus", { n: campaign.bonusPoints })} ${t("sh.disc.endsOn", { date: endsOn })}`)
                     : campaign.multiplierPct
-                      ? `${t("sh.camp.stepMult", { n: campaign.multiplierPct / 100 })} ${t("sh.disc.endsOn", { date: endsOn })}`
-                      : t("sh.disc.endsOn", { date: endsOn })}
+                      ? sentenceCase(`${t("sh.camp.stepMult", { n: campaign.multiplierPct / 100 })} ${t("sh.disc.endsOn", { date: endsOn })}`)
+                      : sentenceCase(t("sh.disc.endsOn", { date: endsOn }))}
               </span>
             </Link>
           ) : null}

@@ -125,6 +125,8 @@ export interface PublicRestaurantResponse {
   popular: string[];
   acceptingOrders: boolean;
   quotedWaitMin: number | null;
+  /** The optional card service fee a customer pays on top when paying in the app (0 when this shop adds none). Shown before they commit. */
+  customerFeeCents?: number;
   whatsappNumber: string | null;
   /** The shop's own pre-order items (degh, trays), in menu order. */
   preorderItems: { id: string; name: string; serves: number | null; priceCents: number; leadTimeHours: number; depositBps: number; translations?: Record<string, { name?: string; description?: string }> }[];

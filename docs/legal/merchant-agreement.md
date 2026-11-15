@@ -39,17 +39,17 @@ Add-ons for restaurants:
 
 {{table.addons}}
 
-The first {{founding.slots}} restaurants per corridor get a founding offer of {{founding.firstYearPct}} off for 12 months, then {{founding.lifetimePct}} off for life.
+The first {{founding.slots}} restaurants per corridor get an introductory offer of {{founding.firstYearPct}} off for 12 months, then {{founding.lifetimePct}} off for life.
 
 Paid plans:
 - are billed monthly or annually in advance (annual prices are shown above);
 - can be cancelled at any time, effective at the end of the current billing period;
 - have prices shown before purchase, plus applicable taxes;
-- give at least **60 days' notice** of any price increase.
+- give at least **60 days’ notice** of any price increase.
 
 Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is shown before you send. WhatsApp message packs can be bought as add-ons.
 
-1.3 **In-app payments.** Payments are processed by Stripe under Stripe's own agreement with you. You pay Stripe's card processing fees at cost, plus our platform fee in section 5. Both are shown together before you accept a payment. You are responsible for refunds, chargebacks and disputes on your sales. Payments you record by hand (e-transfer, cash, cheque) carry no platform fee and are your own record: check your bank before you mark one received.
+1.3 **In-app payments.** Payments are processed by Stripe under Stripe’s own agreement with you. You pay Stripe’s card processing fees at cost, plus our platform fee in section 5. Both are shown together before you accept a payment. You are responsible for refunds, chargebacks and disputes on your sales. Payments you record by hand (e-transfer, cash, cheque) carry no platform fee and are your own record: check your bank before you mark one received.
 
 1.4 **Advertising and campaigns.** Sponsored listings, sponsored promos, map pins, nearby push boosts and neighbourhood campaigns are optional. They are prepaid at the rates shown and labelled "Sponsored".
 
@@ -57,17 +57,17 @@ Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is 
 
 ## 2. Data and customer relationships
 
-2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions, and, if you use those features, their orders, appointments, tiffin subscriptions and delivery addresses, catering and banquet enquiries, repair tickets and photos, review feedback, WhatsApp conversations and phone-order transcripts, and any allergy or dietary notes a customer gives you. As between us, **you own Merchant Customer Data.** You can see your member directory on the {{plan.free.name}} plan, and CSV export and import come with {{plan.plus.name}}. On a paid plan the owner can download all of it at any time from Settings, under Privacy: one CSV for each of members, visits, points, orders and their items, appointments, tiffin subscriptions and deliveries, catering events, hall bookings, repair tickets (with their photos), quotes, invoices, reviews, messages sent, WhatsApp conversations and phone orders, and one ZIP of everything. Whatever your plan, when you leave we give you the same export at no charge for {{retention.leaverExportDays}}, even without {{plan.plus.name}}. A customer who has deleted their account appears without personal details, and the files show each member's marketing consent and who has asked not to be contacted, so you can follow section 2.4.
+2.1 **Your data.** "Merchant Customer Data" means the members of your program and their activity at your business: visits, purchases recorded, points and redemptions, and, if you use those features, their orders, appointments, tiffin subscriptions and delivery addresses, catering and banquet enquiries, repair tickets and photos, review feedback, WhatsApp conversations and phone-order transcripts, and any allergy or dietary notes a customer gives you. As between us, **you own Merchant Customer Data.** You can see your member directory on the {{plan.free.name}} plan, and CSV export and import come with {{plan.plus.name}}. On a paid plan the owner can download all of it at any time from Settings, under Privacy: one CSV for each of members, visits, points, orders and their items, appointments, tiffin subscriptions and deliveries, catering events, hall bookings, repair tickets (with their photos), quotes, invoices, reviews, messages sent, WhatsApp conversations and phone orders, and one ZIP of everything. Whatever your plan, when you leave we give you the same export at no charge for {{retention.leaverExportDays}}, even without {{plan.plus.name}}. A customer who has deleted their account appears without personal details, and the files show each member’s marketing consent and who has asked not to be contacted, so you can follow section 2.4.
 
-2.2 **Network accounts.** Customers hold one Local Loyalty account that works at many shops. Their account profile and their activity at *other* shops belong to the customer's relationship with Local Loyalty and those other shops. You will not see other merchants' data; we will not show your data to other merchants.
+2.2 **Network accounts.** Customers hold one Local Loyalty account that works at many shops. Their account profile and their activity at *other* shops belong to the customer’s relationship with Local Loyalty and those other shops. You will not see other merchants’ data; we will not show your data to other merchants.
 
 2.3 **Our use.** We use Merchant Customer Data to provide the Service, prevent fraud, improve the Service, and create **aggregated, de-identified** statistics, for example street-level visit counts for a BIA report. Those statistics never identify you or any customer, and are reported only in groups of 10 or more. **We do not sell personal information.**
 
-2.4 **Your use and compliance.** When you use Merchant Customer Data, including exports and email or SMS campaigns, you are responsible for complying with privacy law (PIPEDA) and CASL. Only message customers who consented to receive messages from you; our consent and unsubscribe tools are built in, so don't bypass them.
+2.4 **Your use and compliance.** When you use Merchant Customer Data, including exports and email or SMS campaigns, you are responsible for complying with privacy law (PIPEDA) and CASL. Only message customers who consented to receive messages from you; our consent and unsubscribe tools are built in, so don’t bypass them.
 
 2.5 **Security.** We protect data with reasonable safeguards and host primary data in Canada where practical. We notify you without undue delay of any breach affecting your Merchant Customer Data. Each party is responsible for its own reporting obligations.
 
-2.5A **Sensitive and conversation data.** We never sell Merchant Customer Data. We do not use messages, transcripts, review text or repair photos to train AI models and do not license them to anyone. Do not put health information in notes (other than an allergy a customer asks you to pass to the kitchen). Delete or correct a customer's information when they ask.
+2.5A **Sensitive and conversation data.** We never sell Merchant Customer Data. We do not use messages, transcripts, review text or repair photos to train AI models and do not license them to anyone. Do not put health information in notes (other than an allergy a customer asks you to pass to the kitchen). Delete or correct a customer’s information when they ask.
 
 2.6 **Processor terms.** Where we process personal information on your behalf, the Data Processing Schedule (Schedule B) applies.
 
@@ -75,7 +75,7 @@ Included SMS and WhatsApp allowances are shown on the plan; overage, if any, is 
 
 3.1 **Merchant points.** Points earned at your business are **issued by you**. You are responsible for honouring them at the reward values displayed in the app, according to the Rewards Terms. These include:
 - no expiry;
-- 30 days' notice and a 90-day grandfathering period for adverse changes;
+- 30 days’ notice and a 90-day grandfathering period for adverse changes;
 - honouring rewards shown as available.
 
 3.2 **Network-funded rewards.** Network Rewards are funded by Local Loyalty. Examples are welcome bonuses for visiting several shops on your street, and network perks. When a customer redeems a Network Reward at your shop, we reimburse you **the retail value shown** within **30 days**, by Stripe transfer or monthly credit.
@@ -119,7 +119,7 @@ We will provide the Service with reasonable skill and care. Otherwise, to the ex
 
 ## 8. Limitation of liability
 
-To the extent the law allows, neither party is liable for indirect or consequential losses. Each party's total liability is limited to the greater of **$1,000** or the fees you paid us in the prior 12 months. The limit does not apply to:
+To the extent the law allows, neither party is liable for indirect or consequential losses. Each party’s total liability is limited to the greater of **$1,000** or the fees you paid us in the prior 12 months. The limit does not apply to:
 - your obligation to honour your points;
 - our obligation to reimburse Network Rewards;
 - breach of the data-protection sections (sections 2.4–2.6);
@@ -137,15 +137,15 @@ You indemnify us for third-party claims arising from your products and services,
 
 10.3 On termination:
 - sections 2.1 (export window), 3.1, 3.4, 8 and 9 survive;
-- we notify your members and show your points' last redemption date.
+- we notify your members and show your points’ last redemption date.
 
 ## 11. Changes
 
-11.1 We may update this Agreement with **30 days' notice**. Changes never remove Free plan features (section 1.1) or reduce your ownership of your data (section 2.1).
+11.1 We may update this Agreement with **30 days’ notice**. Changes never remove Free plan features (section 1.1) or reduce your ownership of your data (section 2.1).
 
 11.2 If you object to a change, you can leave before it takes effect.
 
-11.3 If we discontinue the Service entirely, we give at least **90 days' notice** and keep the export available for that period.
+11.3 If we discontinue the Service entirely, we give at least **90 days’ notice** and keep the export available for that period.
 
 ## 12. General
 
@@ -163,10 +163,10 @@ Network perks are run by the network for every shop whatever its plan.
 
 **Schedule C — Pharmacy addendum.** Applies to every shop set up as a pharmacy.
 
-1. **No benefit on prescriptions or pharmacy services.** Prescriptions, dispensing fees, compounding and pharmacy services (including vaccines and medication reviews) never earn points, are never discounted and cannot be paid for with points or rewards. Ontario's pharmacy rules do not allow a loyalty benefit, rebate, credit or gift in relation to the sale of a drug or a pharmacy service (O. Reg. 264/16 s. 34 and O. Reg. 130/17 s. 6, and the Ontario College of Pharmacists' loyalty points policy).
+1. **No benefit on prescriptions or pharmacy services.** Prescriptions, dispensing fees, compounding and pharmacy services (including vaccines and medication reviews) never earn points, are never discounted and cannot be paid for with points or rewards. Ontario’s pharmacy rules do not allow a loyalty benefit, rebate, credit or gift in relation to the sale of a drug or a pharmacy service (O. Reg. 264/16 s. 34 and O. Reg. 130/17 s. 6, and the Ontario College of Pharmacists’ loyalty points policy).
 2. **Front store only.** Points are earned only on front-store dollars. Your cashier confirms, at every sale, that the total has no prescriptions or pharmacy services. Points for a visit or a stamp, referral rewards, and points carried over from another program are not available to pharmacies.
-3. **What you may say.** Offers, rewards, messages and discount-card terms are about the front store. You may state that an offer is not valid on prescriptions or pharmacy services. You will not mention prescriptions, refills, vaccines, medications or a health condition in an offer or message, and you will not make health claims about products that the product's licence and your evidence do not support.
+3. **What you may say.** Offers, rewards, messages and discount-card terms are about the front store. You may state that an offer is not valid on prescriptions or pharmacy services. You will not mention prescriptions, refills, vaccines, medications or a health condition in an offer or message, and you will not make health claims about products that the product’s licence and your evidence do not support.
 4. **No health information in Local Loyalty.** You will not enter prescription, medication, condition, health card or other health information into Local Loyalty, including in notes, tags, appointment types or point-adjustment reasons. Health records stay in your pharmacy system, under the *Personal Health Information Protection Act, 2004*.
-5. **Appointments.** Booking a vaccine or medication review through Local Loyalty records only that a booking exists: the time, the length, the type of appointment you named, and the customer's first name and phone number for the reminder. Those details are removed 30 days after the appointment.
+5. **Appointments.** Booking a vaccine or medication review through Local Loyalty records only that a booking exists: the time, the length, the type of appointment you named, and the customer’s first name and phone number for the reminder. Those details are removed 30 days after the appointment.
 6. **Order-ready texts.** The "order is ready" text is a fixed sentence that does not name the order. Send it only to a customer who asked for it.
-7. **Confirmation.** The pharmacist-owner or designated manager confirms this addendum on the Pharmacy rules page, with their full name. The date and name are kept. You will tell us if the pharmacy's ownership or designated manager changes.
+7. **Confirmation.** The pharmacist-owner or designated manager confirms this addendum on the Pharmacy rules page, with their full name. The date and name are kept. You will tell us if the pharmacy’s ownership or designated manager changes.

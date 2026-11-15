@@ -1,13 +1,14 @@
 "use client";
 import { Check, Lock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { BRAND, FEATURES, PLANS, VERTICAL_TEMPLATES, featureOffer, type FeatureKey } from "@ll/shared";
+import { BRAND, FEATURES, PLANS, RESTAURANT_PLANS, VERTICAL_TEMPLATES, featureOffer, type FeatureKey } from "@ll/shared";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { browserApi } from "@/lib/api/browser";
 import { errorMessage } from "@/lib/api/errors";
 import { cn } from "@/lib/cn";
 import { useApi } from "@/lib/dashboard/useApi";
+import { RESTAURANT_VERTICALS } from "@/lib/signupRoute";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { PageHeader } from "./kit";
 import { useMerchant } from "./MerchantContext";
@@ -100,7 +101,7 @@ export function NotifyLink({ keys, className }: { keys: FeatureKey[]; className?
       <Check aria-hidden className="size-3.5" /> We&apos;ll let you know
     </span>
   ) : (
-    <button type="button" disabled={busy} onClick={() => void notify()} className={cn("rounded-sm text-meta font-medium text-foreground underline decoration-line underline-offset-4 hover:decoration-fg focus-visible:focus-ring", className)}>
+    <button type="button" disabled={busy} onClick={() => void notify()} className={cn("inline-flex min-h-11 items-center rounded-sm text-meta font-medium text-foreground underline decoration-line underline-offset-4 hover:decoration-fg focus-visible:focus-ring md:min-h-0", className)}>
       Notify me
     </button>
   );
@@ -114,7 +115,7 @@ export function NotifyLink({ keys, className }: { keys: FeatureKey[]; className?
 export function FeatureTeaser({ featureKey, title, description }: { featureKey: FeatureKey; title?: string; description?: string }) {
   const { feature, role, api, refresh, base, detail } = useMerchant();
   const toast = useToast();
-  const { t } = useLocaleOrEnglish();
+  const { t, date } = useLocaleOrEnglish();
   const shops = useNetworkShops();
   const f = feature(featureKey);
   const wantsTrial = role === "owner" && !!f && !f.enabled && detail.merchant.plan === "free" && featureOffer(featureKey).kind === "plan";
@@ -124,8 +125,10 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
   const trialOpen = !!ov && ov.plan === "free" && !ov.restaurantTier && !ov.subscription && !!ov.usage && !ov.usage.trialUsed;
   const def = FEATURES[featureKey];
   if (!f || f.enabled) return null;
-  const offer = featureOffer(featureKey);
   const vertical = detail.merchant.vertical;
+  // A restaurant opens its menu and orders with its own plan (Restaurant Starter), not a general shop plan that leaves the restaurant pages locked.
+  const restaurantMenu = featureKey === "orders.order_ahead" && RESTAURANT_VERTICALS.includes(vertical);
+  const offer = restaurantMenu ? featureOffer("restaurant.dietary_tags") : featureOffer(featureKey);
   const verticals = def.vertical ? (typeof def.vertical === "string" ? [def.vertical] : [...def.vertical]) : null;
   const wrongTrade = !!verticals && !verticals.includes(vertical);
   // A network-wide extra waits for the 100-shop gate; a trade tool is bought on its plan; anything else an admin paused is "coming soon".
@@ -151,8 +154,10 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
       onClick={async () => {
         setTrialBusy(true);
         try {
-          await api.billing.startTrial();
+          const started = await api.billing.startTrial();
           await refresh();
+          // Say what just happened and when it ends: the page changes underneath with no other sign.
+          toast({ message: t("trial.banner.started", { plan: PLANS[started.plan]?.name ?? PLANS.plus.name, date: date(started.endsAt, { month: "short", day: "numeric" }) }), tone: "success" });
         } catch (e) {
           toast({ message: errorMessage(e), tone: "error" });
         } finally {
@@ -185,7 +190,7 @@ export function FeatureTeaser({ featureKey, title, description }: { featureKey: 
     // Wave P: the same page header as every other page (h1 at page size), then one white card that says what the plan adds and what
     // to tap: the free trial first when the shop can still have one, then Subscribe, then See plans. Never a bare line of links.
     <div className="flex max-w-[680px] flex-col gap-6" data-testid="feature-teaser">
-      <PageHeader flush title={title ?? f.name} description={description ?? TEASER_COPY[featureKey] ?? f.description} />
+      <PageHeader flush title={title ?? f.name} description={description ?? (restaurantMenu ? `Customers order and pay before they arrive, and get a text when it’s ready. On ${RESTAURANT_PLANS.starter.name}.` : TEASER_COPY[featureKey]) ?? f.description} />
       <section className="flex flex-col gap-4 rounded-card bg-card p-5 shadow-card sm:p-6">
         <div className="flex items-start gap-3">
           <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-tile bg-trade-soft text-trade">

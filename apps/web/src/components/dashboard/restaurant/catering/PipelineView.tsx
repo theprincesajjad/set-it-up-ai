@@ -83,7 +83,7 @@ export function PipelineView({ onNew, gate }: { onNew: () => void; gate: Gate })
                                   {(() => {
                                     const n = nextAction(e, now, dayShort);
                                     return n ? (
-                                      <p className={`mt-1 flex items-start gap-1.5 text-meta ${n.tone === "accent" ? "text-points-text" : n.tone === "info" ? "text-location" : "text-fg-muted"}`}>
+                                      <p className={`mt-1 flex items-start gap-1.5 text-meta ${n.tone === "accent" ? "text-points-text" : n.tone === "info" ? "text-info-text" : "text-fg-muted"}`}>
                                         <span aria-hidden className={`mt-1.5 size-1.5 shrink-0 rounded-full ${TONE[n.tone].split(" ")[0]}`} />
                                         <span>{n.text}</span>
                                       </p>
@@ -157,7 +157,7 @@ function Tiles({ d, now }: { d: { items: restaurantApi.CateringEventDto[]; summa
   const owing = d.items.filter((e) => e.status === "quoted" && e.approvedAt && !e.depositPaidAt).sort((a, b) => a.eventDate.localeCompare(b.eventDate))[0];
   const soon = d.items.filter((e) => e.status === "confirmed" && e.eventDate >= today && e.eventDate <= addDaysISO(today, 14)).sort((a, b) => a.eventDate.localeCompare(b.eventDate))[0];
   const guests = d.items.filter((e) => e.status === "confirmed" && e.eventDate >= today && e.eventDate < addDaysISO(today, 56)).reduce((n, e) => n + e.headcount, 0);
-  const info = (t: string) => <span className="text-location">{t}</span>;
+  const info = (t: string) => <span className="text-info-text">{t}</span>;
   return (
     <>
       <StatBlock tiles
@@ -165,7 +165,7 @@ function Tiles({ d, now }: { d: { items: restaurantApi.CateringEventDto[]; summa
         cols={4}
         items={[
           { label: "Open quotes", value: formatMoney(sum.openQuotesCents), caption: unopened.length ? info(`${unopened.length} ${unopened.length === 1 ? "quote" : "quotes"}, sent ${Math.floor((now - Date.parse(unopened[0]!.quoteSentAt!)) / DAY)} days ago, not opened`) : "Waiting on customers" },
-          { label: "Deposits to collect", value: formatMoney(sum.depositsToCollectCents), caption: owing ? <span className="flex flex-wrap items-center gap-x-2 text-location">{`${EVENT_TYPE_LABEL[owing.eventType]}, ${dayShort(owing.eventDate)} · awaiting deposit`}<RemindButton id={owing.id} /></span> : "Nothing waiting" },
+          { label: "Deposits to collect", value: formatMoney(sum.depositsToCollectCents), caption: owing ? <span className="flex flex-wrap items-center gap-x-2 text-info-text">{`${EVENT_TYPE_LABEL[owing.eventType]}, ${dayShort(owing.eventDate)} · awaiting deposit`}<RemindButton id={owing.id} /></span> : "Nothing waiting" },
           { label: "Balances due in 14 days", value: formatMoney(sum.balancesDue14dCents), caption: soon ? `${EVENT_TYPE_LABEL[soon.eventType]}, ${dayShort(soon.eventDate)}` : "No events in the next 14 days" },
           { label: "Booked, next 8 weeks", value: formatMoney(sum.bookedNext8wCents), caption: `${sum.bookedNext8wEvents} ${sum.bookedNext8wEvents === 1 ? "event" : "events"} · ${formatNumber(guests)} guests` },
         ]}

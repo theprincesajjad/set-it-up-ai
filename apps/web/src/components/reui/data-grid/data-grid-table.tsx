@@ -1090,7 +1090,7 @@ function DataGridTableBase({ children }: { children: ReactNode }) {
           : undefined
       }
       className={cn(
-        "text-foreground caption-bottom text-start align-middle text-sm font-normal rtl:text-right",
+        "text-foreground caption-bottom text-start align-middle text-sm font-normal",
         /* Opaque surfaces (pinned cells, the footer band, their premixed
            tints) read --data-grid-surface and fall back to --background;
            inside a Card that is the wrong token, so they follow --card. The
@@ -1450,7 +1450,7 @@ function DataGridTableHeadRowCell<TData extends object>({
         isLastStartPinned ? "start" : isFirstEndPinned ? "end" : undefined
       }
       className={cn(
-        "text-foreground relative h-10 text-start align-middle font-medium rtl:text-right [&:has([role=checkbox])]:pe-0",
+        "text-foreground relative h-10 text-start align-middle font-medium [&:has([role=checkbox])]:pe-0",
         headerCellSpacing,
         isBanded && "align-bottom",
         props.tableLayout?.headerBackground && "bg-muted",

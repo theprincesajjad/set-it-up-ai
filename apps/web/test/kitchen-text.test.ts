@@ -5,7 +5,7 @@ import { clockIn, isolate } from "../src/lib/restaurant/kitchenText";
 describe("kitchen text in the cook's language", () => {
   const at = "2026-11-14T19:15:00Z"; // 2:15 pm in Toronto
   it("keeps 12-hour am/pm for English and uses 24-hour digits elsewhere", () => {
-    expect(clockIn("en", at)).toBe("2:15 pm");
+    expect(clockIn("en", at)).toBe("2:15 p.m.");
     expect(clockIn("ur", at)).toBe("14:15");
     expect(clockIn("hi", at)).toBe("14:15");
     expect(clockIn("pa", at)).toBe("14:15");

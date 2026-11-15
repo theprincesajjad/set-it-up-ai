@@ -237,8 +237,8 @@ export function ServiceLine() {
 export function SoloTable() {
   const cols = [
     { key: "free", name: PLANS.free.name, price: "$0" },
-    { key: "pro", name: PLANS.plus.name, price: `${moneyShort(PLANS.plus.priceCents)}/mo` },
-    { key: "studio", name: PLANS.studio.name, price: `${moneyShort(PLANS.studio.priceCents)}/mo` },
+    { key: "pro", name: PLANS.plus.name, price: `${moneyShort(PLANS.plus.priceCents)} a month` },
+    { key: "studio", name: PLANS.studio.name, price: `${moneyShort(PLANS.studio.priceCents)} a month` },
   ] as const;
   return (
     <div className="overflow-x-auto" data-testid="solo-table">
@@ -353,7 +353,7 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
               <th key={p} scope="col" className="w-[15%] px-3 py-4 text-center">
                 <span className="block text-body-strong text-foreground">{PLANS[p].name}</span>
                 <span className="block font-normal text-muted-foreground">
-                  {p === "free" ? "$0" : `${price(p)}/mo`}
+                  {p === "free" ? "$0" : `${price(p)} a month`}
                   {p !== "free" && !available[p] ? " · early access" : ""}
                 </span>
               </th>

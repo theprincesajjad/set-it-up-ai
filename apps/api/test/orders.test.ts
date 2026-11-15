@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { merchantCategories, merchantMembers, orders } from "@ll/db";
+import { locations, merchantCategories, merchantMembers, orders } from "@ll/db";
 import { awardPurchase } from "../src/services/ledger.js";
 import { awardOrderPoints, balanceDueCents } from "../src/services/orders.js";
 import { computeTax } from "../src/services/tax.js";
@@ -112,6 +112,20 @@ describe("order-ahead", () => {
     expect(again.body).toMatchObject({ duplicate: true, order: { id: o.id } });
     expect(again.body.payment.clientSecret).toBe(r.body.payment.clientSecret);
     expect(await memberBalance(m.merchant.id, c.user.id)).toBe(10);
+  });
+
+  it("does not take an as-soon-as-possible order while the shop is closed, but takes one for a later time", async () => {
+    const m = await paidMerchant(env, { plan: "studio" });
+    const { latte } = await menu(m);
+    const c = await customer(env);
+    const shut = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].reduce((h, d) => ({ ...h, [d]: [["00:00", "00:01"]] }), {});
+    await env.db.update(locations).set({ hours: shut }).where(eq(locations.id, m.location.id));
+    const base = { merchantId: m.merchant.id, locationId: m.location.id, items: [{ catalogItemId: latte.id, quantity: 1 }], paymentMethod: "at_pickup" as const };
+    const asap = await call(env, c.token, "POST", "/v1/me/orders", { ...base, idempotencyKey: "closed-asap-0001" });
+    expect(asap.status).toBe(400);
+    expect(asap.body.error.message).toMatch(/closed right now/);
+    const later = await call(env, c.token, "POST", "/v1/me/orders", { ...base, pickupAt: new Date(env.clock.now.getTime() + 2 * 3_600_000).toISOString(), idempotencyKey: "closed-later-0001" });
+    expect(later.status).toBe(201);
   });
 
   it("rejects unknown modifiers, unavailable items and in-app pay without Connect", async () => {

@@ -12,6 +12,8 @@ export function barberEndpoints(c: ApiClient, b: string) {
   return {
     barber: {
       board: () => c.get<barberApi.QueueBoardResponse>(`${b}/queue`),
+      /** The door tablet's view: the whole line's chairs and counts for walk-ins, no names of people waiting. */
+      doorBoard: () => c.get<barberApi.QueueBoardResponse>(`${b}/queue`, { query: { for: "tablet" } }),
       settings: () => c.get<barberApi.QueueSettingsDto>(`${b}/queue/settings`),
       saveSettings: (body: barberApi.QueueSettingsBody) => c.put<barberApi.QueueSettingsDto>(`${b}/queue/settings`, body),
       add: (body: barberApi.StaffAddBody) => c.post<barberApi.QueueActionResponse>(`${b}/queue`, body),

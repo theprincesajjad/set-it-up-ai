@@ -16,23 +16,32 @@
   --ph: 1;
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--mkt-face-sans);
   font-size: 16px;
   line-height: 1.5;
-  font-feature-settings: "cv11", "ss01";
   overflow-x: clip;
 }
+/*
+ * One type system with the home page (SoloLanding carries the marketing font scope): headlines and the big numbers in Strata at 850, the
+ * hero's emphasised phrase in the Newsreader italic, text in Halden. The trade colour stays on the phone mock and the small accents.
+ */
+.sl :is(.sl-h1, .sl-d2, .sl-d3, .sl-facts b, .sl-result > b, .sl-job h3, .sl-plan .price) { font-family: var(--mkt-face-serif); font-weight: 850; letter-spacing: -0.008em; }
+.sl-h1 em { font-family: var(--mkt-face-italic); font-style: italic; font-weight: 400; font-size: 0.94em; letter-spacing: -0.03em; color: inherit; }
 .sl h1, .sl h2, .sl h3, .sl h4, .sl p { margin: 0; }
 .sl-wrap { width: min(100% - 2 * var(--sl-gutter), var(--sl-max)); margin-inline: auto; }
 .sl .num { font-variant-numeric: tabular-nums; }
 
-/* Display type: Inter, heavy and tight; clamp()ed so 390 and 1440 both land. */
+/* Display sizes, clamp()ed so 390 and 1440 both land (the face is set above). */
 .sl-d2 { font-weight: 750; letter-spacing: -0.032em; line-height: 1.04; font-size: clamp(32px, 4.2vw, 56px); text-wrap: balance; }
 .sl-d3 { font-weight: 750; letter-spacing: -0.028em; line-height: 1.08; font-size: clamp(26px, 2.8vw, 38px); text-wrap: balance; }
 .sl-lede { font-size: clamp(17px, 1.4vw, 21px); line-height: 1.45; color: var(--muted-foreground); max-width: 36rem; text-wrap: pretty; }
 .sl-head { display: grid; gap: 14px; margin-bottom: clamp(28px, 3.5vw, 48px); max-width: 52rem; }
 .sl-sec { padding-block: clamp(56px, 7vw, 104px); }
-/* Below the fold: the browser skips styling, laying out and painting a section (and its animations) until it is near the viewport. */
-.sl-sec { content-visibility: auto; contain-intrinsic-size: auto 100% auto 800px; }
+/*
+ * No content-visibility here: lazily sized sections changed the page height while an in-page jump (#start, #plans) was running, so the
+ * buttons landed sections short. The page is static and its motion is CSS that idles off screen. The anchors clear the floating nav.
+ */
+.sl-sec { scroll-margin-top: 88px; }
 .sl-sec-white { background: var(--card); }
 
 /* Buttons: the Clear black primary, 56 tall. */
@@ -74,6 +83,12 @@
 .sl-nav-links a[aria-current="page"] { color: var(--foreground); }
 .sl-nav .sl-btn { min-height: 44px; padding: 0 18px; font-size: 14px; }
 @media (min-width: 900px) { .sl-nav-links { display: flex; } }
+/*
+ * Phones: the sticky bar at the bottom carries "Get started free" (and the hero and the start form carry their own), so the bar's copy
+ * is not repeated at the top: one primary button on screen at a time, and the wordmark keeps to one line on a 320 px screen.
+ */
+.sl-nav-in > a:first-child { white-space: nowrap; }
+@media (max-width: 899.98px) { .sl-nav .sl-btn { display: none; } }
 
 /* ---------- 1. Hero: the hook and the product, big and moving ---------- */
 .sl-hero { padding-top: clamp(40px, 7vw, 72px); }
@@ -82,7 +97,6 @@
 .sl-copy { display: grid; gap: 22px; align-content: center; }
 .sl-h1 { font-size: clamp(42px, 4.6vw, 66px); font-weight: 750; letter-spacing: -0.038em; line-height: 1; text-wrap: balance; }
 .sl-h1 span { display: block; }
-.sl-h1 em { font-style: normal; color: var(--trade); }
 .sl-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 /* The price is a plain text link to the price block, not a second button (mock flaw 3). */
 .sl-price-link { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: fit-content; min-height: 44px; margin-block: -10px -8px; font-size: 15px; font-weight: 550; color: var(--muted-foreground); text-decoration: none; }

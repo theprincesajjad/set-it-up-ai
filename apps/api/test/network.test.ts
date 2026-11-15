@@ -126,7 +126,7 @@ describe("shop lines for Discover and the map (promoLine, perk)", () => {
     const dated = await shop("Dated Bakery", 43.651, -79.451, { vertical: "bakery" });
     await env.db.insert(promos).values({ ...base, merchantId: dated.merchant.id, title: "1.5x", kind: "multiplier", multiplierPct: 150, endsAt: new Date("2026-11-14T17:00:00Z") });
     const got = await lines();
-    expect(got.get("Window Cafe")).toEqual({ promoLine: "2× stamps till 4 pm", perk: null });
+    expect(got.get("Window Cafe")).toEqual({ promoLine: "2× stamps till 4 p.m.", perk: null });
     expect(got.get("Wrong Day")).toEqual({ promoLine: null, perk: null }); // not today
     expect(got.get("Dated Bakery")!.promoLine).toBe("1.5× points till Nov 14");
   });

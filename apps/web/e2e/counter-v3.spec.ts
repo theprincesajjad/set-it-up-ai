@@ -114,7 +114,7 @@ test.describe("counter (café)", () => {
     await expect(page.locator('[data-shell="bare"]')).toBeVisible();
     await expect(page.locator('[data-slot="sidebar-container"]')).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /sign in with a pin/i }).or(page.getByRole("button", { name: /stamping as/i }))).toBeVisible();
+    await expect(page.getByRole("button", { name: /sign in with a pin|stamping as|set my pin/i }).first()).toBeVisible();
     // The exit goes back to Today, which has the shell again.
     await page.getByRole("link", { name: "Exit counter" }).click();
     await expect(page).toHaveURL(new RegExp(`/m/${id}$`));

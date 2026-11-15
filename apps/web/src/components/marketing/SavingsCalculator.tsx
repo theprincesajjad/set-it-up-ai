@@ -33,7 +33,7 @@ export function SavingsCalculator({ planName, planPriceCents }: { planName: stri
             value={cents}
             onChange={(e) => setCents(Number(e.target.value))}
             aria-valuetext={`${dollars(cents)} a month`}
-            className="mt-5 block h-6 w-full cursor-pointer accent-[var(--ll-color-fg)]"
+            className="mt-3 block h-11 w-full cursor-pointer accent-[var(--ll-color-fg)]"
           />
           <p className="mt-2 text-meta text-muted-foreground">{m.sliderHint}</p>
         </div>

@@ -9,8 +9,8 @@ import { useState, type ReactNode } from "react";
 
 const BlurFade = dynamic(() => import("@/components/primitives/blur-fade").then((m) => m.BlurFade), { ssr: false });
 
-export function Reveal({ children, delay = 0 }: { children: ReactNode; /** Seconds after mount. */ delay?: number }) {
+export function Reveal({ children, delay = 0, still = false }: { children: ReactNode; /** Seconds after mount. */ delay?: number; /** No entrance motion: for a screen that is also rendered on the server (motion is client-only, so it would not hydrate). */ still?: boolean }) {
   const [motionOk] = useState(() => typeof window !== "undefined" && "IntersectionObserver" in window);
-  if (!motionOk) return <>{children}</>;
+  if (still || !motionOk) return <>{children}</>;
   return <BlurFade delay={delay}>{children}</BlurFade>;
 }

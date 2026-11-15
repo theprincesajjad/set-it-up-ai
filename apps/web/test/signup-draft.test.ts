@@ -34,6 +34,22 @@ describe("signup steps (wave P)", () => {
   });
 });
 
+describe("what the owner typed survives a refresh and Back", () => {
+  it("keeps the link, the read it belongs to and the picks on \"Is this you?\"", () => {
+    const stored = JSON.stringify({ ...answered(), link: "read", imported: { id: "imp1", kind: "website", url: "https://maple-bean.test", fields: {}, notes: [] }, linkUrl: "maple-bean.test", readFor: "maple-bean.test", preview: { brandColor: "#1f7a8c", logo: "/api/logo.png" } });
+    const d = readDraft(stored)!;
+    expect(d.linkUrl).toBe("maple-bean.test");
+    expect(d.readFor).toBe("maple-bean.test");
+    expect(d.preview).toEqual({ brandColor: "#1F7A8C", logo: "/api/logo.png" });
+  });
+  it("drops a read's bookkeeping when there is no read, and ignores a bad colour", () => {
+    const d = readDraft(JSON.stringify({ ...answered(), link: "skipped", linkUrl: "x".repeat(900), readFor: "old", preview: { brandColor: "red", logo: 5 } }))!;
+    expect(d.linkUrl.length).toBe(500);
+    expect(d.readFor).toBe("");
+    expect(d.preview).toBeNull();
+  });
+});
+
 describe("the card", () => {
   it("starts from the trade's template and keeps the owner's edits", () => {
     const cafe = cardFor("cafe", null);

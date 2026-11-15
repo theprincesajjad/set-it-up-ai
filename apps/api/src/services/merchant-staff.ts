@@ -1,9 +1,9 @@
 /** Team management: invite, roles, PINs. Owners only (enforced in routes). */
-import { and, asc, eq, ne, sql } from "drizzle-orm";
-import { merchantStaff, merchants, users, type DbOrTx } from "@ll/db";
+import { and, asc, eq, gt, ne, sql } from "drizzle-orm";
+import { auditLogs, merchantStaff, merchants, sessions, users, type DbOrTx } from "@ll/db";
 import { BRAND, normalizeLocale, type Locale, type merchantApi } from "@ll/shared";
 import type { AppContext } from "../context.js";
-import { badRequest, conflict, notFound } from "../lib/errors.js";
+import { badRequest, conflict, notFound, tooMany } from "../lib/errors.js";
 import { setStaffPin } from "./auth.js";
 import { findOrCreateCustomerByPhone, generateMemberCode } from "./ledger.js";
 import { recordMilestone } from "./onboarding.js";
@@ -50,8 +50,8 @@ export async function findOrCreateInvitee(db: DbOrTx, input: { email?: string | 
   throw badRequest("Provide an email or phone number");
 }
 
-function serialize(row: { userId: string; name: string | null; email: string | null; phone: string | null; role: StaffRole; pinHash: string | null; locale: string; station: string | null; createdAt: Date }): merchantApi.StaffMember {
-  return { userId: row.userId, name: row.name, email: row.email, phone: row.phone, role: row.role, hasPin: !!row.pinHash, locale: localeOrEn(row.locale), station: row.station, createdAt: row.createdAt.toISOString() };
+function serialize(row: { userId: string; name: string | null; email: string | null; phone: string | null; role: StaffRole; pinHash: string | null; locale: string; station: string | null; createdAt: Date; signedIn: boolean }): merchantApi.StaffMember {
+  return { userId: row.userId, name: row.name, email: row.email, phone: row.phone, role: row.role, hasPin: !!row.pinHash, locale: localeOrEn(row.locale), station: row.station, signedIn: row.signedIn, createdAt: row.createdAt.toISOString() };
 }
 
 const staffSelect = {
@@ -64,6 +64,8 @@ const staffSelect = {
   locale: merchantStaff.locale,
   station: merchantStaff.station,
   createdAt: merchantStaff.createdAt,
+  /** True once this person has ever signed in (they have, or had, a session): false means an invite nobody has opened yet. */
+  signedIn: sql<boolean>`exists (select 1 from ${sessions} where ${sessions.userId} = ${merchantStaff.userId})`,
 };
 
 export async function listStaff(db: DbOrTx, merchantId: string): Promise<merchantApi.StaffMember[]> {
@@ -92,14 +94,16 @@ export async function sendStaffInvite(ctx: AppContext, opts: { merchantName: str
   const base = ctx.config.publicWebUrl.replace(/\/$/, "");
   const roleText = opts.role === "owner" ? "an owner" : `a ${opts.role}`;
   const lead = `${opts.merchantName} added you to their team on ${BRAND.name} as ${roleText}.`;
+  // `invite` and `shop` only change what the sign-in page says (who added you); they open nothing and grant nothing.
+  const shop = `&invite=1&shop=${encodeURIComponent(opts.merchantName.slice(0, 80))}`;
   if (opts.email) {
-    // No password yet: the link opens "email me a code" with the address filled in.
-    const link = `${base}/login?mode=code&email=${encodeURIComponent(opts.email)}`;
+    // No password yet: the link opens "email me a code" with the address filled in and the code already on its way.
+    const link = `${base}/login?mode=code&email=${encodeURIComponent(opts.email)}${shop}`;
     const text = `${lead} Open this link and we\u2019ll email you a 6-digit code to sign in: ${link} No password needed.`;
     await ctx.providers.email.send({ to: opts.email, subject: `You\u2019re on the ${opts.merchantName} team`, text });
   } else if (opts.phone) {
-    // The phone code lives on the Customer tab; after the code the web app sends staff to their dashboard.
-    const link = `${base}/login?as=customer`;
+    // The phone code lives on the phone tab; after the code the web app sends staff to their dashboard.
+    const link = `${base}/login?as=phone${shop}`;
     const text = `${lead} Sign in with this phone number. We text you a code: ${link}`;
     await ctx.providers.sms.send(opts.phone, text);
   }
@@ -118,6 +122,25 @@ export async function inviteStaff(ctx: AppContext, merchantId: string, actorUser
   await sendStaffInvite(ctx, { merchantName: m.name, role: body.role, email: body.email ?? user.email, phone: body.email ? null : user.phone });
   await recordMilestone(ctx.db, merchantId, "staff_added", ctx.now());
   return serialize(await getStaff(ctx.db, merchantId, user.id));
+}
+
+/** At most this many invite messages per person per hour: a resend is for a message that never arrived, not a way to text someone repeatedly. */
+const INVITE_RESENDS_PER_HOUR = 3;
+
+/** Send the invite to a team member again (owner only, enforced by the route). Email if they have one, else a text. */
+export async function resendStaffInvite(ctx: AppContext, merchantId: string, actorUserId: string, userId: string): Promise<void> {
+  const current = await getStaff(ctx.db, merchantId, userId);
+  if (!current.email && !current.phone) throw badRequest("This person has no email or phone to send the invite to");
+  const since = new Date(ctx.now().getTime() - 3600_000);
+  const [recent] = await ctx.db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(auditLogs)
+    .where(and(eq(auditLogs.merchantId, merchantId), eq(auditLogs.action, "staff.invite_resent"), eq(auditLogs.entityId, userId), gt(auditLogs.createdAt, since)));
+  if (Number(recent?.n ?? 0) >= INVITE_RESENDS_PER_HOUR) throw tooMany("You’ve sent this invite a few times already. Try again in an hour.", 3600, { reason: "invite_resend_cap" });
+  const [m] = await ctx.db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!m) throw notFound("Merchant");
+  await sendStaffInvite(ctx, { merchantName: m.name, role: current.role, email: current.email, phone: current.email ? null : current.phone });
+  await writeAudit(ctx.db, { actorUserId, merchantId, action: "staff.invite_resent", entity: "user", entityId: userId });
 }
 
 async function ownerCount(db: DbOrTx, merchantId: string, excludingUserId?: string) {
@@ -173,12 +196,13 @@ export async function removeStaff(ctx: AppContext, merchantId: string, actorUser
 }
 
 /**
- * Owner sets a 4–6 digit counter PIN for a team member. Hashing and the
+ * Owner sets a 4 digit counter PIN for a team member. Hashing and the
  * "unique within a shop" rule live in services/auth.ts (shared with the
  * self-service PUT /merchants/:merchantId/staff-pin).
  */
 export async function setStaffPinFor(ctx: AppContext, merchantId: string, actorUserId: string, userId: string, pin: string) {
-  if (!/^\d{4,6}$/.test(pin)) throw badRequest("PIN must be 4–6 digits");
+  // Exactly four digits: the counter keypad submits on the fourth. Older 5 and 6 digit PINs still verify.
+  if (!/^\d{4}$/.test(pin)) throw badRequest("PIN must be 4 digits");
   await getStaff(ctx.db, merchantId, userId);
   await setStaffPin(ctx, merchantId, userId, pin);
   await writeAudit(ctx.db, { actorUserId, merchantId, action: "staff.pin_set", entity: "user", entityId: userId });

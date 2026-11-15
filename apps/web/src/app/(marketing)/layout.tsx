@@ -17,6 +17,7 @@ function headerLabels(): HeaderLabelsByLocale {
     language: t(l, "mkt.nav.language"),
     findShops: t(l, "sh.fs.ctaFind"),
     myCard: t(l, "sh.fs.ctaCard"),
+    restaurantCta: t(l, "mkt.rest.ctaStart"),
   });
   return { en: one("en"), hi: one("hi"), ur: one("ur"), pa: one("pa") };
 }

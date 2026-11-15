@@ -14,14 +14,13 @@ export default function PhoneStep() {
   const { t } = useLocale();
   const { updatePrefs } = useSession();
   const [digits, setDigits] = useState(() => sanitizePhoneInput(prefill ?? ""));
-  const [touched, setTouched] = useState(false);
   const [sending, setSending] = useState(false);
   const [banner, setBanner] = useState<{ tone: "warning" | "danger"; text: string } | null>(null);
   const err = validateNanp(digits);
-  const showErr = touched && digits.length === 10 && err === "invalid" ? t("auth.phone.invalid") : null;
+  // As soon as ten digits are in and they are not a real number: a disabled button with no reason is a dead end on the phone pad.
+  const showErr = digits.length === 10 && err === "invalid" ? t("auth.phone.invalid") : null;
 
   const send = async () => {
-    setTouched(true);
     const e164 = toE164(digits);
     if (!e164) return;
     setSending(true);

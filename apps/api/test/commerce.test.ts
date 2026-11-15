@@ -62,6 +62,43 @@ describe("catalog", () => {
     expect(del.body).toMatchObject({ available: false, orderable: false });
   });
 
+  it("a partial update keeps every field it did not send", async () => {
+    const { merchant, ownerToken } = await paidMerchant(env, { plan: "studio" });
+    const url = `/v1/merchants/${merchant.id}/catalog/items`;
+    const created = await call(env, ownerToken, "POST", url, item);
+    // Selling out must not wipe the dish's choices.
+    const off = await call(env, ownerToken, "PATCH", `${url}/${created.body.id}`, { orderable: false, available: false });
+    expect(off.body).toMatchObject({ orderable: false, available: false });
+    expect(off.body.modifiers).toEqual(item.modifiers);
+    // Editing only the description must not put a sold-out dish back on sale.
+    const desc = await call(env, ownerToken, "PATCH", `${url}/${created.body.id}`, { description: "Double shot" });
+    expect(desc.body).toMatchObject({ description: "Double shot", orderable: false, available: false });
+    expect(desc.body.modifiers).toEqual(item.modifiers);
+    // Sending the field still changes it, and an empty list clears the choices.
+    const clear = await call(env, ownerToken, "PATCH", `${url}/${created.body.id}`, { modifiers: [], orderable: true, available: true });
+    expect(clear.body).toMatchObject({ modifiers: [], orderable: true, available: true });
+  });
+
+  it("menu sections: no duplicate names, rename, and delete moves the dishes to no section", async () => {
+    const { merchant, ownerToken } = await paidMerchant(env, { plan: "studio" });
+    const base = `/v1/merchants/${merchant.id}/catalog`;
+    const food = await call(env, ownerToken, "POST", `${base}/categories`, { name: "Food" });
+    expect(food.status).toBe(201);
+    const dup = await call(env, ownerToken, "POST", `${base}/categories`, { name: " food " });
+    expect(dup.status).toBe(409);
+    expect(dup.body.error.message).toBe("You already have a Food section");
+    const drinks = await call(env, ownerToken, "POST", `${base}/categories`, { name: "Drinks" });
+    expect((await call(env, ownerToken, "PATCH", `${base}/categories/${drinks.body.id}`, { name: "FOOD" })).status).toBe(409);
+    expect((await call(env, ownerToken, "PATCH", `${base}/categories/${drinks.body.id}`, { name: "Cold drinks" })).body.name).toBe("Cold drinks");
+    const dish = await call(env, ownerToken, "POST", `${base}/items`, { name: "Samosa", priceCents: 300, categoryId: food.body.id });
+    expect((await call(env, ownerToken, "DELETE", `${base}/categories/${food.body.id}`)).status).toBe(200);
+    const cat = await call(env, ownerToken, "GET", base);
+    const names = cat.body.categories.map((c: { name: string }) => c.name);
+    expect(names).toContain("Cold drinks");
+    expect(names).not.toContain("Food");
+    expect(cat.body.items.find((i: { id: string }) => i.id === dish.body.id).categoryId).toBeNull();
+  });
+
   it("rejects duplicate modifier groups and foreign categories", async () => {
     const a = await paidMerchant(env, { plan: "studio" });
     const b = await paidMerchant(env, { plan: "studio" });

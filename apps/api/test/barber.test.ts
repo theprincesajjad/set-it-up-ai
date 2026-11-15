@@ -401,6 +401,12 @@ describe("pay, payouts and renter privacy", () => {
     const board = await call(env, s.marcus.token, "GET", `${s.base}/queue`);
     expect(board.body.waiting).toHaveLength(0);
     expect(board.body.chairs).toHaveLength(1);
+    // The door tablet is signed in as that renter but is for walk-ins: it gets every chair that takes walk-ins and the real count, and no names.
+    const door = await call(env, s.marcus.token, "GET", `${s.base}/queue?for=tablet`);
+    expect(door.body.chairs.length).toBeGreaterThan(1);
+    expect(door.body.stats.waiting).toBeGreaterThan(0);
+    expect(door.body.waiting).toHaveLength(0);
+    expect(door.body.inService).toHaveLength(0);
   });
 
   it("only a manager sets pay; a commission needs a share; pay is gated by the feature", async () => {

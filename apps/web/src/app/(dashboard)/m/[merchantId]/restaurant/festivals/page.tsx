@@ -60,7 +60,7 @@ function Festivals() {
       ) : up.error && !up.data ? (
         <ErrorLine message={up.error} onRetry={() => void up.reload()} />
       ) : !up.data ? (
-        <div aria-busy="true" aria-label="Loading">
+        <div role="status" aria-busy="true" aria-label="Loading">
           <SkeletonRows rows={6} />
         </div>
       ) : (

@@ -29,7 +29,7 @@ test("counter QR join: phone → code → name + consent → joined", async ({ p
   await page.screenshot({ path: shot("03-join-details"), fullPage: true });
   await page.getByRole("button", { name: "Join Pinecone Coffee Co." }).click();
 
-  await expect(page.getByText("You're in, Alex.")).toBeVisible();
+  await expect(page.getByText("You’re in, Alex.")).toBeVisible();
   await expect(page.getByRole("img", { name: /Member QR code/ })).toBeVisible();
   // The wallet team's <WalletButtons> hides a pass the server can't issue (local API: not configured).
   const google = page.getByRole("button", { name: "Add to Google Wallet" });
@@ -64,7 +64,7 @@ test("/join/<code> alias renders the same page; bad codes explain what to do", a
   await page.goto(`/join/${qrCode}`);
   await expect(page.getByRole("heading", { name: "get a stamp for today’s coffee" })).toBeVisible();
   await page.goto("/j/NOPE000");
-  await expect(page.getByRole("heading", { name: "This QR code isn’t active. Ask staff for help." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This QR code isn’t active" })).toBeVisible();
 });
 
 test("public shop page with rewards, promos and about tabs", async ({ page }) => {

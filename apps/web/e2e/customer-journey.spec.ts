@@ -71,7 +71,7 @@ test("booking: times grouped by part of day, then Check and book; the chosen tim
   await page.getByLabel("Your first name").fill("Ayesha");
   await page.getByRole("button", { name: /^Book/ }).last().click();
   await expect(page.getByTestId("booked-card")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId("booked-card")).toContainText("It's saved on your card");
+  await expect(page.getByTestId("booked-card")).toContainText("Your visit is saved");
   await page.screenshot({ path: shot("book-done-390"), fullPage: true });
 
   // Manage: one ticket with directions; cancelling states the policy once.

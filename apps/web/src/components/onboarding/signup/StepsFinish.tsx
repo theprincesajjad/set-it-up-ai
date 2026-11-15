@@ -25,6 +25,10 @@ export interface AccountStepProps {
   busy: boolean;
   banner: ReactNode;
   errors: StepErrors;
+  /** Typing in a field takes its red error away. */
+  clearError: (key: keyof StepErrors) => void;
+  /** The email (or name) already signed in, shown when only the shop is left to make. */
+  signedInAs?: string | null;
   onCreate: (password: string) => void;
   /** "By continuing you agree to the Terms and Privacy Policy." with links. */
   terms: ReactNode;
@@ -32,7 +36,7 @@ export interface AccountStepProps {
   brandColor?: string | null;
 }
 
-export function AccountStep({ draft, update, registered, busy, banner, errors, onCreate, terms, brandColor }: AccountStepProps) {
+export function AccountStep({ draft, update, registered, busy, banner, errors, clearError, signedInAs, onCreate, terms, brandColor }: AccountStepProps) {
   const { t, locale } = useLocaleOrEnglish();
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -45,6 +49,7 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, o
       id="account"
       title={registered ? t("sf.acct.titleSignedIn") : t("sf.acct.title")}
       body={registered ? t("sf.acct.bodySignedIn") : t("sf.acct.body")}
+      bodyExtra={registered && signedInAs ? <span data-signed-in-as>{t("sf.acct.signedInAs", { who: signedInAs })}</span> : null}
       onSubmit={() => onCreate(password)}
       primary={busy ? t("sf.acct.creating") : t("su.create")}
       busy={busy}
@@ -76,10 +81,10 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, o
         </span>
       </div>
       {banner ? <Banner tone="warning">{banner}</Banner> : null}
-      <PhoneField label={t("su.phone")} hint={t("su.phoneHint")} value={draft.phone} onChangeDigits={(d) => update({ phone: d })} error={errors.phone} />
+      <PhoneField label={t("su.phone")} hint={t("su.phoneHint")} value={draft.phone} onChangeDigits={(d) => { clearError("phone"); update({ phone: d }); }} error={errors.phone} />
       {!registered ? (
         <>
-          <TextField name="email" label={t("su.email")} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={draft.email} onChange={(e) => update({ email: e.target.value })} error={errors.email} dir="ltr" />
+          <TextField name="email" label={t("su.email")} type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={draft.email} onChange={(e) => { clearError("email"); update({ email: e.target.value }); }} error={errors.email} dir="ltr" className="clear:md:min-h-11" />
           <div className="relative">
             <TextField
               name="password"
@@ -91,8 +96,8 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, o
                   {pwOk ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : <Circle aria-hidden className="size-3.5" strokeWidth={2} />}
                   {t("sf.acct.pwOk")}
                 </span>
-              } value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)} error={errors.password} />
-            <button type="button" onClick={() => setShow((s) => !s)} aria-pressed={show} aria-label={show ? t("sf.acct.hide") : t("sf.acct.show")} className="absolute end-1 top-7.5 grid size-11 place-items-center rounded-r2 text-fg-muted hover:text-fg focus-visible:focus-ring">
+              } value={password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { clearError("password"); setPassword(e.target.value); }} error={errors.password} className="clear:md:min-h-11" />
+            <button type="button" onClick={() => setShow((s) => !s)} aria-pressed={show} aria-label={show ? t("sf.acct.hide") : t("sf.acct.show")} className="absolute end-1 top-6.5 grid size-11 place-items-center rounded-r2 text-fg-muted hover:text-fg focus-visible:focus-ring">
               {show ? <EyeOff aria-hidden className="size-5" strokeWidth={1.75} /> : <Eye aria-hidden className="size-5" strokeWidth={1.75} />}
             </button>
           </div>

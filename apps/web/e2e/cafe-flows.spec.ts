@@ -57,7 +57,8 @@ const randPhone = () =>
 /**
  * A member who exists but has not been stamped today: created by an award, then that award is undone.
  * `unit` is what one stamp earns at this shop right now, read from that first award (not hard-coded): Pinecone runs
- * double-stamp promos on Tuesdays and weekday afternoons, so a stamp is worth 1 or 2 depending on the clock.
+ * double-stamp promos on Tuesdays and weekday afternoons, so a stamp is worth 1 or 2 depending on the clock, plus the
+ * first-visit bonus of a live street campaign.
  */
 async function member(
   token: string,
@@ -80,11 +81,21 @@ async function member(
     token,
     {},
   );
+  // What one stamp is worth for this member now (the stamp, today's promo, any street-campaign bonus): a probe award,
+  // measured on the card and undone, in exactly the state the test's own stamp will meet.
+  const m0 = { code: res.member.memberCode, memberId: res.member.memberId };
+  const start = await balance(token, id, m0);
+  const probe = await call<{ transactionId: string }>("POST", `/v1/merchants/${id}/counter/award`, token, {
+    phone,
+    idempotencyKey: `e2e-probe-${phone}-${Date.now()}`,
+  });
+  const earned = (await balance(token, id, m0)) - start;
+  await call("POST", `/v1/merchants/${id}/counter/transactions/${probe.transactionId}/undo`, token, {});
   return {
     phone,
     code: res.member.memberCode,
     memberId: res.member.memberId,
-    unit: res.pointsEarned,
+    unit: earned,
   };
 }
 

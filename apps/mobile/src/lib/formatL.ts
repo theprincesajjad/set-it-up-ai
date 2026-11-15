@@ -150,7 +150,12 @@ export function hoursRowsL(L: L, hours: Hours, now = new Date()): { day: string;
 }
 
 /** "$11.80" always two decimals, in the language's own number style. */
-export const formatMoneyL = (L: L, cents: number) => (L.locale === "en" ? formatMoney(cents) : formatCurrency(L.locale, cents, "CAD", true));
+/** An amount; in Urdu it is wrapped in a left-to-right isolate so the currency sign cannot jump to the wrong side ("60.00$"). */
+export const formatMoneyL = (L: L, cents: number) => {
+  if (L.locale === "en") return formatMoney(cents);
+  const s = formatCurrency(L.locale, cents, "CAD", true);
+  return L.locale === "ur" ? `\u2066${s}\u2069` : s;
+};
 
 /** "120 pts" in English; "120 पॉइंट" / "1 stamp"-style in hi / ur / pa for points and stamps (a custom unit word stays as the shop typed it). */
 export function formatPtsL(L: L, n: number, terminology?: string | null): string {

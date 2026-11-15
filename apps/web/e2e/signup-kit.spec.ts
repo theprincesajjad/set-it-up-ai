@@ -20,7 +20,7 @@ test.describe("at 390", () => {
 
   test("card step: the stepper takes keys, the colour wears the card and reaches the shop; You're live shows the next steps as cards", async ({ page }) => {
     await page.goto("/signup");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     const name = `Kit Brows ${rand()}`;
     await page.getByLabel("Shop name").fill(name);
     await cont(page);

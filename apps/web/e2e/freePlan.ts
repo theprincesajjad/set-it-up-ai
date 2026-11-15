@@ -13,7 +13,7 @@ async function token(who: Creds): Promise<string> {
   return ((await r.json()) as { accessToken: string }).accessToken;
 }
 
-/** Remove the shop's paid-feature overrides; returns a function that restores them. */
+/** Remove the shop’s paid-feature overrides; returns a function that restores them. */
 export async function useFreePlan(owner: Creds): Promise<() => Promise<void>> {
   const ownerToken = await token(owner);
   const list = (await (await fetch(`${API}/v1/merchants`, { headers: { authorization: `Bearer ${ownerToken}` } })).json()) as { items: { id: string }[] };

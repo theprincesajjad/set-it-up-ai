@@ -12,7 +12,7 @@ import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
 import { useTheme } from "../../theme";
-import { Avatar, Banner, Button, Keypad, Text } from "../../ui";
+import { Avatar, Banner, Button, Keypad, Text, dirStyle } from "../../ui";
 
 /**
  * Staff PIN screen (shared device): staff tiles → 4-digit PIN on the Keypad.
@@ -100,7 +100,7 @@ export default function StaffPin() {
           ) : null}
         </View>
         <View style={{ flex: 1, gap: 16, maxWidth: 440, alignSelf: "center", width: "100%" }}>
-          <Animated.View style={[styles.dots, { transform: [{ translateX: shake }] }]} accessible accessibilityLabel={t("auth.pin.entered", { n: pin.length })}>
+          <Animated.View {...({ dir: "ltr" } as object)} style={[styles.dots, dirStyle("ltr"), { transform: [{ translateX: shake }] }]} accessible accessibilityLabel={t("auth.pin.entered", { n: pin.length })}>
             {[0, 1, 2, 3].map((i) => (
               <View key={i} style={[styles.dot, { borderColor: error ? c.danger : c.borderStrong, backgroundColor: i < pin.length ? c.fg : "transparent" }]} />
             ))}

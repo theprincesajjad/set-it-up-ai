@@ -21,14 +21,15 @@ const api = {
   counter: { today: vi.fn(async () => ({ visitCount: 3, newMembers: 1 })) },
 };
 let role = "owner";
+let hasPin = true;
 const enabledKeys = new Set<FeatureKey>(["marketing.sms"]);
 vi.mock("@/components/dashboard/MerchantContext", () => ({
   useMerchant: () => ({
     api,
     base: "/m/1",
     role,
-    me: { user: { name: "Sam Lee", locale: "en" } },
-    detail: { merchant: { vertical: "cafe", name: "Corner Bean" }, locations: [{ address: "412 Dufferin St", name: "Main" }], program: { terminology: "stamps" } },
+    me: { user: { name: "Sam Lee", locale: "en" }, merchants: [{ merchantId: "m1", hasPin }] },
+    detail: { merchant: { id: "m1", vertical: "cafe", name: "Corner Bean" }, locations: [{ address: "412 Dufferin St", name: "Main" }], program: { terminology: "stamps" } },
     features: { plan: "free", features: [] },
     enabled: (k: FeatureKey) => enabledKeys.has(k),
   }),
@@ -50,8 +51,8 @@ describe("Today", () => {
     const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(headings.slice(0, 4)).toEqual(["Needs you", "Visits by hour", "Up next", "Quick actions"]);
     // DOM order: Needs you, numbers, Up next, Quick actions
-    const all = [...document.querySelectorAll("#needs-you, [aria-label=\"Today's numbers\"], #up-next, #quick-actions")].map((n) => n.id || n.getAttribute("aria-label"));
-    expect(all).toEqual(["needs-you", "Today's numbers", "up-next", "quick-actions"]);
+    const all = [...document.querySelectorAll("#needs-you, [aria-label=\"Today’s numbers\"], #up-next, #quick-actions")].map((n) => n.id || n.getAttribute("aria-label"));
+    expect(all).toEqual(["needs-you", "Today’s numbers", "up-next", "quick-actions"]);
     const header = document.querySelector("header")!;
     expect(header.querySelectorAll("[data-primary-action]").length).toBe(1);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Good morning, Sam");
@@ -73,5 +74,17 @@ describe("Today", () => {
     await waitFor(() => expect(screen.getByText("Visits so far today")).toBeTruthy());
     expect(screen.queryByText("Needs you")).toBeNull();
     expect(document.querySelectorAll("header [data-primary-action]").length).toBe(1);
+    // Signed in with a PIN: no prompt.
+    expect(screen.queryByText("Choose your PIN")).toBeNull();
+  });
+
+  it("asks a staff member with no counter PIN to set one, once, on Today", async () => {
+    role = "staff";
+    hasPin = false;
+    render(<TodayPage />);
+    await waitFor(() => expect(screen.getByText("Visits so far today")).toBeTruthy());
+    expect(screen.getByText("Choose your PIN")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Set my PIN" }).getAttribute("href")).toBe("/m/1/counter");
+    hasPin = true;
   });
 });

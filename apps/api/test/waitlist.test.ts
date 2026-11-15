@@ -70,10 +70,10 @@ describe("matching rules", { timeout: 120_000 }, () => {
     expect(msg.text).toContain("/w/abcdefghijklmnop");
     expect(msg.text).toMatch(/STOP/);
     expect(msg.body.length).toBeLessThanOrEqual(180);
-    expect(msg.body).toContain("It's yours for 2 hours");
+    expect(msg.body).toContain("It’s yours for 2 hours");
     // A slot that starts within two hours is held until a quarter of an hour before it.
     const soon = offerTexts(env.ctx, m, { token: "abcdefghijklmnop", startsAt: new Date(now.getTime() + 60 * 60_000), offeredAt: now, expiresAt: new Date(now.getTime() + 45 * 60_000), service: "Gel fill" }, "en");
-    expect(soon.body).toContain("It's yours until");
+    expect(soon.body).toContain("It’s yours until");
   });
 });
 

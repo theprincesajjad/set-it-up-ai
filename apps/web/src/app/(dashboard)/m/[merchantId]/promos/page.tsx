@@ -48,7 +48,7 @@ function PromosPage() {
         flush
         title="Promos"
         description="Start from a template, or let Claude write one for you. Each promo shows how many extra visits it brought in."
-        actions={<Button size="md" iconStart={Plus} href={`${base}/promos/new`} className="h-[38px] rounded-full px-4 text-[14px] font-medium">Create a promo</Button>}
+        actions={<Button size="md" iconStart={Plus} href={`${base}/promos/new`} className="max-md:h-11 md:h-[38px] rounded-full px-4 text-[14px] font-medium">Create a promo</Button>}
       />
 
       <section aria-labelledby="tpl-h" className="flex flex-col gap-4">
@@ -59,7 +59,7 @@ function PromosPage() {
               <p className="text-[16px] font-semibold text-fg">{t.title}</p>
               <p className="text-[14px] leading-5 text-fg-muted">{t.blurb}</p>
               <span className="self-start rounded-full bg-card/70 px-2.5 py-0.5 text-[12px] text-fg">{t.job}</span>
-              <Link href={`${base}/promos/new?template=${t.key}`} className="mt-1 text-[14px] font-semibold text-fg underline-offset-2 hover:underline focus-visible:focus-ring">
+              <Link href={`${base}/promos/new?template=${t.key}`} className="-mb-2 inline-flex min-h-11 items-center self-start text-[14px] font-semibold text-fg underline-offset-2 hover:underline focus-visible:focus-ring">
                 Use this
               </Link>
             </li>
@@ -75,7 +75,7 @@ function PromosPage() {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={cn("-mb-px border-b-2 px-0.5 pb-2.5 pt-1 text-[14px] transition-colors focus-visible:focus-ring", tab === t.id ? "border-fg font-medium text-fg" : "border-transparent text-fg-muted hover:text-fg")}
+            className={cn("-mb-px inline-flex items-center gap-1 border-b-2 px-0.5 pb-2.5 pt-1 text-[14px] max-md:min-h-11 max-md:pb-0 transition-colors focus-visible:focus-ring", tab === t.id ? "border-fg font-medium text-fg" : "border-transparent text-fg-muted hover:text-fg")}
           >
             {t.label} {all.data ? <span className="tabular">{count(t.id)}</span> : null}
           </button>

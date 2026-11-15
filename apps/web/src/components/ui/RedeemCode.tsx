@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 /** The code a customer shows staff, with a countdown (system.md §6 RedeemCode). v2: big mono code on a grey block. */
-export function RedeemCode({ code, rewardName, expiresAt, onExpired, onCancel, status = "issued" }: { code: string; rewardName: string; expiresAt?: string | null; onExpired?: () => void; onCancel?: () => void; status?: "issued" | "used" | "void" }) {
+export function RedeemCode({ code, rewardName, label, unit, expiresAt, onExpired, onCancel, status = "issued" }: { code: string; rewardName: string; /** The small caption above the code ("Your code"); the reward's name when left out. */ label?: string; /** What is kept on cancel, in the shop's own word ("stamps", "points"). */ unit?: string; expiresAt?: string | null; onExpired?: () => void; onCancel?: () => void; status?: "issued" | "used" | "void" }) {
   const { t } = useLocaleOrEnglish();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -31,7 +31,7 @@ export function RedeemCode({ code, rewardName, expiresAt, onExpired, onCancel, s
   const spaced = code.length > 3 ? `${code.slice(0, Math.ceil(code.length / 2))} ${code.slice(Math.ceil(code.length / 2))}` : code;
   return (
     <div className="flex w-full flex-col items-center gap-3 text-center">
-      <p className="text-meta text-fg-muted">{rewardName}</p>
+      <p className="text-meta text-fg-muted">{label ?? rewardName}</p>
       <div className="w-full rounded-card bg-muted px-6 py-6">
         <span aria-label={t("wp.rc.code", { code: code.split("").join(" ") })} className="font-mono text-[40px] font-semibold leading-none tracking-[0.12em] tabular-nums text-fg">
           {spaced}
@@ -45,7 +45,7 @@ export function RedeemCode({ code, rewardName, expiresAt, onExpired, onCancel, s
       ) : null}
       {onCancel ? (
         <button type="button" onClick={onCancel} className="min-h-11 text-meta-strong text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:focus-ring">
-          {t("wp.rc.cancelKeep")}
+          {unit ? t("wp.rc.cancelKeepUnit", { unit }) : t("wp.rc.cancelKeep")}
         </button>
       ) : null}
     </div>

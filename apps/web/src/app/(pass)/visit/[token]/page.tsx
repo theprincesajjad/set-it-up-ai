@@ -6,6 +6,7 @@ import { LinkProblem, linkKind } from "@/components/errors/server";
 import { publicServerApi } from "@/lib/api/server";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { loadShopBrief } from "@/lib/restaurant/server";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function VisitPage({ params, searchParams }: Props) {
   try {
     v = await publicServerApi().public.visit(token);
   } catch (e) {
+    if (linkKind(e) === "gone") notFound();
     return (
       <PageFrame locale={locale}>
         <LinkProblem kind={linkKind(e)} retryHref={`/visit/${encodeURIComponent(token)}`} />

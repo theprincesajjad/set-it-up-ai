@@ -533,7 +533,7 @@ export async function buildQrKit(ctx: AppContext, merchantId: string): Promise<m
         return { id: l.id, name: l.name, address: l.address, qrCode: l.qrCode, joinUrl: url, qrSvg: await QRCode.toString(url, { type: "svg", margin: 1, errorCorrectionLevel: "M" }) };
       }),
     ),
-    staffScript: `"Are you on ${m.name} rewards? It's free — just your phone number." Then award ${program?.terminology ?? "points"} in the staff app.`,
+    staffScript: `"Are you on ${m.name} rewards? It’s free, just your phone number." Then award ${program?.terminology ?? "points"} in the staff app.`,
   };
 }
 

@@ -13,7 +13,7 @@ export default function FullQr() {
   useBrightScreen("qr-full");
   const size = Math.min(width, height) - 48;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={t("ms.qr.close")} onPress={() => router.back()} style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", gap: 16 }}>
+    <Pressable accessibilityRole="button" accessibilityLabel={t("ms.qr.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", gap: 16 }}>
       <QrCode value={payload ?? ""} size={size} accessibilityLabel={t("ms.qr.label")} />
       <View>
         <Text rawColor="#0B0B0C" center style={{ fontFamily: monoFamily, fontSize: 28, lineHeight: 34, letterSpacing: 3 }}>

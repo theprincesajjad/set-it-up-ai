@@ -20,6 +20,7 @@ import { assertPreorderCapacity, dateKeyIn, eidPlanDays, overrideLeadHours, QURB
 import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { awardPurchase, ensureMember, redeemReward, reverseTransaction } from "./ledger.js";
 import { computeTax, merchantProvince } from "./tax.js";
+import { isOpenNow } from "./serializers.js";
 
 type Order = typeof orders.$inferSelect;
 type OrderItem = typeof orderItems.$inferSelect;
@@ -162,6 +163,7 @@ export async function loadOrderDto(db: DbOrTx, order: Order, withCustomer = fals
     isMember: !!member,
     // About what picking this up will earn (the ledger decides the exact number), so the page can say "you will earn" or "join to earn".
     pointsEstimate: live && order.pointsEarned === 0 ? estimatePoints(program, order.subtotalCents - order.discountCents) : 0,
+    pointsTerminology: program?.terminology ?? "points",
   };
 }
 
@@ -398,6 +400,12 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
     if (pickupAt.getTime() < now.getTime() - 60_000) throw badRequest("Pickup time is in the past");
     // A pre-order's own limit is checked below, after qurbani's "booking opens" rule has had its say (it names the date).
     if (!isPreorder && pickupAt.getTime() > now.getTime() + MAX_PICKUP_AHEAD_MS) throw badRequest("Pickup time is too far ahead");
+  }
+
+  // "As soon as possible" means the shop is open: when it has set hours and is closed now, the customer picks a time (the order page offers
+  // only that). Counter and phone orders by staff do not come through here.
+  if (!isPreorder && !body.slotId && !pickupAt && isOpenNow(loc.hours, merchant.timezone, now) === false) {
+    throw badRequest(`${merchant.name} is closed right now. Choose a pickup time when it is open.`);
   }
 
   // Busy mode: an ASAP order gets the longer quoted pickup time while the kitchen is busy.

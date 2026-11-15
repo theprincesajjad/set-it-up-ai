@@ -4,6 +4,8 @@ import { auditLogs, campaignProgress, featureRollouts, ledgerAccounts, ledgerEnt
 import type { campaignsApi } from "@ll/shared";
 import { campaignVisitHook } from "../src/services/campaigns.js";
 import { awardPurchase } from "../src/services/ledger.js";
+import { undo } from "../src/services/staff.js";
+import type { StaffContext } from "../src/lib/auth.js";
 import { createMerchant, createNeighbourhood, createTestEnv, createUser, nextPhone, tokenFor, type TestEnv } from "./helpers.js";
 
 let env: TestEnv;
@@ -145,7 +147,7 @@ describe("campaigns: passport progress, bonuses and completion", () => {
     await visit(s.shops[1]!.merchant.id, phone);
     const last = await visit(s.shops[2]!.merchant.id, phone);
     expect(last.extraPoints).toBe(10);
-    expect(last.messages).toContain("Passport week complete! You're entered in the draw for Prize basket.");
+    expect(last.messages).toContain("Passport week complete. You’re entered in the draw for Prize basket.");
 
     const [p] = await env.db.select().from(campaignProgress).where(eq(campaignProgress.campaignId, c.id));
     expect(p!.merchantIds).toHaveLength(3);
@@ -218,6 +220,37 @@ describe("campaigns: passport progress, bonuses and completion", () => {
     expect(out?.pointsAwarded ?? 0).toBe(0);
     const [m] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, r.member.id));
     expect(m!.balance).toBe(36);
+  });
+});
+
+describe("campaigns: undo at the counter", () => {
+  it("takes the campaign bonus and the passport progress back with the award, and lets the shop bonus be earned again", async () => {
+    await enableCampaigns();
+    const s = await setup();
+    const t = await s.tokens();
+    const c = (await env.app.inject({ method: "POST", url: "/v1/campaigns", headers: t.admin, payload: campaignBody(s.hood.id) })).json() as campaignsApi.Campaign;
+    await env.app.inject({ method: "POST", url: `/v1/campaigns/${c.id}/schedule`, headers: t.admin });
+    for (const shop of s.shops) await env.app.inject({ method: "POST", url: `/v1/campaigns/${c.id}/merchants`, headers: t.admin, payload: { merchantId: shop.merchant.id } });
+    env.clock.now = new Date(env.clock.now.getTime() + 2 * HOUR);
+    const shop = s.shops[0]!;
+    const phone = nextPhone();
+    const first = await visit(shop.merchant.id, phone);
+    expect(first.extraPoints).toBe(10);
+    const staff = { user: shop.owner, merchant: shop.merchant, role: "owner", impersonated: false } as unknown as StaffContext;
+
+    const out = await undo(env.ctx, staff, first.transaction!.id, "Wrong customer");
+    expect(out.member.balance).toBe(0);
+    const [p] = await env.db.select().from(campaignProgress).where(eq(campaignProgress.campaignId, c.id));
+    expect(p!.merchantIds).toEqual([]);
+    expect(p!.completedAt).toBeNull();
+    const bonus = await env.db.select().from(ledgerTransactions).where(eq(ledgerTransactions.type, "campaign_bonus"));
+    expect(bonus).toHaveLength(1);
+    expect(bonus[0]!.reversedAt).not.toBeNull();
+
+    // A real visit later earns the shop bonus again.
+    const again = await visit(shop.merchant.id, phone);
+    expect(again.extraPoints).toBe(10);
+    expect(again.messages).toContain("Passport week: 1 of 3 shops visited.");
   });
 });
 

@@ -21,25 +21,30 @@ const CHUNKS: Record<Locale, () => Promise<Messages>> = {
 };
 
 const ready = new Map<Locale, Messages>();
-const pending = new Map<Locale, Promise<Messages>>();
+const pending = new Map<Locale, Tracked>();
+/** One promise per language, kept for good and given `status`/`value` once it settles (which React's `use()` reads without suspending). */
+type Tracked = Promise<Messages> & { status?: "fulfilled"; value?: Messages };
 
 /**
  * Start (or reuse) the download of one language's catalogue. With `href` (LocaleScope's versioned /i18n/<locale> URL, which it also
  * preloads in the HTML) the browser fetches the JSON, so it arrives alongside the page's scripts; otherwise the chunk is imported.
  */
 export function loadCatalog(locale: Locale, href?: string): Promise<Messages> {
-  const have = ready.get(locale);
-  if (have) return Promise.resolve(have);
+  // Always the same promise object for a language: `use(loadCatalog(l))` may then be called on every render. The first render suspends; the replay
+  // (and every later render) finds it settled and returns at once, with the same promise React saw the first time (a different one is logged as "uncached").
   let p = pending.get(locale);
   if (!p) {
     const get =
       href && typeof window !== "undefined"
         ? fetch(href, { credentials: "same-origin" }).then((r) => (r.ok ? (r.json() as Promise<Messages>) : CHUNKS[locale]()), () => CHUNKS[locale]())
         : CHUNKS[locale]();
-    p = get.then((m) => {
+    const tracked: Tracked = get.then((m) => {
       ready.set(locale, m);
+      tracked.value = m;
+      tracked.status = "fulfilled";
       return m;
     });
+    p = tracked;
     pending.set(locale, p);
   }
   return p;
@@ -48,7 +53,7 @@ export function loadCatalog(locale: Locale, href?: string): Promise<Messages> {
 /** Put a catalogue in the cache without a download (tests; callers that already hold it). */
 export function primeCatalog(locale: Locale, messages: Messages): void {
   ready.set(locale, messages);
-  pending.set(locale, Promise.resolve(messages));
+  pending.set(locale, Object.assign(Promise.resolve(messages), { status: "fulfilled" as const, value: messages }));
 }
 
 /** The catalogue if it is already in, without suspending. */
@@ -58,7 +63,7 @@ export function catalogNow(locale: Locale): Messages | undefined {
 
 /** The catalogue for `locale`, suspending the first time it is needed. */
 export function useCatalog(locale: Locale, href?: string): Messages {
-  return ready.get(locale) ?? use(loadCatalog(locale, href));
+  return use(loadCatalog(locale, href));
 }
 
 /** `t` against one loaded catalogue: the key itself when missing, so a bug is visible. */

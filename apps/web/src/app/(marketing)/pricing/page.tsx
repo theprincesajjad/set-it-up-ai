@@ -68,7 +68,7 @@ type Audience = "shop" | "booking" | "restaurant" | "bia";
 function OtherAudiences({ audience }: { audience: Audience }) {
   const others = P.others.filter((o) => o.id !== (audience === "booking" ? "shop" : audience));
   return (
-    <section aria-label={P.othersLabel} className="mx-auto max-w-300 px-4 pb-12 md:px-8 md:pb-16">
+    <section aria-label={P.othersLabel} className="mx-auto max-w-360 px-5 pb-12 md:px-10 xl:px-15 md:pb-16">
       <ul className="grid gap-4 md:grid-cols-2">
         {others.map((o) => (
           <li key={o.id}>
@@ -106,7 +106,7 @@ export default async function PricingPage({ searchParams }: Props) {
   return (
     <>
       {/* Wave Q: a centred head (Stripe/Linear pricing pages): the promise, one line, and the audience chips. The decorative tile art is gone, and the headline paints with the first frame (no fade: it is the LCP). */}
-      <section className="mx-auto max-w-300 px-4 pt-10 pb-8 text-center md:px-8 md:pt-16 md:pb-12">
+      <section className="mx-auto max-w-360 px-5 pt-10 pb-8 text-center md:px-10 xl:px-15 md:pt-16 md:pb-12">
         <div className="flex flex-col items-center">
           <p className="text-meta-strong text-muted-foreground">{P.eyebrow}</p>
           <h1 className="display mt-4 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">{sentenceCase(P.title)}</h1>
@@ -125,13 +125,13 @@ export default async function PricingPage({ searchParams }: Props) {
       {shopPlans ? (
       <>
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
-        <p className="mx-auto mb-4 max-w-300 px-4 text-center text-meta-strong text-muted-foreground md:px-8">{copy.proPricing.pricesNote}</p>
-        <div className="mx-auto grid max-w-300 items-stretch gap-4 px-4 md:px-8 lg:grid-cols-3 lg:gap-5 lg:py-4">
+        <p className="mx-auto mb-4 max-w-360 px-5 text-center text-meta-strong text-muted-foreground md:px-10 xl:px-15">{copy.proPricing.pricesNote}</p>
+        <div className="mx-auto grid max-w-360 items-stretch gap-4 px-5 md:px-10 xl:px-15 lg:grid-cols-3 lg:gap-5 lg:py-4">
           <FreeCard audience={words} />
           <PaidCard id="plus" firstYear={firstYear} audience={words} />
           <PaidCard id="studio" firstYear={firstYear} audience={words} />
         </div>
-        <p className="mx-auto mt-4 max-w-300 px-4 text-meta text-muted-foreground md:px-8">
+        <p className="mx-auto mt-4 max-w-360 px-5 text-meta text-muted-foreground md:px-10 xl:px-15">
           {planNote(words)}
           {audience === "shop" ? (
             <>
@@ -142,12 +142,12 @@ export default async function PricingPage({ searchParams }: Props) {
             </>
           ) : null}
         </p>
-        <div className="mx-auto mt-4 max-w-300 px-4 md:px-8">
+        <div className="mx-auto mt-4 max-w-360 px-5 md:px-10 xl:px-15">
           <ServiceLine />
         </div>
         {/* Wave P: the plan table folds away under the cards (the cards already list what matters), and the four-card booking-app
             strip that sat here is gone: the dated table below (#booking-apps) says the same with sources. */}
-        <div className="mx-auto mt-8 max-w-300 px-4 md:px-8">
+        <div className="mx-auto mt-8 max-w-360 px-5 md:px-10 xl:px-15">
           <details id="compare" open={compareOpen} className="group scroll-mt-20 rounded-card bg-card shadow-card" data-testid="compare">
             <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 px-5 text-headline text-foreground focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
               {P.planTableSummary}
@@ -166,7 +166,7 @@ export default async function PricingPage({ searchParams }: Props) {
             </div>
           </details>
         </div>
-        <p className="mx-auto mt-6 max-w-300 px-4 text-meta text-muted-foreground md:px-8">
+        <p className="mx-auto mt-6 max-w-360 px-5 text-meta text-muted-foreground md:px-10 xl:px-15">
           {fill(P.openNote, { target: String(PLUS_TARGET) })}
           {/* The live count shows only past the same floor as the home page's counts: "0 shops have joined" proves nothing. */}
           {activeShops !== null && activeShops >= LIVE_PROOF_MIN_SHOPS ? ` ${fill(P.openCount, { n: activeShops })}` : ""} {P.openNever}

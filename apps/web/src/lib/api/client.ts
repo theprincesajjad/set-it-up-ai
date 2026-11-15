@@ -139,8 +139,13 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     }
 
     if (res.status === 401 && !retried && !opts.anonymous && options.refresh) {
-      const ok = await options.refresh().catch(() => false);
-      if (ok) return send<T>(path, opts, true);
+      // Only a lost session is worth a refresh and a replay: a wrong staff PIN (`invalid_pin`) is also a 401 and replaying it counts a second failure.
+      const peek = (await res.clone().json().catch(() => null)) as { error?: { code?: unknown } } | null;
+      const peekCode = peek?.error?.code;
+      if (peekCode === undefined || peekCode === "unauthorized") {
+        const ok = await options.refresh().catch(() => false);
+        if (ok) return send<T>(path, opts, true);
+      }
     }
 
     if (opts.raw && res.ok) return res as unknown as T;

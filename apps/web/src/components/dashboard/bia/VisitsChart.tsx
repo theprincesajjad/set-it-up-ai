@@ -31,7 +31,7 @@ export function VisitsChart({ weekly, hoodId }: { weekly: campaignsApi.Neighbour
       action={
         <div className="flex items-center gap-3 text-meta text-fg-muted">
           <span>{weekly.length} weeks</span>
-          <button type="button" onClick={() => setAsTable((v) => !v)} className="rounded-sm hover:text-fg focus-visible:focus-ring">
+          <button type="button" onClick={() => setAsTable((v) => !v)} className="rounded-sm hover:text-fg focus-visible:focus-ring max-md:-my-3 max-md:inline-flex max-md:min-h-11 max-md:items-center">
             {asTable ? "View as chart" : "View as table"}
           </button>
         </div>

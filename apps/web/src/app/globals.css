@@ -4,6 +4,13 @@
 @import "@ll/design-tokens/theme.css";
 
 /*
+ * `rtl:` and `ltr:` follow the element's own direction. Tailwind's built-in variants also match any ancestor with dir="rtl", so a left-to-right
+ * block inside a right-to-left page (the English screens in Urdu, a phone number in a <bdi dir="ltr">) got mirrored icons and right-aligned tables.
+ */
+@custom-variant rtl (&:where(:dir(rtl)));
+@custom-variant ltr (&:where(:dir(ltr)));
+
+/*
  * v3 tokens (docs/design/v3-strategy.md section 5) are generated into @ll/design-tokens/theme.css and tokens.css from
  * packages/design-tokens/src/colors.ts: --background, --foreground, --card, --muted, --accent (hover surface),
  * --border, --input, --ring, --sidebar-*, --points*, --success*, --info*, --warning*, --paper, --chart-1..5, --radius.

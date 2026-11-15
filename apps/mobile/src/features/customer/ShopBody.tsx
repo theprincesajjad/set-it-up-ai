@@ -196,7 +196,8 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
         : tr("ms.shop.earnVisit", { amount: formatPtsL(L, program.pointsPerVisit, term) })
     : null;
   const noEarn = s.merchant.vertical === "pharmacy" ? ` · ${tr("ms.shop.rxNoEarn")}` : "";
-  const kind = [placeKindLabel(L.locale, s.merchant.vertical), (loc?.address ?? s.merchant.neighbourhood?.name)?.toLowerCase()].filter(Boolean).join(" · ");
+  // The address keeps its own capitals and reads left to right inside a right-to-left line.
+  const kind = [placeKindLabel(L.locale, s.merchant.vertical), L.ltr(loc?.address ?? s.merchant.neighbourhood?.name ?? "")].filter(Boolean).join(" · ");
 
   const ready = rewardsList.filter((r) => r.affordable);
   const goal = program?.stampGoal || 10;
@@ -503,16 +504,18 @@ export function ShopCardCta({ model }: { model: ShopModel }) {
   const { c, isDark, isClear } = useTheme();
   const { t } = useLocale();
   if (!model.shop.data || !model.membership) return null;
+  // "to redeem" only when there is something to redeem; otherwise the button just opens the card.
+  const text = t(model.membership.rewardsAvailableCount > 0 ? "ms.shop.showCardRedeem" : "sh.nav.myCard");
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t("ms.shop.showCardRedeem")}
+      accessibilityLabel={text}
       onPress={() => router.push("/card")}
       style={({ pressed }) => [ctaStyles.cta, { backgroundColor: c.brand, opacity: pressed ? 0.88 : 1 }, isClear ? ({ boxShadow: isDark ? "0 8px 20px -4px rgba(0,0,0,0.6)" : "0 8px 20px -4px rgba(20,24,40,0.35)" } as object) : glow(isDark)]}
     >
       <CardQrIcon size={20} color={c.onBrand} />
       <Text style={ui(16, 600, 20)} rawColor={c.onBrand}>
-        {capFirst(t("ms.shop.showCardRedeem"))}
+        {capFirst(text)}
       </Text>
     </Pressable>
   );

@@ -27,12 +27,12 @@ export default async function NeighbourhoodsPage() {
   }
   return (
     <>
-      <section className="mx-auto max-w-[1200px] px-4 pt-14 pb-12 md:px-8 md:pt-24 md:pb-16">
+      <section className="mx-auto max-w-360 px-5 pt-14 pb-12 md:px-10 xl:px-15 md:pt-24 md:pb-16">
         <p className="text-meta-strong text-muted-foreground">Where we are</p>
         <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">One neighbourhood at a time.</h1>
         <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">We launch street by street, with the shops and the BIA. Here’s where your card works today.</p>
       </section>
-      <section className="mx-auto max-w-[1200px] px-4 pb-16 md:px-8 md:pb-24">
+      <section className="mx-auto max-w-360 px-5 pb-16 md:px-10 xl:px-15 md:pb-24">
         {items === null ? (
           // The list failed to load: say so (never an empty list that looks real), one way to retry and one way out. The page keeps its own h1.
           <ErrorState
@@ -66,7 +66,7 @@ export default async function NeighbourhoodsPage() {
                     </span>
                     <StatusDot tone={n.status === "live" ? "positive" : "neutral"}>{n.status === "live" ? "Live" : "Just starting"}</StatusDot>
                   </div>
-                  <h2 className="display mt-auto text-mkt-sm lowercase text-foreground">{n.name}</h2>
+                  <h2 className="display mt-auto text-mkt-sm text-foreground">{n.name}</h2>
                   <p className="text-meta text-muted-foreground">
                     <span className="font-semibold tabular-nums text-foreground">
                       {n.shopCount} {n.shopCount === 1 ? "shop" : "shops"}

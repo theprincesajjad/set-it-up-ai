@@ -11,7 +11,7 @@ import { getServerApi } from "@/lib/api/server";
 import { isApiError } from "@/lib/api/errors";
 import { currentPath, requireMeOrOutage } from "@/lib/auth/session";
 import { LocaleScope } from "@/lib/i18n";
-import { getLocale, getT } from "@/lib/i18n/server";
+import { getLocaleForProfile, getT } from "@/lib/i18n/server";
 import { preloadInter } from "@/lib/fonts/inter";
 
 export const metadata: Metadata = { title: { default: "Dashboard", template: "%s · Dashboard" }, robots: { index: false, follow: false } };
@@ -41,7 +41,8 @@ export default async function MerchantLayout({ children, params }: { children: R
     if (isApiError(e) && (e.isNetwork || e.status >= 500)) return <ServiceUnreachable audience="owner" counterHref={`/m/${merchantId}/counter`} />;
     throw e;
   }
-  const locale = await getLocale();
+  // ?lang= and the language cookie win; otherwise the language this staff member chose for this shop, then the browser's.
+  const locale = await getLocaleForProfile(undefined, membership?.locale);
   const viewingAs = membership ? null : me.platformRole === "admin" ? "admin" : "rep";
   return (
     <ThemeStyle style={detail.merchant.themeStyle} dark={detail.merchant.themeDark} merchantId={detail.merchant.id}>

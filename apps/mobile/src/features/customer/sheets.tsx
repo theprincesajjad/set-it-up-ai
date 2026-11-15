@@ -258,10 +258,16 @@ export function PushPrompt({ visible, onClose }: { visible: boolean; onClose: ()
             loading={busy}
             onPress={async () => {
               setBusy(true);
-              const res = await registerForCustomerPush().catch(() => "unavailable" as const);
+              const res = await registerForCustomerPush().catch(() => "failed" as const);
               setBusy(false);
               if (res === "registered") toast({ tone: "success", message: t("ms.notif.on") });
               else if (res === "denied") toast(t("ms.notif.offHint"));
+              else {
+                // Never close in silence as if alerts were on, and do not mark the prompt done: it can be asked again.
+                toast({ tone: "error", message: t(res === "unavailable" ? "ms.notif.unavailable" : "err.generic.line") });
+                onClose();
+                return;
+              }
               close();
             }}
           >

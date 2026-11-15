@@ -15,8 +15,8 @@ import { createMerchant, createNeighbourhood, createTestEnv, createUser, tokenFo
 
 /** Statements per request (steady state: a regular, caches warm). The ledger write is 3, the visit 2; the rest are the staff and member reads, the hooks' reads and the response summary. */
 const AWARD_QUERY_BUDGET = 20;
-/** The first stamp at a shop in a live passport campaign also posts the network-funded bonus (a second ledger transaction). */
-const CAMPAIGN_BONUS_AWARD_QUERY_BUDGET = 28;
+/** The first stamp at a shop in a live passport campaign also posts the network-funded bonus (a second ledger transaction) and reads the customer's language for the passport line. */
+const CAMPAIGN_BONUS_AWARD_QUERY_BUDGET = 29;
 const LOOKUP_QUERY_BUDGET = 8;
 /** Server time per award, in-process on an idle database (the brief is < 300 ms on a production-like one). */
 const AWARD_P50_MS_BUDGET = 300;

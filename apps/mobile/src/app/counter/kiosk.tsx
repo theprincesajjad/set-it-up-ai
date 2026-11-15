@@ -9,7 +9,7 @@ import { managerBus } from "../../features/scanBus";
 import { formatPtsL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
 import { newIdempotencyKey } from "../../lib/ids";
-import { formatNanp, toE164 } from "../../lib/phone";
+import { formatNanp, last4Label, toE164 } from "../../lib/phone";
 import { api } from "../../state/api";
 import { useCounter } from "../../state/counter";
 import { ThemeScope, useTheme } from "../../theme";
@@ -45,6 +45,9 @@ function KioskInner() {
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** A check-in the server refused: the number is masked at once (this screen faces the next customer) and wiped shortly after. */
+  const [refused, setRefused] = useState(false);
+  const wipe = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [result, setResult] = useState<{ title: string; sub: string } | null>(null);
   const [bigText, setBigText] = useState(false);
   const [padArea, setPadArea] = useState(0);
@@ -55,6 +58,8 @@ function KioskInner() {
   const consentText = locale === "en" ? customerApi.marketingConsentText(shopName) : translate(locale, "auth.consent.merchantApp", { shop: shopName, brand: BRAND.name });
 
   const reset = () => {
+    if (wipe.current) clearTimeout(wipe.current);
+    setRefused(false);
     setDigits("");
     setConsent(false);
     setError(null);
@@ -74,6 +79,7 @@ function KioskInner() {
     return () => void (idle.current && clearTimeout(idle.current));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, digits]);
+  useEffect(() => () => void (wipe.current && clearTimeout(wipe.current)), []);
 
   useEffect(
     () =>
@@ -123,6 +129,13 @@ function KioskInner() {
       });
       setStep("done");
     } catch (e) {
+      setRefused(true);
+      if (wipe.current) clearTimeout(wipe.current);
+      wipe.current = setTimeout(() => {
+        setDigits("");
+        setError(null);
+        setRefused(false);
+      }, 3000);
       setError(isApiError(e) && e.code === "cooldown" ? t("mc.k.already") : isApiError(e) && e.isNetwork ? t("mc.k.offlineErr") : isApiError(e) && e.status === 429 ? t("err.rate.lineNoWait") : t("auth.err.server"));
     } finally {
       setBusy(false);
@@ -163,6 +176,13 @@ function KioskInner() {
   }
   const onKey = (k: KeypadKey) => {
     setError(null);
+    if (refused) {
+      // The next customer starts typing: their first digit starts a new number, not a tenth digit on the last one.
+      if (wipe.current) clearTimeout(wipe.current);
+      setRefused(false);
+      setDigits(k === "back" || k === "clear" ? "" : k);
+      return;
+    }
     setDigits((d) => (k === "back" ? d.slice(0, -1) : k === "clear" ? "" : d.length < 10 ? d + k : d));
   };
   const logoEl = (size: number) => (
@@ -210,7 +230,7 @@ function KioskInner() {
           ) : (
             <>
               <Text variant="keypad" tabular center maxFontSizeMultiplier={1.4} style={{ fontSize: 36, lineHeight: 44, minHeight: 44, fontWeight: "500" }}>
-                {formatNanp(digits) || " "}
+                {(refused ? L.ltr(last4Label(digits)) : L.ltr(formatNanp(digits))) || " "}
               </Text>
               {error ? <Banner variant="danger">{error}</Banner> : null}
               {/* The keypad is laid over this box, so its size never feeds back into the measurement. */}
@@ -249,7 +269,7 @@ function KioskInner() {
           ) : (
             <>
               <Text variant="keypad" tabular center maxFontSizeMultiplier={1.4} style={{ fontSize: 44, lineHeight: 52, minHeight: 52, fontWeight: "500" }}>
-                {formatNanp(digits) || " "}
+                {(refused ? L.ltr(last4Label(digits)) : L.ltr(formatNanp(digits))) || " "}
               </Text>
               {error ? <Banner variant="danger">{error}</Banner> : null}
               <Keypad size="kiosk" onKey={onKey} />

@@ -19,10 +19,11 @@
 import { cityFromAddress } from "@/lib/address";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AID_OFF, AID_PATTERN, LANDING_COOKIES, normalizePostal, onboardingPath, parseVariantCookie, tradeSetupFor, type merchantApi } from "@ll/shared";
 import { browserApi, browserClient, sessionApi } from "@/lib/api/browser";
-import { errorMessage, isApiError } from "@/lib/api/errors";
+import { errorKind, isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { toE164 } from "@/lib/phone";
 import { routes } from "@/lib/routes";
 import { RESTAURANT_VERTICALS, afterSignupPath } from "@/lib/signupRoute";
@@ -89,15 +90,18 @@ function beaconSignupStart(): void {
 
 export interface SignupWizardProps {
   signedInName?: string | null;
+  /** The shop the signed-in owner already has (first one), so the first step can say so. */
+  signedInShop?: { id: string; name: string } | null;
   /** From the sales assistant's link or a landing page (lib/marketing/signupPrefill.ts). Only starting values: every field stays editable. */
   prefill?: { shop?: string; vertical?: string; phone?: string; email?: string; color?: string; plan?: string; src?: string; interval?: "year"; v?: { experimentId: string | null; variant: string } };
   /** Tests inject a fake website reader. */
   importer?: Importer;
 }
 
-export function SignupWizard({ signedInName, prefill, importer }: SignupWizardProps) {
+export function SignupWizard({ signedInName, signedInShop, prefill, importer }: SignupWizardProps) {
   useEffect(beaconSignupStart, []);
   const { t } = useLocaleOrEnglish();
+  const errText = useErrorText();
   // The step in the address bar. Read from window.location (not useSearchParams) so a pushState and the render that follows agree.
   const [requested, setRequested] = useState<string | null>(null);
   const [draft, setDraft] = useState<SignupDraft | null>(null);
@@ -105,6 +109,8 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
   const [errors, setErrors] = useState<StepErrors>({});
   const [banner, setBanner] = useState<ReactNode>(null);
   const [busy, setBusy] = useState(false);
+  // The steps left by "Continue", most recent last: Back then goes back in the browser's history (so Forward works) instead of adding an entry.
+  const trail = useRef<string[]>([]);
 
   // Restore the draft (sessionStorage) and lay the link's values over it (once per link: draft.prefillKey).
   useEffect(() => {
@@ -128,7 +134,13 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
   }, [draft]);
   // Browser Back and Forward move between steps.
   useEffect(() => {
-    const onPop = () => setRequested(new URL(window.location.href).searchParams.get("step"));
+    const onPop = () => {
+      const s = new URL(window.location.href).searchParams.get("step");
+      if (trail.current[trail.current.length - 1] === s) trail.current.pop();
+      setErrors({});
+      setBanner(null);
+      setRequested(s);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -148,6 +160,8 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
   const go = useCallback((s: FlowStep) => {
     setErrors({});
     setBanner(null);
+    const from = new URL(window.location.href).searchParams.get("step");
+    if (from) trail.current.push(from);
     const u = new URL(window.location.href);
     u.searchParams.set("step", s);
     window.history.pushState(window.history.state, "", u);
@@ -158,7 +172,16 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
     const i = idx;
     if (i >= 0 && i < STEPS.length - 1) go(STEPS[i + 1]!);
   }, [idx, go]);
-  const back = idx > 0 ? () => go(STEPS[idx - 1]!) : null;
+  const back =
+    idx > 0
+      ? () => {
+          const prev = STEPS[idx - 1]!;
+          if (trail.current[trail.current.length - 1] === prev) window.history.back();
+          else go(prev);
+        }
+      : null;
+  /** Typing in an account field takes its red error away. */
+  const clearError = useCallback((k: keyof StepErrors) => setErrors((e) => (e[k] ? { ...e, [k]: undefined } : e)), []);
 
   async function create(password: string) {
     if (!draft) return;
@@ -173,6 +196,7 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
     setBanner(null);
     if (Object.keys(errs).length) return requestAnimationFrame(() => document.querySelector<HTMLElement>("[aria-invalid=true]")?.focus());
     setBusy(true);
+    let madeAccount = false;
     try {
       if (!registered) {
         try {
@@ -180,6 +204,7 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
           // studio. Never the part of the email before the @: it reached the public booking page and the confirmation (final audit).
           await sessionApi.register({ name: draft.name.trim().slice(0, 120) || "Owner", email: draft.email.trim(), password });
           setRegistered(true);
+          madeAccount = true;
         } catch (err) {
           if (isApiError(err) && err.status === 409)
             setBanner(
@@ -191,7 +216,7 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
                 {t("su.err.toAdd")}
               </>,
             );
-          else setBanner(errorMessage(err));
+          else setBanner(errText(err));
           return;
         }
       }
@@ -235,24 +260,28 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
       if (isApiError(err) && err.status === 401) {
         setRegistered(false);
         setBanner(t("su.err.session"));
-      } else setBanner(errorMessage(err));
+      } else if (madeAccount && ["offline", "network", "server", "generic"].includes(errorKind(err))) setBanner(t("su.err.shopAfterAccount"));
+      else setBanner(errText(err));
     } finally {
       setBusy(false);
     }
   }
 
   const nextSteps = draft?.created ? nextStepsFor(draft.created, t) : [];
+  const goDash = draft?.created ? routes.dashboard(draft.created.id) : "";
   if (!draft || !step) return <div className="min-h-dvh bg-bg" aria-busy="true" />;
 
   // The colour flows through as soon as it is known: the site's colour right after the read, then the owner's pick.
-  const brandColor = draft.accepted ? (draft.accepted.brandColor ?? null) : draft.link === "read" ? (draft.imported?.fields.brandColor?.value ?? null) : draft.color;
+  // On "Is this you?" the card follows what the owner has picked so far (draft.preview), before Continue saves it.
+  const brandColor = draft.preview && draft.link === "read" ? draft.preview.brandColor : draft.accepted ? (draft.accepted.brandColor ?? null) : draft.link === "read" ? (draft.imported?.fields.brandColor?.value ?? null) : draft.color;
+  const asideLogo = draft.preview && draft.link === "read" ? draft.preview.logo : (draft.accepted?.logoPreview ?? null);
   const colors = shopColorProps(draft.vertical || brandColor ? { vertical: draft.vertical || null, brandColor } : null);
   const card = step === "card" || step === "account" ? cardFor(draft.vertical, draft.card) : null;
   const aside =
     step === "live" ? null : (
       <div className="flex w-full max-w-[380px] flex-col gap-4">
         <p className="text-meta font-[550] text-fg">{t("sf.preview.label")}</p>
-        <CardPreview name={draft.name} vertical={draft.vertical} brandColor={brandColor} logo={draft.accepted?.logoPreview ?? null} card={card} tilt stack />
+        <CardPreview name={draft.name} vertical={draft.vertical} brandColor={brandColor} logo={asideLogo} card={card} tilt stack />
         <p className="text-meta text-fg-muted">{t("sf.preview.caption")}</p>
       </div>
     );
@@ -272,18 +301,34 @@ export function SignupWizard({ signedInName, prefill, importer }: SignupWizardPr
   const created = draft.created;
   return (
     <FlowShell step={step === "live" ? null : idx + 1} total={STEPS.length} onBack={step === "live" ? null : back} exitHref={step === "live" ? null : "/"} colors={colors} aside={aside}>
-      {step === "link" ? <LinkStep {...props} importer={importer} /> : null}
-      {step === "shop" ? <ShopStep {...props} onRelink={() => { update({ link: "ask" }); go("link"); }} /> : null}
+      {step === "link" ? (
+        <LinkStep
+          {...props}
+          importer={importer}
+          notice={
+            signedInShop ? (
+              <p className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg" data-signed-in-notice>
+                {t("sf.link.signedIn", { shop: signedInShop.name })}{" "}
+                <Link className="font-[550] text-link underline" href={routes.dashboard(signedInShop.id)}>
+                  {t("sf.link.openDash")}
+                </Link>
+              </p>
+            ) : null
+          }
+        />
+      ) : null}
+      {step === "shop" ? <ShopStep {...props} onRelink={() => { update({ link: "ask", preview: null }); go("link"); }} /> : null}
       {step === "kind" ? <KindStep {...props} /> : null}
       {step === "where" ? <WhereStep {...props} /> : null}
       {step === "card" ? <LoyaltyStep {...props} /> : null}
-      {step === "account" ? <AccountStep draft={draft} update={update} registered={registered} busy={busy} banner={banner} errors={errors} onCreate={create} terms={terms} brandColor={brandColor} /> : null}
+      {step === "account" ? <AccountStep draft={draft} update={update} registered={registered} busy={busy} banner={banner} errors={errors} clearError={clearError} onCreate={create} terms={terms} brandColor={brandColor} signedInAs={draft.email.trim() || signedInName || null} /> : null}
       {step === "live" && created ? (
         <LiveStep
           draft={draft}
           nextSteps={nextSteps}
           primaryHref={afterSignupPath(routes.dashboard(created.id), created.vertical, prefill?.plan, created.workSetting, prefill?.interval)}
-          primaryLabel={prefill?.plan ? t("sf.live.checkout") : t("sf.live.go")}
+          primaryLabel={prefill?.plan ? t("sf.live.checkout") : (nextSteps[0]?.title ?? t("sf.live.go"))}
+          dashboardHref={goDash}
           onLeave={clearDraft}
         />
       ) : null}
@@ -316,10 +361,12 @@ function nextStepsFor(shop: NonNullable<SignupDraft["created"]>, t: ReturnType<t
   const s = (key: string) => `${base}/setup?step=${key}`;
   const qr: NextStep = { icon: "qr_stand", title: t("sf.live.n.qr"), body: t("sf.live.n.qrBody"), href: s("qr_kit") };
   if (onboardingPath(shop.vertical, shop.workSetting) !== "storefront")
+    // The first card is where the primary button goes (afterSignupPath: the booking link), so the button and Step 1 always agree.
     return [
+      { icon: "link", title: t("sf.live.n.link"), body: t("sf.live.n.linkBody"), href: s("your_link") },
       { icon: "price_tag", title: t("sf.live.n.services"), body: t("sf.live.n.servicesBody"), href: s("services") },
       { icon: "calendar_week", title: t("sf.live.n.hours"), body: t("sf.live.n.hoursBody"), href: s("hours") },
-      { icon: "link", title: t("sf.live.n.share"), body: t("sf.live.n.shareBody"), href: s("share") },
+      { icon: "megaphone", title: t("sf.live.n.share"), body: t("sf.live.n.shareBody"), href: s("share") },
     ];
   if (RESTAURANT_VERTICALS.includes(shop.vertical))
     return [{ icon: "eat", title: t("sf.live.n.restaurant"), body: t("sf.live.n.restaurantBody"), href: afterSignupPath(base, shop.vertical, null, shop.workSetting) }, qr];

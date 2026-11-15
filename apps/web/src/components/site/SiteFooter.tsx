@@ -53,7 +53,8 @@ const LANDING_AB = /^\/for-(nail-techs|barbers|groomers)(\?|$)/;
 /** The footer's language names: system fonts only, so no web font is fetched for them (see the note beside them). */
 const SYSTEM_FACE = { fontFamily: "system-ui, sans-serif" } as const;
 
-export function SiteFooter() {
+/** `startHref`: where "Start free" goes. The solo trade pages send it to their own start form (#start), which carries the trade into sign-up. */
+export function SiteFooter({ startHref }: { startHref?: string } = {}) {
   return (
     // The footer is English on every page, also on the pages shown in Hindi, Urdu or Punjabi: it says so (lang) and reads left to right
     // (on the Urdu page it otherwise inherited right-to-left, which moved the full stops and the © to the wrong end of each line).
@@ -67,7 +68,7 @@ export function SiteFooter() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <Link href="/signup" prefetch={false} className="inline-flex min-h-13 items-center rounded-full bg-mkt-paper px-7 text-headline font-semibold text-mkt-black transition-colors hover:bg-mkt-grey-hover focus-visible:focus-ring">
+            <Link href={startHref ?? "/signup"} prefetch={false} className="inline-flex min-h-13 items-center rounded-full bg-mkt-paper px-7 text-headline font-semibold text-mkt-black transition-colors hover:bg-mkt-grey-hover focus-visible:focus-ring">
               Start free
             </Link>
             <a href={`mailto:${BRAND.supportEmail}`} className="inline-flex min-h-11 items-center text-base font-medium text-mkt-on-black underline decoration-1 underline-offset-4 focus-visible:focus-ring">

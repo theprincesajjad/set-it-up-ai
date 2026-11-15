@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PLANS, PROMOS_PER_MONTH_PLUS, showsPoweredBy } from "@ll/shared";
 import { CompetitorTableSolo } from "@/components/marketing/CompetitorTableSolo";
 import { SoloLanding } from "@/components/marketing/SoloLanding";
@@ -14,6 +14,9 @@ import { PLAN_COPY, marketingPlans, planVars } from "@/lib/marketing/plan-copy";
 import { soloView } from "@/lib/marketing/solo-view";
 import { MAX_SOURCE_AGE_DAYS, ageInDays, formatAsOf } from "@/lib/marketing/sources";
 import { moneyShort } from "@/lib/marketing/text";
+
+// next/font is a build-time transform; the solo pages (which now wear the marketing faces) only need the class name it returns.
+vi.mock("next/font/local", () => ({ default: () => ({ variable: "font-var", className: "font-class", style: { fontFamily: "Halden" } }) }));
 
 const C = copy.solo;
 const compare = { eyebrow: "e", title: "t", sub: "s", brand: "Local Loyalty", rows: C.compare.rows, us: C.compare.us, usSource: C.compare.usSource, foot: C.compare.foot };
@@ -89,7 +92,7 @@ describe("price block", () => {
     expect(v.pro.caption).toMatch(/Illustrative/);
     expect(v.week.stats.map((x) => x.n)).toEqual([31, 38, 18, 4]);
     expect(v.week.upNext.who).toBe("Priya");
-    expect(v.bookings.done).toBe("Booked · Sat 11:30 am");
+    expect(v.bookings.done).toBe("Booked · Sat 11:30 a.m.");
     expect(v.promos.allowance).toBe(`${PROMOS_PER_MONTH_PLUS} promos a month with ${PLANS.plus.name}`);
     expect(PLANS.plus.name).toBe("Pro");
     expect(v.hero.price).toBe(`Free to start, with ${P.trial} days of ${PLANS.plus.name} included. ${PLANS.plus.name} is $${PLANS.plus.priceCents / 100} a month if you keep it. No credit card.`);

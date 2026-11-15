@@ -14,6 +14,7 @@ import "@/components/marketing/landing/landing.css";
 import { CountingOff } from "@/components/marketing/landing-ab/CountingOff";
 import { LandingMeasure } from "@/components/marketing/landing-ab/LandingMeasure";
 import { QrCode } from "@/components/ui/QrCode";
+import { InlineScript } from "@/components/ui/ThemeStyle";
 import { copy } from "@/copy/en-CA";
 import { Emph } from "@/lib/marketing/emphasis";
 import { marketingFontVars } from "@/lib/marketing/fonts";
@@ -45,9 +46,9 @@ const P = PASSES.bakery;
  * Every sign-up ask on the page goes to /signup and carries its data-cta (the funnel counts them; e2e/marketing-bia.spec.ts allows 8 in
  * <main>). Black pill by default, white on the black bands, outlined as the quiet one. The arrow nudges on hover (landing.css).
  */
-function Primary({ cta, children, tone = "black", xl = false }: { cta: string; children: React.ReactNode; tone?: "black" | "outline" | "white"; xl?: boolean }) {
+function Primary({ cta, children, tone = "black", xl = false, href = "/signup" }: { cta: string; children: React.ReactNode; tone?: "black" | "outline" | "white"; xl?: boolean; /** A plan button carries its plan, like /pricing: ?plan=studio opens its checkout after sign-up. */ href?: string }) {
   return (
-    <Link href="/signup" prefetch={false} className={`lp-btn lp-btn-${tone}${xl ? " lp-btn-xl" : ""}`} data-cta={cta}>
+    <Link href={href} prefetch={false} className={`lp-btn lp-btn-${tone}${xl ? " lp-btn-xl" : ""}`} data-cta={cta}>
       {children}
       <ArrowRight aria-hidden strokeWidth={2} />
     </Link>
@@ -99,11 +100,12 @@ const FILL_SCRIPT = `(()=>{try{if(!("IntersectionObserver"in window)||matchMedia
 /**
  * Wave W, plain script beside the fill: (0, wave Z2) a sideways row with nothing focusable in it becomes a tab stop while it scrolls, so
  * the keyboard can scroll it (it is named by its section's heading); (1) the dots under each sideways row follow its scroll; (2) the phone's sticky button hides
- * while the hero's button, the card maker's button or the closing band's button is on screen, and over the site footer, which has its
+ * while the hero's button, the card maker, the visit form or the closing band's button is on screen (so it never covers a field or
+ * competes with that section's own button), and over the site footer, which has its
  * own "Start free" and is parsed after this script, so it is observed once the document is ready ("data-hide"; the server markup starts
  * hidden, over the hero). Without IntersectionObserver it simply shows; without script the first dot stays marked.
  */
-const SNAP_SCRIPT = `(()=>{try{var kb=function(){document.querySelectorAll("[data-snap]").forEach(function(row){if(row.querySelector("a,button"))return;row.scrollWidth>row.clientWidth+1?row.setAttribute("tabindex","0"):row.removeAttribute("tabindex")})};kb();addEventListener("resize",kb,{passive:true});document.querySelectorAll("[data-snap]").forEach(function(row){var d=row.nextElementSibling;if(!d||!d.hasAttribute("data-snap-dots"))return;var dots=d.children,t=0;row.addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;var k=row.children,w=k.length>1?k[1].offsetLeft-k[0].offsetLeft:1,max=row.scrollWidth-row.clientWidth,i=Math.abs(row.scrollLeft)>=max-4?k.length-1:Math.round(Math.abs(row.scrollLeft)/Math.abs(w||1));for(var j=0;j<dots.length;j++)j===i?dots[j].setAttribute("data-on",""):dots[j].removeAttribute("data-on")})},{passive:true})});var s=document.querySelector(".lp-sticky");if(!s)return;if(!("IntersectionObserver"in window)){s.removeAttribute("data-hide");return}var on=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?on.add(e.target):on.delete(e.target)});on.size?s.setAttribute("data-hide",""):s.removeAttribute("data-hide")});document.querySelectorAll(".lp [data-cta=hero],.lp [data-cta=tryit],.lp [data-cta=final]").forEach(function(el){io.observe(el)});var ft=function(){var f=document.querySelector("footer");f&&io.observe(f)};document.readyState==="loading"?addEventListener("DOMContentLoaded",ft):ft()}catch(e){}})()`;
+const SNAP_SCRIPT = `(()=>{try{var kb=function(){document.querySelectorAll("[data-snap]").forEach(function(row){if(row.querySelector("a,button"))return;row.scrollWidth>row.clientWidth+1?row.setAttribute("tabindex","0"):row.removeAttribute("tabindex")})};kb();addEventListener("resize",kb,{passive:true});document.querySelectorAll("[data-snap]").forEach(function(row){var d=row.nextElementSibling;if(!d||!d.hasAttribute("data-snap-dots"))return;var dots=d.children,t=0;row.addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;var k=row.children,w=k.length>1?k[1].offsetLeft-k[0].offsetLeft:1,max=row.scrollWidth-row.clientWidth,i=Math.abs(row.scrollLeft)>=max-4?k.length-1:Math.round(Math.abs(row.scrollLeft)/Math.abs(w||1));for(var j=0;j<dots.length;j++)j===i?dots[j].setAttribute("data-on",""):dots[j].removeAttribute("data-on")})},{passive:true})});var s=document.querySelector(".lp-sticky");if(!s)return;if(!("IntersectionObserver"in window)){s.removeAttribute("data-hide");return}var on=new Set();var io=new IntersectionObserver(function(es){es.forEach(function(e){e.isIntersecting?on.add(e.target):on.delete(e.target)});on.size?s.setAttribute("data-hide",""):s.removeAttribute("data-hide")});document.querySelectorAll(".lp [data-cta=hero],#try,#book,.lp [data-cta=final]").forEach(function(el){io.observe(el)});var ft=function(){var f=document.querySelector("footer");f&&io.observe(f)};document.readyState==="loading"?addEventListener("DOMContentLoaded",ft):ft()}catch(e){}})()`;
 
 /**
  * The home page, wave V: direction B, the look the founder picked from three (dev/landing-b): Strata headlines (wave Y) with one Newsreader italic
@@ -129,7 +131,7 @@ export default function Home() {
             <h1 className="lp-h1" id="lp-title" suppressHydrationWarning>
               <RiseTitle text={L.hero.title} />
             </h1>
-            <script dangerouslySetInnerHTML={{ __html: RISE_SCRIPT }} />
+            <InlineScript html={RISE_SCRIPT} />
             <p className="lp-lede">{L.hero.sub}</p>
             <div className="lp-ask">
               <Primary cta="hero" xl>
@@ -363,7 +365,7 @@ export default function Home() {
                     )
                   ) : null}
                 </span>
-                <Primary cta="pricing" tone={p.key === "monthly" ? "white" : "outline"}>
+                <Primary cta="pricing" tone={p.key === "monthly" ? "white" : "outline"} href={p.key === "studio" ? "/signup?plan=studio" : "/signup"}>
                   {p.cta}
                 </Primary>
                 <ul>
@@ -459,14 +461,16 @@ export default function Home() {
       <div className="lp-sticky" data-hide="" suppressHydrationWarning>
         <Primary cta="sticky">{L.sticky}</Primary>
       </div>
-      <script dangerouslySetInnerHTML={{ __html: FILL_SCRIPT }} />
-      <script dangerouslySetInnerHTML={{ __html: SNAP_SCRIPT }} />
-      <script dangerouslySetInnerHTML={{ __html: VIDEO_SCRIPT }} />
+      <InlineScript html={FILL_SCRIPT} />
+      <InlineScript html={SNAP_SCRIPT} />
+      <InlineScript html={VIDEO_SCRIPT} />
       {/* For search engines: who we are, the plans and their prices, and the questions answered above (the same words). */}
       <JsonLd data={[organizationLd(), softwareLd(L.meta.description), faqLd(L.faq.map((q) => ({ q: q.q, a: f(q.a) })))]} />
-      {/* Before the notice, so its inline script finds this line. */}
-      <CountingOff />
-      <LandingMeasure path="/" />
+      {/* On the black, as the first line of the footer. CountingOff before the notice, so its inline script finds this line. */}
+      <div className="lp-notice-band">
+        <CountingOff />
+        <LandingMeasure path="/" />
+      </div>
     </div>
   );
 }

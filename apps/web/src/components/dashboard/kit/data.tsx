@@ -60,7 +60,7 @@ export function StatBlock({ items, loading, label = "Key numbers", className, ba
             tone={s.tone ?? TONES[idx % TONES.length]!}
             label={s.label}
             value={statValue(s)}
-            delta={s.delta ? { pct: s.delta.good === true ? 1 : s.delta.good === false ? -1 : 0, good: s.delta.good, text: s.delta.context ? `${s.delta.text} ${s.delta.context}` : s.delta.text } : null}
+            delta={s.delta ? { pct: s.delta.good === true ? 1 : s.delta.good === false ? -1 : 0, good: s.delta.good, text: s.delta.text, context: s.delta.context } : null}
             caption={s.caption}
             spark={s.spark}
             href={s.href}
@@ -231,8 +231,13 @@ export function Meter({ value, max, label, className, tone = "fg" }: { value: nu
 }
 
 /** Table wrapper: hairline top/bottom, horizontal scroll on phones only (keeps the sticky header on desktop). */
-export function TableWrap({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("kit-tw -mx-4 overflow-x-auto border-y border-line sm:mx-0 md:overflow-visible", className)}>{children}</div>;
+export function TableWrap({ children, className, label }: { children: ReactNode; className?: string; /** Names the scrolling region for a screen reader. */ label?: string }) {
+  // Focusable so the keyboard can scroll it sideways on a phone (a scroll box with nothing focusable inside is out of reach otherwise).
+  return (
+    <div tabIndex={0} {...(label ? { role: "region", "aria-label": label } : {})} className={cn("kit-tw -mx-4 overflow-x-auto border-y border-line focus-visible:focus-ring sm:mx-0 md:overflow-visible", className)}>
+      {children}
+    </div>
+  );
 }
 
 export function Table({ children, label, className }: { children: ReactNode; label: string; className?: string }) {

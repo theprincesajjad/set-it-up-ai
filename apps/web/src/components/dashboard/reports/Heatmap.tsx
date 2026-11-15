@@ -24,7 +24,7 @@ export function Heatmap({ data, note }: { data: reportsApi.HeatmapReport; note?:
               <span className="flex items-center text-[11px] text-fg-muted">{day}</span>
               {HEAT_HOURS.map((h) => {
                 const n = data.matrix[d]?.[h] ?? 0;
-                return <span key={h} title={`${day} ${h > 12 ? h - 12 : h}${h >= 12 ? " pm" : " am"}: ${n}`} className="h-[26px] rounded-[4px]" style={{ backgroundColor: `color-mix(in srgb, var(--heat-ink, var(--trade)) ${heatInk(n, data.max)}%, var(--accent))` }} />;
+                return <span key={h} title={`${day} ${h > 12 ? h - 12 : h}${h >= 12 ? " p.m." : " a.m."}: ${n}`} className="h-[26px] rounded-[4px]" style={{ backgroundColor: `color-mix(in srgb, var(--heat-ink, var(--trade)) ${heatInk(n, data.max)}%, var(--accent))` }} />;
               })}
             </div>
           ))}

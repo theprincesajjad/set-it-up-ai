@@ -20,5 +20,5 @@ export default async function MyThreadPage({ params, searchParams }: Props) {
   const locale = await getLocale(sp);
   const t = translator(locale);
   const me = await getMe();
-  return <PageFrame locale={locale}>{me ? <MyThread id={conversationId} /> : <PhoneSignIn heading="h2" next={`/me/messages/${conversationId}`} title={t("inbox.me.title")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}</PageFrame>;
+  return <PageFrame locale={locale}>{me ? <MyThread id={conversationId} /> : <PhoneSignIn next={`/me/messages/${conversationId}`} title={t("inbox.me.title")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}</PageFrame>;
 }

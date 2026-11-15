@@ -23,7 +23,7 @@ export function Checkbox({ checked, onChange, label, caption, disabled, name, id
   const boxRef = useHydratedChecked(checked, onChange);
   return (
     <div className="flex items-start gap-3">
-      <span className={cn("relative mt-0 inline-flex size-12 shrink-0 items-center justify-center", size === "sm" ? "-m-[14px]" : "-m-3")}>
+      <span className={cn("relative inline-flex size-12 shrink-0 items-center justify-center", size === "sm" ? "-m-[14px]" : "-m-3")}>
         <input
           ref={boxRef}
           id={id}

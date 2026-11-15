@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionSheetIOS, Linking, Platform, Pressable, ScrollView, SectionList, StyleSheet, TextInput, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { LoadFailed } from "../../features/customer/LoadFailed";
 import { useDeviceLocation } from "../../features/customer/location";
 import { ExploreMap, mapsAvailable, TORONTO, type ExploreMapHandle } from "../../features/customer/MapView";
 import { useProfile, useWallet } from "../../features/customer/queries";
@@ -17,6 +18,7 @@ import { shortHood } from "../../lib/discover";
 import { formatDistanceL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
 import { perkHeadlineL, perkProgress } from "../../lib/perks";
+import { capFirst } from "../../lib/sentenceCase";
 import { shopMatchesHalal } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
@@ -127,6 +129,7 @@ function MapChip({ label, selected, onPress, chevron, dot, float, accessibilityL
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ selected }}
+      hitSlop={{ top: 4, bottom: 4 }}
       onPress={() => {
         haptic.select();
         onPress();
@@ -159,7 +162,7 @@ export default function Explore() {
   const wallet = useWallet();
   const L = useLocale();
   const { t: tr } = L;
-  const audienceLabel = (a: Audience) => (a === "all" ? tr("ms.allShops").toLowerCase() : tr(a === "mine" ? "ms.aud.mine" : "ms.aud.new"));
+  const audienceLabel = (a: Audience) => capFirst(a === "all" ? tr("ms.allShops") : tr(a === "mine" ? "ms.aud.mine" : "ms.aud.new"));
   const loc = useDeviceLocation(prefs.locationPrompted);
   const [prompt, setPrompt] = useState(!prefs.locationPrompted);
   const [mapOk, setMapOk] = useState(mapsAvailable());
@@ -200,13 +203,17 @@ export default function Explore() {
   const shops = useQuery({ queryKey: qk.shops(JSON.stringify(params)), queryFn: () => api.network.shops(params) });
   const all = shops.data?.items ?? [];
   // No neighbourhood picked yet: name the strip by where most of the shops around you are.
-  const placeName = useMemo(() => {
-    if (hoodName) return hoodName;
+  const nearbyHood = useMemo(() => {
+    if (hoodName) return null;
     const counts = new Map<string, number>();
-    for (const x of all.slice(0, 20)) if (x.merchant.neighbourhoodId) counts.set(x.merchant.neighbourhoodId, (counts.get(x.merchant.neighbourhoodId) ?? 0) + 1);
+    for (const x of all) if (x.merchant.neighbourhoodId) counts.set(x.merchant.neighbourhoodId, (counts.get(x.merchant.neighbourhoodId) ?? 0) + 1);
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-    return hoods.data?.items.find((h) => h.id === top)?.name ?? null;
+    return hoods.data?.items.find((h) => h.id === top) ?? null;
   }, [hoodName, all, hoods.data]);
+  const placeName = hoodName ?? nearbyHood?.name ?? null;
+  /** A failed request is not an empty street: say so, with a way to try again (never "we're not on your street yet"). */
+  const failed = shops.isError && !shops.data;
+  const failBlock = <LoadFailed error={shops.error} onRetry={() => void shops.refetch()} />;
 
   const memberships = useMemo(() => {
     const out: Record<string, PinMembership> = {};
@@ -275,10 +282,10 @@ export default function Explore() {
   const float = !listMode && mapOk;
   const filters = (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters} keyboardShouldPersistTaps="handled" style={{ overflow: "visible" }}>
-      <MapChip float={float} label={audience === "all" ? tr("ms.aud.mine") : audienceLabel(audience)} chevron selected={audience !== "all"} onPress={pickAudience} accessibilityLabel={tr("ms.map.showA11y", { label: audienceLabel(audience) })} />
-      <MapChip float={float} label={tr("ms.map.openNow")} dot selected={openNow} onPress={() => setOpenNow((v) => !v)} />
-      {readySet.size > 0 ? <MapChip float={float} label={tr("sh.pass.ready")} selected={readyOnly} onPress={() => setReadyOnly((v) => !v)} /> : null}
-      <MapChip float={float} label={tr("diet.halal").toLowerCase()} selected={halal} onPress={() => setHalal((v) => !v)} accessibilityLabel={tr("rest.filter.halal.a11y")} />
+      <MapChip float={float} label={audience === "all" ? capFirst(tr("ms.aud.mine")) : audienceLabel(audience)} chevron selected={audience !== "all"} onPress={pickAudience} accessibilityLabel={tr("ms.map.showA11y", { label: audienceLabel(audience) })} />
+      <MapChip float={float} label={capFirst(tr("ms.map.openNow"))} dot selected={openNow} onPress={() => setOpenNow((v) => !v)} />
+      {readySet.size > 0 ? <MapChip float={float} label={capFirst(tr("sh.pass.ready"))} selected={readyOnly} onPress={() => setReadyOnly((v) => !v)} /> : null}
+      <MapChip float={float} label={capFirst(tr("diet.halal"))} selected={halal} onPress={() => setHalal((v) => !v)} accessibilityLabel={tr("rest.filter.halal.a11y")} />
     </ScrollView>
   );
 
@@ -324,7 +331,7 @@ export default function Explore() {
       <View style={[styles.group, chromeBg(c.bg)]}>
         <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.hoodA11y", { name: placeName ?? tr("ms.map.notSet") })} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
           <Text style={[isClear ? { fontSize: 15, lineHeight: 20, fontWeight: "600" } : disp(15, 800, 18), { maxWidth: 170 }]} numberOfLines={1}>
-            {shortHood(placeName) || tr("ms.map.yourStreet")}
+            {capFirst(shortHood(placeName) || tr("ms.map.yourStreet"))}
           </Text>
           <ChevronDownGlyph size={14} color={c.fg} />
         </Pressable>
@@ -345,7 +352,9 @@ export default function Explore() {
     </View>
   );
 
-  const empty = q ? (
+  const empty = failed ? (
+    failBlock
+  ) : q ? (
     <EmptyState icon={Search} title={tr("cp.empty.mapSearchTitle", { query: q })} body={tr("cp.empty.mapSearchBody")} actionLabel={tr("ms.map.clearSearch")} onAction={() => setQ("")} />
   ) : audience !== "all" || openNow || readyOnly || category !== "all" ? (
     <EmptyState
@@ -514,12 +523,14 @@ export default function Explore() {
           ListHeaderComponent={
             <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 16 }}>
               {/* Count in the display face, the place under it: no widow on long neighbourhood names. */}
-              <View style={{ gap: 2 }}>
-                <Text variant="largeTitle" tabular>{tr("sh.disc.shopsN", { n: visible.length })}</Text>
-                <Text variant="body" color="fgMuted">
-                  {L.locale === "en" ? stripHeader(visible.length, placeName).replace(/^\d+ shops? /, "").toLowerCase() : placeName ? tr("ms.map.inPlace", { place: placeName.toLowerCase() }) : tr("ms.map.onStrip")}
-                </Text>
-              </View>
+              {failed ? null : (
+                <View style={{ gap: 2 }}>
+                  <Text variant="largeTitle" tabular>{tr("sh.disc.shopsN", { n: visible.length })}</Text>
+                  <Text variant="body" color="fgMuted">
+                    {L.locale === "en" ? stripHeader(visible.length, placeName).replace(/^\d+ shops? /, "") : placeName ? tr("ms.map.inPlace", { place: placeName }) : tr("ms.map.onStrip")}
+                  </Text>
+                </View>
+              )}
               {perk && progress ? <PerkCard headline={perkHeadlineL(L, perk, hoodName)} {...progress} /> : null}
             </View>
           }
@@ -548,7 +559,12 @@ export default function Explore() {
   const detents = [peekH, fullH];
   const located = all.filter((x) => x.location?.lat != null && x.location?.lng != null);
   const centroid = located.length ? { lat: located.reduce((a, x) => a + x.location!.lat!, 0) / located.length, lng: located.reduce((a, x) => a + x.location!.lng!, 0) / located.length } : null;
-  const center = origin ?? centroid ?? TORONTO;
+  // No location and no neighbourhood chosen: open on the neighbourhood the chip names, where its pins are, not on the average of
+  // every shop in the network (which can land between two strips, on empty streets).
+  const hoodShops = nearbyHood ? located.filter((x) => x.merchant.neighbourhoodId === nearbyHood.id) : [];
+  const hoodCentroid = hoodShops.length ? { lat: hoodShops.reduce((a, x) => a + x.location!.lat!, 0) / hoodShops.length, lng: hoodShops.reduce((a, x) => a + x.location!.lng!, 0) / hoodShops.length } : null;
+  const nearbyCentre = nearbyHood?.centerLat != null && nearbyHood.centerLng != null ? { lat: nearbyHood.centerLat, lng: nearbyHood.centerLng } : hoodCentroid;
+  const center = origin ?? nearbyCentre ?? centroid ?? TORONTO;
   const showSearchArea = !sel && !!mapCenter && movedEnough(mapCenter, origin ?? TORONTO);
   // Canvas geometry: rail captions end 31 pt above the tab bar; the recenter circle sits 16 pt above the rail.
   const railBottom = tabBarBottom + 60 + 31;
@@ -615,7 +631,7 @@ export default function Explore() {
             </Banner>
           </View>
         ) : null}
-        {!shops.isLoading && visible.length === 0 ? (
+        {failed || (!shops.isLoading && visible.length === 0) ? (
           <View style={{ marginTop: 12, marginHorizontal: 16, padding: 16, paddingVertical: 4, borderRadius: 16, backgroundColor: c.bg, ...floatShadow }}>{empty}</View>
         ) : null}
       </View>

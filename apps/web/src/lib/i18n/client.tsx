@@ -141,6 +141,7 @@ export function useLocale(): LocaleValue {
  */
 export function useLocaleOrEnglish(): LocaleValue {
   const v = useContext(Ctx);
-  // React's `use()` may be called conditionally: English is only loaded when there is no scope.
-  return v ?? englishValue(catalogNow("en") ?? use(loadCatalog("en")));
+  // `use()` may be called conditionally (English is only loaded when there is no scope), but it must be called the same way on every render of
+  // one component: loadCatalog hands back an already-settled promise once the catalogue is in, so this returns at once after the first load.
+  return v ?? englishValue(use(loadCatalog("en")));
 }

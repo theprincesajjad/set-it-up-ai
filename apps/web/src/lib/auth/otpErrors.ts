@@ -9,10 +9,11 @@ export function otpErrorMessage(err: unknown, t: T, locale: Locale): string {
   if (isApiError(err)) {
     if (err.isNetwork) return t("auth.err.network");
     if (err.status === 429) {
-      // The API sends one code for both limits; its text tells them apart (the wrong-code lockout vs the hourly cap on new codes).
-      if (/wrong codes|new one/i.test(err.message)) return t("auth.err.lockedCode");
-      if (/hour|requested/i.test(err.message)) return t("auth.err.startCap");
-      // The server says when to come back (Retry-After); say that, not a guess.
+      // The API says which limit it is (details.reason); the English text is never matched.
+      const reason = (err.details as { reason?: string } | undefined)?.reason;
+      if (reason === "otp_locked") return t("auth.err.lockedCode");
+      if (reason === "otp_target_cap") return err.retryAfter && err.retryAfter > 0 ? t("auth.err.startCapWait", { wait: waitText(err.retryAfter, t) }) : t("auth.err.startCap");
+      // The short wait between two codes, the busy lines and any other limit: say when to come back (Retry-After), not a guess.
       if (err.retryAfter && err.retryAfter > 0) return t("err.rate.line", { wait: waitText(err.retryAfter, t) });
       return t("auth.err.tooMany");
     }

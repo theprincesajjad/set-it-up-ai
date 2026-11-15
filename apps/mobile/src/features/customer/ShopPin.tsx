@@ -10,7 +10,7 @@ import { pinSubtitleL, type PinMembership } from "../../lib/explore";
 import type { L } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
 import { useTheme } from "../../theme";
-import { PlaceBubble, shadow, Text } from "../../ui";
+import { dirStyle, PlaceBubble, shadow, Text } from "../../ui";
 
 export const PIN_BUBBLE = 36;
 /** Room for a label on each side of the bubble. */
@@ -26,7 +26,7 @@ export function ShopPin({ shop, membership, selected, bare, side = "right" }: { 
   const sub = pinSubtitleL(L, shop.merchant.vertical, membership, shop);
   const b = selected ? 46 : PIN_BUBBLE;
   return (
-    <View {...({ dir: "ltr" } as object)} style={{ width: PIN_WIDTH, height: PIN_HEIGHT, justifyContent: "center", direction: "ltr" }} pointerEvents="none">
+    <View {...({ dir: "ltr" } as object)} style={{ width: PIN_WIDTH, height: PIN_HEIGHT, justifyContent: "center", ...dirStyle("ltr") }} pointerEvents="none">
       <View style={[{ position: "absolute" }, side === "left" ? { right: PIN_ANCHOR_X - b / 2 } : { left: PIN_ANCHOR_X - b / 2 }]}>
         <PlaceBubble name={shop.merchant.name} subtitle={sub.text} accent={sub.accent} vertical={shop.merchant.vertical} photoUrl={shop.merchant.logoUrl} selected={selected} bare={bare || selected} size={PIN_BUBBLE} side={side} />
       </View>

@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { SwitchControl } from "@/components/ui/Switch";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { focusFirstInvalid } from "@/lib/api/useErrorText";
 import { useAction } from "@/lib/dashboard/useApi";
 
 const KINDS = [
@@ -22,7 +23,7 @@ const TERMS = [
 ];
 
 /** Create or edit an offer. A pack can be an intro offer for new students. Ontario caps a term and a pack's validity at a year, so the form does too. */
-export function OfferPanel({ open, onClose, offer, canMemberships, onSaved }: { open: boolean; onClose: () => void; offer: classesApi.ProductDto | null; canMemberships: boolean; onSaved: () => void | Promise<void> }) {
+export function OfferPanel({ open, onClose, offer, canMemberships, onSaved, firstOffer = false }: { open: boolean; onClose: () => void; offer: classesApi.ProductDto | null; canMemberships: boolean; onSaved: () => void | Promise<void>; /** The studio sells nothing yet: open on a drop-in, the one offer that lets anybody book. */ firstOffer?: boolean }) {
   const { api } = useMerchant();
   const toast = useToast();
   const act = useAction();
@@ -35,11 +36,13 @@ export function OfferPanel({ open, onClose, offer, canMemberships, onSaved }: { 
   const [term, setTerm] = useState("");
   const [perMonth, setPerMonth] = useState("");
   const [active, setActive] = useState(true);
+  const [tried, setTried] = useState(false);
   useEffect(() => {
     if (!open) return;
     // Load the offer (or a blank one) into the form each time the panel opens.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setKind(offer?.kind ?? (canMemberships ? "membership" : "pack"));
+    setTried(false);
+    setKind(offer?.kind ?? (firstOffer ? "drop_in" : canMemberships ? "membership" : "pack"));
     setName(offer?.name ?? "");
     setPrice(offer ? String(offer.priceCents / 100) : "");
     setCredits(String(offer?.credits ?? 10));
@@ -48,8 +51,23 @@ export function OfferPanel({ open, onClose, offer, canMemberships, onSaved }: { 
     setTerm(offer?.termMonths ? String(offer.termMonths) : "");
     setPerMonth(offer?.classesPerMonth ? String(offer.classesPerMonth) : "");
     setActive(offer?.active ?? true);
-  }, [open, offer, canMemberships]);
-  const valid = name.trim().length > 0 && price.trim() !== "" && Number(price) >= 0;
+  }, [open, offer, canMemberships, firstOffer]);
+  const nameError = tried && !name.trim() ? "Add a name." : null;
+  const priceError = tried && !(price.trim() !== "" && Number(price) >= 0) ? "Add a price, like 20." : null;
+  const save = async () => {
+    setTried(true);
+    if (!name.trim() || !(price.trim() !== "" && Number(price) >= 0)) return focusFirstInvalid();
+    const body: Record<string, unknown> = { name: name.trim(), priceCents: Math.round(Number(price) * 100), active };
+    if (!offer) body.kind = kind;
+    if (kind === "pack") Object.assign(body, { credits: Number(credits) || 1, validDays: Math.min(Number(days) || 90, classesApi.MAX_PACK_VALID_DAYS), introOnly: intro });
+    if (kind === "membership") Object.assign(body, { termMonths: term ? Number(term) : null, classesPerMonth: perMonth ? Number(perMonth) : null });
+    const r = await act.run(() => (offer ? api.classes.updateProduct(offer.id, body) : api.classes.createProduct(body)));
+    if (r) {
+      toast({ message: "Offer saved", tone: "success" });
+      await onSaved();
+      onClose();
+    }
+  };
   return (
     <SidePanel
       open={open}
@@ -60,32 +78,15 @@ export function OfferPanel({ open, onClose, offer, canMemberships, onSaved }: { 
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button
-            loading={act.busy}
-            disabled={!valid}
-            onClick={async () => {
-              const body: Record<string, unknown> = { name: name.trim(), priceCents: Math.round(Number(price) * 100), active };
-              if (!offer) body.kind = kind;
-              if (kind === "pack") Object.assign(body, { credits: Number(credits) || 1, validDays: Math.min(Number(days) || 90, classesApi.MAX_PACK_VALID_DAYS), introOnly: intro });
-              if (kind === "membership") Object.assign(body, { termMonths: term ? Number(term) : null, classesPerMonth: perMonth ? Number(perMonth) : null });
-              const r = await act.run(() => (offer ? api.classes.updateProduct(offer.id, body) : api.classes.createProduct(body)));
-              if (r) {
-                toast({ message: "Offer saved", tone: "success" });
-                await onSaved();
-                onClose();
-              }
-            }}
-          >
-            Save
-          </Button>
+          <Button loading={act.busy} onClick={() => void save()}>Save</Button>
         </div>
       }
     >
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      <div className="flex flex-col gap-4">
+      <form className="flex flex-col gap-4" noValidate onSubmit={(e) => { e.preventDefault(); void save(); }}>
         <Select label="Type" value={kind} disabled={!!offer} onChange={(e) => setKind(e.target.value as classesApi.ClassProductKind)} options={KINDS.filter((k) => canMemberships || k.value !== "membership")} />
-        <TextField label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder={kind === "membership" ? "Unlimited monthly" : kind === "pack" ? "10-class pack" : "Drop-in"} />
-        <TextField label={kind === "membership" ? "Price each month" : "Price"} type="number" min={0} step="0.01" prefix="$" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <TextField label="Name" value={name} error={nameError} onChange={(e) => setName(e.target.value)} placeholder={kind === "membership" ? "Unlimited monthly" : kind === "pack" ? "10-class pack" : "Drop-in"} />
+        <TextField label={kind === "membership" ? "Price each month" : "Price"} type="number" min={0} step="0.01" prefix="$" value={price} error={priceError} onChange={(e) => setPrice(e.target.value)} />
         {kind === "pack" ? (
           <>
             <div className="grid grid-cols-2 gap-3">
@@ -116,7 +117,8 @@ export function OfferPanel({ open, onClose, offer, canMemberships, onSaved }: { 
             <SwitchControl checked={active} onChange={setActive} ariaLabel="On sale" />
           </div>
         ) : null}
-      </div>
+        <button type="submit" hidden aria-hidden tabIndex={-1} />
+      </form>
     </SidePanel>
   );
 }

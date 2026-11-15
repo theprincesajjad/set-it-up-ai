@@ -52,6 +52,8 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
   const live = appt.status === "booked" || appt.status === "arrived" || appt.status === "in_service";
   // A visit marked Done on the walk-in line has no invoice yet: it still needs its payment, tip and stamp.
   const unpaidDone = appt.status === "completed" && !appt.invoiceId;
+  // Checked out: the visit is paid, so nothing is "due" and the tax prompt is no longer a question.
+  const paid = appt.status === "completed" && !!appt.invoiceId;
   const fee = appt.noShowFeeCents ? Math.max(0, appt.noShowFeeCents - (appt.depositPaidAt ? appt.depositCents : 0)) : 0;
   const minutes = appt.items.reduce((n, i) => n + i.durationMin, 0);
   const message = useMessageCustomer();
@@ -77,7 +79,7 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
           {[appt.customer.phone ? maskPhone(appt.customer.phone) : "No phone yet", LANG[appt.customer.language]].join(" · ")}
         </p>
         <p className="mt-1 text-meta text-fg-muted">
-          {dateLabel(start.date, { weekday: "short", month: "short", day: "numeric" })}, {clock(start.minutes)} · {appt.staffName ?? "Not placed yet"}
+          {dateLabel(start.date, { weekday: "short", month: "short", day: "numeric" })}, {clock(start.minutes)}{appt.staffName || !paid ? ` · ${appt.staffName ?? "Not placed yet"}` : ""}
           {appt.requestedStaff ? " · asked for by name" : ""}
         </p>
       </div>
@@ -126,12 +128,12 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
           </li>
         ) : null}
         <li className="flex items-center justify-between gap-3 py-2.5">
-          <span className="text-body-strong text-fg">Due at checkout</span>
+          <span className="text-body-strong text-fg">{paid ? "Paid at checkout" : "Due at checkout"}</span>
           <span className="text-body-strong tabular text-fg">{money(due.dueCents)}</span>
         </li>
       </ul>
-      <p className="-mt-3 text-caption text-fg-muted">{duration(minutes)} of work. {taxStatus === "registered" ? "Tax is added when you check out." : taxStatus === "small" ? "No tax is added: you are set as a small supplier." : taxStatus === "unset" ? "No tax is added yet because your tax status is not set." : ""}</p>
-      {taxStatus === "unset" ? <p className="-mt-3 text-caption"><a className="text-fg underline underline-offset-2" href={`${base}/settings?tab=tax`}>Set your tax status</a></p> : null}
+      <p className="-mt-3 text-caption text-fg-muted">{duration(minutes)} of work.{paid ? "" : ` ${taxStatus === "registered" ? "Tax is added when you check out." : taxStatus === "small" ? "No tax is added: you are set as a small supplier." : taxStatus === "unset" ? "No tax is added yet because your tax status is not set." : ""}`}</p>
+      {taxStatus === "unset" && !paid ? <p className="-mt-3 text-caption"><a className="text-fg underline underline-offset-2" href={`${base}/settings?tab=tax`}>Set your tax status</a></p> : null}
 
       {appt.clientNote || appt.notes ? (
         <div className="rounded-input bg-bg-subtle px-3 py-2.5">
@@ -187,10 +189,10 @@ export function AppointmentSheet({ appt, staff, onChanged, onCheckout, taxStatus
         ) : null}
         {live ? (
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setMoving(true)}>Reschedule</Button>
+            <Button variant="secondary" size="sm" className="max-sm:min-h-11" onClick={() => setMoving(true)}>Reschedule</Button>
             {appt.customer.id ? <Button variant="secondary" size="sm" loading={message.busy} onClick={() => message.open({ userId: appt.customer.id! })}>{t("people.message")}</Button> : null}
-            <Button variant="secondary" size="sm" onClick={() => setNoShow(true)}>No-show</Button>
-            <Button variant="ghost" size="sm" onClick={() => setCancel(true)}>Cancel</Button>
+            <Button variant="secondary" size="sm" className="max-sm:min-h-11" onClick={() => setNoShow(true)}>No-show</Button>
+            <Button variant="ghost" size="sm" className="max-sm:min-h-11" onClick={() => setCancel(true)}>Cancel</Button>
           </div>
         ) : null}
         {appt.status === "no_show" && fee > 0 && appt.hasCardOnFile && !appt.feeChargedAt ? (

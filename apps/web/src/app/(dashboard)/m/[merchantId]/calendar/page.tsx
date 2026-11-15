@@ -9,6 +9,7 @@ import { AppointmentSheet } from "@/components/dashboard/calendar/AppointmentShe
 import { CalendarDay, type MoveRequest } from "@/components/dashboard/calendar/CalendarDay";
 import { CheckoutSheet } from "@/components/dashboard/calendar/CheckoutSheet";
 import { NewAppointmentSheet } from "@/components/dashboard/calendar/NewAppointmentSheet";
+import { StaffScheduleSheet } from "@/components/dashboard/calendar/StaffScheduleSheet";
 import { WalkInSheet } from "@/components/dashboard/calendar/WalkInSheet";
 import { useAppointments } from "@/components/dashboard/calendar/useAppointments";
 import { useIsDesktop } from "@/components/dashboard/calendar/useIsDesktop";
@@ -37,6 +38,8 @@ import {
   weekStart,
   workWindow,
   parts,
+  shiftsOn,
+  weekdayOf,
 } from "@/lib/dashboard/calendar";
 import { useApi } from "@/lib/dashboard/useApi";
 
@@ -54,7 +57,7 @@ type Sheet = null | { kind: "new"; defaults: { date: string; minutes: number; st
 type Ask = null | { kind: "staff" | "hours"; move: MoveRequest; message?: string };
 
 function Calendar() {
-  const { api, base, role } = useMerchant();
+  const { api, base, role, me } = useMerchant();
   const toast = useToast();
   const desktop = useIsDesktop();
   const manager = role !== "staff";
@@ -65,6 +68,9 @@ function Calendar() {
   const [view, setView] = useState<"day" | "week">("day");
   const [only, setOnly] = useState("");
   const [mobileIdx, setMobileIdx] = useState(0);
+  // After booking, a phone shows the column that holds the new visit (it may not be the first tab).
+  const [follow, setFollow] = useState<{ staffId: string | null } | null>(null);
+  const [settingHours, setSettingHours] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [ask, setAsk] = useState<Ask>(null);
@@ -105,6 +111,8 @@ function Calendar() {
   }, [view, date]);
   const appts = useAppointments(api, staffState.data?.setup.ready ? range : null);
   const items = appts.items;
+  // The day failed to load and nothing is on screen: show the failure, never an empty grid with "0 booked" under it.
+  const dayFailed = !!appts.error && !appts.items.length;
   const selected = items.find((a) => a.id === selectedId) ?? null;
   useEffect(() => {
     if (pendingCheckout.current && selectedId === pendingCheckout.current && items.some((i) => i.id === selectedId)) {
@@ -118,6 +126,15 @@ function Calendar() {
     if (view === "week") return weekColumns(weekStart(date), staff.find((s) => s.userId === chosenStaff) ?? null, items);
     return dayColumns(date, staff, items, { onlyStaff: only || null });
   }, [view, date, staff, items, only, chosenStaff]);
+  useEffect(() => {
+    if (!follow) return;
+    const i = columns.findIndex((c) => c.staffId === follow.staffId);
+    if (i < 0) return;
+    // One-time: jump to the tab with the visit that was just booked.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMobileIdx(i);
+    setFollow(null);
+  }, [follow, columns]);
   const dayItems = useMemo(() => (view === "day" ? items.filter((a) => parts(a.startsAt).date === date) : items), [items, view, date]);
   const win = useMemo(() => {
     if (view === "day") return workWindow(date, staff, dayItems);
@@ -160,6 +177,16 @@ function Calendar() {
     return () => document.removeEventListener("keydown", onKey);
   }, [go, date, win, only]);
 
+  // The first booking on a closed day (a Sunday, say) would only meet "isn't working then": offer the next day somebody works.
+  const bookableDate = (from: string) => {
+    const crew = only ? staff.filter((s) => s.userId === only) : staff;
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(from, i);
+      if (crew.some((s) => shiftsOn(s, weekdayOf(d)).length)) return d;
+    }
+    return from;
+  };
+
   const nameOf = (id: string | null) => staff.find((s) => s.userId === id)?.name ?? null;
 
   async function doMove(m: MoveRequest, opts: { confirmStaffChange?: boolean; force?: boolean } = {}) {
@@ -188,21 +215,44 @@ function Calendar() {
     await staffState.reload();
   };
 
-  if (staffState.error && !staffState.data) return <ListError title="Couldn't load your calendar." detail={staffState.error} onRetry={staffState.reload} />;
+  if (staffState.error && !staffState.data) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader flush title="Calendar" description="Your day, one column per team member." />
+        <ListError title="Couldn't load your calendar." detail={staffState.error} onRetry={staffState.reload} />
+      </div>
+    );
+  }
   if (!staffState.data || !servicesState.data) return <PageSkeleton />;
   const setup = staffState.data.setup;
   const services = servicesState.data.items;
 
   if (!setup.ready) {
+    // The next step is the one that is missing: services first, then hours. Hours are saved right here, one tap on the usual week.
+    const needServices = !setup.services;
+    // The signed-in owner is not on the calendar's list until they have hours, so the member is built from who is signed in.
+    const owner = { userId: me.user.id, name: staff.find((s) => s.userId === me.user.id)?.name ?? me.user.name ?? null };
     return (
       <div className="flex flex-col gap-6">
         <PageHeader flush title="Calendar" description="Your day, one column per team member." />
         <EmptyState
-          title="Add your services and hours to open booking"
-          description={`${setup.services ? "Services are set up. " : "No services yet. "}${setup.staffWithHours ? "Hours are set." : "No one has working hours yet."} The calendar opens once you have at least one of each.`}
-          action={<Button size="sm" href={`${base}/services`}>Services and prices</Button>}
-          secondaryAction={<Button size="sm" variant="secondary" href={`${base}/staff`}>Staff and hours</Button>}
+          title={needServices ? "Add your first service" : "Set your working hours"}
+          description={
+            needServices
+              ? "Clients pick from your services when they book. Add one with its length and price, then set your hours and the calendar opens."
+              : "Your services are set up. Add the days and hours you work and the calendar opens. The usual week, Monday to Saturday, 9 a.m. to 5 p.m., is one tap to save."
+          }
+          action={
+            needServices ? (
+              <Button size="sm" href={`${base}/services`}>Add your first service</Button>
+            ) : manager ? (
+              <Button size="sm" onClick={() => setSettingHours(true)}>Set your hours</Button>
+            ) : (
+              <Button size="sm" href={`${base}/staff`}>See the team</Button>
+            )
+          }
         />
+        <StaffScheduleSheet open={settingHours} onClose={() => setSettingHours(false)} member={owner} onSaved={async () => { await staffState.reload(); }} />
       </div>
     );
   }
@@ -219,21 +269,21 @@ function Calendar() {
       <PageHeader
         flush
         title="Calendar"
-        description={view === "day" ? dayDescription(date, numbers) : `Week of ${dateLabel(weekStart(date), { month: "long", day: "numeric" })}. ${items.filter((a) => a.status !== "cancelled").length} booked.`}
+        description={dayFailed ? (view === "day" ? "Couldn’t load this day." : "Couldn’t load this week.") : view === "day" ? dayDescription(date, numbers) : `Week of ${dateLabel(weekStart(date), { month: "long", day: "numeric" })}. ${items.filter((a) => a.status !== "cancelled").length} booked.`}
         actions={
           <>
-            <Button variant="secondary" size="sm" iconStart={UserPlus} onClick={() => setSheet({ kind: "walkin" })}>Walk-in</Button>
-            <Button size="sm" iconStart={Plus} onClick={() => setSheet({ kind: "new", defaults: { date, minutes: Math.max(win[0], 10 * 60), staffId: only || null } })}>New appointment</Button>
+            <Button variant="secondary" size="sm" className="max-sm:min-h-11" iconStart={UserPlus} onClick={() => setSheet({ kind: "walkin" })}>Walk-in</Button>
+            <Button size="sm" className="max-sm:min-h-11" iconStart={Plus} onClick={() => { const d = bookableDate(date); setSheet({ kind: "new", defaults: { date: d, minutes: Math.max(d === date ? win[0] : 9 * 60, 10 * 60), staffId: only || null } }); }}>New appointment</Button>
           </>
         }
       />
       <div className="flex flex-wrap items-center gap-2">
         <ToolbarButton onClick={() => setDate(today)}>Today</ToolbarButton>
-        <button type="button" aria-label={view === "week" ? "Previous week" : "Previous day"} onClick={() => go(-1)} className="relative inline-flex size-8 items-center justify-center rounded-full text-fg after:absolute after:-inset-1.5 hover:bg-bg-subtle focus-visible:focus-ring"><ChevronLeft aria-hidden className="size-4" /></button>
-        <button type="button" aria-label={view === "week" ? "Next week" : "Next day"} onClick={() => go(1)} className="relative inline-flex size-8 items-center justify-center rounded-full text-fg after:absolute after:-inset-1.5 hover:bg-bg-subtle focus-visible:focus-ring"><ChevronRight aria-hidden className="size-4" /></button>
+        <button type="button" aria-label={view === "week" ? "Previous week" : "Previous day"} onClick={() => go(-1)} className="relative inline-flex size-8 items-center justify-center rounded-full text-fg after:absolute after:-inset-1.5 hover:bg-bg-subtle focus-visible:focus-ring max-sm:size-11"><ChevronLeft aria-hidden className="size-4" /></button>
+        <button type="button" aria-label={view === "week" ? "Next week" : "Next day"} onClick={() => go(1)} className="relative inline-flex size-8 items-center justify-center rounded-full text-fg after:absolute after:-inset-1.5 hover:bg-bg-subtle focus-visible:focus-ring max-sm:size-11"><ChevronRight aria-hidden className="size-4" /></button>
         <JumpToDay date={date} today={today} onPick={setDate} />
         <Segmented label="View" value={view} onChange={(v) => { setView(v); if (v === "week" && !only) setOnly(staff[0]?.userId ?? ""); }} options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }]} />
-        <Select hideLabel label="Staff" value={view === "week" ? chosenStaff : only} onChange={(e) => setOnly(e.target.value)} options={[...(view === "week" ? [] : [{ value: "", label: "All staff" }]), ...staff.map((s) => ({ value: s.userId, label: s.name }))]} className="h-8 !min-h-0 py-0 text-meta" />
+        <Select hideLabel label="Staff" value={view === "week" ? chosenStaff : only} onChange={(e) => setOnly(e.target.value)} options={[...(view === "week" ? [] : [{ value: "", label: "All staff" }]), ...staff.map((s) => ({ value: s.userId, label: s.name }))]} className="h-8 !min-h-0 py-0 text-meta max-sm:h-11" />
       </div>
 
       {/* One stylist at a time on a phone. */}
@@ -247,8 +297,8 @@ function Calendar() {
         </div>
       ) : null}
 
-      {view === "day" ? <WaitlistChip date={date} /> : null}{/* phase-pro: p2: the day's freed slots and what the waitlist did */}
-      {appts.error && !appts.items.length ? <ListError title="Couldn't load this day." detail={appts.error} onRetry={appts.reload} /> : null}
+      {view === "day" && !dayFailed ? <WaitlistChip date={date} /> : null}{/* phase-pro: p2: the day's freed slots and what the waitlist did */}
+      {dayFailed ? <ListError title={view === "day" ? "Couldn't load this day." : "Couldn't load this week."} detail={appts.error!} onRetry={appts.reload} /> : (
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <CalendarDay
           columns={columns}
@@ -269,8 +319,9 @@ function Calendar() {
           </aside>
         ) : null}
       </div>
+      )}
       {!desktop && sheetOpen ? (
-        <SidePanel open onClose={() => setSelectedId(null)} label="Appointment" title={selected!.customer.name} width={420}>
+        <SidePanel open onClose={() => setSelectedId(null)} label="Appointment" title="Appointment" width={420}>
           {panel}
         </SidePanel>
       ) : null}
@@ -282,6 +333,8 @@ function Calendar() {
         services={services}
         defaults={sheet?.kind === "new" ? sheet.defaults : { date, minutes: 10 * 60, staffId: null, petId: null }}
         onCreated={async (a) => {
+          setDate(parts(a.startsAt).date);
+          setFollow({ staffId: a.staffId ?? null });
           setSelectedId(a.id);
           await refresh();
         }}
@@ -294,6 +347,7 @@ function Calendar() {
         defaultStaffId={only || null}
         onCreated={async (a) => {
           setDate(today);
+          setFollow({ staffId: a.staffId ?? null });
           setSelectedId(a.id);
           await refresh();
         }}
@@ -352,7 +406,7 @@ function JumpToDay({ date, today, onPick }: { date: string; today: string; onPic
       <PopoverTrigger
         aria-label={`Pick a day: ${label}`}
         data-testid="calendar-jump"
-        className="relative inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-card px-3 after:absolute after:-inset-y-1.5 after:inset-x-0 text-meta font-medium text-fg shadow-xs hover:bg-bg-subtle focus-visible:focus-ring data-popup-open:border-fg"
+        className="relative inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-card px-3 max-sm:h-11 after:absolute after:-inset-y-1.5 after:inset-x-0 text-meta font-medium text-fg shadow-xs hover:bg-bg-subtle focus-visible:focus-ring data-popup-open:border-fg"
       >
         <CalendarDays aria-hidden className="size-4 text-fg-muted" strokeWidth={1.8} />
         {label}

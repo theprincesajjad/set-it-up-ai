@@ -87,7 +87,7 @@ for (const s of SIZES) {
     await page.getByLabel("First name").fill("Alex");
     await shot(page, "join-3-details", s.w);
     await page.getByRole("button", { name: "Join Pinecone Coffee Co." }).click();
-    await expect(page.getByText("You're in, Alex.")).toBeVisible();
+    await expect(page.getByText("You’re in, Alex.")).toBeVisible();
     await page.waitForTimeout(800);
     await shot(page, "join-4-joined", s.w);
 

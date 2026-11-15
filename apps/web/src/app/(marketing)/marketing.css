@@ -78,9 +78,31 @@ body:has([data-chat-launcher]) footer.mkt { padding-block-end: 64px; }
   @supports (animation-timeline: view()) {
     .mkt-reveal { animation: mkt-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
     @keyframes mkt-reveal { from { transform: translateY(28px); } to { transform: none; } }
+    /*
+     * MSection reveal (BlurFadeStatic) on these pages: sharp and fully opaque early in the entry, so a heading at rest in the lower half of
+     * the screen is never left blurred or faded, and no filter on a tall container (transform and opacity only, cheap on a low-end phone).
+     */
+    .mkt-pages .blur-fade-static { animation-name: mkt-rise-in; animation-range: entry 0% entry 18%; }
+    @keyframes mkt-rise-in { from { opacity: 0.4; transform: translateY(16px); } to { opacity: 1; transform: none; } }
   }
 
   /* Cards lift a little under the pointer. */
   .mkt-lift { transition: transform 180ms ease-out, box-shadow 180ms ease-out; }
   .mkt-lift:hover { transform: translateY(-3px); }
+}
+
+/*
+ * The header on the translated pages (SiteHeader): every label is there in all four languages, and the one named by the header's
+ * data-lang shows. English until a script sets it (and with no script at all).
+ */
+.ll-hdr [data-l] { display: none; }
+.ll-hdr:not([data-lang]) [data-l="en"],
+.ll-hdr[data-lang="en"] [data-l="en"],
+.ll-hdr[data-lang="hi"] [data-l="hi"],
+.ll-hdr[data-lang="ur"] [data-l="ur"],
+.ll-hdr[data-lang="pa"] [data-l="pa"] { display: inline; }
+
+/* Phones: while the menu is open the page behind it stays still. */
+@media (max-width: 1279.98px) {
+  html:has(.ll-menu[open]) { overflow: hidden; }
 }

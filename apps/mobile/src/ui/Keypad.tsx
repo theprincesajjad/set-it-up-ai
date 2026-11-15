@@ -2,6 +2,7 @@ import { radii, touchTargets } from "@ll/design-tokens";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
+import { dirStyle } from "./direction";
 import { haptic } from "./haptics";
 import { Delete } from "./icons";
 import { Text } from "./Text";
@@ -39,7 +40,7 @@ export function Keypad({ onKey, size = "counter", keyHeight, disabled }: KeypadP
     onKey(k);
   };
   return (
-    <View style={styles.grid}>
+    <View {...({ dir: "ltr" } as object)} style={[styles.grid, dirStyle("ltr")]}>
       {ROWS.map((row, r) => (
         <View key={r} style={styles.row}>
           {row.map((k) => {

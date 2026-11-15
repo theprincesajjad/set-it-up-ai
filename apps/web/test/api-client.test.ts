@@ -88,6 +88,15 @@ describe("createApiClient", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("does not refresh or replay a wrong staff PIN", async () => {
+    const fetch = vi.fn(async () => json(401, { error: { code: "invalid_pin", message: "That PIN is not right." } }));
+    const refresh = vi.fn(async () => true);
+    const c = createApiClient({ baseUrl: "http://api", getAccessToken: () => "t", refresh, fetch: fetch as unknown as typeof globalThis.fetch });
+    await expect(c.post("/v1/merchants/m/staff-pin/verify", { pin: "1111" })).rejects.toMatchObject({ status: 401, code: "invalid_pin" });
+    expect(refresh).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("does not loop when refresh fails", async () => {
     const fetch = vi.fn(async () => json(401, { error: { code: "unauthorized", message: "nope" } }));
     const refresh = vi.fn(async () => false);

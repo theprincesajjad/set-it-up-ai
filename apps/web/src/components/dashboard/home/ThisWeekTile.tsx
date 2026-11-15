@@ -30,6 +30,8 @@ export function ThisWeekTile() {
   const active = hasActivity(w);
   if (!active && !enabled("booking.appointments")) return null;
 
+  // A stamp-card shop has no sales to show: its week is customers coming in.
+  const visitsOnly = w.source === "visits" && w.revenueCents === 0 && !APPOINTMENT_VERTICALS.includes(detail.merchant.vertical);
   const day = (weekday: number) => weekdayLabel(loc.date, weekday);
   const plan = PLANS.plus.name;
   const parts = w.paid ? signalLine(w.signals) : [];
@@ -46,11 +48,11 @@ export function ThisWeekTile() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex min-w-0 flex-col gap-2">
             <p className="flex flex-wrap items-baseline gap-x-2 text-fg">
-              <span data-testid="week-revenue" className="text-display-number tabular-nums">{loc.money(w.revenueCents)}</span>
-              {/* A shop without appointments takes money at the till: "in sales", not "booked". */}
-              <span className="text-body text-fg-muted">{t(APPOINTMENT_VERTICALS.includes(detail.merchant.vertical) ? "insights.tile.booked" : "insights.tile.sales")}</span>
+              <span data-testid="week-revenue" className="text-display-number tabular-nums">{visitsOnly ? loc.number(w.visits) : loc.money(w.revenueCents)}</span>
+              {/* A shop without appointments takes money at the till: "in sales", not "booked"; one that only stamps counts visits. */}
+              <span className="text-body text-fg-muted">{visitsOnly ? t(w.visits === 1 ? "insights.tile.visitsOne" : "insights.tile.visitsMany") : t(APPOINTMENT_VERTICALS.includes(detail.merchant.vertical) ? "insights.tile.booked" : "insights.tile.sales")}</span>
             </p>
-            {active ? <DeltaChips w={w} /> : <p className="text-body text-fg-muted">{t("insights.tile.empty")}</p>}
+            {active ? (visitsOnly ? null : <DeltaChips w={w} />) : <p className="text-body text-fg-muted">{t(visitsOnly ? "insights.tile.emptyVisits" : "insights.tile.empty")}</p>}
           </div>
           {active ? <TrendBars trend={w.trend} className="w-40 shrink-0 max-sm:w-full" /> : null}
         </div>
@@ -58,7 +60,7 @@ export function ThisWeekTile() {
         {w.goal.cents ? (
           <GoalBar goal={w.goal} />
         ) : (
-          <Link href={`${base}/settings/goal`} className="relative inline-flex items-center gap-1.5 self-start text-meta font-medium text-link hover:underline focus-visible:focus-ring after:absolute after:-inset-y-3 after:inset-x-0 after:content-['']">
+          <Link href={`${base}/settings/goal`} className="relative inline-flex items-center gap-1.5 self-start text-meta font-medium text-link hover:underline focus-visible:focus-ring after:absolute after:-inset-y-4 after:inset-x-0 after:content-['']">
             <Target aria-hidden className="size-3.5" />
             {t("insights.tile.goalSet")}
           </Link>

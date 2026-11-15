@@ -21,7 +21,7 @@ export default async function MyVehiclesPage({ searchParams }: Props) {
   const me = await getMe();
   return (
     <PageFrame locale={locale} trade="repair_auto">
-      {me ? <MyVehicles /> : <PhoneSignIn heading="h2" next="/me/vehicles" title={t("auto.my.signIn")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}
+      {me ? <MyVehicles /> : <PhoneSignIn next="/me/vehicles" title={t("auto.my.signIn")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}
     </PageFrame>
   );
 }

@@ -5,7 +5,7 @@
  */
 import { ArrowLeft, Globe } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { LOCALE_LIST } from "@ll/shared";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/primitives/dropdown-menu";
 import { Awning } from "@/components/ui/Awning";
@@ -23,8 +23,10 @@ export function AwningStripe({ className, tone = "primary" }: { className?: stri
  */
 export function LanguageChip({ className }: { className?: string }) {
   const { locale, setLocale, t, info } = useLocaleOrEnglish();
+  // Controlled: a radio item does not close its menu by itself, and a menu left open over the page swallows the next tap.
+  const [open, setOpen] = useState(false);
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         aria-label={`${t("lang.label")}: ${info.short}`}
         className={cn(
@@ -40,9 +42,9 @@ export function LanguageChip({ className }: { className?: string }) {
         <span dir="auto" lang={info.code}>{info.short}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44 min-w-44 p-1.5">
-        <DropdownMenuRadioGroup value={locale} onValueChange={(v) => setLocale(v as typeof locale)} aria-label={t("lang.label")}>
+        <DropdownMenuRadioGroup value={locale} onValueChange={(v) => { setOpen(false); setLocale(v as typeof locale); }} aria-label={t("lang.label")}>
           {LOCALE_LIST.map((l) => (
-            <DropdownMenuRadioItem key={l.code} value={l.code} lang={l.code} dir={l.dir} className="min-h-11 text-body">
+            <DropdownMenuRadioItem key={l.code} value={l.code} lang={l.code} className="min-h-11 text-start text-body">
               {l.name}
             </DropdownMenuRadioItem>
           ))}

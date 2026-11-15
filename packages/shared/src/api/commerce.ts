@@ -63,7 +63,16 @@ export const createCatalogItemBody = z.object({
 });
 export type CreateCatalogItemBody = z.input<typeof createCatalogItemBody>;
 
-export const updateCatalogItemBody = createCatalogItemBody.partial();
+/**
+ * A partial update: keys that are absent stay as they are. `.partial()` alone would keep the create schema's defaults
+ * (modifiers [], available true, orderable true, sortOrder 0) and silently reset a dish when one other field was sent.
+ */
+export const updateCatalogItemBody = createCatalogItemBody.partial().extend({
+  modifiers: z.array(modifierGroupSchema).max(20).optional(),
+  available: z.boolean().optional(),
+  orderable: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
+});
 export type UpdateCatalogItemBody = z.input<typeof updateCatalogItemBody>;
 
 export const createCategoryBody = z.object({
@@ -74,7 +83,10 @@ export const createCategoryBody = z.object({
   translations: translationsSchema.optional(),
 });
 export type CreateCategoryBody = z.input<typeof createCategoryBody>;
-export const updateCategoryBody = createCategoryBody.partial();
+export const updateCategoryBody = createCategoryBody.partial().extend({
+  earnEligible: z.boolean().optional(),
+  discountEligible: z.boolean().optional(),
+});
 export type UpdateCategoryBody = z.input<typeof updateCategoryBody>;
 
 export interface ModifierGroupDto {
@@ -296,6 +308,8 @@ export interface OrderDto {
   merchantVertical?: string;
   isMember?: boolean;
   pointsEstimate?: number;
+  /** The shop's word for what it gives ("points", "stamps"), so the page does not call a stamp a point. */
+  pointsTerminology?: string;
   /** Pre-orders: the customer can cancel for a refund until this instant (null: no deposit rule). */
   cancelFreeUntil?: string | null;
 }

@@ -8,6 +8,7 @@
  */
 import { ADD_ONS, FEATURES, RESTAURANT_PLANS, type AddOnId, type FeatureKey, type PlanId } from "@ll/shared";
 import { isAppointmentLed } from "./people";
+import { RESTAURANT_VERTICALS } from "../signupRoute";
 
 export type StaffRole = "owner" | "manager" | "staff" | "instructor";
 
@@ -32,6 +33,8 @@ export interface NavEntry {
   exact?: boolean;
   /** Restaurants: a count shown after the label (new orders, calls to check, chats waiting). */
   badge?: "orders" | "phone" | "whatsapp";
+  /** Other routes that mark this entry as current. */
+  also?: string[];
   /** Key of the entry this one sits under (Staff, POS & integrations and Billing sit under Settings). */
   parent?: string;
 }
@@ -122,11 +125,10 @@ export const IN_PAGE_FEATURES: readonly FeatureKey[] = [
 /**
  * Restaurant pack pages (restaurant-pack-brief.md): `/m/[id]/restaurant/<slug>`. `feature` is the `restaurant.*` key the
  * page gates on (same key the page's RestaurantGate checks); banquet and phone orders are also unlocked by add-ons, which
- * the merchant's enabled-features list already folds in. The menu page is "Dietary & languages" so it never reads as a
- * duplicate of the commerce "Menu & catalog" entry.
+ * the merchant's enabled-features list already folds in. The menu page is "Menu & dietary", the same name the sidebar uses.
  */
 export const RESTAURANT_NAV: readonly { slug: string; label: string; feature: FeatureKey; /** Works on every tier (phone orders: the manual path). */ alwaysOn?: boolean }[] = [
-  { slug: "menu", label: "Dietary & languages", feature: "restaurant.dietary_tags" },
+  { slug: "menu", label: "Menu & dietary", feature: "restaurant.dietary_tags" },
   { slug: "preorders", label: "Pre-orders", feature: "restaurant.degh_preorders" },
   { slug: "tiffin", label: "Tiffin", feature: "restaurant.tiffin" },
   { slug: "catering", label: "Catering", feature: "restaurant.catering" },
@@ -202,6 +204,13 @@ export const WASH_VERTICALS: readonly string[] = ["car_wash"];
 /** Sections a loyalty-first shop only sees on Pro or a restaurant tier. */
 const PRO_ONLY_FOR_LOYALTY_FIRST: readonly string[] = ["tickets", "slots", "orders", "catalog"];
 
+/** Class tools (schedule, memberships and passes, desk sale, door check-in): only trades that teach classes see them. */
+const CLASS_KEYS: readonly string[] = ["classes", "class-offers", "class-door"];
+/** Trades that never run classes, even on a trial or paid plan that unlocks the tools (a spa can teach one, so it keeps them). */
+const NOT_CLASS_TRADES: readonly string[] = [...APPOINTMENT_VERTICALS.filter((v) => v !== "spa"), ...REPAIR_VERTICALS, ...WASH_VERTICALS, ...RESTAURANT_VERTICALS, ...LOYALTY_FIRST_VERTICALS];
+/** Pages that only make sense for a shop that has a calendar or a price list of services. A restaurant on its stamp card has neither. */
+const SERVICE_KEYS: readonly string[] = ["calendar", "services"];
+
 /** What the sidebar needs to know about the shop beyond its enabled features. */
 export interface ShopNavContext {
   vertical?: string;
@@ -236,6 +245,17 @@ export function navVisible(key: string, enabled: Set<FeatureKey>, shop?: ShopNav
   // (no Calendar, no appointment stats); it gets them on a paid plan as before. Pet shops groom by appointment and pharmacies book
   // consults, so they keep theirs.
   if ((key === "calendar" || key === "services") && shop.plan === "free" && shop.vertical && LOYALTY_FIRST_VERTICALS.includes(shop.vertical) && !["pet", "pharmacy"].includes(shop.vertical) && !enabled.has("service.tickets")) return false;
+  // A restaurant on its stamp card (no restaurant plan yet) has no appointments: no Calendar and no Services & prices.
+  if (SERVICE_KEYS.includes(key) && shop.vertical && RESTAURANT_VERTICALS.includes(shop.vertical) && !hasRestaurantFeature(enabled) && !enabled.has("service.tickets")) return false;
+  // A class studio on Free runs on the class schedule, not on salon appointments.
+  if (SERVICE_KEYS.includes(key) && shop.plan === "free" && shop.vertical && STUDIO_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
+  // Class tools belong to class trades: a café on a trial, or a salon or barber on a paid plan, does not get them.
+  // A car wash keeps Memberships & passes (its wash plans live there), but has no schedule or door.
+  if (CLASS_KEYS.includes(key) && shop.vertical && NOT_CLASS_TRADES.includes(shop.vertical) && !(key === "class-offers" && WASH_VERTICALS.includes(shop.vertical))) return false;
+  // Rebooking reminders are for shops that rebook (appointments and repairs): not cafés on a trial, restaurants, studios or washes.
+  if (key === "rebooking" && shop.vertical && [...LOYALTY_FIRST_VERTICALS, ...RESTAURANT_VERTICALS, ...STUDIO_VERTICALS, ...WASH_VERTICALS].includes(shop.vertical)) return false;
+  // Drop-off and pickup slots are for repair and service trades, not for a barber or salon that runs on the calendar.
+  if (key === "slots" && shop.vertical && APPOINTMENT_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
   // A studio's sidebar is classes, members and the door; the café and repair sections stay out of its way unless it bought them.
   if (shop.vertical && STUDIO_VERTICALS.includes(shop.vertical) && ["orders", "catalog", "slots", "discount-cards"].includes(key) && !hasRestaurantFeature(enabled)) return false;
   if (key === "tickets" && shop.vertical && STUDIO_VERTICALS.includes(shop.vertical) && !enabled.has("service.tickets")) return false;
@@ -380,7 +400,7 @@ function buildRestaurantNav(base: string, role: StaffRole, enabled: Set<FeatureK
   if (has("catering")) out.push(r("catering", "Catering & banquet", "run"));
   else if (has("banquet")) out.push(r("banquet", "Catering & banquet", "run"));
   if (has("tiffin")) out.push(r("tiffin", "Tiffin", "run"));
-  if (has("menu")) out.push(r("menu", "Menu & dietary", "run"));
+  if (has("menu")) out.push({ ...r("menu", "Menu & dietary", "run"), also: [`${base}/catalog`] });
   if (has("whatsapp")) out.push(r("whatsapp", "WhatsApp", "run", "whatsapp"));
   if (has("reviews")) out.push(r("reviews", "Reviews", "run"));
   if (has("festivals")) out.push(r("festivals", "Festivals", "run"));

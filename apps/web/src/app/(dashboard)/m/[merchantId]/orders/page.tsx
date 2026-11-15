@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { commerceApi } from "@ll/shared";
 import { Capsules, EmptyState, PageHeader, Segmented, StatusDot } from "@/components/dashboard/kit";
+import { CopyButton } from "@/components/dashboard/restaurant/shared";
 import { ListError, ListLoading } from "@/components/dashboard/ListStates";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { FeatureGate } from "@/components/dashboard/FeatureGate";
@@ -55,7 +56,7 @@ export default function OrdersPage() {
 }
 
 function Orders() {
-  const { api, enabled, features, detail } = useMerchant();
+  const { api, base, me, enabled, features, detail } = useMerchant();
   const grocer = detail.merchant.vertical === "grocery";
   const restaurant = hasRestaurantFeature(enabledSet(features.features));
   const splitOn = enabled("restaurant.split_bills");
@@ -77,6 +78,9 @@ function Orders() {
     }
   };
 
+  // The menu decides what the empty state says: no dishes yet means "add your menu first", not "share the link".
+  const menu = useApi(restaurant || enabled("orders.order_ahead") ? () => api.catalog() : null, [api]);
+  const noMenu = !!menu.data && !menu.data.items.some((i) => i.available && i.orderable);
   const all = useMemo(() => orders.data?.items ?? [], [orders.data]);
   const counts = useMemo(
     () => ({ all: all.length, new: all.filter((o) => chipOf(o) === "new").length, cooking: all.filter((o) => chipOf(o) === "cooking").length, ready: all.filter((o) => chipOf(o) === "ready").length, preorder: all.filter((o) => o.kind === "preorder").length }),
@@ -93,11 +97,12 @@ function Orders() {
         flush
         title="Orders"
         description={restaurant ? "Counter, phone, WhatsApp and web-link orders in one queue. Updates live." : "Updates every 10 seconds. Customers get a text when you mark an order ready."}
-        actions={restaurant && enabled("orders.order_ahead") ? <Button size="md" onClick={() => setTaking(true)}>New counter order</Button> : undefined}
+        actions={restaurant && enabled("orders.order_ahead") ? <Button size="sm" onClick={() => setTaking(true)}>New counter order</Button> : undefined}
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {view === "open" ? (
+        {/* Not loaded: no "All 0 / New 0" counts, which would read as an empty queue. */}
+        {view === "open" && !(orders.error && !orders.data) ? (
           <>
             <Capsules<Chip>
               label="Filter orders"
@@ -123,7 +128,7 @@ function Orders() {
             ) : null}
           </>
         ) : null}
-        <Segmented className="ms-auto" label="Show" value={view} onChange={setView} options={[{ value: "open", label: "Open" }, { value: "done", label: "Done" }]} />
+        {orders.error && !orders.data ? null : <Segmented className="ms-auto" label="Show" value={view} onChange={setView} options={[{ value: "open", label: "Open" }, { value: "done", label: "Done" }]} />}
       </div>
 
       {orders.error && !orders.data ? (
@@ -134,15 +139,34 @@ function Orders() {
         <ul aria-label={view === "open" ? "Open orders" : "Finished orders"} className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
           {shown.map((o) => (
             <li key={o.id} className="min-w-0">
-              <OrderCard o={o} view={view} restaurant={restaurant} grocer={grocer} canSplitIt={splitOn && view === "open" && canSplit(o)} selected={split?.id === o.id} onMove={move} onSplit={() => setSplit(o)} onCancel={() => setCancel(o)} />
+              <OrderCard o={o} myId={me.user.id} view={view} restaurant={restaurant} grocer={grocer} canSplitIt={splitOn && view === "open" && canSplit(o)} selected={split?.id === o.id} onMove={move} onSplit={() => setSplit(o)} onCancel={() => setCancel(o)} />
             </li>
           ))}
         </ul>
       ) : (
         <EmptyState
           title={view === "done" ? "No finished orders yet" : all.length ? "No orders match those filters" : "No open orders"}
-          description={all.length && view === "open" ? "Clear a filter to see the rest of the queue." : "New orders show up here automatically."}
-          action={all.length && view === "open" ? <Button size="sm" variant="secondary" onClick={() => { setChip("all"); setChannel("all"); }}>Show every order</Button> : undefined}
+          description={
+            all.length && view === "open"
+              ? "Clear a filter to see the rest of the queue."
+              : view === "done"
+                ? "Orders you hand over or cancel show up here."
+                : noMenu
+                  ? "Customers can’t order until the menu has a dish. Add your menu first, then share your order link."
+                  : "Orders appear here the moment they come in. Share your order link, or ring one up yourself at the counter."
+          }
+          action={
+            all.length && view === "open" ? (
+              <Button size="sm" variant="secondary" onClick={() => { setChip("all"); setChannel("all"); }}>Show every order</Button>
+            ) : view === "open" && noMenu ? (
+              <Button size="sm" href={`${base}/catalog`}>Add your menu first</Button>
+            ) : view === "open" && menu.data ? (
+              <span className="flex flex-wrap justify-center gap-2">
+                <CopyButton text={typeof window !== "undefined" ? `${window.location.origin}/shops/${detail.merchant.slug}/menu` : ""} label="Copy your order link" secondary />
+                {restaurant && enabled("orders.order_ahead") ? <Button size="sm" variant="secondary" onClick={() => setTaking(true)}>New counter order</Button> : null}
+              </span>
+            ) : undefined
+          }
         />
       )}
       <SplitSheet order={split} onClose={() => setSplit(null)} onChanged={() => void orders.reload()} />
@@ -158,8 +182,9 @@ function Orders() {
   );
 }
 
-function OrderCard({ o, view, restaurant, grocer, canSplitIt, selected, onMove, onSplit, onCancel }: { o: Order; view: "open" | "done"; restaurant: boolean; grocer: boolean; canSplitIt: boolean; selected: boolean; onMove: (o: Order, s: commerceApi.UpdateOrderStatusBody["status"]) => void; onSplit: () => void; onCancel: () => void }) {
-  const who = o.customer?.name && !/^\s*$/.test(o.customer.name) ? o.customer.name : o.customer?.phone ? formatPhone(o.customer.phone) : "Customer";
+function OrderCard({ o, myId, view, restaurant, grocer, canSplitIt, selected, onMove, onSplit, onCancel }: { o: Order; myId: string; view: "open" | "done"; restaurant: boolean; grocer: boolean; canSplitIt: boolean; selected: boolean; onMove: (o: Order, s: commerceApi.UpdateOrderStatusBody["status"]) => void; onSplit: () => void; onCancel: () => void }) {
+  // A counter order rung up by staff sits under the staff member's own account: it is a walk-in, not them.
+  const who = o.channel === "counter" && o.userId === myId ? "Walk-in" : o.customer?.name && !/^\s*$/.test(o.customer.name) ? o.customer.name : o.customer?.phone ? formatPhone(o.customer.phone) : "Customer";
   const event = isEventOrder(o);
   const pickup = event ? `${o.kind === "banquet" ? "hall booking" : "catering"} · placed ${relativeTime(o.createdAt)}` : o.pickupAt ? `pickup ${formatDate(o.pickupAt) === formatDate(new Date()) ? "" : `${formatDate(o.pickupAt, true)} `}${formatTime(o.pickupAt)}` : `placed ${relativeTime(o.createdAt)}`;
   return (
@@ -195,7 +220,7 @@ function OrderCard({ o, view, restaurant, grocer, canSplitIt, selected, onMove, 
         ) : o.paymentMethod === "in_app" ? (
           `Paid online · ${formatMoney(o.totalCents)}${o.paymentStatus === "paid" ? "" : ` (${o.paymentStatus})`}`
         ) : (
-          `${formatMoney(o.totalCents)} · ${restaurant && o.channel === "counter" ? "pay at table" : "pay at pickup"}`
+          `${formatMoney(o.totalCents)} · ${restaurant && o.channel === "counter" ? "pay at the counter" : "pay at pickup"}`
         )}
         {o.cashDiscountCents > 0 ? ` · cash price ${formatMoney(o.cashDiscountCents)} off` : ""}
       </p>
@@ -208,7 +233,7 @@ function OrderCard({ o, view, restaurant, grocer, canSplitIt, selected, onMove, 
       ) : view === "open" ? (
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
           {(nextFor(grocer)[o.status] ?? []).map((n, idx) => (
-            <Button key={n.status} size="sm" variant={idx === 0 || n.status === "ready" ? "primary" : "secondary"} onClick={() => onMove(o, n.status)}>
+            <Button key={n.status} size="sm" variant={idx === 0 ? "primary" : "secondary"} onClick={() => onMove(o, n.status)}>
               {n.label}
             </Button>
           ))}

@@ -89,12 +89,12 @@ export function PromoCard({ promo, shop, sponsored, variant = "feed", href, term
         {showShop ? (
           <div className="flex items-center gap-2">
             <ShopLogo shop={shop} size={24} />
-            <span className="truncate text-meta-strong text-fg">{shop.name}</span>
+            <span className="truncate text-meta-strong text-fg"><bdi>{shop.name}</bdi></span>
             {shop.distanceM != null ? <span className="text-meta text-fg-muted">{distanceL(L, shop.distanceM)}</span> : null}
           </div>
         ) : null}
-        <p className="line-clamp-2 text-headline text-fg">{promo.title}</p>
-        {promo.body && variant !== "compact" ? <p className="line-clamp-2 text-meta text-fg-muted">{promo.body}</p> : null}
+        <p dir="auto" className="line-clamp-2 text-headline text-fg">{promo.title}</p>
+        {promo.body && variant !== "compact" ? <p dir="auto" className="line-clamp-2 text-meta text-fg-muted">{promo.body}</p> : null}
         <div className="flex flex-wrap items-center gap-2">
           {kindBadge(promo, L, terminology)}
           {m ? <span className="text-meta text-fg-muted">{m}</span> : null}

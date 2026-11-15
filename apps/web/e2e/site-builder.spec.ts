@@ -78,13 +78,13 @@ test.describe("annual shop", () => {
     const write = page.getByRole("button", { name: /Write it for me|Write a new draft/ });
     if (await write.isVisible()) {
       await write.click();
-      await expect(page.getByText("Here's your draft. Edit anything you like.")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByText("Here’s your draft. Edit anything you like.")).toBeVisible({ timeout: 20_000 });
       await expect(page.getByTestId("site-usage")).toContainText("1 of 10 drafts this month");
       // One line rewritten with the small model (fake in e2e).
-      await page.getByRole("button", { name: "Rewrite Line under the headline" }).click();
+      await page.getByRole("button", { name: "Rewrite this: line under the headline" }).click();
       await expect(page.getByTestId("site-usage")).toContainText("1 of 40 rewrites this month");
     } else {
-      await expect(page.getByText(/Writing with AI isn't on here/)).toBeVisible();
+      await expect(page.getByText(/Writing with AI isn’t on here/)).toBeVisible();
     }
 
     // Inline edit: pick the headline in the preview, type over it in the panel.
@@ -93,7 +93,7 @@ test.describe("annual shop", () => {
     const headline = page.getByLabel("Headline", { exact: true });
     await expect(headline).toBeFocused();
     await headline.fill("Bloom, booked in a minute");
-    await expect(preview.getByRole("heading", { level: 1 })).toHaveText("Bloom, booked in a minute");
+    await expect(preview.locator('[data-field="hero.headline"]')).toHaveText("Bloom, booked in a minute");
     await expect(page.getByText("Saved")).toBeVisible({ timeout: 10_000 });
     await page.screenshot({ path: shot("builder-1440-en"), fullPage: false });
     await axe(page);
@@ -172,7 +172,7 @@ test.describe("monthly shop", () => {
     await page.goto(`/m/${m.id}/site`);
     await expect(page.getByText("Your website goes live with the annual plan.")).toBeVisible();
     await expect(page.getByRole("link", { name: "See the annual plan" })).toHaveAttribute("href", `/m/${m.id}/billing`);
-    await expect(page.locator('[aria-labelledby="sb-preview"]').getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator('[aria-labelledby="sb-preview"]').getByRole("heading", { level: 2 }).first()).toBeVisible();
     await expect(page.getByTestId("site-publish")).toHaveCount(0);
     await page.screenshot({ path: shot("builder-monthly-1440-en") });
     const res = await fetch(`${API}/v1/merchants/${m.id}/site/publish`, { method: "POST", headers: { authorization: `Bearer ${owner}`, "content-type": "application/json" }, body: "{}" });

@@ -1,5 +1,5 @@
 "use client";
-import { Languages, Search, X } from "lucide-react";
+import { Languages, Plus, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { commerceApi } from "@ll/shared";
 import { Capsules, EmptyState, PageHeader, Section, SkeletonRows, Tag } from "@/components/dashboard";
@@ -36,7 +36,7 @@ const matches = (i: Item, f: Filter) => {
 
 export default function MenuPage() {
   return (
-    <RestaurantGate featureKey="restaurant.dietary_tags" title="Dietary & languages">
+    <RestaurantGate featureKey="restaurant.dietary_tags" title="Menu & dietary">
       <Menu />
     </RestaurantGate>
   );
@@ -95,36 +95,41 @@ function Menu() {
   }
 
   const langList = langs.data?.languages ?? null;
+  // A new restaurant has no dishes: lead with one thing to do. The certificate, section names and cash price wait for a first dish.
+  const noDishes = !!state.data && !items.length;
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         flush
-        title="Dietary & languages"
-        description="Halal, vegetarian and spice tags, Hindi, Urdu and Punjabi names, and degh pre-order details for each dish."
+        title="Menu & dietary"
+        description="Your dishes, with halal, vegetarian and spice tags, Hindi, Urdu and Punjabi names, and degh pre-order details."
         actions={
-          <>
-            <Button size="sm" variant="secondary" href={`${base}/catalog`}>
-              Add or price items
-            </Button>
-            {enabled("restaurant.multilingual_menu") ? (
-              <Button size="sm" iconStart={Languages} href={`${base}/restaurant/menu/languages`}>
-                Languages
+          noDishes ? undefined : (
+            <>
+              {/* Adding and pricing dishes is what most visits are for; languages and tags are the second step. */}
+              <Button size="sm" href={`${base}/catalog`}>
+                Add or price items
               </Button>
-            ) : null}
-          </>
+              {enabled("restaurant.multilingual_menu") ? (
+                <Button size="sm" variant="secondary" iconStart={Languages} href={`${base}/restaurant/menu/languages`}>
+                  Languages
+                </Button>
+              ) : null}
+            </>
+          )
         }
       />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
-      {role === "owner" ? (state.error && !state.data ? null : <HalalCertification state={certState} />) : <p className="text-meta text-fg-muted">The owner manages the halal certificate. Halal claims are the owner&apos;s own.</p>}
+      {noDishes ? null : role === "owner" ? (state.error && !state.data ? null : <HalalCertification state={certState} />) : <p className="text-meta text-fg-muted">The owner manages the halal certificate. Halal claims are the owner&apos;s own.</p>}
 
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-4">
           {/* Not loaded: no search box or "All 0 / Halal 0" counts, which would read as an empty menu. */}
-          {state.error && !state.data ? null : <div className="flex flex-wrap items-center gap-3">
+          {(state.error && !state.data) || noDishes ? null : <div className="flex flex-wrap items-center gap-3">
             <label className="relative min-w-0 flex-1 basis-56">
               <span className="sr-only">Search the menu</span>
               <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
-              <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dishes" className={cn(inputBase, "h-10 ps-9")} />
+              <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dishes" className={cn(inputBase, "h-10 ps-9!")} />
             </label>
             <Capsules
               label="Filter by tag"
@@ -176,7 +181,7 @@ function Menu() {
           ) : !state.data ? (
             <SkeletonRows rows={8} />
           ) : !items.length ? (
-            <EmptyState title="No dishes yet" description="Add your menu first, then come back to tag it." action={<Button size="sm" href={`${base}/catalog`}>Add items</Button>} />
+            <EmptyState title="Add your first dish" description="Start with a name and a price, and put it in a section like Mains. Once you have dishes, tag them halal or vegetarian here and add Hindi, Urdu or Punjabi names." action={<Button size="sm" iconStart={Plus} href={`${base}/catalog`}>Add your first dish</Button>} />
           ) : !groups.length ? (
             <p className="py-8 text-meta text-fg-muted">Nothing matches. Try another tag or search.</p>
           ) : (
@@ -228,10 +233,10 @@ function Menu() {
               <p className="text-caption text-fg-muted">Halal and dietary tags are your own claims. A dish shows a certifier only when you name one that differs from your shop certificate.</p>
             </>
           )}
-          {enabled("restaurant.multilingual_menu") ? <CategoryNames categories={state.data?.categories ?? []} onSaved={() => void state.reload()} /> : null}
+          {enabled("restaurant.multilingual_menu") && !noDishes ? <CategoryNames categories={state.data?.categories ?? []} onSaved={() => void state.reload()} /> : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4">
+        {noDishes ? null : <aside className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4">
           <DualPricing sampleCents={sample} />
           {langList ? (
             <p className="text-meta text-fg-muted">
@@ -241,7 +246,7 @@ function Menu() {
               </a>
             </p>
           ) : null}
-        </aside>
+        </aside>}
       </div>
 
       <ItemSheet item={edit} onClose={() => setEdit(null)} onSaved={() => void state.reload()} stations={stations} shopCertifier={shopCertifier} />

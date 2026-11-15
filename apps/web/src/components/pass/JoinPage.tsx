@@ -4,7 +4,7 @@ import { PageFrame, URDU_LEADING } from "@/components/restaurant/PageFrame";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { isApiError } from "@/lib/api/errors";
-import { publicServerApi } from "@/lib/api/server";
+import { getServerApi, publicServerApi } from "@/lib/api/server";
 import { getMe } from "@/lib/auth/session";
 import { storeLinks } from "@/lib/marketing/store-links";
 import { PassTopBar } from "@/components/pass/PassChrome";
@@ -15,8 +15,16 @@ import { pickVaried, streetName } from "@/lib/joinCopy";
 
 export type JoinPageProps = { params: Promise<{ code: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
+function normalizeCode(raw: string): string {
+  try {
+    return decodeURIComponent(raw).trim().toUpperCase();
+  } catch {
+    return raw.trim().toUpperCase();
+  }
+}
+
 export async function joinMetadata({ params, searchParams }: JoinPageProps): Promise<Metadata> {
-  const { code } = await params;
+  const code = normalizeCode((await params).code);
   const t = await getT(await searchParams);
   try {
     const info = await publicServerApi().public.joinInfo(code);
@@ -33,7 +41,9 @@ function devAutofill() {
 
 /** Shared by /j/[code] and /join/[code] (two URL shapes in the wild). */
 export async function JoinPage({ params, searchParams }: JoinPageProps) {
-  const [{ code }, sp] = await Promise.all([params, searchParams]);
+  const [{ code: rawCode }, sp] = await Promise.all([params, searchParams]);
+  // Counter codes are upper case; a lower-case or padded link is the same code.
+  const code = normalizeCode(rawCode);
   const [locale, t] = await Promise.all([getLocale(sp), getT(sp)]);
   const ref = typeof sp.ref === "string" ? sp.ref.slice(0, 32) : null;
   let info;
@@ -43,7 +53,7 @@ export async function JoinPage({ params, searchParams }: JoinPageProps) {
     if (isApiError(e) && e.status === 404)
       return (
         <PageFrame locale={locale}>
-          <EmptyState headingLevel={1} icon={QrIcon} title={t("auth.err.qrInvalid")} description={t("auth.join.invalidBody")} action={<Button href="/map">{t("auth.join.findShops")}</Button>} />
+          <EmptyState headingLevel={1} icon={QrIcon} title={t("auth.join.qrDeadTitle")} description={t("auth.join.qrDeadBody")} action={<Button href="/map">{t("auth.join.findShops")}</Button>} />
         </PageFrame>
       );
     return (
@@ -66,6 +76,13 @@ export async function JoinPage({ params, searchParams }: JoinPageProps) {
   const total = hood ? hood.shopCount - 1 : (near?.items.filter((x) => x.merchant.id !== info.merchant.id).length ?? 0);
   const alsoHere = others.length ? { verticals: others.map((o) => o.merchant.vertical), total } : null;
   const me = await getMe();
+  // Someone who already has this shop's card is welcomed back onto it: never asked to join again.
+  const member = me
+    ? await getServerApi()
+        .then((a) => a.me.memberships())
+        .then((r) => r.items.find((m) => m.merchant.id === info.merchant.id) ?? null)
+        .catch(() => null)
+    : null;
   const stores = storeLinks();
   return (
     <LocaleScope locale={locale} trade={info.merchant.vertical} brandColor={info.merchant.brandColor} className={locale === "ur" ? URDU_LEADING.trimStart() : undefined}>
@@ -77,6 +94,7 @@ export async function JoinPage({ params, searchParams }: JoinPageProps) {
         referralCode={ref}
         signedIn={!!me}
         signedInName={me?.user.name ?? null}
+        member={member}
         devAutofill={devAutofill()}
         appStoreUrl={stores.appStore}
         playStoreUrl={stores.playStore}

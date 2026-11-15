@@ -19,5 +19,5 @@ export default async function MyMessagesPage({ searchParams }: Props) {
   const locale = await getLocale(await searchParams);
   const t = translator(locale);
   const me = await getMe();
-  return <PageFrame locale={locale}>{me ? <MyThreads /> : <PhoneSignIn heading="h2" next="/me/messages" title={t("inbox.me.title")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}</PageFrame>;
+  return <PageFrame locale={locale}>{me ? <MyThreads /> : <PhoneSignIn next="/me/messages" title={t("inbox.me.title")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}</PageFrame>;
 }

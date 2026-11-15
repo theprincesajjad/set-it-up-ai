@@ -26,14 +26,14 @@ import {
   type DbOrTx,
   type Tx,
 } from "@ll/db";
-import { FEATURES, campaignsApi, distanceMetres, maskPhone, networkBonusInShopUnits } from "@ll/shared";
+import { FEATURES, campaignsApi, distanceMetres, maskPhone, networkBonusInShopUnits, normalizeLocale, translator } from "@ll/shared";
 import type { z } from "zod";
 import type { AppContext } from "../context.js";
 import type { AuthUser } from "../lib/auth.js";
 import { HttpError, badRequest, conflict, featureLocked, forbidden, notFound } from "../lib/errors.js";
 import { getRolloutStages, requireFeature } from "./features.js";
 import { isPharmacy } from "./pharmacy-guard.js";
-import { postTransaction, visitHooks, type VisitHook } from "./ledger.js";
+import { postTransaction, reverseTransaction, visitHooks, type VisitHook } from "./ledger.js";
 import { hoodDto, shopCountSql } from "./network.js";
 
 const { CAMPAIGN_PACKAGES } = campaignsApi;
@@ -495,13 +495,65 @@ export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, program, 
       }
     }
 
-    if (completesNow) messages.push(c.prize ? `${c.name} complete! You're entered in the draw for ${c.prize}.` : `${c.name} complete!`);
-    else if (firstAtShop) messages.push(`${c.name}: ${merchantIds.length} of ${c.goalVisits} shops visited.`);
+    if (completesNow || firstAtShop) {
+      // In the customer's own language (these lines show on their pass and in their activity).
+      const [u] = await tx.select({ locale: users.locale }).from(users).where(eq(users.id, member.userId)).limit(1);
+      const t = translator(normalizeLocale(u?.locale) ?? "en");
+      if (completesNow) messages.push(c.prize ? t("camp.msg.completeDraw", { name: c.name, prize: c.prize }) : t("camp.msg.complete", { name: c.name }));
+      else messages.push(t("camp.msg.progress", { name: c.name, n: merchantIds.length, goal: c.goalVisits }));
+    }
   }
   return { pointsAwarded, messages };
 };
 
 if (!visitHooks.includes(campaignVisitHook)) visitHooks.push(campaignVisitHook);
+
+/**
+ * Undo at the counter takes back the whole award, not just the stamp: the campaign bonuses that were posted with the visit are reversed,
+ * and the customer's progress in each campaign goes back to what it was (this shop is no longer counted, a completed passport is open
+ * again). A multiplier bonus is keyed to its visit (`campaign:<id>:visit:<visit>`). The "first visit at this shop" bonus
+ * (`campaign:<id>:<user>:<shop>`) belongs to this visit when it was the only visit by this customer at this shop inside the campaign's window.
+ * Called after the earn itself is reversed and before the visit row is removed.
+ */
+export async function rollBackCampaignsForVisit(
+  ctx: AppContext,
+  a: { merchantId: string; memberId: string; userId: string; visitId: string; earnAt: Date; reason: string; staffUserId: string | null; source: "staff_app" | "dashboard" },
+): Promise<void> {
+  const db = ctx.db;
+  const reverseBonus = async (where: ReturnType<typeof and>) => {
+    const rows = await db
+      .select()
+      .from(ledgerTransactions)
+      .where(and(eq(ledgerTransactions.merchantId, a.merchantId), eq(ledgerTransactions.memberId, a.memberId), eq(ledgerTransactions.type, "campaign_bonus"), sql`${ledgerTransactions.reversedAt} is null`, where));
+    for (const b of rows) {
+      await reverseTransaction(ctx, { merchantId: a.merchantId, transactionId: b.id, reason: a.reason, staffUserId: a.staffUserId, source: a.source });
+      // A reversed row keeps its key forever; free it so this customer can earn that shop bonus on a later, real visit.
+      if (b.idempotencyKey && !b.idempotencyKey.includes(":visit:")) {
+        await db.update(ledgerTransactions).set({ idempotencyKey: `${b.idempotencyKey}:undone:${b.id}` }).where(eq(ledgerTransactions.id, b.id));
+      }
+    }
+  };
+  await reverseBonus(sql`${ledgerTransactions.idempotencyKey} like ${`campaign:%:visit:${a.visitId}`}`);
+  // Every campaign this customer has counted this shop in, where this was the only visit inside its window.
+  const progress = await db
+    .select({ c: campaigns, p: campaignProgress })
+    .from(campaignProgress)
+    .innerJoin(campaigns, eq(campaigns.id, campaignProgress.campaignId))
+    .where(and(eq(campaignProgress.userId, a.userId), sql`${campaignProgress.merchantIds} @> ${JSON.stringify([a.merchantId])}::jsonb`, lte(campaigns.startsAt, a.earnAt), gt(campaigns.endsAt, a.earnAt)));
+  for (const { c, p } of progress) {
+    const [others] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(visits)
+      .where(and(eq(visits.userId, a.userId), eq(visits.merchantId, a.merchantId), ne(visits.id, a.visitId), gte(visits.createdAt, c.startsAt), lt(visits.createdAt, c.endsAt)));
+    if ((others?.n ?? 0) > 0) continue;
+    await reverseBonus(eq(ledgerTransactions.idempotencyKey, `campaign:${c.id}:${a.userId}:${a.merchantId}`));
+    const merchantIds = p.merchantIds.filter((id) => id !== a.merchantId);
+    await db
+      .update(campaignProgress)
+      .set({ merchantIds, updatedAt: ctx.now(), ...(p.completedAt && merchantIds.length < c.goalVisits ? { completedAt: null } : {}) })
+      .where(and(eq(campaignProgress.campaignId, c.id), eq(campaignProgress.userId, a.userId)));
+  }
+}
 
 // ---------------------------------------------------------------------------
 // BIA report (aggregates only)

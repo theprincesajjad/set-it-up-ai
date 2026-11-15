@@ -7,7 +7,7 @@ import { Chip } from "@/components/ui/Chip";
 import { useFmt } from "./ui";
 
 /** Size, spice and add-on groups for one dish (frame 12a). Single groups are radios (or chips when every choice is free), multi groups are checkboxes. */
-export function OptionGroups({ item, value, onChange, idPrefix = "og" }: { item: Pick<Item, "priceCents" | "options">; value: string[]; onChange: (next: string[]) => void; idPrefix?: string }) {
+export function OptionGroups({ item, value, onChange, idPrefix = "og", plain = false }: { item: Pick<Item, "priceCents" | "options">; value: string[]; onChange: (next: string[]) => void; idPrefix?: string; /** The dashboard's own type, not the shop pages' lowercase display face. */ plain?: boolean }) {
   const groups = item.options?.groups ?? [];
   const pick = (g: OptionGroup, o: Option) => {
     if (g.type === "single") {
@@ -21,13 +21,13 @@ export function OptionGroups({ item, value, onChange, idPrefix = "og" }: { item:
   return (
     <div className="flex flex-col">
       {groups.map((g) => (
-        <Group key={g.id} g={g} value={value} onPick={(o) => pick(g, o)} idPrefix={idPrefix} />
+        <Group key={g.id} g={g} value={value} onPick={(o) => pick(g, o)} idPrefix={idPrefix} plain={plain} />
       ))}
     </div>
   );
 }
 
-function Group({ g, value, onPick, idPrefix }: { g: OptionGroup; value: string[]; onPick: (o: Option) => void; idPrefix: string }) {
+function Group({ g, value, onPick, idPrefix, plain }: { g: OptionGroup; value: string[]; onPick: (o: Option) => void; idPrefix: string; plain: boolean }) {
   const { t, money, number, pick: tr, locale } = useFmt();
   const name = useId();
   const free = g.type === "single" && g.priceMode === "delta" && g.options.every((o) => o.priceCents === 0) && g.options.length <= 4;
@@ -35,7 +35,7 @@ function Group({ g, value, onPick, idPrefix }: { g: OptionGroup; value: string[]
   const heading = tr({ name: g.name }).name;
   return (
     <fieldset className="flex flex-col gap-1 border-t border-line py-4 first:border-t-0 first:pt-0">
-      <legend className={cn("mb-2 flex w-full items-baseline justify-between gap-3 text-headline text-fg", locale === "en" ? "display lowercase" : "font-bold")}>
+      <legend className={cn("mb-2 flex w-full items-baseline justify-between gap-3 text-headline text-fg", locale === "en" && !plain ? "display lowercase" : "font-bold")}>
         <span className="min-w-0">{heading}</span>
         {g.required ? <span className="text-caption font-normal text-fg-muted">{t("rs.required")}</span> : null}
       </legend>

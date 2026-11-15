@@ -1,25 +1,28 @@
 import { palette } from "@ll/design-tokens";
-import { BRAND, placeKindLabel, type networkApi } from "@ll/shared";
+import { BRAND, type networkApi } from "@ll/shared";
 import { WEB_URL } from "../../config";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Linking, StyleSheet, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LanguageSwitcher } from "../../lib/i18n/LanguageSwitcher";
+import { formatPtsL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
 import { api } from "../../state/api";
 import { useTheme } from "../../theme";
-import { Button, LogoMark, PlaceBubble, ShopLogo, Text } from "../../ui";
+import { failKind } from "../../lib/failKind";
+import { Banner, Button, LogoMark, PlaceBubble, ShopLogo, Text, hiddenFromA11y } from "../../ui";
 
 /** A still of the product, not an illustration: a pale street with four places on it. The names are generic ("Your coffee shop"), never a real or seeded shop. */
 function StreetStill({ width }: { width: number }) {
   const { isDark } = useTheme();
-  const { t, locale } = useLocale();
+  const L = useLocale();
+  const { t } = L;
   const land = isDark ? palette.map.landDark : palette.map.land;
   const road = isDark ? palette.map.roadDark : palette.map.road;
   const h = Math.round(width * 0.82);
   return (
-    <View style={[styles.still, { width, height: h, backgroundColor: land }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <View style={[styles.still, { width, height: h, backgroundColor: land }]} {...hiddenFromA11y}>
       <View style={[styles.road, { backgroundColor: road, top: h * 0.46, left: -40, right: -40, height: 18, transform: [{ rotate: "-14deg" }] }]} />
       <View style={[styles.road, { backgroundColor: road, top: -40, bottom: -40, left: width * 0.58, width: 12, transform: [{ rotate: "8deg" }] }]} />
       <View style={[styles.road, { backgroundColor: road, top: h * 0.12, left: -40, right: -40, height: 8, transform: [{ rotate: "6deg" }] }]} />
@@ -30,10 +33,10 @@ function StreetStill({ width }: { width: number }) {
         <PlaceBubble name={t("mf.sample.bakery")} subtitle={t("sh.wallet.rewardReady")} accent category="bakery" />
       </View>
       <View style={[styles.pin, { top: h * 0.56, left: width * 0.12 }]}>
-        <PlaceBubble name={t("mf.sample.eat")} subtitle={placeKindLabel(locale, "restaurant")} category="eat" />
+        <PlaceBubble name={t("mf.sample.eat")} subtitle={formatPtsL(L, 240)} category="eat" />
       </View>
       <View style={[styles.pin, { top: h * 0.76, left: width * 0.46 }]}>
-        <PlaceBubble name={t("mf.sample.beauty")} subtitle={placeKindLabel(locale, "salon")} category="beauty" />
+        <PlaceBubble name={t("mf.sample.beauty")} subtitle={t("ms.stampsProgress", { n: 3, goal: 6 })} category="beauty" />
       </View>
     </View>
   );
@@ -51,13 +54,16 @@ export default function Welcome() {
     enabled: !!join,
   });
   const shop = joinInfo.data?.merchant;
+  // A shop QR that does not resolve: say so above the normal welcome and leave the code out of the next steps.
+  const linkFailed = !!join && joinInfo.isError && !shop;
+  const offline = linkFailed && failKind(joinInfo.error) === "offline";
   const stillW = Math.min(width - 32, 420);
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: c.bg }]}>
       <View style={styles.top}>
         <LogoMark size={36} />
         <Text variant="mapLabel" style={{ fontSize: 17 }}>
-          {BRAND.name.toLowerCase()}
+          {BRAND.name}
         </Text>
       </View>
       {/* First auth screen: the language switch lives here (the choice is saved on the device). */}
@@ -66,16 +72,21 @@ export default function Welcome() {
       </View>
       <View style={styles.hero}>{shop ? <ShopLogo shop={shop} size={88} /> : <StreetStill width={stillW} />}</View>
       <View style={styles.body}>
+        {linkFailed ? (
+          <Banner variant="neutral" actionLabel={offline ? t("err.action.retry") : undefined} onAction={offline ? () => void joinInfo.refetch() : undefined}>
+            {offline ? t("err.offline.line") : t("mf.join.bad.line")}
+          </Banner>
+        ) : null}
         {/* On the type scale: 40 display (28 large title on narrow phones). */}
         <Text variant="largeTitle" accessibilityRole="header" style={width < 360 ? null : { fontSize: 40, lineHeight: 46 }}>
-          {shop ? t("auth.m.welcome.titleShop", { shop: shop.name.toLowerCase() }) : t("auth.m.welcome.title")}
+          {shop ? t("auth.m.welcome.titleShop", { shop: shop.name }) : t("auth.m.welcome.title")}
         </Text>
         <Text variant="body" color="fgMuted">
           {shop ? t("auth.m.welcome.bodyShop", { shop: shop.name }) : t("auth.m.welcome.body")}
         </Text>
       </View>
       <View style={styles.actions}>
-        <Button size="lg" fullWidth onPress={() => router.push({ pathname: "/phone", params: join ? { join } : {} })}>
+        <Button size="lg" fullWidth onPress={() => router.push({ pathname: "/phone", params: join && !(linkFailed && !offline) ? { join } : {} })}>
           {t("auth.m.welcome.getStarted")}
         </Button>
         <Button variant="ghost" fullWidth onPress={() => router.push("/staff-sign-in")}>

@@ -6,6 +6,7 @@ import { formatNumber } from "../lib/award";
 import { useLocale } from "../lib/i18n";
 import { capFirst } from "../lib/sentenceCase";
 import { DISPLAY_HEAVY, ThemeScope, useTheme } from "../theme";
+import { hiddenFromA11y } from "./direction";
 import { Glass } from "./Glass";
 import { categorySource } from "./CategoryIcon";
 import { Awning } from "./Warm";
@@ -183,7 +184,7 @@ function WarmPassCard({ shop, subtitle, count, goal, mode, sentence, unit, ready
 
   const body = (
     <View style={[styles.card, shadow(isDark ? "0 8px 24px rgba(0,0,0,.45)" : "0 10px 28px -8px rgba(42,30,20,.35)"), { borderRadius: radii.sheet - 2 }]}>
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none" accessibilityElementsHidden>
+      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none" {...hiddenFromA11y}>
         <Defs>
           <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="0">
             <Stop offset="0" stopColor={tc.accent} />

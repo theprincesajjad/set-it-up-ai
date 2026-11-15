@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { SafeAreaView, View, useColorScheme } from "react-native";
 import { getJson } from "../state/storage";
+import { dirStyle } from "./direction";
 import { FailView } from "./FailView";
 
 /**
@@ -32,7 +33,7 @@ export function AppErrorBoundary({ retry }: { error: Error; retry: () => Promise
   };
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: scheme === "dark" ? "#0B0B0C" : "#FFFFFF" }}>
-      <View style={{ flex: 1, paddingHorizontal: 16, justifyContent: "center", direction: LOCALES[locale].dir }}>
+      <View style={{ flex: 1, paddingHorizontal: 16, justifyContent: "center", ...dirStyle(LOCALES[locale].dir) }}>
         <FailView title={t("err.server.title")} body={t("mf.boundary.body")} primaryLabel={t("err.action.retry")} onPrimary={() => void retry()} secondaryLabel={t("mf.go.cards")} onSecondary={toCards} help={t("err.help.customer")} />
       </View>
     </SafeAreaView>

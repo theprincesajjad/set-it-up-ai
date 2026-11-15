@@ -76,6 +76,11 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
     return catalog.updateCategory(ctx.db, staff.merchant.id, req.params.categoryId, body);
   });
 
+  app.delete<{ Params: MerchantParams & { categoryId: string } }>("/merchants/:merchantId/catalog/categories/:categoryId", async (req) => {
+    const staff = await staffFor(req, "manager", ["orders.order_ahead"], "catalog.manage");
+    return catalog.deleteCategory(ctx.db, staff.merchant.id, req.params.categoryId);
+  });
+
   // ---------------------------------------------------------------- merchant orders
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/orders", async (req) => {
     const staff = await staffFor(req, "staff", ["orders.order_ahead"]);

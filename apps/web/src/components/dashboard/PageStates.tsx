@@ -1,12 +1,15 @@
 "use client";
 import type { ReactNode } from "react";
 import { ErrorPanel } from "@/components/errors";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { ErrorLine, PageHeader } from "./kit";
 
 /** Skeleton matching a page header + a few blocks (skeletons, never full-page spinners). */
 export function PageSkeleton({ rows = 3 }: { rows?: number }) {
+  const { t } = useLocaleOrEnglish();
   return (
-    <div className="flex flex-col gap-4" aria-busy="true" aria-label="Loading">
+    <div role="status" className="flex flex-col gap-4" aria-busy="true">
+      <span className="sr-only">{t("ui.skeleton.loading")}</span>
       <div className="skeleton h-7 w-56 rounded-sm" />
       <div className="skeleton h-4 w-80 max-w-full rounded-sm" />
       {Array.from({ length: rows }, (_, i) => (
@@ -20,13 +23,12 @@ export function LoadError({ error, onRetry, cause }: { error: string; onRetry?: 
   return <ErrorLine message={error} cause={cause} onRetry={onRetry} />;
 }
 
-/** Full-page state for a 403 / unknown area: one sentence + one action, left-aligned. */
+/** Full-page state for a 403 / unknown area: the same page header and one white card as the wrong-trade screen (FeatureTeaser), so every "not for you" page looks alike. */
 export function NoAccess({ title = "This area is for owners and managers", body = "Ask the shop owner if you need access.", action }: { title?: string; body?: string; action?: ReactNode }) {
   return (
-    <div className="max-w-[520px] py-10">
-      <h1 className="text-title text-foreground">{title}</h1>
-      <p className="mt-1 text-meta text-muted-foreground">{body}</p>
-      {action ? <div className="mt-4">{action}</div> : null}
+    <div className="flex max-w-[680px] flex-col gap-6" data-testid="no-access">
+      <PageHeader flush title={title} description={body} />
+      {action ? <section className="flex flex-wrap items-center gap-2 rounded-card bg-card p-5 shadow-card sm:p-6">{action}</section> : null}
     </div>
   );
 }

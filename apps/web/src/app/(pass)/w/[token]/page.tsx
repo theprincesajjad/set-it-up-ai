@@ -8,6 +8,7 @@ import { isApiError } from "@/lib/api/errors";
 import { publicWaitlistEndpoints } from "@/lib/api/waitlist";
 import { serverApiUrl } from "@/lib/env";
 import { getLocale, getT } from "@/lib/i18n/server";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
@@ -27,6 +28,8 @@ export default async function TakePage({ params, searchParams }: Props) {
   const api = publicWaitlistEndpoints(createApiClient({ baseUrl: serverApiUrl() }));
   // 410 = the held spot was taken or the hold ran out (TakeOffer says so); 404 = no such link; anything else is a load problem.
   const data: waitlistApi.OfferDto | "taken" | LinkKind = await api.offer(token).catch((e: unknown) => (isApiError(e) && e.status === 410 ? "taken" : linkKind(e)));
+  // A link that was never issued (or was copied wrong) is a real 404, not a 200 with an apology.
+  if (data === "gone") notFound();
   if (typeof data === "string" && data !== "taken")
     return (
       <PageFrame locale={locale}>

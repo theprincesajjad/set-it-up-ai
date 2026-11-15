@@ -225,7 +225,7 @@ test("customer books with a deposit; a taken time says so", async ({ page }) => 
   await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();
   await expect(page.getByText(/We are holding this time until/)).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();
-  await expect(page.getByRole("heading", { name: "you are booked" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: "You’re booked", level: 1 })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("button", { name: "Add to calendar" })).toBeVisible();
   // The confirmation is a next-visit card: when, where (with directions) and the cancel policy in words.
   const next = page.getByTestId("next-visit");

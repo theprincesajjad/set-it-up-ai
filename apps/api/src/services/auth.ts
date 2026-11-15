@@ -142,7 +142,7 @@ async function consumeOtp(ctx: AppContext, purpose: OtpPurpose, target: string, 
     .orderBy(desc(otpCodes.createdAt))
     .limit(1);
   if (!otp || otp.expiresAt <= now) throw new HttpError(400, "invalid_code", "That code has expired. Request a new one.");
-  if (otp.attempts >= authApi.OTP_MAX_ATTEMPTS) throw tooMany("Too many wrong codes. Request a new one.");
+  if (otp.attempts >= authApi.OTP_MAX_ATTEMPTS) throw tooMany("Too many wrong codes. Request a new one.", undefined, { reason: "otp_locked" });
 
   const [counted] = await ctx.db
     .update(otpCodes)
@@ -155,7 +155,7 @@ async function consumeOtp(ctx: AppContext, purpose: OtpPurpose, target: string, 
     const attemptsLeft = Math.max(0, authApi.OTP_MAX_ATTEMPTS - counted.attempts);
     if (attemptsLeft === 0) {
       await ctx.db.update(otpCodes).set({ consumedAt: now }).where(eq(otpCodes.id, otp.id));
-      throw tooMany("Too many wrong codes. Request a new one.");
+      throw tooMany("Too many wrong codes. Request a new one.", undefined, { reason: "otp_locked" });
     }
     throw new HttpError(400, "invalid_code", "That code is not right.", { attemptsLeft });
   }
@@ -490,7 +490,7 @@ export async function verifyStaffPin(
       ),
     );
   if (Number(failures?.n ?? 0) >= authApi.STAFF_PIN_MAX_FAILURES) {
-    throw tooMany(`Too many wrong PINs. Try again in ${authApi.STAFF_PIN_LOCKOUT_MINUTES} minutes.`, authApi.STAFF_PIN_LOCKOUT_MINUTES * 60);
+    throw tooMany(`Too many wrong PINs. Try again in ${authApi.STAFF_PIN_LOCKOUT_MINUTES} minutes.`, authApi.STAFF_PIN_LOCKOUT_MINUTES * 60, { reason: "pin_locked" });
   }
 
   const candidates = await ctx.db

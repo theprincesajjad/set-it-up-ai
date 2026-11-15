@@ -26,15 +26,16 @@ export function TradeRows() {
       <p className="text-meta-strong text-muted-foreground">{T.eyebrow}</p>
       <h2 className="display mt-4 max-w-3xl text-mkt-md text-balance md:text-mkt-lg">{sentenceCase(T.title)}</h2>
       <p className="mt-5 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">{T.sub}</p>
-      <ul className="mt-10 flex flex-col gap-3">
+      {/* One grid for all rows (each row a subgrid), so the three columns line up from row to row. */}
+      <ul className="mt-10 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
         {ROWS.map((r, i) => (
-          <li key={r.who} className="grid gap-2 rounded-card bg-card p-5 shadow-card md:grid-cols-[1fr_1.6fr_auto] md:items-center md:gap-8">
+          <li key={r.who} className="grid gap-2 rounded-card bg-card p-5 shadow-card md:col-span-3 md:grid-cols-subgrid md:items-center md:gap-x-8">
             <p className="flex items-center gap-3 text-body-strong text-foreground">
               <span aria-hidden className={cn("size-3 shrink-0 rounded-full", DOTS[i % DOTS.length])} />
               {r.who}
             </p>
             <p className="text-meta text-muted-foreground">{r.what}</p>
-            <p className={cn("w-fit rounded-full px-3.5 py-1.5 text-meta-strong tabular-nums md:justify-self-end", TONES[i % TONES.length])}>{r.price}</p>
+            <p className={cn("w-fit rounded-full px-3.5 py-1.5 text-meta-strong max-md:rounded-r4 tabular-nums md:justify-self-end", TONES[i % TONES.length])}>{r.price}</p>
           </li>
         ))}
       </ul>

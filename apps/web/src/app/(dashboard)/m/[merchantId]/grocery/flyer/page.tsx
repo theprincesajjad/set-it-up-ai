@@ -107,7 +107,7 @@ function Flyer() {
         actions={
           canEdit ? (
             <>
-              {d?.whatsappText ? <CopyButton text={d.whatsappText} label="Copy for WhatsApp" className="h-[38px] rounded-full px-4" /> : null}
+              {d?.whatsappText ? <CopyButton text={d.whatsappText} label="Copy for WhatsApp" className="max-md:h-11 md:h-[38px] rounded-full px-4" /> : null}
               <Button size="md" variant="secondary" disabled={!d?.whatsappText || !d.textable} loading={act.busy} onClick={() => void textMembers()}>Text members</Button>
               <Button size="md" onClick={() => setSheet({ deal: null })}>Add a deal</Button>
             </>

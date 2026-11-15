@@ -96,13 +96,13 @@ describe("dates and zones", () => {
     expect(weekStart("2026-11-02")).toBe("2026-11-02");
   });
   it("formats clock times, hour labels and durations", () => {
-    expect(clock(0)).toBe("12:00 am");
-    expect(clock(9 * 60)).toBe("9:00 am");
-    expect(clock(12 * 60 + 30)).toBe("12:30 pm");
-    expect(clock(17 * 60 + 5)).toBe("5:05 pm");
-    expect(hourLabel(9)).toBe("9 am");
-    expect(hourLabel(12)).toBe("12 pm");
-    expect(hourLabel(13)).toBe("1 pm");
+    expect(clock(0)).toBe("12 a.m.");
+    expect(clock(9 * 60)).toBe("9 a.m.");
+    expect(clock(12 * 60 + 30)).toBe("12:30 p.m.");
+    expect(clock(17 * 60 + 5)).toBe("5:05 p.m.");
+    expect(hourLabel(9)).toBe("9 a.m.");
+    expect(hourLabel(12)).toBe("12 p.m.");
+    expect(hourLabel(13)).toBe("1 p.m.");
     expect(duration(45)).toBe("45 min");
     expect(duration(120)).toBe("2 h");
     expect(duration(150)).toBe("2 h 30 min");

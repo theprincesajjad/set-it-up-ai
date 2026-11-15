@@ -108,14 +108,30 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
   );
   useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
 
-  if (role !== "owner" && role !== "manager") return <Banner tone="neutral">{c.noAccess}</Banner>;
+  // Every state keeps the page's own title, so the tab and the heading say "Website" before the data is in and when it could not load.
+  if (role !== "owner" && role !== "manager")
+    return (
+      <div className="flex flex-col">
+        <PageTitle title={c.title} />
+        <Banner tone="neutral">{c.noAccess}</Banner>
+      </div>
+    );
   if (loadError)
     return (
-      <Banner tone="danger" action={<Button variant="secondary" size="sm" onClick={load}>{copy.action.tryAgain}</Button>}>
-        {loadError}
-      </Banner>
+      <div className="flex flex-col">
+        <PageTitle title={c.title} />
+        <Banner tone="danger" action={<Button variant="secondary" size="sm" onClick={load}>{copy.action.tryAgain}</Button>}>
+          {loadError}
+        </Banner>
+      </div>
     );
-  if (!b || !content || !live) return <div aria-busy="true" className="h-96 animate-pulse rounded-r6 bg-muted" />;
+  if (!b || !content || !live)
+    return (
+      <div className="flex flex-col">
+        <PageTitle title={c.title} />
+        <div role="status" aria-busy="true" aria-label="Loading" className="skeleton h-96 rounded-r6" />
+      </div>
+    );
 
   const isOwner = role === "owner";
   const status = b.site.status;

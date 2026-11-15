@@ -256,7 +256,17 @@ export async function getWallet(ctx: AppContext, userId: string): Promise<custom
   const rows = await walletRows(ctx.db, userId);
   const rs = await activeRewardsByMerchant(ctx.db, rows.map((r) => r.merchant.id));
   const features = await customerFeaturesFor(ctx.db, rows.map((r) => r.merchant));
-  const items = rows.map((r) => ({ ...membershipDto(r, rs.get(r.merchant.id) ?? [], features.get(r.merchant.id)!), features: features.get(r.merchant.id)! }));
+  // Codes waiting at the counter, per card: the wallet keeps such a shop featured (its stamps are held, so it would otherwise drop down the list).
+  const memberIds = rows.map((r) => r.member.id);
+  const open = memberIds.length
+    ? await ctx.db
+        .select({ memberId: redemptions.memberId, n: sql<number>`count(*)::int` })
+        .from(redemptions)
+        .where(and(inArray(redemptions.memberId, memberIds), eq(redemptions.status, "issued")))
+        .groupBy(redemptions.memberId)
+    : [];
+  const openBy = new Map(open.map((o) => [o.memberId, Number(o.n)]));
+  const items = rows.map((r) => ({ ...membershipDto(r, rs.get(r.merchant.id) ?? [], features.get(r.merchant.id)!), openRedemptions: openBy.get(r.member.id) ?? 0, features: features.get(r.merchant.id)! }));
   return { items, totals: { shops: items.length, rewardsAvailable: items.reduce((s, i) => s + i.rewardsAvailableCount, 0) } };
 }
 
@@ -355,7 +365,7 @@ export async function joinMerchant(ctx: AppContext, userId: string, body: custom
     const [loc] = await ctx.db
       .select({ id: locations.id, merchantId: locations.merchantId })
       .from(locations)
-      .where(and(eq(locations.qrCode, body.locationQrCode), eq(locations.active, true)))
+      .where(and(inArray(locations.qrCode, [...new Set([body.locationQrCode.trim(), body.locationQrCode.trim().toUpperCase()])]), eq(locations.active, true)))
       .limit(1);
     if (!loc) throw notFound("Shop");
     merchantId = loc.merchantId;

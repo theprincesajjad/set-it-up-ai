@@ -75,16 +75,19 @@ export function dateLabel(date: string, opts: Intl.DateTimeFormatOptions = { wee
   return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString("en-CA", { timeZone: "UTC", ...opts });
 }
 
-/** "9:00 am", "12:30 pm". */
+/** "9 a.m.", "12:30 p.m." (the dashboard's one time style, as lib/format.ts: on the hour drops the minutes). */
 export function clock(minutes: number): string {
   const h = Math.floor(minutes / 60) % 24;
   const m = minutes % 60;
-  const suffix = h < 12 ? "am" : "pm";
-  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${suffix}`;
+  const suffix = h < 12 ? "a.m." : "p.m.";
+  return `${h % 12 === 0 ? 12 : h % 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${suffix}`;
 }
 
-/** "9 am" for the hour gutter. */
-export const hourLabel = (hour: number) => `${hour % 12 === 0 ? 12 : hour % 12} ${hour % 24 < 12 ? "am" : "pm"}`;
+/** "9:00", "12:30": the clock without am or pm, for ranges a screen reader or a narrow cell reads with the context around it. */
+const bareClock = (min: number) => `${Math.floor(min / 60) % 12 || 12}:${String(min % 60).padStart(2, "0")}`;
+
+/** "9 a.m." for the hour gutter. */
+export const hourLabel = (hour: number) => `${hour % 12 === 0 ? 12 : hour % 12} ${hour % 24 < 12 ? "a.m." : "p.m."}`;
 
 export const timeRange = (a: Appt, tz = TZ) => `${clock(parts(a.startsAt, tz).minutes)} to ${clock(parts(a.endsAt, tz).minutes)}`;
 
@@ -257,7 +260,7 @@ export function walkInGaps(staff: Staff | null, staffId: string | null, date: st
 }
 
 /** "Open: walk-in gap" and the range under it, e.g. "4:00 to 5:00". */
-export const gapRange = (g: Pick<WalkInGap, "start" | "end">) => `${clock(g.start).replace(/ (am|pm)$/, "")} to ${clock(g.end).replace(/ (am|pm)$/, "")}`;
+export const gapRange = (g: Pick<WalkInGap, "start" | "end">) => `${bareClock(g.start)} to ${bareClock(g.end)}`;
 
 // ---------------------------------------------------------------------------
 // Blocks
@@ -296,7 +299,7 @@ export const serviceSummary = (a: Pick<Appt, "items">) => a.items.map((i) => i.n
 /** Screen reader label: "Neha Sharma, cut and blow-dry, 9:00 to 10:15, Simran, paid". */
 export function blockLabel(a: Appt, tz = TZ): string {
   const status = a.status === "completed" ? (a.invoiceId ? "paid" : "done") : a.status === "no_show" ? "no-show" : a.status === "in_service" ? "in the chair" : a.status === "arrived" ? "arrived" : a.status === "cancelled" ? "cancelled" : a.depositPaidAt ? "deposit paid" : "booked";
-  return [a.pet ? `${a.pet.name}, with ${a.customer.name}` : a.customer.name, serviceSummary(a).toLowerCase(), timeRange(a, tz).replace(/ (am|pm)/g, ""), a.staffName?.split(" ")[0] ?? "unassigned", status].filter(Boolean).join(", ");
+  return [a.pet ? `${a.pet.name}, with ${a.customer.name}` : a.customer.name, serviceSummary(a).toLowerCase(), `${bareClock(parts(a.startsAt, tz).minutes)} to ${bareClock(parts(a.endsAt, tz).minutes)}`, a.staffName?.split(" ")[0] ?? "unassigned", status].filter(Boolean).join(", ");
 }
 
 /** Is a block the kind of thing that can be dragged? */

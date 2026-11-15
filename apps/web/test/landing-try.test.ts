@@ -68,7 +68,7 @@ describe("try it: the hand-off into signup", () => {
   });
 });
 
-/** Wave W: the try-it button names the shop ("Keep {name}’s card, start free"), cut short for long names. */
+/** Wave W: the try-it button names the shop ("Keep the {name} card, start free"; no possessive, so names ending in s read right), cut short for long names. */
 describe("try it: the name on the button", () => {
   it("keeps short names whole, trims space, and cuts long ones near 22 characters with an ellipsis", () => {
     expect(buttonName("")).toBe("");
@@ -81,6 +81,6 @@ describe("try it: the name on the button", () => {
     expect(long).toBe("The Very Long Neighbo…");
     expect(buttonName("Morning Glory Coffee and Pastry")).toBe("Morning Glory Coffee…");
     expect(buttonName("Abcdefghijklmnopqrstuvwxyz")).toBe("Abcdefghijklmnopqrstu…");
-    expect(copy.landing.tryIt.ctaNamed.replace("{name}", buttonName("Gloss Studios"))).toBe("Keep Gloss Studios’s card, start free");
+    expect(copy.landing.tryIt.ctaNamed.replace("{name}", buttonName("Gloss Studios"))).toBe("Keep the Gloss Studios card, start free");
   });
 });

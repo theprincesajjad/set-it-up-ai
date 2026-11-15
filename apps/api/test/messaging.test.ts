@@ -233,7 +233,7 @@ describe("opt-outs", () => {
     const form = await env.app.inject({ method: "POST", url: "/v1/public/messaging/unsubscribe", headers: { accept: "text/html", "content-type": "application/x-www-form-urlencoded" }, payload: `m=${s.alice.id}&t=${token}&lang=en` });
     expect(form.statusCode).toBe(200);
     expect(form.headers["content-type"]).toContain("text/html");
-    expect(form.body).toContain("You&#39;re unsubscribed");
+    expect(form.body).toContain("You’re unsubscribed");
     [m] = await env.db.select().from(merchantMembers).where(eq(merchantMembers.id, s.alice.id));
     expect(m!.marketingConsentAt).toBeNull();
     // Other members of the shop are untouched.

@@ -1,6 +1,6 @@
 {
   "ios": {
-    "NSCameraUsageDescription": "ਕਿਸੇ ਦੁਕਾਨ ਨਾਲ ਜੁੜਨ, ਪੁਆਇੰਟ ਲੈਣ ਜਾਂ ਕਾਊਂਟਰ ’ਤੇ ਗਾਹਕ ਨੂੰ ਚੈੱਕ-ਇਨ ਕਰਨ ਲਈ QR ਕੋਡ ਸਕੈਨ ਕਰੋ।",
+    "NSCameraUsageDescription": "ਦੁਕਾਨ ਦਾ ਸਟਾਫ਼ ਕਾਊਂਟਰ ’ਤੇ ਗਾਹਕ ਦਾ ਕਾਰਡ ਜਾਂ ਰਿਵਾਰਡ ਕੋਡ ਸਕੈਨ ਕਰਦਾ ਹੈ।",
     "NSLocationWhenInUseUsageDescription": "ਨਕਸ਼ੇ ’ਤੇ ਆਪਣੇ ਨੇੜੇ ਦੀਆਂ ਦੁਕਾਨਾਂ ਵੇਖੋ।"
   }
 }

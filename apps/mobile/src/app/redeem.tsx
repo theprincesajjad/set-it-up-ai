@@ -65,6 +65,8 @@ export default function Redeem() {
     }
   }, [left, state, p.redemptionId, qc]);
 
+  /** Back where the person came from; a code opened cold (reload, link) has no history, so it goes to the cards. */
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/wallet"));
   const cancel = async () => {
     setBusy(true);
     try {
@@ -72,7 +74,7 @@ export default function Redeem() {
       setState("cancelled");
       await qc.invalidateQueries({ queryKey: qk.wallet });
       await qc.invalidateQueries({ queryKey: qk.membership(p.memberId) });
-      router.back();
+      leave();
     } catch (e) {
       setError(errorMessage(e, { network: t("auth.err.network"), server: t("auth.err.server") }));
     } finally {
@@ -101,7 +103,7 @@ export default function Redeem() {
     <SafeAreaView style={[styles.root, { backgroundColor: c.bg }]}>
       {/* Leaving keeps the code open (the shop page shows "a code is waiting"); Cancel code is the bottom action. */}
       <View style={styles.top}>
-        <IconButton icon={X} label={t("ms.redeem.closeKeep")} variant="secondary" size={36} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} />
+        <IconButton icon={X} label={t("ms.redeem.closeKeep")} variant="secondary" size={36} onPress={leave} />
       </View>
       <View style={styles.body}>
         <ShopLogo shop={{ name: p.shopName ?? "", vertical: p.vertical ?? "other", logoUrl: p.logoUrl || null, brandColor: p.brandColor || null }} size={56} />
@@ -113,7 +115,9 @@ export default function Redeem() {
             {p.shopName}
           </Text>
         </View>
-        {state === "expired" ? (
+        {state === "cancelled" ? (
+          <Banner variant="neutral">{t("mf.redeem.cancelled")}</Banner>
+        ) : state === "expired" ? (
           <>
             <Banner variant="neutral">{t("cp.err.redeemExpired")}</Banner>
             <Button size="lg" fullWidth onPress={() => router.replace(p.slug ? `/shop/${p.slug}` : "/rewards")}>
@@ -146,7 +150,7 @@ export default function Redeem() {
           {t("ms.redeem.cancelCode")}
         </Button>
       ) : (
-        <Button variant="secondary" fullWidth onPress={() => router.back()}>
+        <Button variant="secondary" fullWidth onPress={leave}>
           {t("sh.card.close")}
         </Button>
       )}

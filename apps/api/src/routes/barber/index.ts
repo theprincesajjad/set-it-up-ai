@@ -29,7 +29,7 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   const queueStaff = (req: FastifyRequest, minRole: StaffRole = "staff") => staffFor(req, minRole, "booking.walkin_queue", "bookings.manage");
 
   // ---------------------------------------------------------------- the line (staff)
-  app.get<{ Params: MerchantParams }>("/merchants/:merchantId/queue", async (req) => svc.board(ctx, await queueStaff(req)));
+  app.get<{ Params: MerchantParams; Querystring: { for?: string } }>("/merchants/:merchantId/queue", async (req) => svc.board(ctx, await queueStaff(req), { tablet: req.query.for === "tablet" }));
 
   app.get<{ Params: MerchantParams }>("/merchants/:merchantId/queue/settings", async (req) => svc.getSettings(ctx, (await staffFor(req, "staff", "booking.walkin_queue", null)).merchant.id));
   app.put<{ Params: MerchantParams }>("/merchants/:merchantId/queue/settings", async (req) => {

@@ -35,6 +35,18 @@ async function pageLocale(sp: Record<string, string | string[] | undefined>): Pr
 const torontoToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const pct = (bps: number) => `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
 
+/**
+ * Urdu runs right to left, and a "$" before digits that follow Arabic letters loses its place ("5,000$"). Each amount is set in its own
+ * left-to-right isolate (LRI ... PDI), so it reads "$5,000" in every sentence, as the plan prices already did. Other languages are unchanged.
+ */
+const isolateMoney = (text: string) => text.replace(/\$\d[\d,]*(?:\.\d+)?/g, (m) => `\u2066${m}\u2069`);
+function isolateAll<T>(v: T): T {
+  if (typeof v === "string") return isolateMoney(v) as T;
+  if (Array.isArray(v)) return v.map(isolateAll) as T;
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, isolateAll(x)])) as T;
+  return v;
+}
+
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 /** The tab title and description in the page's language (from the translated nav label and hero), with hreflang links to all four. */
@@ -49,16 +61,20 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
   preloadInter();
   const locale = await pageLocale(await searchParams);
   const t = (k: Parameters<typeof translate>[1]) => translate(locale, k);
-  const S = restaurantCopy(locale);
+  const rtl = locale === "ur";
+  const S = rtl ? isolateAll(restaurantCopy(locale)) : restaurantCopy(locale);
+  const money = (text: string) => (rtl ? isolateMoney(text) : text);
   const waUrl = whatsappUrl(R.bookWhatsappText);
   const c = appCommission(500_000);
-  const prices = RESTAURANT_TIERS.map((tier) => ({ tier, name: RESTAURANT_PLANS[tier].name.replace(/^Restaurant /, ""), price: moneyShort(RESTAURANT_PLANS[tier].priceCents) }));
+  const prices = RESTAURANT_TIERS.map((tier) => ({ tier, name: RESTAURANT_PLANS[tier].name.replace(/^Restaurant /, ""), price: money(moneyShort(RESTAURANT_PLANS[tier].priceCents)) }));
   return (
     <>
+      {/* One LocaleScope for the whole page: each scope mirrors lang and dir onto <html> and puts back what it found when it unmounts, so
+          sibling scopes put back each other's "rtl" and an English page reached by a client-side link stayed right to left. */}
       {/* 1. Hero: the promise and the owner's own menu, in the visitor's language. */}
       <LocaleScope locale={locale}>
         <section className="overflow-hidden">
-          <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 pt-14 pb-14 md:px-8 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-14 lg:pt-24 lg:pb-20">
+          <div className="mx-auto grid max-w-360 grid-cols-[minmax(0,1fr)] items-center gap-12 px-5 pt-14 pb-14 md:px-10 xl:px-15 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-14 lg:pt-24 lg:pb-20">
             <div>
               <p className="mkt-rise inline-flex rounded-full bg-tile-butter px-4 py-2 text-meta-strong text-tile-butter-foreground">{t("mkt.rest.eyebrow")}</p>
               <h1 className="display mt-5 text-mkt-lg text-balance md:text-mkt-xl">{sentenceCase(t("mkt.rest.title"))}</h1>
@@ -75,17 +91,15 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
               <a href="#book" className="mt-4 inline-flex min-h-11 items-center text-body-strong text-foreground underline decoration-input/60 underline-offset-4 hover:decoration-foreground">
                 {t("mkt.rest.ctaBook")}
               </a>
-              <p className="mt-3 max-w-[34rem] text-meta text-muted-foreground">{fill(S.heroFacts, { price: moneyShort(RESTAURANT_PLANS.starter.priceCents), first: FOUNDING_OFFER.firstYearPct })}</p>
+              <p className="mt-3 max-w-[34rem] text-meta text-muted-foreground">{fill(S.heroFacts, { price: money(moneyShort(RESTAURANT_PLANS.starter.priceCents)), first: FOUNDING_OFFER.firstYearPct })}</p>
             </div>
-            <PhoneStage arts={["eat", "bakery"]}>
-              <RestaurantPhone note={S.phoneNote} locale={locale} />
+            <PhoneStage arts={["eat", "coffee"]}>
+              <RestaurantPhone note={S.phoneNote} locale={locale} dishes={S.jobs[0].rows} />
             </PhoneStage>
           </div>
         </section>
-      </LocaleScope>
 
       {/* Sections 2 to 8, in the visitor's language too (copy/restaurants-locales.ts): the page's promise is language. */}
-      <LocaleScope locale={locale}>
       {/* 2. Founding strip: real spots from the API; absent when the API fails. */}
       <FoundingStrip c={S} />
 
@@ -115,7 +129,7 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
             <p className="text-meta-strong opacity-90">{S.plansEyebrow}</p>
             <h2 className="display mt-3 text-mkt-md text-balance md:text-mkt-lg">{sentenceCase(S.plansTitle)}</h2>
             <p className="mt-5 text-[17px] leading-[1.55]">
-              {fill(S.plansBody, { prices: prices.map((p) => `${p.name} ${p.price}`).join(" · "), range: c.pickupLowCents === c.deliveryMaxCents ? dollars(c.pickupLowCents) : fill(S.rangeTo, { min: dollars(c.pickupLowCents), max: dollars(c.deliveryMaxCents) }) })}
+              {fill(S.plansBody, { prices: prices.map((p) => `${p.name} ${p.price}`).join(" · "), range: c.pickupLowCents === c.deliveryMaxCents ? money(dollars(c.pickupLowCents)) : fill(S.rangeTo, { min: money(dollars(c.pickupLowCents)), max: money(dollars(c.deliveryMaxCents)) }) })}
             </p>
             <p className="mt-3 text-caption">
               {fill(S.plansSource, { date: locale === "en" ? formatAsOf(DOORDASH_CANADA.asOf) : formatDate(locale, `${DOORDASH_CANADA.asOf}T12:00:00Z`, { month: "short", day: "numeric", year: "numeric" }, "UTC") })}{" "}
@@ -162,10 +176,8 @@ export default async function ForRestaurantsPage({ searchParams }: Props) {
           <Faq items={S.faq.map((f) => ({ q: f.q, a: fill(f.a, { billing: pct(FEES.tiffinBps) }) }))} />
         </div>
       </MSection>
-      </LocaleScope>
 
       {/* 9. Book a visit: phone first, WhatsApp button, language field. No email-first form. */}
-      <LocaleScope locale={locale}>
         <MSection id="book" tone="peach">
           <div className="grid gap-12 md:grid-cols-2">
             <div>

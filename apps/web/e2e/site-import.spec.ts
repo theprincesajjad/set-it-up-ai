@@ -43,7 +43,7 @@ test.describe("signup with a website, at 390", () => {
     await expect(page).toHaveURL(/step=shop/);
     const review = page.locator("[data-import-review]");
     await expect(page.getByLabel("Shop name")).toHaveValue("Studio Verde Hair & Colour");
-    await expect(review.locator("[data-import-row=name]")).toContainText("From your site's business details");
+    await expect(review.locator("[data-import-row=name]")).toContainText("From your site’s business details");
     await expect(review.locator("[data-import-row=phone]")).toContainText("(647) 555-0188");
     await expect(review.locator("[data-import-row=brandColor]")).toContainText("#0F6E66");
     await expect(review.locator("[data-import-row=logo] img")).toBeVisible();
@@ -57,11 +57,11 @@ test.describe("signup with a website, at 390", () => {
     const name = `Studio Verde ${rand()}`;
     await page.getByLabel("Shop name").fill(name);
     await review.locator("[data-import-row=services]").getByText("Balayage").click();
-    await page.getByRole("button", { name: "Yes, that's me" }).click();
+    await page.getByRole("button", { name: "Yes, that’s me" }).click();
 
     // The type is the site's guess, marked; the address and the phone wait on their own steps.
     await expect(page.getByRole("radio", { name: /Salon/ })).toHaveAttribute("aria-checked", "true");
-    await expect(page.locator("[data-vertical=salon]").first()).toContainText("From your site");
+    await expect(page.locator("[data-vertical=salon]").first()).toContainText("Your site");
     await cont(page);
     await atStep(page, "where");
     await expect(page.getByLabel("Street address")).toHaveValue("88 Ossington Ave, Toronto, ON M6J 2Y7");
@@ -103,16 +103,20 @@ test.describe("signup with a website, at 390", () => {
   });
 
   test("an Instagram link is not fetched: the handle only, with the note", async ({ page }) => {
-    await importAndReview(page, "https://www.instagram.com/priya.nails/");
-    await expect(page.getByText("We'll use your handle; add your logo below.")).toBeVisible();
+    await page.goto("/signup");
+    await page.getByRole("textbox", { name: "Website or Instagram" }).fill("https://www.instagram.com/priya.nails/");
+    await page.getByRole("button", { name: "Fill it in for me" }).click();
+    // A handle alone has no name or logo to confirm, so the step asks for the name instead of "Is this you?".
+    await expect(page.getByRole("heading", { name: "What’s your shop called?" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("We’ll use your handle. You can add your logo later in Settings.")).toBeVisible();
     await expect(page.locator("[data-import-row=instagram]")).toContainText("@priya.nails");
     await page.screenshot({ path: shot("06-instagram-390"), fullPage: true });
   });
 
   test("Skip: a plain name question, and the website can still be added from there", async ({ page }) => {
     await page.goto("/signup");
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
-    await expect(page.getByRole("heading", { name: "What's your shop called?" })).toBeVisible();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
+    await expect(page.getByRole("heading", { name: "What’s your shop called?" })).toBeVisible();
     await expect(page.getByLabel("Shop name")).toBeVisible();
     await page.getByRole("button", { name: "Have a website? Fill it in for me" }).click();
     await expect(page.getByRole("heading", { name: "Do you have a website or Instagram?" })).toBeVisible();

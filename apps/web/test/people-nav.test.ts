@@ -33,7 +33,11 @@ describe("people-side nav", () => {
     const studio = new Set([...all, ...(Object.keys(FEATURES) as FeatureKey[]).filter((x) => FEATURES[x].minPlan === "studio" && !x.startsWith("grocery."))]);
     expect(buildMerchantNav("/m/x", "owner", studio, { vertical: "nails", plan: "studio", soloCalendar: false }).map((e) => e.key)).toContain("payouts");
     expect(buildMerchantNav("/m/x", "owner", studio, { vertical: "barber", plan: "studio", soloCalendar: true }).map((e) => e.key)).toContain("queue");
-    expect(paid("barber", true)).toContain("classes");
+    // A barber or salon is not a class trade: the class tools stay out of its sidebar even when a plan unlocks them. A spa keeps them.
+    expect(paid("barber", true)).not.toContain("classes");
+    expect(paid("salon", false)).not.toContain("class-door");
+    expect(paid("spa", false)).toContain("classes");
+    expect(paid("fitness", false)).toContain("classes");
   });
   it("a café on Free keeps its loyalty-first sidebar although one calendar is free for everyone; a groomer and a nail tech keep the calendar", () => {
     const free = (vertical: string, plan: "free" | "plus" = "free") => buildMerchantNav("/m/x", "owner", on, { vertical, plan }).map((e) => e.key);
@@ -42,6 +46,8 @@ describe("people-side nav", () => {
     expect(free("cafe", "plus")).toContain("calendar");
     expect(free("pet")).toContain("calendar");
     expect(free("nails")).toContain("calendar");
+    // A restaurant on its stamp card and a class studio on Free have no salon appointments: no Calendar, no Services & prices.
+    for (const v of ["restaurant", "restaurant_south_asian", "fitness"]) { expect(free(v), v).not.toContain("calendar"); expect(free(v), v).not.toContain("services"); }
   });
   it("keeps Settings above its sub-rows when Staff is hidden (final audit: it fell below POS & integrations and Billing)", () => {
     for (const solo of [true, false]) {

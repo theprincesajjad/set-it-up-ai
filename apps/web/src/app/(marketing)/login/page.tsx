@@ -30,22 +30,28 @@ export default async function LoginPage({ searchParams }: Props) {
   }
   const email = typeof sp.email === "string" && sp.email.length <= 254 ? sp.email : undefined;
   const customerPath = !!next && /^\/(me|o\/|shops\/|j\/|join\/|e\/|pay\/)/.test(next);
-  const initial = sp.as === "customer" || customerPath ? "customer" : "shop";
+  // A team invite (the link in the email or text): say who added them, and open the right tab.
+  const invite = sp.invite === "1";
+  const shopName = invite && typeof sp.shop === "string" ? sp.shop.trim().slice(0, 80) : "";
+  const initial = sp.as === "customer" || sp.as === "phone" || customerPath ? "customer" : "shop";
   const [locale, t] = await Promise.all([getLocale(sp), getT(sp)]);
   // Say why the person is here: the session ended, or the page they asked for needs a sign-in (admin accounts differ from shop accounts).
-  const notice = sp.reason === "expired" ? t("err.session.line") : next && /^\/admin(\/|$)/.test(next) ? t("err.login.admin") : next && /^\/(m|door|rep|bia)(\/|$)/.test(next) ? t("err.login.shop") : null;
+  const inviteNotice = invite ? (shopName ? t("auth.invite.banner", { shop: shopName }) : t("auth.invite.bannerNoShop")) : null;
+  const notice = inviteNotice ?? (sp.reason === "expired" ? t("err.session.line") : next && /^\/admin(\/|$)/.test(next) ? t("err.login.admin") : next && /^\/(m|door|rep|bia)(\/|$)/.test(next) ? t("err.login.shop") : null);
   return (
     <AuthLayout>
       <PageFrame locale={locale} className="flex flex-col gap-6">
         <h1 className="display mt-2 text-mkt-sm text-balance md:text-mkt-md">{t("auth.login.title", { brand: BRAND.name })}</h1>
         {notice ? <Banner tone="info">{notice}</Banner> : null}
-        <LoginTabs signedOut={sp.signedout === "1"} next={next} initial={initial} reset={sp.reset === "1"} mode={sp.mode === "code" ? "code" : undefined} email={email} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
-        <p className="mt-4 text-meta text-muted-foreground">
-          {t("auth.login.newShop")}{" "}
-          <Link href="/signup" className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
-            {t("auth.login.getStarted")}
-          </Link>
-        </p>
+        <LoginTabs signedOut={sp.signedout === "1"} next={next} initial={initial} reset={sp.reset === "1"} mode={sp.mode === "code" ? "code" : undefined} email={email} invite={invite} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />
+        {invite ? null : (
+          <p className="mt-4 text-meta text-muted-foreground">
+            {t("auth.login.newShop")}{" "}
+            <Link href="/signup" className="font-semibold text-foreground underline decoration-input/60 underline-offset-2">
+              {t("auth.login.getStarted")}
+            </Link>
+          </p>
+        )}
       </PageFrame>
     </AuthLayout>
   );

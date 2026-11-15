@@ -161,7 +161,7 @@ export function KitchenBoard() {
           <span lang={LOCALES[shownLang].bcp47} style={{ fontFamily: scriptStyle(shownLang) }} className={scriptClass(shownLang)}>{tr("kitchen.exit")}</span>
         </Link>
         <div className="min-w-0">
-          <h1 className={cn("truncate text-headline leading-tight text-fg", shownLang === "en" && "display")}>{shownLang === "en" ? "kitchen" : tr("kitchen.title")}</h1>
+          <h1 className={cn("truncate text-headline leading-tight text-fg", shownLang === "en" && "display")}>{shownLang === "en" ? "Kitchen" : tr("kitchen.title")}</h1>
           <p className="truncate text-caption text-fg-muted">
             <bdi>{detail.merchant.name}</bdi>{failed ? "" : <> · {tr("kitchen.openN", { n: iso(shownLang, tickets.length) })}</>}
             {!failed && lateCount ? ` · ${tr("kitchen.lateN", { n: iso(shownLang, lateCount) })}` : ""}
@@ -201,7 +201,7 @@ export function KitchenBoard() {
                 type="button"
                 lang={LOCALES[l].bcp47}
                 aria-pressed={shownLang === l}
-                aria-label={LOCALES[l].englishName}
+                aria-label={`${LOCALES[l].short}, ${LOCALES[l].englishName}`}
                 onClick={() => setLang(l)}
                 style={{ fontFamily: scriptStyle(l) }}
                 className={cn("inline-flex h-[38px] min-w-12 items-center justify-center rounded-full px-3 text-meta-strong leading-none focus-visible:focus-ring", scriptClass(l), shownLang === l ? "bg-primary text-primary-foreground" : "text-fg hover:bg-bg-subtle")}
@@ -243,7 +243,7 @@ export function KitchenBoard() {
         ) : !tickets.length ? (
           <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 p-6 text-center">
             <ChefHat aria-hidden className="size-10 text-fg-subtle" strokeWidth={1.5} />
-            <p className="display text-title text-fg">{tr("kitchen.noTickets").replace(/\.$/, "").toLowerCase()}</p>
+            <p className="display text-title text-fg">{tr("kitchen.noTickets").replace(/\.$/, "")}</p>
             <p className="max-w-sm text-body text-fg-muted">{tr("kitchen.emptyBody", { n: iso(shownLang, POLL_MS / 1000) })}</p>
           </div>
         ) : (

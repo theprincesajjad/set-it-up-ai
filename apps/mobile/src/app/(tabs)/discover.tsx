@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LoadFailed } from "../../features/customer/LoadFailed";
 import { useUnreadCount } from "../../features/customer/inbox";
 import { useDeviceLocation } from "../../features/customer/location";
 import { useCampaigns, useProfile, useWallet } from "../../features/customer/queries";
@@ -109,6 +110,9 @@ export default function Discover() {
   const shops = useQuery({ queryKey: qk.shops(JSON.stringify(params)), queryFn: () => api.network.shops(params) });
   // TODO(api): the ?halal= param is live on GET /v1/network/shops; this client-side pass only covers servers that ignore it.
   const all = useMemo(() => (shops.data?.items ?? []).filter((s) => !halal || shopMatchesHalal(s, halal)), [shops.data, halal]);
+  /** A failed request is not "0 shops near you": say so and offer Try again. */
+  const failed = shops.isError && !shops.data;
+
   const hoodName = shortHood(hood.data?.neighbourhood.name ?? profile.data?.homeNeighbourhood?.name ?? live?.neighbourhood.name ?? null);
   const ready = useMemo(() => new Set((wallet.data?.items ?? []).filter((m) => m.rewardsAvailableCount > 0).map((m) => m.merchant.id)), [wallet.data]);
   const goalOf = useMemo(() => new Map((wallet.data?.items ?? []).filter((m) => m.program?.earnType === "stamps" && m.nextReward).map((m) => [m.merchant.id, m.nextReward!.pointsCost] as const)), [wallet.data]);
@@ -161,11 +165,8 @@ export default function Discover() {
       <ScrollView contentContainerStyle={{ paddingBottom: tabSpace + 24 }} showsVerticalScrollIndicator={false}>
         <View style={{ position: "absolute", left: 0, right: 0, top: 0, zIndex: 2 }}><Awning height={10} /></View>
         {/* Hero: terracotta gradient, the live campaign. The three objects are from the canvas; in hi, ur and pa the headline runs wider and crosses them, so they step back. */}
-        <Pressable
-          accessibilityRole={live ? "button" : undefined}
-          accessibilityLabel={hero ? `${hero.eyebrow}. ${hero.headline}${hero.progress ? `. ${tr("ui.progressOf", { value: hero.progress.value, max: hero.progress.max })}` : ""}` : undefined}
-          disabled={!live}
-          onPress={() => live && router.push(`/campaigns/${live.id}`)}
+        {/* A View, not a button: the campaign link is an overlay below, so the bell is never a button inside a button. */}
+        <View
           // Urdu lines are taller (Nastaliq needs 1.7 line height), so the black hero gets room for the headline under the wordmark.
           style={[styles.hero, { height: top(340) + (L.locale === "ur" ? 112 : 0) }]}
         >
@@ -186,7 +187,15 @@ export default function Discover() {
           {HERO_OBJECTS.map((o) => (
             <Image key={o.cat} source={categorySource(o.cat)} style={{ position: "absolute", start: o.left + (width - 390), top: top(o.top), width: o.size, height: o.size, transform: [{ rotate: o.rotate }], opacity: L.locale === "en" ? 1 : 0.35 }} resizeMode="contain" accessibilityIgnoresInvertColors />
           ))}
-          <View style={[styles.heroTop, { top: top(58) }]}>
+          {live ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={hero ? `${hero.eyebrow}. ${hero.headline}${hero.progress ? `. ${tr("ui.progressOf", { value: hero.progress.value, max: hero.progress.max })}` : ""}` : undefined}
+              onPress={() => router.push(`/campaigns/${live.id}`)}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
+          <View style={[styles.heroTop, { top: top(58) }]} pointerEvents="box-none">
             <Text style={disp(17, 800, 20)} rawColor={heroInk}>
               {BRAND.name}
             </Text>
@@ -195,7 +204,7 @@ export default function Discover() {
               {unread > 0 ? <View style={[styles.heroDot, { backgroundColor: c.accent }]} /> : null}
             </Pressable>
           </View>
-          <View style={styles.heroCopy}>
+          <View style={styles.heroCopy} pointerEvents="none">
             {hero ? (
               <>
                 <Text style={ui(13, 600, 16)} rawColor={heroInk} numberOfLines={2}>
@@ -208,7 +217,7 @@ export default function Discover() {
             ) : (
               <>
                 <Text style={ui(13, 600, 16)} rawColor={heroInk}>
-                  {hoodName ? tr("sh.disc.streetLine", { street: hoodName, n: all.length }) : tr("sh.disc.near")}
+                  {hoodName && !failed ? tr("sh.disc.streetLine", { street: hoodName, n: all.length }) : tr("sh.disc.near").replace(/^./, (ch) => ch.toUpperCase())}
                 </Text>
                 <Text style={[disp(32, 800, 34, -0.01), { marginTop: 8 }]} rawColor={heroInk} accessibilityRole="header">
                   {tr("sh.disc.heroDefault")}
@@ -217,14 +226,14 @@ export default function Discover() {
             )}
           </View>
           {hero?.progress ? (
-            <View style={styles.heroBar}>
+            <View style={styles.heroBar} pointerEvents="none">
               <View style={styles.track}>
                 <View style={[styles.fill, { width: `${(hero.progress.value / hero.progress.max) * 100}%`, backgroundColor: heroInk }]} />
               </View>
               <Text style={[ui(12, 600, 16), { fontVariant: ["tabular-nums"] }]} rawColor={heroInk}>{`${hero.progress.value} / ${hero.progress.max}`}</Text>
             </View>
           ) : null}
-        </Pressable>
+        </View>
 
         {/* Chips: black "for you ▾", grey categories. */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }} contentContainerStyle={styles.chips}>
@@ -241,7 +250,7 @@ export default function Discover() {
             <Text style={disp(20, 800, 24)} accessibilityRole="header">
               {tr("sh.disc.near")}
             </Text>
-            <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{tr("sh.disc.shopsN", { n: all.length })}</Text>
+            {failed ? null : <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{tr("sh.disc.shopsN", { n: all.length })}</Text>}
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.disc.openMap")} onPress={() => router.navigate("/map")} style={[styles.mapCard, { backgroundColor: r.muted }]}>
             <Svg width={cardW} height={120} style={StyleSheet.absoluteFill}>
@@ -258,9 +267,9 @@ export default function Discover() {
               );
             })}
             {/* You are here: above the pins (canvas: the blue dot, 5.5 pt with a 2 pt white ring). */}
-            {centre ? <View style={[styles.youDot, { left: dotX - 7.5, top: 66 - 7.5 }]} /> : null}
+            {centre && loc.status === "granted" ? <View style={[styles.youDot, { left: dotX - 7.5, top: 66 - 7.5 }]} /> : null}
             <View style={[styles.openMap, { backgroundColor: c.bg }, floatShadow]}>
-              <Text style={ui(13, 600, 17)}>{tr("sh.disc.openMap")}</Text>
+              <Text style={ui(13, 600, 17)}>{tr("sh.disc.openMap").replace(/^./, (ch) => ch.toUpperCase())}</Text>
             </View>
           </Pressable>
         </View>
@@ -273,6 +282,11 @@ export default function Discover() {
               <Skeleton width={168} height={184} radius={16} />
               <Skeleton width={168} height={184} radius={16} />
             </View>
+          </View>
+        ) : null}
+        {failed ? (
+          <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+            <LoadFailed error={shops.error} onRetry={() => void shops.refetch()} />
           </View>
         ) : null}
         {rows.map((r, i) => (

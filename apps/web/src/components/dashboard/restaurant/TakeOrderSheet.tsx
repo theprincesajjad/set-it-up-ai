@@ -9,6 +9,7 @@ import { Minus, Plus, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { commerceApi, restaurantApi } from "@ll/shared";
 import { Dot, ErrorLine, SidePanel as Sheet } from "../kit";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { useMerchant } from "../MerchantContext";
 import { formatPhone } from "./shared";
 import { Banner } from "@/components/ui/Banner";
@@ -19,15 +20,22 @@ import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { portionLabel } from "@/lib/restaurant/weighed";
+import { OptionGroups } from "@/components/restaurant/OptionGroups";
+import { defaultOptionIds, lineKey, priceDish } from "@/lib/restaurant/order";
 import { fromLocalInput } from "@/lib/dashboard/time";
 import { useAction, useApi } from "@/lib/dashboard/useApi";
 
 export type TakeOrderMode = "counter" | "phone" | "preorder";
 interface Line {
+  /** Dish id plus its option picks: the same dish with other choices is its own line. */
+  key: string;
   catalogItemId: string;
   name: string;
   quantity: number;
   priceCents: number;
+  optionIds: string[];
+  /** "Hot · Full": the choices, for the line under the name. */
+  choices: string;
 }
 
 const COPY: Record<TakeOrderMode, { title: string; subtitle: string; send: string }> = {
@@ -57,6 +65,8 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
   const [phone, setPhone] = useState(prefill?.phone ?? "");
   const [name, setName] = useState(prefill?.name ?? "");
   const [lines, setLines] = useState<Line[]>([]);
+  const [picking, setPicking] = useState<commerceApi.CatalogItemDto | null>(null);
+  const [pickIds, setPickIds] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [pickup, setPickup] = useState(mode === "preorder" ? defaultPickup(48) : "");
   const [allergy, setAllergy] = useState("");
@@ -65,11 +75,14 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
   const [deposit, setDeposit] = useState(false);
   const [lookup, setLookup] = useState<restaurantApi.PhoneLookupResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [discard, setDiscard] = useState(false);
 
   const isPre = mode === "preorder";
   // A grocer or butcher has no kitchen screen: the same sheet takes a phone or WhatsApp order and a pre-order for pick-up.
   const grocer = detail.merchant.vertical === "grocery" || (!enabled("restaurant.kds") && (enabled("grocery.counter_preorders") || enabled("grocery.whatsapp_orders")));
-  const copy = grocer ? { ...COPY[mode], title: mode === "preorder" ? "Take a pre-order" : COPY[mode].title, subtitle: mode === "preorder" ? "Book a pick-up day and hour. Caps, notice and the deposit still apply." : "Type what they say. It shows as a phone order.", send: mode === "preorder" ? COPY[mode].send : "Place order" } : COPY[mode];
+  // Starter has no kitchen screen: the order lands in Orders, so the sheet never says "kitchen".
+  const kitchen = enabled("restaurant.kds");
+  const copy = !grocer && !kitchen && mode !== "preorder" ? { ...COPY[mode], subtitle: mode === "counter" ? "A walk-in or a table. It shows in Orders at once." : "Type what they say, in ten seconds. It shows in Orders as a phone order.", send: "Add order" } : grocer ? { ...COPY[mode], title: mode === "preorder" ? "Take a pre-order" : COPY[mode].title, subtitle: mode === "preorder" ? "Book a pick-up day and hour. Caps, notice and the deposit still apply." : "Type what they say. It shows as a phone order.", send: mode === "preorder" ? COPY[mode].send : "Place order" } : COPY[mode];
   const menu = useMemo(
     () =>
       (catalog.data?.items ?? []).filter(
@@ -112,12 +125,23 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
     }
   }, [lookup, name]);
 
-  const add = (id: string, nm: string, price: number, qty = 1) => setLines((ls) => (ls.some((l) => l.catalogItemId === id) ? ls.map((l) => (l.catalogItemId === id ? { ...l, quantity: Math.min(50, l.quantity + qty) } : l)) : [...ls, { catalogItemId: id, name: nm, quantity: qty, priceCents: price }]));
-  const bump = (id: string, by: number) => setLines((ls) => ls.flatMap((l) => (l.catalogItemId !== id ? [l] : l.quantity + by <= 0 ? [] : [{ ...l, quantity: Math.min(50, l.quantity + by) }])));
+  /** Add a dish. One with option groups (spice, size) carries its picks and the price they make. */
+  const add = (it: commerceApi.CatalogItemDto, qty = 1, optionIds: string[] = defaultOptionIds(it)) => {
+    const priced = it.options?.groups.length ? priceDish(it, optionIds) : null;
+    const key = lineKey(it.id, optionIds);
+    const line: Line = { key, catalogItemId: it.id, name: it.name, quantity: qty, priceCents: priced?.unitCents ?? it.priceCents, optionIds, choices: priced?.picks.map((p) => p.option).join(" · ") ?? "" };
+    setLines((ls) => (ls.some((l) => l.key === key) ? ls.map((l) => (l.key === key ? { ...l, quantity: Math.min(50, l.quantity + qty) } : l)) : [...ls, line]));
+  };
+  const tapDish = (it: commerceApi.CatalogItemDto) => {
+    if (!it.options?.groups.length) return add(it);
+    setPickIds(defaultOptionIds(it));
+    setPicking(it);
+  };
+  const bump = (key: string, by: number) => setLines((ls) => ls.flatMap((l) => (l.key !== key ? [l] : l.quantity + by <= 0 ? [] : [{ ...l, quantity: Math.min(50, l.quantity + by) }])));
   const repeatUsual = () => {
     for (const u of lookup?.usual?.items ?? []) {
       const it = menu.find((m) => m.id === u.catalogItemId);
-      if (it) add(it.id, it.name, it.priceCents, u.quantity);
+      if (it) add(it, u.quantity);
     }
   };
   // "Repeat a regular's usual" from the header opens this sheet with the usual already on the order.
@@ -126,7 +150,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
       for (const u of lookup.usual.items) {
         const it = menu.find((m) => m.id === u.catalogItemId);
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (it) add(it.id, it.name, it.priceCents, u.quantity);
+        if (it) add(it, u.quantity);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,7 +162,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
   async function send() {
     setError(null);
     const body: restaurantApi.CounterOrderBody = {
-      items: lines.map((l) => ({ catalogItemId: l.catalogItemId, quantity: l.quantity, modifiers: [] })),
+      items: lines.map((l) => ({ catalogItemId: l.catalogItemId, quantity: l.quantity, modifiers: [], ...(l.optionIds.length ? { optionIds: l.optionIds } : {}) })),
       channel: mode === "counter" ? "counter" : "phone",
       kind: isPre ? "preorder" : "pickup",
       ...(isPre ? { pickupAt: fromLocalInput(pickup) ?? undefined, depositCollected: deposit } : pickup ? { pickupAt: fromLocalInput(pickup) ?? undefined } : {}),
@@ -150,16 +174,18 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
     };
     const r = await act.run(() => api.orderTools.counterOrder(body));
     if (r) {
-      toast({ message: isPre ? `Pre-order #${r.number} booked` : `Order #${r.number} ${grocer ? "placed" : "sent to the kitchen"}`, tone: "success" });
+      toast({ message: isPre ? `Pre-order #${r.number} booked` : `Order #${r.number} ${grocer ? "placed" : kitchen ? "sent to the kitchen" : "added"}`, tone: "success" });
       onPlaced?.(r);
       onClose();
     } else setError(act.error);
   }
 
+  // Escape, the backdrop and Cancel all ask first once dishes are on the order.
+  const requestClose = () => (lines.length ? setDiscard(true) : onClose());
   return (
     <Sheet
       open
-      onClose={onClose}
+      onClose={requestClose}
       title={copy.title}
       subtitle={copy.subtitle}
       label={copy.title}
@@ -167,7 +193,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
       footer={
         <>
           <p className="me-auto text-meta text-fg-muted tabular">{total > 0 ? `About ${formatMoney(total)} before tax` : "Add a dish to start"}</p>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={requestClose}>Cancel</Button>
           <Button disabled={!canSend} loading={act.busy} onClick={() => void send()}>{copy.send}</Button>
         </>
       }
@@ -201,21 +227,21 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
           {lines.length ? (
             <ul className="divide-y divide-line border-y border-line" aria-label="Order items">
               {lines.map((l) => (
-                <li key={l.catalogItemId} className="flex min-h-12 items-center gap-3 py-2">
+                <li key={l.key} className="flex min-h-12 items-center gap-3 py-2">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-body text-fg">{l.name}</span>
-                    <span className="block text-meta text-fg-muted tabular">{grocer && lineUnit(l.catalogItemId) ? `about ${formatMoney(l.priceCents)} each (${lineUnit(l.catalogItemId)})` : `${formatMoney(l.priceCents)} each`}</span>
+                    <span className="block text-meta text-fg-muted tabular">{grocer && lineUnit(l.catalogItemId) ? `about ${formatMoney(l.priceCents)} each (${lineUnit(l.catalogItemId)})` : `${l.choices ? `${l.choices} · ` : ""}${formatMoney(l.priceCents)} each`}</span>
                   </span>
                   <span className="inline-flex items-center rounded-full border border-line">
-                    <button type="button" aria-label={`One fewer ${l.name}`} onClick={() => bump(l.catalogItemId, -1)} className="inline-flex size-9 items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring">
+                    <button type="button" aria-label={`One fewer ${l.name}`} onClick={() => bump(l.key, -1)} className="inline-flex size-9 items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring">
                       <Minus aria-hidden className="size-4" />
                     </button>
                     <span className="w-7 text-center text-body tabular" aria-live="polite">{l.quantity}</span>
-                    <button type="button" aria-label={`One more ${l.name}`} onClick={() => bump(l.catalogItemId, 1)} className="inline-flex size-9 items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring">
+                    <button type="button" aria-label={`One more ${l.name}`} onClick={() => bump(l.key, 1)} className="inline-flex size-9 items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring">
                       <Plus aria-hidden className="size-4" />
                     </button>
                   </span>
-                  <button type="button" aria-label={`Remove ${l.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.catalogItemId !== l.catalogItemId))} className="inline-flex size-8 items-center justify-center rounded-full text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
+                  <button type="button" aria-label={`Remove ${l.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} className="inline-flex size-8 items-center justify-center rounded-full text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
                     <X aria-hidden className="size-4" />
                   </button>
                 </li>
@@ -225,6 +251,20 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
             <p className="text-meta text-fg-muted">Nothing on the order yet. Tap a dish below.</p>
           )}
 
+          {picking ? (
+            <div role="group" aria-label={`Choices for ${picking.name}`} className="mt-1 flex flex-col gap-3 rounded-input border border-line p-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="min-w-0 text-body-strong text-fg">{picking.name}</p>
+                <p className="shrink-0 text-meta text-fg-muted tabular">{formatMoney(priceDish(picking, pickIds).unitCents)}</p>
+              </div>
+              <OptionGroups item={picking} value={pickIds} onChange={setPickIds} idPrefix="counter" plain />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setPicking(null)}>Back to the menu</Button>
+                <Button size="sm" onClick={() => { add(picking, 1, pickIds); setPicking(null); }}>Add to order</Button>
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="relative mt-1">
             <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
             <input type="search" aria-label="Find a dish" placeholder={isPre ? (grocer ? "Find a cut or an animal" : "Find a degh or tray") : "Find a dish"} value={q} onChange={(e) => setQ(e.target.value)} className="h-10 w-full rounded-input border border-line bg-bg ps-9 pe-3 text-body text-fg placeholder:text-fg-muted focus-visible:focus-ring" />
@@ -234,7 +274,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
             {shown.length ? (
               shown.map((i) => (
                 <li key={i.id}>
-                  <button type="button" onClick={() => add(i.id, i.name, i.priceCents)} className="flex min-h-11 w-full items-center gap-3 px-3 py-1.5 text-start hover:bg-bg-subtle focus-visible:focus-ring">
+                  <button type="button" onClick={() => tapDish(i)} className="flex min-h-11 w-full items-center gap-3 px-3 py-1.5 text-start hover:bg-bg-subtle focus-visible:focus-ring">
                     <span className="min-w-0 flex-1 truncate text-body text-fg">{i.name}</span>
                     <span className="shrink-0 text-meta text-fg-muted tabular">{i.weightUnit && i.unitPriceCents ? `${formatMoney(i.unitPriceCents)}/${i.weightUnit}` : formatMoney(i.priceCents)}</span>
                     <Plus aria-hidden className="size-4 shrink-0 text-fg-muted" />
@@ -245,6 +285,8 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
               <li className="px-3 py-3 text-meta text-fg-muted">{catalog.loading ? "Loading the menu..." : menu.length ? "No dish matches that." : isPre ? (grocer ? "No butcher items yet. Add them in the Butcher counter page." : "No pre-order dishes yet. Mark a degh as pre-order only in Menu & dietary.") : "No dishes on the menu yet."}</li>
             )}
           </ul>
+            </>
+          )}
         </section>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -266,6 +308,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
         </div>
         {isPre && !enabled("restaurant.degh_preorders") && !enabled("grocery.counter_preorders") ? <Banner tone="warning">Pre-orders come with Restaurant Growth.</Banner> : null}
       </div>
+      <ConfirmDialog open={discard} onClose={() => setDiscard(false)} danger title="Discard this order?" body={`${lines.length === 1 ? "The dish" : "The dishes"} you added won’t be sent.`} confirmLabel="Discard order" onConfirm={() => { setDiscard(false); onClose(); }} />
     </Sheet>
   );
 }

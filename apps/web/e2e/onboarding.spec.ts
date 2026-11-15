@@ -49,11 +49,11 @@ test("signup is a stepped flow that ends on You're live and lands on the first s
   await expect(page.getByText("Step 1 of 6")).toBeVisible();
   await expect(page.locator("footer")).toHaveCount(0);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Do you have a website or Instagram?");
-  await page.getByRole("button", { name: "I don't have one, skip" }).click();
+  await page.getByRole("button", { name: "I don’t have one, skip" }).click();
   await atStep(page, "shop");
   // Validation is inline, on the step.
   await cont(page);
-  await expect(page.getByText("Enter your shop's name.")).toBeVisible();
+  await expect(page.getByText("Enter your shop’s name.")).toBeVisible();
   await page.getByLabel("Shop name").fill(`Sunrise Bakery ${rand()}`);
   // Your name is not asked at signup any more (Settings, later).
   await expect(page.getByLabel("Your name")).toHaveCount(0);
@@ -186,7 +186,7 @@ test.describe("phone", () => {
       expect(box!.y + box!.height).toBeLessThanOrEqual(844);
     };
     await fits();
-    await page.getByRole("button", { name: "I don't have one, skip" }).click();
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
     await page.getByLabel("Shop name").fill("Corner Café");
     await cont(page);
     await atStep(page, "kind");

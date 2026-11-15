@@ -257,7 +257,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
       ? [
           { value: "visit" as const, title: "One visit", hint: `Every check-in or purchase gets a ${one}.` },
           { value: "purchase" as const, title: "One purchase", hint: "Only a sale counts. You can set a minimum." },
-          ...(enabled("orders.order_ahead") || mode === "pickup" ? [{ value: "pickup" as const, title: "One pickup", hint: `An online order gets a ${one} when it's marked picked up.` }] : []),
+          ...(enabled("orders.order_ahead") || mode === "pickup" ? [{ value: "pickup" as const, title: "One pickup", hint: `An online order gets a ${one} when it’s marked picked up.` }] : []),
         ]
       : []),
     { value: "dollar", title: pharmacy ? "Points per dollar of front-store sales" : "Points per dollar", hint: "The more they spend, the more they earn." },
@@ -287,7 +287,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
           <>
             <ToolbarButton icon={Eye} onClick={() => setPreviewOpen(true)} className="lg:hidden">Preview</ToolbarButton>
             {canEdit && dirty ? <QuietButton onClick={() => { setDraft(original); setRewardDraft(originalReward); setTiers(originalTiers); setSaveError(null); }}>Discard</QuietButton> : null}
-            {canEdit ? <Button size="md" loading={saving} disabled={!dirty} onClick={() => void trySave()} className="h-[38px] rounded-full px-4 text-[14px] font-medium">Save changes</Button> : null}
+            {canEdit ? <Button size="md" loading={saving} disabled={!dirty} onClick={() => void trySave()} className="max-md:h-11 md:h-[38px] rounded-full px-4 text-[14px] font-medium">Save changes</Button> : null}
           </>
         }
       />
@@ -393,7 +393,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
                 </div>
               </SettingRow>
             ) : null}
-            <SettingRow title={`${term.charAt(0).toUpperCase() + term.slice(1)} never expire`} hint={`Recommended. Customers don't like losing ${term} without warning.`}>
+            <SettingRow title={`${term.charAt(0).toUpperCase() + term.slice(1)} never expire`} hint={`Recommended. Customers don’t like losing ${term} without warning.`}>
               <SwitchControl ariaLabel={`${term} never expire`} checked={draft.expiryMonths === null} disabled={!canEdit} onChange={(v) => set("expiryMonths", v ? null : 12)} />
             </SettingRow>
             {draft.expiryMonths !== null ? (
@@ -487,7 +487,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               "Counting the customers this affects…"
             )
           ) : (
-            "Customers close to a reward will need more visits or points than before. Their current balance doesn't change."
+            "Customers close to a reward will need more visits or points than before. Their current balance doesn’t change."
           )
         }
         confirmLabel="Save changes"

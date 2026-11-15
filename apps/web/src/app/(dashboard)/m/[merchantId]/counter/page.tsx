@@ -49,7 +49,7 @@ export default function CounterPage() {
           </CounterNotice>
         </div>
       ) : null}
-      <CounterApp earnPicks={earnPicks} vertical={detail.merchant.vertical} undoNote={role === "staff" ? t("counter.undoNote", { n: staffApi.UNDO_WINDOW_MINUTES }) : undefined} exitHref={base} frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
+      <CounterApp earnPicks={earnPicks} vertical={detail.merchant.vertical} undoNote={role === "staff" ? t("counter.undoNote", { n: staffApi.UNDO_WINDOW_MINUTES }) : undefined} exitHref={base} frontStoreRule={pharmacy} grocery={grocery} signedInName={me.user.name} pin={{ verify: api.verifyStaffPin, apiAs: api.counterAs, hasPin: me.merchants.find((m) => m.merchantId === detail.merchant.id)?.hasPin ?? true, setOwn: (pin) => api.setPin(me.user.id, pin) }} shopMark={{ brandColor: detail.merchant.brandColor, logoUrl: detail.merchant.logoUrl }} queueKey={`ll.counter.queue.${detail.merchant.id}`} api={api.counter} program={program} shopName={detail.merchant.name} locations={detail.locations.filter((l) => l.active).map((l) => ({ id: l.id, name: l.name }))} />
       {pharmacy ? (
         <div className="mx-auto max-w-3xl px-4 pb-10 pt-10">
           <PickupReady />

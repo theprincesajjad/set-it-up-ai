@@ -50,7 +50,7 @@ test("the shop page, the join and the join success wear the shop's brand colour"
   await page.getByRole("button", { name: "Join Pinecone Coffee Co." }).click();
 
   const pass = page.getByTestId("joined-pass");
-  await expect(pass.getByText("You're in, Priya.")).toBeVisible();
+  await expect(pass.getByText("You’re in, Priya.")).toBeVisible();
   expect(await bg(pass)).toBe(PINECONE);
   expect(await contrast(pass)).toBeGreaterThanOrEqual(4.5);
   // Apple's and Google's buttons keep their own black artwork, on a soft panel in the shop's colour, above the fold on a phone.

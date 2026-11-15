@@ -8,7 +8,7 @@ import { Icon3d } from "@/components/ui/Icon3d";
 const COPY = {
   en: {
     title: "Onboarding kit", group: "Set up your shop", steps: ["Your link", "Services", "Hours", "Privacy", "Share"],
-    stepTitle: "What do you offer?", stepBody: "Pick your trade and we will start you with the usual services. You can change every line.", hoursBody: "Pick your usual days. You can block any day later.", cont: "Continue", skip: "I'll do this later",
+    stepTitle: "What do you offer?", stepBody: "Pick your trade and we will start you with the usual services. You can change every line.", hoursBody: "Pick your usual days. You can block any day later.", cont: "Continue", skip: "I’ll do this later",
     choices: [["Nails", "Gel, acrylic, art"], ["Barber", "Cuts and shaves"], ["Salon", "Colour and styling"]],
     svc: ["Gel manicure", "Classic cut", "Brow shape"], duration: "Minutes", price: "Price", deposit: "Deposit", add: "Add a service",
     days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], dayNames: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], opens: "Opens", closes: "Closes", same: "Same every day", daysLabel: "Days",

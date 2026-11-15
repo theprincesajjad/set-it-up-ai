@@ -9,6 +9,7 @@ import { LinkProblem, linkKind } from "@/components/errors/server";
 import { isApiError } from "@/lib/api/errors";
 import { publicServerApi } from "@/lib/api/server";
 import { getLocale, getT } from "@/lib/i18n/server";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
@@ -49,12 +50,8 @@ export default async function TicketStatusPage({ params, searchParams }: Props) 
       </PageFrame>
     );
   }
-  if (data === "gone")
-    return (
-      <PageFrame locale={locale}>
-        <LinkProblem kind="gone" retryHref={`/t/${encodeURIComponent(token)}`} />
-      </PageFrame>
-    );
+  // A link that was never issued (or was copied wrong) is a real 404, not a 200 with an apology.
+  if (data === "gone") notFound();
   if (data === "error" || data === "rate" || data === "expired")
     return (
       <PageFrame locale={locale}>

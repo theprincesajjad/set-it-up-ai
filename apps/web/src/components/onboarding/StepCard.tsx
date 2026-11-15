@@ -90,7 +90,7 @@ export function StepCard({ icon, trade, title, body, children, primary, secondar
 }
 
 function ActionLink({ action }: { action: StepAction }) {
-  const cls = "relative inline-flex h-10 items-center rounded-r2 px-1 text-body-strong font-[550] text-link hover:underline focus-visible:focus-ring after:absolute after:inset-x-0 after:-inset-y-0.5 after:content-[''] disabled:text-subtle-foreground";
+  const cls = "relative inline-flex h-10 min-w-11 items-center justify-center rounded-r2 px-2 text-body-strong font-[550] text-link hover:underline focus-visible:focus-ring after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] disabled:text-subtle-foreground";
   if (action.href && !action.disabled) {
     return (
       <a href={action.href} className={cls}>

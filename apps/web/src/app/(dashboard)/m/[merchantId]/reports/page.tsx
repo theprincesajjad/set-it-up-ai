@@ -17,7 +17,7 @@ import { downloadCsv } from "@/lib/dashboard/download";
 import { rewardNoun } from "@/lib/dashboard/home";
 import { cameBackShare, joinersTitle, owedDetail, owedHeadline } from "@/lib/dashboard/reports";
 import { promoWhen } from "@/lib/dashboard/promos";
-import { pctDelta, rangeFor } from "@/lib/dashboard/time";
+import { changeChip, rangeFor } from "@/lib/dashboard/time";
 import { useApi } from "@/lib/dashboard/useApi";
 
 type Tab = "overview" | "retention" | "rewards" | "promos" | "network";
@@ -62,8 +62,8 @@ export default function ReportsPage() {
   const noun = rewardNoun(detail.merchant.vertical);
   const d = (cur?: number, pr?: number) => {
     if (cur == null || pr == null) return null;
-    const x = pctDelta(cur, pr);
-    return x === null ? null : ({ good: x > 0 ? true : x < 0 ? false : null, text: `${x > 0 ? "+" : ""}${x}%`, context: `vs ${RANGE_LABEL[range]}` } satisfies StatItem["delta"]);
+    const x = changeChip(cur, pr);
+    return x === null ? null : ({ good: x.direction > 0 ? true : x.direction < 0 ? false : null, text: x.text, context: `vs ${RANGE_LABEL[range]}` } satisfies StatItem["delta"]);
   };
   const exportBtn = (name: string, rows: (string | number)[][]) => (
     <QuietButton onClick={() => downloadCsv(name, rows)}>
@@ -138,7 +138,7 @@ export default function ReportsPage() {
                   <p className="text-[13px] text-fg-muted">Rewards customers can claim right now</p>
                   <p className="mt-1 font-display text-[32px] font-bold leading-10 tracking-[-0.01em] text-fg">{owedHeadline(cost, noun)}</p>
                   <p className="mt-2 text-[13px] leading-5 text-fg-muted">{owedDetail(cost, term, noun)}</p>
-                  <Link href={`${base}/program`} className="mt-2 inline-block text-[13px] font-medium text-fg underline underline-offset-4">Edit cost in Rewards</Link>
+                  <Link href={`${base}/program`} className="mt-2 inline-flex items-center text-[13px] font-medium text-fg underline underline-offset-4 max-md:min-h-11">Edit cost in Rewards</Link>
                 </section>
               ) : null}
               {joiners && joiners.joined > 0 ? (

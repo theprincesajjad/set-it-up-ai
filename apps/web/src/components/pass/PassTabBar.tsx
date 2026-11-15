@@ -54,6 +54,7 @@ export function PassTabBar({ active, onSelect }: { active?: PassTab | null; onSe
     <div aria-hidden className="hidden clear:block scroll-edge-bottom inset-x-0 z-30" />
     <nav
       data-lens
+      suppressHydrationWarning
       data-lens-r="32"
       data-lens-bezel="24"
       aria-label={t("sh.nav.main")}

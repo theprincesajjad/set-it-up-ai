@@ -214,6 +214,8 @@ export interface MembershipDto {
   rewardsAvailableCount: number;
   /** wave-n: the best reward they can redeem right now (the highest cost within the balance), for "Reward unlocked: ...". */
   readyReward?: { rewardId: string; name: string; pointsCost: number } | null;
+  /** Reward codes issued and waiting at the counter (wallet list only): the stamps for them are held, not gone. */
+  openRedemptions?: number;
   vip: VipLevelDto | null;
   muted: boolean;
   marketingConsent: ConsentDto;

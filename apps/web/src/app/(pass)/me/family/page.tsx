@@ -21,7 +21,7 @@ export default async function MyFamilyPage({ searchParams }: Props) {
   const me = await getMe();
   return (
     <PageFrame locale={locale} trade="other">
-      {me ? <FamilyManager /> : <PhoneSignIn heading="h2" next="/me/family" title={t("fam.signIn")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}
+      {me ? <FamilyManager /> : <PhoneSignIn next="/me/family" title={t("fam.signIn")} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} />}
     </PageFrame>
   );
 }

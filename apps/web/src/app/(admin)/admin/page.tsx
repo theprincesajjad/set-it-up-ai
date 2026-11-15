@@ -52,7 +52,7 @@ export default function AdminToday() {
               />
                 <Panel title="Signups by area" description="Leads, shops signed and shops at their member goal, against the area's target" padded={false}>
                   {d.funnel.length ? (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto focus-visible:focus-ring" tabIndex={0} role="region" aria-label="Funnel by area, scrollable">
                       <table className="w-full min-w-[640px] text-meta">
                         <caption className="sr-only">Funnel by area</caption>
                         <thead className="bg-bg-subtle text-caption font-medium text-fg-muted">

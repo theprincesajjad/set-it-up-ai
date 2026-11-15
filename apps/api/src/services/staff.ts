@@ -34,6 +34,7 @@ import type { StaffContext } from "../lib/auth.js";
 import { randomToken } from "../lib/crypto.js";
 import { HttpError, badRequest, conflict, forbidden, notFound } from "../lib/errors.js";
 import { notMerged, requireUuid } from "./customer.js";
+import { rollBackCampaignsForVisit } from "./campaigns.js";
 import {
   awardPurchase,
   ensureMember,
@@ -668,6 +669,11 @@ export async function undo(ctx: AppContext, staff: StaffContext, transactionId: 
   }
   const rev = await reverseTransaction(ctx, { merchantId: staff.merchant.id, transactionId: tx.id, reason, staffUserId: staff.user.id, source: "staff_app" });
   if (tx.type === "earn") {
+    // The street-campaign bonuses posted with this award go back too, and so does the customer's passport progress.
+    const [visit] = await ctx.db.select({ id: visits.id, userId: visits.userId }).from(visits).where(and(eq(visits.transactionId, tx.id), eq(visits.merchantId, staff.merchant.id))).limit(1);
+    if (visit) {
+      await rollBackCampaignsForVisit(ctx, { merchantId: staff.merchant.id, memberId: tx.memberId, userId: visit.userId, visitId: visit.id, earnAt: tx.createdAt, reason, staffUserId: staff.user.id, source: "staff_app" });
+    }
     await ctx.db.transaction(async (t) => {
       const removed = await t.delete(visits).where(and(eq(visits.transactionId, tx.id), eq(visits.merchantId, staff.merchant.id))).returning();
       for (const v of removed) {

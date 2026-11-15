@@ -27,7 +27,10 @@ import { shopColorProps } from "@/lib/shopColor";
 import { Gift } from "lucide-react";
 
 /** The shop to feature: a reward ready first, else the highest progress to the next reward, else the first shop. */
-export function heroMembership(items: customerApi.MembershipDto[]): customerApi.MembershipDto | null {
+export function heroMembership(items: customerApi.MembershipDto[], holding?: ReadonlySet<string>): customerApi.MembershipDto | null {
+  // A shop whose code is open at the counter stays the featured card: its stamps are held, so it would otherwise drop down the list.
+  const held = holding?.size ? items.find((m) => holding.has(m.id)) : undefined;
+  if (held) return held;
   const ready = items.filter((m) => m.rewardsAvailableCount > 0).sort((a, b) => b.rewardsAvailableCount - a.rewardsAvailableCount)[0];
   if (ready) return ready;
   const closest = items
@@ -138,12 +141,13 @@ function ClearPassCard({ m, line, footer }: { m: customerApi.MembershipDto; line
         <h2 className="mt-1 text-[30px] font-bold leading-9 tracking-[-0.022em]"><bdi>{m.merchant.name}</bdi></h2>
         <p className="text-body opacity-90">{placeKindLabel(locale, m.merchant.vertical)}</p>
       </div>
-      <div data-lens data-lens-r="30" data-lens-bezel="24" className="glass-sheet rounded-r8 p-5 text-foreground">
+      {/* The glass-lens script adds data-lens-key and a backdrop-filter before this hydrates: those attributes are expected to differ. */}
+      <div data-lens data-lens-r="30" data-lens-bezel="24" suppressHydrationWarning className="glass-sheet rounded-r8 p-5 text-foreground">
         <div className="flex items-center gap-3 pb-4">
           <ClearMark shop={m.merchant} />
           <div className="min-w-0 flex-1">
             <p className="text-[16px] font-semibold leading-5 tracking-[-0.014em]">{stamps ? t("pass.clear.stampCard") : t("pass.clear.pointsCard")}</p>
-            <p className="truncate text-body text-muted-foreground">{line ?? rewardName ?? unitCaption(locale, m.balance, m.terminology)}</p>
+            <p className="line-clamp-2 text-body text-muted-foreground">{line ?? rewardName ?? unitCaption(locale, m.balance, m.terminology)}</p>
           </div>
           {badge ? <span data-testid="pass-badge" className={cn("inline-flex min-h-5 shrink-0 items-center rounded-r2 px-2 text-[12px] font-medium leading-4 tabular-nums [:lang(ur)_&]:py-0.5 [:lang(ur)_&]:leading-5", ready || justStamped ? "bg-trade text-trade-foreground" : "bg-muted text-foreground")}>{badge}</span> : null}
         </div>
