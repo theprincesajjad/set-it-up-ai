@@ -70,11 +70,30 @@ test.describe("pricing: Free, Pro, Studio", () => {
       await expect(shops.locator("[data-plan=pro]")).toContainText("$99");
       await expect(shops).toContainText("Prices in CAD");
       expect((await page.locator("main").innerText()).toLowerCase()).not.toContain("founding pro");
+      // Round 4: Monthly / Yearly. Yearly Pro reads "~~$290~~ $199 first year", Studio is $590 a year and its button carries the interval;
+      // the choice is in the address, and Monthly brings the first prices back.
+      const yearly = page.getByRole("radiogroup", { name: "Billing period" }).getByRole("radio", { name: /Yearly/ });
+      await expect(yearly).toHaveAttribute("aria-checked", "false");
+      await yearly.click();
+      await expect(yearly).toHaveAttribute("aria-checked", "true");
+      const proPrice = pro.getByTestId("plan-price");
+      await expect(proPrice.locator("s")).toHaveText("$290");
+      await expect(proPrice).toContainText("$199");
+      await expect(proPrice).toContainText("first year");
+      await expect(pro).toContainText("or $29 a month");
+      await expect(shops.locator("[data-plan=studio]").getByTestId("plan-price")).toContainText("$590");
+      await expect(shops.locator("[data-plan=studio]").getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/signup?plan=studio&interval=year");
+      await expect(page).toHaveURL(/billing=year/);
+      await page.getByRole("radio", { name: "Monthly" }).click();
+      await expect(pro.getByTestId("plan-price")).toContainText("$29");
+      await expect(shops.locator("[data-plan=studio]").getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/signup?plan=studio");
       // Wave P: both plan tables fold away under the cards in one "See everything in each plan", and the booking-app comparison is the one dated table (#booking-apps).
       await expect(page.getByTestId("compare")).not.toHaveAttribute("open", "");
       await page.getByTestId("compare").locator("summary").click();
       await expect(page.getByRole("table", { name: "Compare Free, Pro and Studio" })).toBeVisible();
       await expect(page.getByTestId("solo-table")).toContainText("30 a month, then email");
+      // Neither table scrolls sideways, at any width (a phone reads the plan table as blocks and the feature table as ticks).
+      expect(await page.getByTestId("compare").evaluate((d) => [...d.querySelectorAll("table")].every((t) => t.scrollWidth <= (t.parentElement?.clientWidth ?? 0) + 1))).toBe(true);
       await expect(page.getByTestId("solo-compare")).toHaveCount(0);
       await expect(page.locator("#booking-apps")).toContainText("Fresha");
       // One audience at a time: restaurant and BIA plans are a card each here.

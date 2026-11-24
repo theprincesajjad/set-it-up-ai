@@ -42,7 +42,7 @@ export function TiersEditor({ tiers, goal, onChange, error, disabled, locked }: 
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-fg-muted">Optional. Give a small reward part way, and customers can take it or keep saving for the big one.</p>
+        <p className="text-sm text-fg-muted">Customers can take it or keep saving for the big one.</p>
       )}
       {error ? <p className="text-meta font-medium text-negative">{error}</p> : null}
       {tiers.length < 3 && goal > 2 ? (
@@ -84,7 +84,7 @@ export function ChangeHistory({ items, loading }: { items: merchantApi.ProgramCh
         <span aria-hidden className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-trade-soft text-trade-deep">
           <History className="size-4.5" />
         </span>
-        <p className="text-sm text-fg-muted">No changes yet. Every change to your rules and rewards shows here, with who made it.</p>
+        <p className="text-sm text-fg-muted">No changes yet.</p>
       </div>
     );
   const shown = all ? items : items.slice(0, 5);

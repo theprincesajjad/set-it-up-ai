@@ -86,9 +86,13 @@ function SectionTitle({ ctx, field, id, children }: { ctx: Ctx; field: SiteCopyF
   );
 }
 
-const pillBase = "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-body font-[550] transition-colors focus-visible:focus-ring";
-const pillPrimary = `${pillBase} bg-primary text-primary-foreground hover:bg-primary-hover`;
-const pillSecondary = `${pillBase} bg-card text-foreground hairline-inset hover:bg-muted`;
+/** Every pill dips when pressed (`press`: scale 0.96 and the 150 ms colour transition; no scale under reduced motion). */
+const pillBase = "press inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-body font-[550] focus-visible:focus-ring";
+const pillPrimary = `${pillBase} bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-hover`;
+const pillSecondary = `${pillBase} bg-card text-foreground hairline-inset hover:bg-muted active:bg-muted`;
+
+/** Booking is a real path only when there is something to book: a shop with no services yet leads with Join instead of a dead end. */
+const canBook = (data: siteApi.PublicSiteResponse) => data.booking.enabled && data.services.length > 0;
 
 /** A real link on the site; in the builder preview a plain span, so a selectable line inside it is not nested in a link. */
 function Act({ ctx, href, className, action, children, label }: { ctx: Ctx; href: string; className: string; action?: string; children: ReactNode; label?: string }) {
@@ -109,15 +113,23 @@ function Act({ ctx, href, className, action, children, label }: { ctx: Ctx; href
 function Actions({ ctx, align = "start" }: { ctx: Ctx; align?: "start" | "center" }) {
   const { data, links, t } = ctx;
   const shopBase = `${links.base}/shops/${encodeURIComponent(data.slug)}`;
+  const books = canBook(data);
   return (
     <div className={cn("flex flex-wrap gap-2", align === "center" && "justify-center")}>
-      <Act ctx={ctx} href={data.booking.enabled ? `${shopBase}/book` : `${shopBase}#join`} className={pillPrimary} action={data.booking.enabled ? "book" : "join"}>
-        {data.booking.enabled ? <CalendarCheck aria-hidden className="size-4" strokeWidth={1.75} /> : null}
-        <Line ctx={ctx} field="hero.cta">
-          {data.content.copy.hero.cta}
-        </Line>
-      </Act>
-      {data.booking.enabled && data.loyalty && data.content.copy.hero.cta.trim().toLowerCase() !== t("site.join").toLowerCase() ? (
+      {/* Booking is on but nothing is bookable yet: the owner's "Book online" would land on "doesn't take online bookings yet", so Join leads. */}
+      {data.booking.enabled && !books && data.loyalty ? (
+        <Act ctx={ctx} href={`${shopBase}#join`} className={pillPrimary} action="join">
+          {t("site.join")}
+        </Act>
+      ) : (
+        <Act ctx={ctx} href={books ? `${shopBase}/book` : `${shopBase}#join`} className={pillPrimary} action={books ? "book" : "join"}>
+          {books ? <CalendarCheck aria-hidden className="size-4" strokeWidth={1.75} /> : null}
+          <Line ctx={ctx} field="hero.cta">
+            {data.content.copy.hero.cta}
+          </Line>
+        </Act>
+      )}
+      {books && data.loyalty && data.content.copy.hero.cta.trim().toLowerCase() !== t("site.join").toLowerCase() ? (
         <Act ctx={ctx} href={`${shopBase}#join`} className={pillSecondary} action="join">
           {t("site.join")}
         </Act>
@@ -132,13 +144,13 @@ function Actions({ ctx, align = "start" }: { ctx: Ctx; align?: "start" | "center
   );
 }
 
-function Mark({ data, size = "lg" }: { data: siteApi.PublicSiteResponse; size?: "lg" | "sm" }) {
+function Mark({ data, size = "lg", onTint }: { data: siteApi.PublicSiteResponse; size?: "lg" | "sm"; /** Drawn on the trade tint (the banner): the tile is the card colour. */ onTint?: boolean }) {
   const cls = size === "lg" ? "size-16 rounded-r5 text-large-title" : "size-10 rounded-r3 text-body-strong";
   return data.shop.logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={data.shop.logoUrl} alt="" className={cn(cls, "object-cover")} />
   ) : (
-    <span aria-hidden className={cn(cls, "inline-flex items-center justify-center bg-trade-tint font-[650] text-trade")}>
+    <span aria-hidden className={cn(cls, "inline-flex items-center justify-center font-[650] text-trade", onTint ? "bg-card" : "bg-trade-tint")}>
       {data.shop.name.trim().charAt(0).toUpperCase()}
     </span>
   );
@@ -168,7 +180,7 @@ function Hero({ ctx }: { ctx: Ctx }) {
       <Section id="hero" className="overflow-hidden rounded-r6 bg-trade-tint" labelledBy="site-hero-h">
         <div className="flex flex-col gap-4 px-6 py-10 md:px-10 md:py-14">
           <div className="flex items-center gap-3">
-            <Mark data={data} size="sm" />
+            <Mark data={data} size="sm" onTint />
             {where ? <span className="text-meta font-[550] text-foreground">{where}</span> : null}
           </div>
           <Line ctx={ctx} field="hero.headline" as="h1" className="text-4xl font-bold leading-10 text-foreground md:text-hero md:leading-13">
@@ -182,8 +194,12 @@ function Hero({ ctx }: { ctx: Ctx }) {
       </Section>
     );
   }
+  const reward = data.loyalty?.rewards[0];
+  const place = data.location ? (data.location.visibility === "exact" && data.location.address ? data.location.address : [data.location.areaLabel, data.location.city].filter(Boolean).join(", ")) : "";
+  // What the card can say: live services, else the first reward and where the shop is. An empty card is never drawn.
+  const cardHasRows = data.services.length > 0 || !!data.reviews || !!reward || !!place;
   return (
-    <Section id="hero" className={cn("grid items-center gap-6 py-8", !compact && "md:grid-cols-2 md:py-12")} labelledBy="site-hero-h">
+    <Section id="hero" className={cn("grid items-center gap-6 py-8", !compact && cardHasRows && "md:grid-cols-2 md:py-12", !compact && !cardHasRows && "md:py-12")} labelledBy="site-hero-h">
       <div className="flex flex-col gap-4">
         {where ? <span className="text-meta font-[550] text-muted-foreground">{where}</span> : null}
         <Line ctx={ctx} field="hero.headline" as="h1" className={cn("text-4xl font-bold leading-10 text-foreground", !compact && "md:text-hero md:leading-13")}>
@@ -194,7 +210,7 @@ function Hero({ ctx }: { ctx: Ctx }) {
         </Line>
         <Actions ctx={ctx} />
       </div>
-      <div className={cn("card-clear flex flex-col gap-3 p-5", compact && "hidden")}>
+      <div className={cn("card-clear flex flex-col gap-3 p-5", (compact || !cardHasRows) && "hidden")}>
         <div className="flex items-center gap-3">
           <Mark data={data} size="sm" />
           <p className="text-body-strong text-foreground">{data.shop.name}</p>
@@ -205,6 +221,18 @@ function Hero({ ctx }: { ctx: Ctx }) {
             <bdi className="shrink-0 tabular-nums text-muted-foreground">{priceText(ctx, s)}</bdi>
           </div>
         ))}
+        {!data.services.length && reward && data.loyalty ? (
+          <div className="flex items-center justify-between gap-3 text-body">
+            <span dir="auto" className="min-w-0 truncate text-foreground">{reward.name}</span>
+            <span className="shrink-0 tabular-nums text-muted-foreground">{unitsText(ctx.locale, reward.pointsCost, data.loyalty.program.terminology, false)}</span>
+          </div>
+        ) : null}
+        {!data.services.length && place ? (
+          <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
+            <MapPin aria-hidden className="size-4 shrink-0 text-trade" strokeWidth={1.75} />
+            <span dir="auto" className="min-w-0 truncate">{place}</span>
+          </p>
+        ) : null}
         {data.reviews ? (
           <p className="flex items-center gap-1.5 text-meta text-muted-foreground">
             <Star aria-hidden className="size-4 text-trade" strokeWidth={1.75} />
@@ -230,9 +258,11 @@ function Services({ ctx }: { ctx: Ctx }) {
       <SectionTitle ctx={ctx} field="services.title" id="site-services-h">
         {c.title}
       </SectionTitle>
-      <Line ctx={ctx} field="services.intro" as="p" className="text-body text-muted-foreground">
-        {c.intro}
-      </Line>
+      {data.services.length || ctx.onPick ? (
+        <Line ctx={ctx} field="services.intro" as="p" className="text-body text-muted-foreground">
+          {c.intro}
+        </Line>
+      ) : null}
       {data.services.length ? (
         <ul className="card-clear divide-overlay">
           {data.services.map((s) => (
@@ -323,6 +353,7 @@ function Promos({ ctx }: { ctx: Ctx }) {
   const { data, t } = ctx;
   const c = data.content.copy.promos;
   const terminology = data.loyalty?.program.terminology ?? "points";
+  if (!data.promos.length && !ctx.onPick) return null;
   return (
     <Section id="promos" className="flex flex-col gap-3" labelledBy="site-promos-h">
       <SectionTitle ctx={ctx} field="promos.title" id="site-promos-h">
@@ -429,7 +460,7 @@ function MapBlock({ ctx }: { ctx: Ctx }) {
             </Line>
           ) : null}
           {mapHref ? (
-            <a href={mapHref} rel="noopener noreferrer" className="mt-1 inline-flex min-h-11 items-center text-body font-[550] text-link hover:underline focus-visible:focus-ring">
+            <a href={mapHref} rel="noopener noreferrer" className="press mt-1 inline-flex min-h-11 w-fit items-center text-body font-[550] text-link [--press-scale:0.98] hover:underline active:underline focus-visible:focus-ring">
               {exact ? t("shop.directions") : t("site.openMap")}
             </a>
           ) : null}
@@ -494,11 +525,28 @@ export function SiteRenderer(props: SiteRendererProps) {
   const { data } = props;
   const hidden = new Set(data.content.hidden);
   const order = data.content.order.filter((s) => !hidden.has(s));
+  // Hours and the map are two short cards: side by side on a wide screen when they follow each other (never in the builder's phone frame).
+  const blocks: SiteSection[][] = [];
+  for (const s of order) {
+    const last = blocks[blocks.length - 1];
+    const pair = last?.length === 1 && ((last[0] === "hours" && s === "map") || (last[0] === "map" && s === "hours"));
+    if (pair && !props.compact && data.location) last.push(s);
+    else blocks.push([s]);
+  }
   return (
     <div className="flex flex-col gap-10" data-preset={data.content.preset}>
-      {order.map((s) => {
-        const Cmp = SECTIONS[s];
-        return <Cmp key={s} ctx={ctx} />;
+      {blocks.map((b) => {
+        if (b.length === 2) {
+          const [A, B] = [SECTIONS[b[0]!], SECTIONS[b[1]!]];
+          return (
+            <div key={b.join("-")} className="grid gap-10 md:grid-cols-2 md:gap-6">
+              <A ctx={ctx} />
+              <B ctx={ctx} />
+            </div>
+          );
+        }
+        const Cmp = SECTIONS[b[0]!];
+        return <Cmp key={b[0]} ctx={ctx} />;
       })}
     </div>
   );

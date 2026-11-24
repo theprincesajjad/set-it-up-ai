@@ -12,7 +12,7 @@ Founder direction, Oct 29: no pill eyebrows above headings (type does the hierar
 
 | # | Block | Component | Notes |
 | --- | --- | --- | --- |
-| 1 | Hero | `solo/Hero.tsx` | Two-line headline, a one-line subhead, the primary button (`data-cta="hero"`), "See how it works" (`how`), the price and trial line linking to the plans, the trust row and the audience line as plain text. The phone is the shared iPhone frame (`components/marketing/device/IPhone.tsx`). |
+| 1 | Hero | `solo/Hero.tsx` | Two-line headline, a one-line subhead, the primary button (`data-cta="hero"`), "See how it works" (`how`), the price and trial line linking to the plans, the trust row as plain text. The phone is the shared iPhone frame (`components/marketing/device/IPhone.tsx`). |
 | 2 | Facts | `Facts` | Four numbers and a button (`afterhero`). |
 | 3 | Your week | `Week` | The owner dashboard demo, then a button and "See pricing" (`week`, `seepricing`). |
 | 4 | Every booking in one calendar | `Bookings` | |
@@ -20,9 +20,8 @@ Founder direction, Oct 29: no pill eyebrows above headings (type does the hierar
 | 6 | Regulars | `Regulars` | |
 | 7 | Built for how you work | `Jobs` | The variant's three tool cards. |
 | 8 | Pro features | `ProFeatures` | Waitlist, rebooking, reviews, weekly report, each with an illustrative sample (captioned as such), the trial button (`pro`). |
-| 9 | Call-to-action band | `CtaBand` | The trial as the button (`prepricing`). |
-| 10 | Pricing | `PriceBlock` | Free, Pro (with the struck annual price and the first-year price), Studio (`plans`). |
-| 11 | Start | `solo/Start.tsx` | Name, trade, email or mobile (`start`). |
+| 9 | Pricing | `PriceBlock` | Free, Pro (with the struck annual price and the first-year price), Studio (`plans`). |
+| 10 | Start | `solo/Start.tsx` | Name, trade, email or mobile (`start`). |
 | — | Sticky bar, phones | `StickyCta` | Primary button and "See pricing" (`sticky`, `seepricing`), hidden over the hero and at the form where the browser has scroll-driven animation. |
 
 `data-cta` values are lower-case letters, 10 at most: the API keeps nothing else.

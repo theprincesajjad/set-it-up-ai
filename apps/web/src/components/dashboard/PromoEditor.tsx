@@ -172,7 +172,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                     disabled={needsBoost && !boosts}
                     aria-pressed={d.promoType === k}
                     onClick={() => setD((x) => applyType(x, k))}
-                    className={cn("flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-input border p-3 text-start text-label focus-visible:focus-ring disabled:opacity-50", d.promoType === k ? "border-fg bg-bg-subtle text-fg shadow-[inset_0_0_0_1px_var(--ll-color-fg)]" : "border-line-strong text-fg hover:bg-bg-subtle")}
+                    className={cn("press-soft flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-input border p-3 text-start text-label focus-visible:focus-ring disabled:opacity-50", d.promoType === k ? "border-fg bg-bg-subtle text-fg shadow-[inset_0_0_0_1px_var(--ll-color-fg)]" : "border-line-strong text-fg hover:bg-bg-subtle")}
                     data-testid={`promo-type-${k}`}
                   >
                     {typeLabel(k, term)}
@@ -198,7 +198,7 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
                     disabled={disabled}
                     aria-pressed={d.kind === k}
                     onClick={() => set("kind", k)}
-                    className={cn("flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-input border p-2 text-center text-label focus-visible:focus-ring disabled:opacity-50", d.kind === k ? "border-fg bg-bg-subtle text-fg shadow-[inset_0_0_0_1px_var(--ll-color-fg)]" : "border-line-strong text-fg hover:bg-bg-subtle")}
+                    className={cn("press-soft flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-input border p-2 text-center text-label focus-visible:focus-ring disabled:opacity-50", d.kind === k ? "border-fg bg-bg-subtle text-fg shadow-[inset_0_0_0_1px_var(--ll-color-fg)]" : "border-line-strong text-fg hover:bg-bg-subtle")}
                   >
                     <Icon aria-hidden className="size-5" />
                     {k === "multiplier" ? `Multiply ${term}` : k === "bonus_points" ? `Extra ${term}` : KIND_INFO[k].label}
@@ -254,9 +254,9 @@ export function PromoEditor({ initial, promo }: { initial: PromoDraft; promo?: m
             <div>
               <p className="text-label text-fg">Card colour</p>
               <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Card colour">
-                <button type="button" role="radio" aria-checked={!d.color} aria-label="No colour" onClick={() => set("color", "")} className={cn("size-11 rounded-full border border-line-strong bg-card focus-visible:focus-ring", !d.color ? "ring-2 ring-fg" : "")} />
+                <button type="button" role="radio" aria-checked={!d.color} aria-label="No colour" onClick={() => set("color", "")} className={cn("press size-11 rounded-full border border-line-strong bg-card focus-visible:focus-ring", !d.color ? "ring-2 ring-fg" : "")} />
                 {promosApi.PROMO_COLORS.map((c) => (
-                  <button key={c} type="button" role="radio" aria-checked={d.color === c} aria-label={c.charAt(0).toUpperCase() + c.slice(1)} onClick={() => set("color", c)} className={cn("size-11 rounded-full border border-line focus-visible:focus-ring", DEAL_TILE[c], d.color === c ? "ring-2 ring-fg" : "")} />
+                  <button key={c} type="button" role="radio" aria-checked={d.color === c} aria-label={c.charAt(0).toUpperCase() + c.slice(1)} onClick={() => set("color", c)} className={cn("press size-11 rounded-full border border-line focus-visible:focus-ring", DEAL_TILE[c], d.color === c ? "ring-2 ring-fg" : "")} />
                 ))}
               </div>
             </div>

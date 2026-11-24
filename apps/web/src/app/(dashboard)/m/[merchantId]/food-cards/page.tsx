@@ -37,14 +37,14 @@ function Food() {
   const ready = runout.data?.items.filter((i) => i.readyToText).length ?? 0;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Food cards" description="Buy 12 bags, the next one is free. Counted by brand and bag size, and locked until it is earned." actions={manager ? <Button size="sm" iconStart={Plus} onClick={() => setBrand(true)}>Add a brand</Button> : undefined} />
+      <PageHeader flush title="Food cards" description="Buy 12 bags, the next one is free." actions={manager ? <Button size="sm" iconStart={Plus} onClick={() => setBrand(true)}>Add a brand</Button> : undefined} />
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_460px]">
         <div className="flex flex-col gap-5">
           <Async state={programs} skeleton={<div className="skeleton h-40 w-full rounded-card" />}>
             {(r) =>
               r.programs.length === 0 ? (
-                <Empty action={manager ? <Button size="sm" onClick={() => setBrand(true)}>Add a brand</Button> : undefined}>No brands on a card yet. Add Fromm, Open Farm or any brand you run a buy 12 get 1 on.</Empty>
+                <Empty action={manager ? <Button size="sm" onClick={() => setBrand(true)}>Add a brand</Button> : undefined}>No brands on a card yet.</Empty>
               ) : (
                 <section aria-label="Brands on a card" className="overflow-hidden rounded-card bg-card shadow-card">
                   <div className="border-b border-line px-5 py-3.5">

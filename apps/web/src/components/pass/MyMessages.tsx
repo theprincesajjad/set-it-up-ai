@@ -27,7 +27,7 @@ export function MyThreads() {
   const when = (iso: string) => (new Date(iso).toDateString() === new Date().toDateString() ? time(iso) : date(iso, { month: "short", day: "numeric" }));
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/me" className="inline-flex min-h-11 items-center gap-1 self-start text-meta text-fg-muted"><ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />{t("rc.back")}</Link>
+      <Link href="/me" className="inline-flex min-h-11 items-center gap-1 self-start text-meta text-fg-muted press"><ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />{t("rc.back")}</Link>
       <h1 className="text-large-title text-fg">{t("inbox.me.title")}</h1>
       {data && !data.items.length ? (
         <div className="rounded-card bg-bg-subtle p-5">
@@ -39,7 +39,7 @@ export function MyThreads() {
         <ul className="divide-y divide-border rounded-card border border-border bg-card" data-testid="my-threads">
           {data.items.map((th) => (
             <li key={th.id}>
-              <Link href={`/me/messages/${th.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3 focus-visible:focus-ring">
+              <Link href={`/me/messages/${th.id}`} className="flex min-h-16 items-center gap-3 px-4 py-3 focus-visible:focus-ring press-soft">
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline justify-between gap-2">
                     <span className={cn("truncate text-body", th.unread ? "font-semibold text-fg" : "text-fg")}><bdi>{th.merchant.name}</bdi></span>
@@ -76,7 +76,7 @@ export function MyThread({ id }: { id: string }) {
   if (failed && !data) return <ErrorScreen error={failed} onRetry={() => void load()} notFound={{ title: t("err.notFound.title"), description: t("err.notFound.body") }} back={{ href: "/me/messages", label: t("inbox.me.title") }} />;
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/me/messages" className="inline-flex min-h-11 items-center gap-1 self-start text-meta text-fg-muted"><ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />{t("inbox.me.title")}</Link>
+      <Link href="/me/messages" className="inline-flex min-h-11 items-center gap-1 self-start text-meta text-fg-muted press"><ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />{t("inbox.me.title")}</Link>
       {data ? (
         <>
           <h1 className="text-title text-fg"><bdi>{data.thread.merchant.name}</bdi></h1>

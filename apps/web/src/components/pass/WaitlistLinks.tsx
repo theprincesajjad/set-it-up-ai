@@ -59,9 +59,9 @@ export function WaitlistLinks() {
               ) : null}
             </div>
             {e.offer ? (
-              <Link href={`/w/${encodeURIComponent(e.offer.token)}`} className="inline-flex min-h-11 shrink-0 items-center rounded-pill bg-primary px-4 text-meta-strong text-primary-foreground focus-visible:focus-ring">{t("wl.take.cta")}</Link>
+              <Link href={`/w/${encodeURIComponent(e.offer.token)}`} className="inline-flex min-h-11 shrink-0 items-center rounded-pill bg-primary px-4 text-meta-strong text-primary-foreground focus-visible:focus-ring press">{t("wl.take.cta")}</Link>
             ) : (
-              <button type="button" disabled={busy === e.id} onClick={() => void remove(e.id)} className="min-h-11 shrink-0 px-2 text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring disabled:text-fg-subtle">{t("wl.mine.remove")}</button>
+              <button type="button" disabled={busy === e.id} onClick={() => void remove(e.id)} className="min-h-11 shrink-0 px-2 text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring disabled:text-fg-subtle press">{t("wl.mine.remove")}</button>
             )}
           </li>
         ))}

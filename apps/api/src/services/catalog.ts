@@ -322,7 +322,8 @@ export async function publicMenu(
       })
       .filter((c) => c.items.length > 0),
     uncategorized: items.filter((i) => !i.categoryId),
-    tax: { province, label: tax.label, ratePpm: tax.ratePpm },
+    // Not registered for GST/HST: no tax on the menu, the cart or the order (rate 0, the screens drop the tax line).
+    tax: merchant.taxRegistered === false ? { province, label: "", ratePpm: 0 } : { province, label: tax.label, ratePpm: tax.ratePpm },
     payInApp,
     pickupSlots: features["booking.pickup_slots"].enabled,
     ...(langOn ? { lang, languages: merchant.languages as restaurantApi.MenuLang[] } : {}),

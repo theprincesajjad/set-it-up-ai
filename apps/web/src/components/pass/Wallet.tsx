@@ -246,7 +246,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
         </h1>
         {tab === "card" && firstName ? <h2 className="sr-only">{t("sh.wallet.title")}</h2> : null}
         <div className="flex shrink-0 items-center gap-1">
-        <Link href="/map" aria-label={t("sh.wallet.search")} className={cn("flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring", onField ? "text-current" : "text-foreground")}>
+        <Link href="/map" aria-label={t("sh.wallet.search")} className={cn("flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring press", onField ? "text-current" : "text-foreground")}>
           <Search aria-hidden className="size-5" strokeWidth={1.75} />
         </Link>
         <button
@@ -254,7 +254,7 @@ export function Wallet({ profile, wallet: initialWallet, card, campaigns = [], e
           aria-label={t("sh.tab.settings")}
           aria-current={tab === "settings" ? "page" : undefined}
           onClick={() => selectTab("settings")}
-          className={cn("flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring", onField ? "text-current" : "text-foreground", tab === "settings" && "bg-hover")}
+          className={cn("flex size-11 items-center justify-center rounded-full hover:bg-hover focus-visible:focus-ring press", onField ? "text-current" : "text-foreground", tab === "settings" && "bg-hover")}
         >
           <Settings aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
@@ -356,7 +356,7 @@ function OtherCards({ items, onOpen }: { items: customerApi.MembershipDto[]; onO
       <div className="flex min-h-11 items-center justify-between gap-3 px-1">
         <h2 className="font-display text-[20px] font-bold leading-7 text-foreground clear:text-[11px] clear:font-semibold clear:uppercase clear:leading-4 clear:tracking-[0.04em] clear:text-muted-foreground">{title}</h2>
         {items.length > 1 ? (
-          <button type="button" onClick={() => onOpen()} className="inline-flex min-h-11 items-center gap-0.5 rounded-full px-2 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring">
+          <button type="button" onClick={() => onOpen()} className="inline-flex min-h-11 items-center gap-0.5 rounded-full px-2 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring press">
             {t("cust.me.seeAllCards", { n: items.length + 1 })}
             <ChevronRight aria-hidden className="size-4 rtl:rotate-180" strokeWidth={1.75} />
           </button>
@@ -384,7 +384,7 @@ function MiniPass({ m, onOpen }: { m: customerApi.MembershipDto; onOpen: (id?: s
       {...shopColorProps(m.merchant)}
       onClick={() => onOpen(m.id)}
       aria-label={`${m.merchant.name}, ${unitsText(locale, m.balance, m.terminology)}${ready ? `, ${t("sh.wallet.rewardReady")}` : ""}`}
-      className="group relative flex h-41 w-full flex-col justify-between overflow-hidden rounded-r6 bg-trade p-4 text-start text-trade-pass-text shadow-card transition-transform duration-200 focus-visible:focus-ring motion-safe:hover:-translate-y-0.5"
+      className="group relative flex h-41 w-full flex-col justify-between overflow-hidden rounded-r6 bg-trade p-4 text-start text-trade-pass-text shadow-card transition-transform duration-200 focus-visible:focus-ring motion-safe:hover:-translate-y-0.5 press-soft"
     >
       {/* A soft sheen across the top, like a card in a wallet app (decorative, from the text colour on the shop's fill). */}
       <span aria-hidden className="pointer-events-none absolute -inset-x-6 -top-16 h-28 rotate-[-6deg] bg-trade-pass-text/10 blur-2xl" />
@@ -475,7 +475,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
             setOpenShop(m.id);
             if (!details[m.id]) void loadDetails([m.id]);
           }}
-          className="flex w-full items-center gap-3.5 px-4 py-3.5 text-start transition-colors hover:bg-hover focus-visible:focus-ring"
+          className="flex w-full items-center gap-3.5 px-4 py-3.5 text-start transition-colors hover:bg-hover focus-visible:focus-ring press-soft"
         >
           <ShopLogo shop={{ name: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl, brandColor: m.merchant.brandColor }} size={44} tone="trade" />
           <span className="min-w-0 flex-1">
@@ -501,7 +501,7 @@ function ShopsTab({ wallet, details, openShop, setOpenShop, loadDetails, onChang
       {ready.length ? section(t("sh.wallet.readyNow"), ready) : null}
       {rest.length ? section(ready.length ? t("sh.wallet.earning") : t("sh.wallet.yourShops"), rest) : null}
       {live ? <StreetBlock campaign={live} t={t} ends={endsLabels[live.id] ?? ""} /> : null}
-      <Link href="/discover" className="inline-flex min-h-11 items-center gap-1 self-start text-meta-strong text-muted-foreground hover:text-foreground focus-visible:focus-ring">
+      <Link href="/discover" className="inline-flex min-h-11 items-center gap-1 self-start text-meta-strong text-muted-foreground hover:text-foreground focus-visible:focus-ring press">
         {t("sh.wallet.empty")}
         <ChevronRight aria-hidden className="size-4 rtl:rotate-180" />
       </Link>
@@ -527,7 +527,7 @@ function StreetBlock({ campaign, t, ends }: { campaign: campaignsApi.MyCampaign;
   return (
     <PassPanel title={t("sh.wallet.street")} id="street">
       <li className="-mx-4">
-        <Link href={`/c/${campaign.id}`} className="flex items-center gap-3.5 px-4 py-3.5 hover:bg-hover focus-visible:focus-ring">
+        <Link href={`/c/${campaign.id}`} className="flex items-center gap-3.5 px-4 py-3.5 hover:bg-hover focus-visible:focus-ring press-soft">
           <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-full bg-points-soft text-caption font-bold tabular-nums text-points-text">
             {passport ? `${Math.min(visited, goal)}/${goal}` : "+"}
           </span>
@@ -924,15 +924,15 @@ function SettingsTab({ wallet, profile, onMembership }: { wallet: customerApi.Wa
       </Group>
 
       <Group title={t("sh.priv.data")} as="div" footer={t("sh.priv.dataFoot")}>
-        <button type="button" onClick={exportData} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+        <button type="button" onClick={exportData} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring press-soft">
           <IconTile icon={Download} tone="sky" size="sm" />
           <span className="flex-1">{t("sh.priv.download")}</span>
         </button>
-        <button type="button" onClick={signOut} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+        <button type="button" onClick={signOut} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring press-soft">
           <IconTile icon={LogOut} tone="butter" size="sm" />
           <span className="flex-1">{t("sh.priv.signOut")}</span>
         </button>
-        <button type="button" onClick={() => setDeleteOpen(true)} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-negative hover:bg-bg-subtle focus-visible:focus-ring">
+        <button type="button" onClick={() => setDeleteOpen(true)} className="-mx-4 flex min-h-12 items-center gap-3 px-4 text-start text-body text-negative hover:bg-bg-subtle focus-visible:focus-ring press-soft">
           <IconTile icon={Trash2} tone="rose" size="sm" />
           <span className="flex-1">{t("sh.priv.delete")}</span>
         </button>

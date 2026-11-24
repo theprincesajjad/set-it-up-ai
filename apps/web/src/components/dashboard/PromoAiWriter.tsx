@@ -42,7 +42,7 @@ export function PromoAiWriter({ onDraft }: { onDraft: (apply: (cur: PromoDraft) 
       const r = await api.promoAi({ goal, hint: hint.trim() || undefined });
       setUsage(r.usage);
       setMade(true);
-      onDraft((cur) => draftFromAi(cur, r.draft, r.generationId), "Drafted for you from your shop's details. Check every field, change anything, then publish. Nothing is sent until you do.");
+      onDraft((cur) => draftFromAi(cur, r.draft, r.generationId), "Drafted for you. Nothing is sent until you publish.");
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -71,7 +71,7 @@ export function PromoAiWriter({ onDraft }: { onDraft: (apply: (cur: PromoDraft) 
           <p className="flex items-center gap-2 text-body-strong text-fg">
             <Sparkles aria-hidden className="size-4" /> Write it for me
           </p>
-          <p className="mt-1 text-meta text-fg-muted">Pick a goal. Claude drafts the whole promo from your shop’s details: offer, dates, who it’s for and the notification.</p>
+          <p className="mt-1 text-meta text-fg-muted">Pick a goal. Claude drafts the whole promo from your shop’s details.</p>
         </div>
         <ChipGroup label="Goal" className="flex-wrap overflow-visible">
           {promosApi.PROMO_AI_GOALS.map((g) => (

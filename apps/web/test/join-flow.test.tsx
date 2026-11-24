@@ -4,6 +4,10 @@ import type { customerApi, networkApi } from "@ll/shared";
 import { JoinFlow, type JoinDeps } from "@/components/pass/JoinFlow";
 import { ApiError } from "@/lib/api/errors";
 
+// The joined screen fires the kit's confetti. jsdom has no canvas 2D context, so canvas-confetti throws from a later animation frame
+// (an uncaught error after the test that fails the run). The burst itself is the kit's to test.
+vi.mock("@/components/ui/Celebrate", () => ({ Celebration: () => null, celebrate: async () => undefined }));
+
 const program: customerApi.ProgramSummaryDto = {
   name: "Coffee card", earnType: "stamps", terminology: "stamps", pointsPerDollar: 0, pointsPerVisit: 1, minSpendCents: 0, stampGoal: 10,
   welcomeBonus: 1, birthdayBonus: 0, referralBonus: 2, expiryMonths: null, expiryDisclosure: "Stamps never expire.", termsText: null,

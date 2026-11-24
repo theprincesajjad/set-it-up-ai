@@ -56,7 +56,7 @@ import { inQuietHours } from "./notifications.js";
 import { isSuppressed, optedOutSet, sendSms } from "./opt-out.js";
 import { lineCents, loadOrderDto, taxableBaseCents } from "./orders.js";
 import { EID_PLAN_LABEL, localMidnightUtc, potRowsOnDay, saveRules, waitlistCounts } from "./preorderPlanning.js";
-import { computeTax, merchantProvince } from "./tax.js";
+import { shopTax } from "./tax.js";
 
 type Merchant = typeof merchants.$inferSelect;
 type DealRow = typeof groceryDeals.$inferSelect;
@@ -248,7 +248,7 @@ export async function weighOrder(ctx: AppContext, staff: StaffContext, orderId: 
     }
     const next = items.map((i) => (grams.has(i.id) ? { ...i, actualWeightG: grams.get(i.id)!, weighedCents: weighedLineCents(i.perUnitCents!, i.weightUnit!, grams.get(i.id)!) } : i));
     const subtotal = next.reduce((s, i) => s + lineCents(i), 0);
-    const tax = computeTax(taxableBaseCents(next.map((i) => ({ lineTotalCents: lineCents(i), taxable: i.taxable })), order.discountCents), await merchantProvince(tx, merchant));
+    const tax = await shopTax(tx, merchant, taxableBaseCents(next.map((i) => ({ lineTotalCents: lineCents(i), taxable: i.taxable })), order.discountCents));
     const total = subtotal - order.discountCents + tax.taxCents + order.tipCents + order.customerFeeCents;
     for (const i of next) if (grams.has(i.id)) await tx.update(orderItems).set({ actualWeightG: i.actualWeightG, weighedCents: i.weighedCents }).where(eq(orderItems.id, i.id));
     const now = ctx.now();

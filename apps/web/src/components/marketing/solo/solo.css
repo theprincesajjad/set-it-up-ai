@@ -46,25 +46,34 @@
 
 /* Buttons: the Clear black primary, 56 tall. */
 .sl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 0 26px; border-radius: 999px; font-weight: 650; font-size: 17px; border: 0; cursor: pointer; white-space: nowrap; background: var(--primary); color: var(--primary-foreground); box-shadow: var(--ll-shadow-card); text-decoration: none; }
-.sl-btn:hover { background: var(--primary-hover); }
+@media (hover: hover) { .sl-btn:hover { background: var(--primary-hover); } }
+.sl-btn:active { background: var(--primary-hover); }
 .sl-btn:focus-visible, .sl a:focus-visible, .sl-form input:focus-visible, .sl-chip:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
 .sl-btn svg, .sl-link svg { width: 18px; height: 18px; flex: none; }
 [dir="rtl"] .sl-btn svg, [dir="rtl"] .sl-link svg { transform: scaleX(-1); }
 /* Secondary: white with a strong hairline, same height as the primary. */
 .sl-btn2 { display: inline-flex; align-items: center; justify-content: center; min-height: 56px; padding: 0 24px; border-radius: 999px; font-weight: 650; font-size: 17px; white-space: nowrap; background: var(--card); color: var(--foreground); box-shadow: inset 0 0 0 1px var(--border-strong); text-decoration: none; }
-.sl-btn2:hover { background: var(--muted); }
+@media (hover: hover) { .sl-btn2:hover { background: var(--muted); } }
+.sl-btn2:active { background: var(--muted); }
 .sl-btn2:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .sl-btn-inv { background: var(--card); color: var(--foreground); }
-.sl-btn-inv:hover { background: var(--muted); }
+@media (hover: hover) { .sl-btn-inv:hover { background: var(--muted); } }
+.sl-btn-inv:active { background: var(--muted); }
 .sl-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 16px; font-weight: 600; color: var(--foreground); text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 4px; }
-.sl-link:hover { text-decoration-color: var(--foreground); }
+@media (hover: hover) { .sl-link:hover { text-decoration-color: var(--foreground); } }
+.sl-link:active { text-decoration-color: var(--foreground); }
+/*
+ * Every button answers the finger: the tone shifts at once (above), and the button dips to 0.96 over 150 ms (a full-width one to 0.98,
+ * so a wide block does not lurch). Scale only where motion is welcome; the tone shift stays under reduced motion.
+ */
+.sl-btn, .sl-btn2, .sl-chip-r, .sl-nav-links a, .sl-link, .sl-full { -webkit-tap-highlight-color: transparent; transition: scale 150ms ease-out, background-color 150ms ease-out, color 150ms ease-out, text-decoration-color 150ms ease-out; }
+@media (prefers-reduced-motion: no-preference) {
+  .sl-btn:active, .sl-btn2:active, .sl-chip-r:active { scale: 0.96; }
+  .sl-plan > .sl-btn:active, .sl-form .sl-btn:active, .sl-sticky a:active { scale: 0.98; }
+}
 /* A call-to-action row under a block. */
 .sl-ctarow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: clamp(28px, 3vw, 40px); }
 .sl-ctarow.sl-center { justify-content: center; }
-/* The band before the prices: ink, one line and one white button. */
-.sl-band { background: var(--primary); color: var(--primary-foreground); padding-block: clamp(40px, 5vw, 64px); }
-.sl-band-in { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; }
-.sl-band p { margin-top: 8px; font-size: 17px; opacity: 0.86; }
 /* Phones: the button stays in reach (scroll-driven where the browser has it: hidden over the hero and at the form). */
 .sl-sticky { position: fixed; z-index: 60; inset-inline: 0; bottom: 0; display: flex; gap: 8px; padding: 10px var(--sl-gutter) calc(10px + env(safe-area-inset-bottom)); background: var(--card); box-shadow: 0 -1px 0 var(--border), 0 -8px 24px color-mix(in srgb, var(--foreground) 8%, transparent); }
 .sl-sticky a { min-height: 48px; font-size: 16px; padding-inline: 16px; }
@@ -79,7 +88,8 @@
 .sl-nav-in > a:first-child { display: inline-flex; align-items: center; min-height: 44px; }
 .sl-nav-links { display: none; gap: 2px; font-size: 14px; font-weight: 550; }
 .sl-nav-links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; color: var(--muted-foreground); text-decoration: none; }
-.sl-nav-links a:hover { color: var(--foreground); }
+@media (hover: hover) { .sl-nav-links a:hover { color: var(--foreground); } }
+.sl-nav-links a:active { color: var(--foreground); }
 .sl-nav-links a[aria-current="page"] { color: var(--foreground); }
 .sl-nav .sl-btn { min-height: 44px; padding: 0 18px; font-size: 14px; }
 @media (min-width: 900px) { .sl-nav-links { display: flex; } }
@@ -102,8 +112,8 @@
 .sl-price-link { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: fit-content; min-height: 44px; margin-block: -10px -8px; font-size: 15px; font-weight: 550; color: var(--muted-foreground); text-decoration: none; }
 .sl-price-link u { color: var(--foreground); }
 .sl-price-link u { text-decoration: underline; text-decoration-color: var(--input); text-underline-offset: 3px; }
-.sl-price-link:hover u { text-decoration-color: var(--foreground); }
-.sl-proof { font-size: 13px; color: var(--muted-foreground); margin-top: -8px; }
+@media (hover: hover) { .sl-price-link:hover u { text-decoration-color: var(--foreground); } }
+.sl-price-link:active u { text-decoration-color: var(--foreground); }
 .sl-trust { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; font-weight: 550; color: var(--muted-foreground); padding: 0; margin: 0; list-style: none; }
 .sl-trust li { display: inline-flex; align-items: center; gap: 7px; }
 .sl-trust svg, .sl-ready svg { width: 16px; height: 16px; color: var(--success); flex: none; }
@@ -404,6 +414,8 @@
 .sl-trades { display: flex; flex-wrap: wrap; gap: 8px; }
 .sl-chip-r { position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--input); font-weight: 550; font-size: 14px; cursor: pointer; }
 .sl-chip-r input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+@media (hover: hover) { .sl-chip-r:hover { background: var(--muted); } }
+.sl-chip-r:active { background: var(--muted); }
 .sl-chip-r:has(input:checked) { background: var(--primary); color: var(--primary-foreground); box-shadow: none; }
 .sl-chip-r:has(input:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
 .sl-form .sl-btn { width: 100%; }
@@ -462,15 +474,25 @@
     .sl-bars i { animation-range: entry 20% entry 75%; }
   }
 
-  /* Calendar: the week's slots fill one by one; the DM becomes a booking; the promo's three steps rise in turn. */
-  .sl-week i.b::after { animation: sl-fill 9s ease-in-out infinite; animation-delay: calc(var(--n) * 0.5s); }
-  @keyframes sl-fill { 0%, 8% { opacity: 0; } 12%, 100% { opacity: 1; } }
+  /*
+   * Calendar: the week's slots fill one by one; the DM becomes a booking; the promo's three steps rise in turn. Below the hero nothing
+   * loops: the slots, the three notifications and the new stamp play once, as their block scrolls in where the browser can tie them to
+   * the scroll (the @supports block below), a moment after load elsewhere. Then the picture holds still beside the words.
+   */
+  .sl-week i.b::after { animation: sl-fill 0.4s ease-out both; animation-delay: calc(var(--n) * 0.12s + 0.3s); }
+  @keyframes sl-fill { from { opacity: 0; } }
   .sl-dr { animation: sl-rise 0.6s both; animation-delay: calc(var(--n) * 0.25s + 0.3s); }
   .sl-dm-done { animation: sl-rise 0.6s 1.2s both; }
   .sl-step { animation: sl-rise 0.7s both; animation-delay: calc(var(--n) * 0.35s + 0.2s); }
   .sl-result .sl-n { animation-delay: 1.3s; }
-  .sl-notif { animation: sl-notif 8s ease-in-out infinite; animation-delay: calc(var(--n) * 2.2s); }
-  @keyframes sl-notif { 0%, 4% { opacity: 0; transform: translateY(-14px) scale(0.98); } 10%, 100% { opacity: 1; transform: none; } }
+  .sl-notif { animation: sl-notif 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--n) * 0.3s + 0.3s); }
+  @keyframes sl-notif { from { opacity: 0; transform: translateY(-14px) scale(0.98); } }
+  @supports (animation-timeline: view()) {
+    .sl-week i.b::after { animation-timeline: view(); animation-range: cover calc(6% + var(--n) * 2%) cover calc(12% + var(--n) * 2%); animation-delay: 0s; animation-duration: auto; }
+    /* The card clips its demo (overflow: hidden makes it a scroll container), so the notifications follow the card's own named timeline. */
+    .sl-job { view-timeline-name: --sl-job; }
+    .sl-notif { animation-timeline: --sl-job; animation-range: cover calc(8% + var(--n) * 5%) cover calc(16% + var(--n) * 5%); animation-delay: 0s; animation-duration: auto; }
+  }
 
   /* The phone bar: out of the way over the hero and at the start form, where the page's own buttons are in view. */
   @supports (animation-timeline: scroll()) {
@@ -478,11 +500,15 @@
     @keyframes sl-sticky { 0%, 3% { transform: translateY(110%); visibility: hidden; } 6%, 86% { transform: none; visibility: visible; } 92%, 100% { transform: translateY(110%); visibility: hidden; } }
   }
 
-  /* Regulars: the fourth stamp fills, the tick scales in, every 6 s. */
-  .sl-stamps i.fresh::after { animation: sl-stamp 6s ease-in-out infinite; }
-  .sl-stamps i.fresh svg { animation: sl-stamp-tick 6s ease-in-out infinite; }
-  @keyframes sl-stamp { 0%, 20% { opacity: 0; transform: scale(0.6); } 28%, 100% { opacity: 1; transform: none; } }
-  @keyframes sl-stamp-tick { 0%, 24% { opacity: 0; transform: scale(0.4); } 32%, 100% { opacity: 1; transform: none; } }
+  /* Regulars: the newest stamp fills and its tick scales in, once. */
+  .sl-stamps i.fresh::after { animation: sl-stamp 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) 0.6s both; }
+  .sl-stamps i.fresh svg { animation: sl-stamp-tick 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) 0.7s both; }
+  @keyframes sl-stamp { from { opacity: 0; transform: scale(0.6); } }
+  @keyframes sl-stamp-tick { from { opacity: 0; transform: scale(0.4); } }
+  @supports (animation-timeline: view()) {
+    .sl-pass-wrap { view-timeline-name: --sl-pass; }
+    .sl-stamps i.fresh::after, .sl-stamps i.fresh svg { animation-timeline: --sl-pass; animation-range: cover 18% cover 32%; animation-delay: 0s; animation-duration: auto; }
+  }
 }
 
 /* The 3D objects (parts.tsx Obj) are drawn at a few aspect ratios; fit each one inside its square box. */

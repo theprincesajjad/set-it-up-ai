@@ -42,7 +42,7 @@ export default function TiffinPlans() {
           ))}
         </Section>
       ) : null}
-      {plans.length === 0 ? <EmptyState icon={Store} title={t("rest.tiffin.none.title")} body={t("rest.tiffin.none.body")} /> : null}
+      {plans.length === 0 ? <EmptyState icon={Store} title={t("rest.tiffin.none.title")} /> : null}
       <View>
         {plans.map((p, i) => {
           const tr = pick(p);

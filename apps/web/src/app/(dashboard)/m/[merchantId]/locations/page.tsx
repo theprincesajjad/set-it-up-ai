@@ -14,6 +14,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
 import { QrCode } from "@/components/ui/QrCode";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
+import { errorMessage } from "@/lib/api/errors";
 import { formatE164 } from "@/lib/phone";
 import { addressLine } from "@/lib/address";
 import { hoursDraft, hoursFromDraft, hoursSummary, type HoursDraft } from "@/lib/dashboard/hours";
@@ -29,14 +30,35 @@ export default function LocationsPage() {
   const [rotate, setRotate] = useState<merchantApi.Location | null>(null);
   const [remove, setRemove] = useState<merchantApi.Location | null>(null);
   const act = useAction();
+  // Errors sit under the field they are about, after the first try to save.
+  const [tried, setTried] = useState(false);
+  const nameError = tried && edit && !edit.name.trim() ? "Add a name." : undefined;
+  const addressError = tried && edit && edit.address.trim().length < 3 ? "Add the street address." : undefined;
+  const closeEdit = () => {
+    setEdit(null);
+    setTried(false);
+    act.setError(null);
+  };
+
+  async function reactivate(l: merchantApi.Location) {
+    try {
+      await api.updateLocation(l.id, { active: true });
+      toast({ message: `${l.name} is active again`, tone: "success" });
+      await state.reload();
+      await refresh();
+    } catch (e) {
+      toast({ message: errorMessage(e), tone: "error" });
+    }
+  }
 
   async function saveEdit() {
     if (!edit) return;
-    if (!edit.name.trim() || edit.address.trim().length < 3) return act.setError("Add a name and street address.");
+    setTried(true);
+    if (!edit.name.trim() || edit.address.trim().length < 3) return;
     const body = { name: edit.name.trim(), address: edit.address.trim(), city: edit.city.trim() || undefined, postalCode: edit.postalCode.trim() || null, phone: edit.phone, hours: hoursFromDraft(edit.hours) };
     const r = await act.run(() => (edit.id ? api.updateLocation(edit.id, body) : api.createLocation(body)));
     if (r) {
-      setEdit(null);
+      closeEdit();
       toast({ message: "Saved", tone: "success" });
       await state.reload();
       await refresh();
@@ -47,7 +69,7 @@ export default function LocationsPage() {
     <div>
       <PageHeader
         title="Locations & QR kit"
-        description="Unlimited locations, always free. Each has its own counter QR."
+        description="Each has its own counter QR."
         actions={
           <>
             <Button variant="secondary" size="sm" iconStart={Plus} onClick={() => setEdit({ name: "", address: "", city: "Toronto", postalCode: "", phone: null, hours: hoursDraft(null) })}>
@@ -91,7 +113,7 @@ export default function LocationsPage() {
                           await navigator.clipboard?.writeText(l.joinUrl).catch(() => undefined);
                           toast("Join link copied");
                         }}
-                        className="inline-flex h-8 items-center gap-1.5 border-s border-line px-3 text-meta text-fg-muted hover:text-fg max-md:h-11"
+                        className="inline-flex h-8 items-center gap-1.5 border-s border-line px-3 text-meta text-fg-muted transition-colors duration-tap hover:text-fg active:bg-bg-subtle active:text-fg focus-visible:focus-ring max-md:h-11"
                       >
                         <Copy aria-hidden className="size-3.5" /> Copy
                       </button>
@@ -114,6 +136,11 @@ export default function LocationsPage() {
                         Deactivate
                       </Button>
                     ) : null}
+                    {!l.active ? (
+                      <Button variant="ghost" size="sm" onClick={() => void reactivate(l)}>
+                        Reactivate
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </li>
@@ -123,12 +150,12 @@ export default function LocationsPage() {
       </Async>
       <Modal
         open={!!edit}
-        onClose={() => setEdit(null)}
+        onClose={closeEdit}
         title={edit?.id ? "Edit location" : "Add location"}
         size="md"
         actions={
           <>
-            <Button variant="secondary" onClick={() => setEdit(null)}>
+            <Button variant="secondary" onClick={closeEdit}>
               Cancel
             </Button>
             <Button loading={act.busy} onClick={saveEdit}>
@@ -139,8 +166,8 @@ export default function LocationsPage() {
       >
         {edit ? (
           <div className="flex flex-col gap-4">
-            <TextField label="Name" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Roncesvalles" />
-            <TextField label="Street address" value={edit.address} onChange={(e) => setEdit({ ...edit, address: e.target.value })} autoComplete="street-address" />
+            <TextField label="Name" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Roncesvalles" error={nameError} />
+            <TextField label="Street address" value={edit.address} onChange={(e) => setEdit({ ...edit, address: e.target.value })} autoComplete="street-address" error={addressError} />
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField label="City" value={edit.city} onChange={(e) => setEdit({ ...edit, city: e.target.value })} />
               <TextField label="Postal code" optionalLabel value={edit.postalCode} onChange={(e) => setEdit({ ...edit, postalCode: e.target.value.toUpperCase() })} />

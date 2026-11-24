@@ -8,7 +8,7 @@ import { WAITLIST_KEY, useMyWaitlist, waitlist } from "../../features/customer/w
 import { useLocale } from "../../lib/i18n";
 import { dayToDate } from "../../lib/restaurant";
 import { useOnline } from "../../state/network";
-import { Banner, Button, Card, Clock, EmptyState, ErrorState, Screen, SkeletonList, Text } from "../../ui";
+import { Banner, Button, Card, Clock, EmptyState, ErrorState, Screen, SkeletonList, Text, haptic } from "../../ui";
 
 /** Waiting for a spot (phase-pro P2): each shop's ask with Remove, and an open offer with "Take it", which books it in one tap. */
 export default function WaitingForASpot() {
@@ -40,7 +40,7 @@ export default function WaitingForASpot() {
   const items = q.data?.items ?? [];
 
   return (
-    <Screen back title={t("wl.mine.title")}>
+    <Screen back title={t("wl.mine.title")} refreshing={q.isRefetching} onRefresh={() => void q.refetch()}>
       {note ? <Banner variant={note.variant}>{note.text}</Banner> : null}
       {!items.length ? <EmptyState icon={Clock} title={t("wl.mine.empty")} /> : null}
       {items.map((e) => (
@@ -58,7 +58,9 @@ export default function WaitingForASpot() {
                 loading={busy === e.id}
                 onPress={async () => {
                   const r = (await run(e.id, () => waitlist.take(e.id))) as waitlistApi.TakeOfferResponse | undefined;
-                  if (r) router.replace(`/appointments/${r.appointmentId}` as never);
+                  if (!r) return;
+                  haptic.success();
+                  router.replace(`/appointments/${r.appointmentId}` as never);
                 }}
               >
                 {t("wl.take.cta")}

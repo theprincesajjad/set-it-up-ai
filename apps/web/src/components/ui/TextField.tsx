@@ -31,7 +31,7 @@ export function FieldShell({ id, label, hint, error, optionalLabel, required, co
       {children}
       <div className="flex items-start justify-between gap-3">
         {error ? (
-          <p id={`${id}-error`} className="flex items-start gap-1.5 text-meta font-medium text-negative">
+          <p id={`${id}-error`} className="flex animate-fade-in items-start gap-1.5 text-meta font-medium text-negative">
             <CircleAlert aria-hidden className="mt-px size-4 shrink-0" strokeWidth={1.75} />
             {error}
           </p>
@@ -53,8 +53,8 @@ export function describedBy(id: string, error?: string | null, hint?: ReactNode)
 }
 
 export const inputBase =
-  "w-full min-h-11 rounded-md border bg-bg px-3.5 text-body text-fg placeholder:text-fg-muted outline-none transition-[border-color,box-shadow] duration-150 ease-out " +
-  "border-line hover:border-line-strong/50 focus:border-fg focus:ring-1 focus:ring-fg disabled:bg-bg-subtle disabled:text-fg-muted " +
+  "w-full min-h-11 rounded-md border bg-bg px-3.5 text-body text-fg placeholder:text-fg-muted outline-none transition-[border-color,box-shadow,background-color] duration-tap ease-out " +
+  "border-line hover:border-line-strong/50 focus:border-fg focus:ring-1 focus:ring-fg disabled:cursor-not-allowed disabled:bg-bg-subtle disabled:text-fg-muted " +
   "aria-[invalid=true]:border-negative aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-negative " +
   // Clear (Polaris field, audit 2.4 control scale): 32 on desktop, 44 under a finger, r8, a 3:1 outline, white fill, the 2px blue focus ring.
   "clear:min-h-11 clear:md:min-h-8 clear:rounded-r2 clear:border-input clear:bg-card clear:px-3 clear:hover:border-input clear:focus:border-input clear:focus:ring-0 clear:focus:outline-2 clear:focus:outline-offset-1 clear:focus:outline-ring clear:aria-[invalid=true]:bg-destructive-soft";

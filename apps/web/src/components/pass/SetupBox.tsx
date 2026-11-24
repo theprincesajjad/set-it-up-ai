@@ -6,7 +6,7 @@
  * The API saves the method from the webhook, so callers poll afterwards.
  */
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { browserApi } from "@/lib/api/browser";
 import { useErrorText } from "@/lib/api/useErrorText";
 import { env } from "@/lib/env";
@@ -28,6 +28,8 @@ export function SetupBox({ setupIntentId, clientSecret, label, onSaved }: SetupB
   const errText = useErrorText();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A second tap in the same frame lands before `busy` has rendered: this stops it there.
+  const sending = useRef(false);
   if (env.stripePublishableKey) return <StripeSetup publishableKey={env.stripePublishableKey} clientSecret={clientSecret} label={label} onSucceeded={onSaved} />;
   return (
     <div className="flex flex-col gap-3 rounded-card border border-dashed border-line-strong/60 p-4">
@@ -41,6 +43,8 @@ export function SetupBox({ setupIntentId, clientSecret, label, onSaved }: SetupB
         fullWidth
         loading={busy}
         onClick={async () => {
+          if (sending.current) return;
+          sending.current = true;
           setBusy(true);
           setError(null);
           try {
@@ -49,6 +53,7 @@ export function SetupBox({ setupIntentId, clientSecret, label, onSaved }: SetupB
           } catch (e) {
             setError(errText(e));
           } finally {
+            sending.current = false;
             setBusy(false);
           }
         }}

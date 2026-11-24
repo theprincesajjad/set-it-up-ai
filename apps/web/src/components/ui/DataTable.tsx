@@ -49,7 +49,7 @@ export interface DataTableProps<T> {
  */
 function MobileRow({ clickable, onClick, className, children }: { clickable: boolean; onClick?: () => void; className: string; children: ReactNode }) {
   return clickable ? (
-    <button type="button" onClick={onClick} className={className}>
+    <button type="button" onClick={onClick} className={cn(className, "transition-colors duration-tap ease-out active:bg-bg-subtle")}>
       {children}
     </button>
   ) : (
@@ -112,7 +112,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
                 return (
                   <TableHead key={c.key} scope="col" aria-sort={active ? (sort!.dir === "asc" ? "ascending" : "descending") : undefined} className={cn("h-10 px-4 text-meta-strong text-fg-muted", c.align === "end" ? "text-end" : "text-start")}>
                     {c.sortValue ? (
-                      <button type="button" onClick={() => toggle(c.key)} className="inline-flex min-h-11 items-center gap-1 hover:text-fg focus-visible:focus-ring">
+                      <button type="button" onClick={() => toggle(c.key)} className="inline-flex min-h-11 items-center gap-1 transition-[color,opacity] duration-tap ease-out hover:text-fg active:opacity-70 focus-visible:focus-ring">
                         {c.header}
                         <Icon aria-hidden className="size-3.5" />
                       </button>
@@ -146,7 +146,7 @@ export function DataTable<T>({ columns, rows, rowKey, caption, loading, error, o
                       aria-selected={onRowClick ? open : undefined}
                       onClick={onRowClick ? () => onRowClick(r) : undefined}
                       onKeyDown={onRowClick ? (e) => onRowKey(e, r) : undefined}
-                      className={cn("h-11 border-t border-line transition-colors hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:focus-ring focus-visible:-outline-offset-2 focus-visible:focus-ring", onRowClick && "cursor-pointer", open && "bg-bg-muted")}
+                      className={cn("h-11 border-t border-line transition-colors duration-tap ease-out hover:bg-bg-subtle focus-visible:bg-bg-subtle focus-visible:-outline-offset-2 focus-visible:focus-ring", onRowClick && "cursor-pointer active:bg-bg-muted", open && "bg-bg-muted")}
                     >
                       {columns.map((c) => (
                         <TableCell key={c.key} className={cn("px-4 text-fg", c.align === "end" && "text-end tabular-nums", c.className)}>

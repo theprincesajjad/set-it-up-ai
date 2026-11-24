@@ -40,10 +40,10 @@ const variants: Record<ButtonVariant, string> = {
   secondary: "bg-card text-foreground border border-border hover:bg-muted active:bg-hover clear:border-0 clear:glass-tint clear:hover:bg-lg-seg-track clear:active:bg-lg-seg-track",
   tonal: "bg-hover text-foreground hover:bg-sidebar active:bg-sidebar clear:bg-lg-seg-track clear:hover:bg-lg-seg-track clear:active:bg-lg-seg-track",
   ghost: "bg-transparent text-fg hover:bg-bg-subtle active:bg-bg-muted",
-  danger: "bg-negative text-[#FFFFFF] hover:bg-negative hover:brightness-95 dark:text-bg",
-  accent: "bg-points-soft text-points-text hover:bg-points-soft hover:brightness-[0.97]",
+  danger: "bg-negative text-[#FFFFFF] hover:bg-negative hover:brightness-95 active:bg-negative active:brightness-90 dark:text-bg",
+  accent: "bg-points-soft text-points-text hover:bg-points-soft hover:brightness-[0.97] active:bg-points-soft active:brightness-95",
   /** On a black band (marketing CTA): white fill, black text. */
-  inverse: "bg-card text-foreground hover:bg-muted",
+  inverse: "bg-card text-foreground hover:bg-muted active:bg-hover",
   /** A shop's own colour (customer pages under `shopColorProps`): the trade fill with its computed text colour (AA-checked in design-tokens). */
   // wave-q: `hover:bg-trade` keeps the shop's colour under the pointer (the primitive's own hover fill turned it dark grey on desktop).
   shop: "bg-trade text-trade-foreground shadow-none hover:bg-trade hover:brightness-95 active:bg-trade active:brightness-90",
@@ -66,10 +66,9 @@ const PRIMITIVE_RESET = "border-0 bg-clip-border focus-visible:ring-0 active:not
 
 export function buttonClasses({ variant = "primary", size = "md", fullWidth, disabled }: Pick<ButtonProps, "variant" | "size" | "fullWidth" | "disabled"> = {}) {
   return cn(
-    "inline-flex select-none items-center justify-center whitespace-nowrap font-semibold transition-[background-color,transform,filter,opacity] duration-150 ease-out",
-    "motion-safe:active:scale-[0.98] focus-visible:focus-ring",
+    "press inline-flex select-none items-center justify-center whitespace-nowrap font-semibold focus-visible:focus-ring",
     size === "sm" && "relative after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
-    disabled ? "bg-bg-muted text-fg-subtle border-transparent shadow-none cursor-not-allowed active:scale-100" : variants[variant],
+    disabled ? "bg-bg-muted text-fg-subtle border-transparent shadow-none cursor-not-allowed [--press-scale:1]" : variants[variant],
     sizes[size],
     fullWidth && "w-full",
   );
@@ -137,10 +136,10 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
 }
 
 export function IconButton({ icon: Icon, label, variant = "ghost", size = 48, className, type = "button", ...rest }: IconButtonProps) {
-  const v = { ghost: "text-fg hover:bg-bg-subtle", secondary: "bg-card border border-border text-foreground hover:bg-muted clear:border-0 clear:glass-tint", primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover clear:shadow-primary clear:hover:bg-primary-hover" }[variant];
+  const v = { ghost: "text-fg hover:bg-bg-subtle active:bg-bg-muted", secondary: "bg-card border border-border text-foreground hover:bg-muted active:bg-hover clear:border-0 clear:glass-tint clear:hover:bg-lg-seg-track clear:active:bg-lg-seg-track", primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover active:bg-brand-pressed clear:shadow-primary clear:hover:bg-primary-hover clear:active:bg-primary-hover" }[variant];
   const s = { 40: "size-10 max-md:size-11", 48: "size-11", 64: "size-16" }[size];
   return (
-    <button type={type} aria-label={label} title={label} className={cn("inline-flex items-center justify-center rounded-full transition-colors duration-150 ease-out focus-visible:focus-ring", v, s, className)} {...rest}>
+    <button type={type} aria-label={label} title={label} className={cn("press inline-flex items-center justify-center rounded-full focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50", v, s, className)} {...rest}>
       <Icon aria-hidden className={size === 64 ? "size-7" : "size-5"} strokeWidth={1.75} />
     </button>
   );

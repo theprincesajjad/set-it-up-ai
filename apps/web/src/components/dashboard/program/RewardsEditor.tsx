@@ -57,11 +57,11 @@ export function RewardsEditor({ rewards, onChange }: { rewards: merchantApi.Rewa
         <ul className="flex flex-col divide-y divide-line border-y border-line">
           {sorted.map((r, i) => (
             <li key={r.id} className="flex min-h-14 flex-wrap items-center gap-1 py-1.5">
-              <div className="flex flex-col">
-                <button type="button" aria-label={`Move ${r.name} up`} disabled={i === 0} onClick={() => move(i, -1)} className="inline-flex h-5 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-bg-subtle hover:text-fg disabled:opacity-30">
+              <div className="flex flex-col max-md:flex-row">
+                <button type="button" aria-label={`Move ${r.name} up`} disabled={i === 0} onClick={() => move(i, -1)} className="press inline-flex h-5 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring disabled:opacity-30 max-md:size-11 max-md:rounded-full">
                   <ArrowUp aria-hidden className="size-3.5" />
                 </button>
-                <button type="button" aria-label={`Move ${r.name} down`} disabled={i === sorted.length - 1} onClick={() => move(i, 1)} className="inline-flex h-5 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-bg-subtle hover:text-fg disabled:opacity-30">
+                <button type="button" aria-label={`Move ${r.name} down`} disabled={i === sorted.length - 1} onClick={() => move(i, 1)} className="press inline-flex h-5 w-7 items-center justify-center rounded-sm text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring disabled:opacity-30 max-md:size-11 max-md:rounded-full">
                   <ArrowDown aria-hidden className="size-3.5" />
                 </button>
               </div>

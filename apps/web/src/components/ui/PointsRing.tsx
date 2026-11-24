@@ -45,7 +45,7 @@ export function PointsRing({ balance, goal, terminology = "points", rewardName, 
             strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={c * (1 - (ready ? 1 : pct))}
-            className={cn("transition-[stroke-dashoffset] duration-[600ms] ease-out motion-reduce:transition-none", ready ? "stroke-points" : "stroke-trade")}
+            className={cn("transition-[stroke-dashoffset] duration-fill ease-out motion-reduce:transition-none", ready ? "stroke-points" : "stroke-trade")}
           />
         </svg>
         <div aria-hidden className="absolute inset-0 flex flex-col items-center justify-center">

@@ -3,7 +3,7 @@ import { BRAND, type MessageKey, type networkApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LoadFailed } from "../../features/customer/LoadFailed";
@@ -23,6 +23,7 @@ import { disp, ui, useTheme } from "../../theme";
 import { Awning, BellGlyph, categorySource, ChevronDownGlyph, floatShadow, haptic, ListRow, shadow, Sheet, Skeleton, Text, useTabBarSpace } from "../../ui";
 import { mix, type TileName } from "@ll/design-tokens";
 import { capFirst } from "../../lib/sentenceCase";
+import { pressFx } from "../../ui/pressFx";
 
 const TONES: TileName[] = ["peach", "mint", "butter", "lilac", "sky", "rose"];
 
@@ -162,7 +163,11 @@ export default function Discover() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: tabSpace + 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: tabSpace + 24 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={shops.isRefetching} onRefresh={() => void Promise.all([shops.refetch(), campaigns.refetch(), wallet.refetch()])} tintColor={c.fgMuted} colors={[c.fg]} />}
+      >
         <View style={{ position: "absolute", left: 0, right: 0, top: 0, zIndex: 2 }}><Awning height={10} /></View>
         {/* Hero: terracotta gradient, the live campaign. The three objects are from the canvas; in hi, ur and pa the headline runs wider and crosses them, so they step back. */}
         {/* A View, not a button: the campaign link is an overlay below, so the bell is never a button inside a button. */}
@@ -199,7 +204,7 @@ export default function Discover() {
             <Text style={disp(17, 800, 20)} rawColor={heroInk}>
               {BRAND.name}
             </Text>
-            <Pressable accessibilityRole="button" accessibilityLabel={unread > 0 ? tr("ms.map.notifUnread", { n: unread }) : tr("sh.activity.title")} onPress={() => router.navigate("/activity")} style={styles.heroBell}>
+            <Pressable accessibilityRole="button" accessibilityLabel={unread > 0 ? tr("ms.map.notifUnread", { n: unread }) : tr("sh.activity.title")} onPress={() => router.navigate("/activity")} style={({ pressed }) => [styles.heroBell, pressed ? pressFx.scale : null]}>
               <BellGlyph size={18} color={heroInk} />
               {unread > 0 ? <View style={[styles.heroDot, { backgroundColor: c.accent }]} /> : null}
             </Pressable>
@@ -252,7 +257,7 @@ export default function Discover() {
             </Text>
             {failed ? null : <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>{tr("sh.disc.shopsN", { n: all.length })}</Text>}
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.disc.openMap")} onPress={() => router.navigate("/map")} style={[styles.mapCard, { backgroundColor: r.muted }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.disc.openMap")} onPress={() => router.navigate("/map")} style={({ pressed }) => [[styles.mapCard, { backgroundColor: r.muted }], pressed ? pressFx.scale : null]}>
             <Svg width={cardW} height={120} style={StyleSheet.absoluteFill}>
               <Path d={`M${cardW * 0.335} -10 L ${cardW * 0.475} 130`} stroke={r.card} strokeWidth={9} strokeLinecap="round" fill="none" />
               <Path d={`M-10 40 L ${cardW + 12} 26`} stroke={r.card} strokeWidth={9} strokeLinecap="round" fill="none" />

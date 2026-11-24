@@ -168,8 +168,9 @@ export default async function register(app: FastifyInstance, ctx: AppContext): P
   app.get<{ Params: { slug: string } }>("/public/shops/:slug/availability", async (req, reply) => {
     const m = await shop(req.params.slug);
     const q = parse(appointmentsApi.availabilityQuery, req.query);
-    reply.header("cache-control", "public, max-age=30");
-    const av = await booking.publicAvailability(ctx, m, q); // phase-pro P5: add-on minutes lengthen the slot
+    // Signed in, the answer is theirs alone (it shows the time they are holding), so it is never cached or shared.
+    reply.header("cache-control", req.authUser ? "private, no-store" : "public, max-age=30");
+    const av = await booking.publicAvailability(ctx, m, q, req.authUser?.id); // phase-pro P5: add-on minutes lengthen the slot
     await noteFullDays(ctx, m, av); // phase-pro: p6 (full_day_views signal)
     return av;
   });

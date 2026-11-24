@@ -131,7 +131,7 @@ function Empty({ children }: { children: ReactNode }) {
   return <p className="border-t border-border px-5 py-5 text-body text-muted-foreground">{children}</p>;
 }
 
-export function NeedsYouCard({ rows, loading, base, className }: { rows: NeedsRow[]; loading?: boolean; base: string; className?: string }) {
+export function NeedsYouCard({ rows, loading, failure, base, className }: { rows: NeedsRow[]; loading?: boolean; /** Part of the list could not be loaded: shown with its retry instead of "Nothing needs you". */ failure?: ReactNode; base: string; className?: string }) {
   const { t } = useLocaleOrEnglish();
   const [all, setAll] = useState(false);
   const vertical = useShopVertical();
@@ -154,7 +154,7 @@ export function NeedsYouCard({ rows, loading, base, className }: { rows: NeedsRo
       }
       right={
         rows.length > MAX_ROWS ? (
-          <button type="button" aria-expanded={all} onClick={() => setAll((v) => !v)} className="inline-flex min-h-11 items-center rounded-md px-2 hover:text-foreground focus-visible:focus-ring">
+          <button type="button" aria-expanded={all} onClick={() => setAll((v) => !v)} className="press inline-flex min-h-11 items-center rounded-md px-2 hover:text-foreground focus-visible:focus-ring">
             {all ? t("shell.today.showFewer") : t("shell.today.viewAll", { n: rows.length })}
           </button>
         ) : null
@@ -163,14 +163,14 @@ export function NeedsYouCard({ rows, loading, base, className }: { rows: NeedsRo
       {loading ? (
         <RowSkeleton rowClass="lg:min-h-[92px]" />
       ) : rows.length === 0 ? (
-        <Empty>{t("shell.today.nothingNeedsYou")}</Empty>
+        failure ? <div data-testid="needs-you-failed" className={clear ? CLEAR_DIVIDER : "border-t border-border"}>{failure}</div> : <Empty>{t("shell.today.nothingNeedsYou")}</Empty>
       ) : clear ? (
         <ul className="flex flex-1 flex-col">
           {shown.map((r) => {
             const v = needsVisual(r);
             return (
               <li key={r.key} className={cn("flex min-h-[92px] [[lang^=ur]_&]:min-h-24", shown.length >= 3 && "flex-1", CLEAR_DIVIDER)}>
-                <Link href={`${base}${r.href}`} className="flex w-full items-center gap-3 px-4 py-3 transition-colors hover:bg-hover focus-visible:focus-ring [[lang^=ur]_&]:py-2.5">
+                <Link href={`${base}${r.href}`} className="flex w-full items-center gap-3 px-4 py-3 transition-colors duration-tap hover:bg-hover active:bg-muted focus-visible:focus-ring [[lang^=ur]_&]:py-2.5">
                   <span aria-hidden className={CLEAR_TILE}>
                     <v.icon className="size-4" strokeWidth={1.8} />
                   </span>
@@ -192,7 +192,7 @@ export function NeedsYouCard({ rows, loading, base, className }: { rows: NeedsRo
             const v = needsVisual(r);
             return (
               <li key={r.key} className="flex max-h-28 flex-1 border-t border-border">
-                <Link href={`${base}${r.href}`} className="flex min-h-17 w-full items-center gap-3 px-5 py-3 transition-colors hover:bg-muted focus-visible:focus-ring">
+                <Link href={`${base}${r.href}`} className="flex min-h-17 w-full items-center gap-3 px-5 py-3 transition-colors duration-tap hover:bg-muted active:bg-hover focus-visible:focus-ring">
                   <IconTile icon={v.icon} tone={v.tone} />
                   <span className="min-w-0 flex-1">
                     <span className="sr-only">{t(TONE_WORD[r.tone])}: </span>
@@ -257,7 +257,7 @@ function ClearStat({ item: s, icon: Icon, loading }: { item: StatItem; icon: Luc
     s.label
   );
   return (
-    <div className={cn("flex min-w-0 flex-col gap-2 p-4", CLEAR_CARD, s.href && "transition-colors hover:bg-hover")}>
+    <div className={cn("flex min-w-0 flex-col gap-2 p-4", CLEAR_CARD, s.href && "press-soft hover:bg-hover active:bg-hover")}>
       <div className="flex flex-col items-start gap-3 lg:flex-row lg:items-center">
         <span aria-hidden className={CLEAR_TILE}>
           <Icon className="size-4.5 lg:size-4" strokeWidth={1.8} />
@@ -360,7 +360,7 @@ export function UpNextCard({ rows, loading, base, label, empty, className }: { r
             const cls = "flex min-h-16 items-center gap-3 px-4 py-3 [[lang^=ur]_&]:py-2.5";
             return (
               <li key={r.key} className={CLEAR_DIVIDER}>
-                {r.href ? <Link href={`${base}${r.href}`} className={cn(cls, "transition-colors hover:bg-hover focus-visible:focus-ring")}>{body}</Link> : <div className={cls}>{body}</div>}
+                {r.href ? <Link href={`${base}${r.href}`} className={cn(cls, "transition-colors duration-tap hover:bg-hover active:bg-muted focus-visible:focus-ring")}>{body}</Link> : <div className={cls}>{body}</div>}
               </li>
             );
           })}
@@ -406,7 +406,7 @@ export function QuickActionsCard({ actions, base, className }: { actions: QuickA
                 <Link
                   href={`${base}${a.href}`}
                   className={cn(
-                    "flex min-h-11 items-center gap-3 px-4 py-3 font-[550] text-foreground transition-colors hover:bg-hover focus-visible:focus-ring max-lg:[[lang^=ur]_&]:py-2.5",
+                    "press-soft flex min-h-11 items-center gap-3 px-4 py-3 font-[550] text-foreground hover:bg-hover active:bg-muted focus-visible:focus-ring max-lg:[--press-scale:1] max-lg:[[lang^=ur]_&]:py-2.5",
                     "lg:h-10 lg:min-h-0 lg:rounded-xl lg:border lg:border-border-strong lg:bg-card lg:py-0 lg:shadow-card",
                     CLEAR_TEXT,
                   )}

@@ -68,12 +68,17 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
     throw conflict(`This appointment is ${a.status.replace("_", " ")}`);
   }
 
-  // The client: invoices belong to a customer, so a walk-in with no phone needs one now.
+  // The client: a walk-in can give a phone now to earn points and get the receipt. Paid at the counter without one (cash from
+  // someone off the walk-in line), the invoice sits under the staff member taking it: no points, no texts. A pay link needs a number.
   let userId = a.userId;
+  let noCustomer = false;
   if (!userId) {
-    if (!body.customer?.phone && !body.customer?.userId) throw new HttpError(409, "customer_required", "Add the client's phone number to check out. They earn points and get a receipt.");
-    if (body.customer.userId) userId = body.customer.userId;
-    else userId = (await findOrCreateCustomerByPhone(ctx.db, requirePhone(body.customer.phone!), body.customer.name ?? a.customerName)).user.id;
+    if (body.customer?.userId) userId = body.customer.userId;
+    else if (body.customer?.phone) userId = (await findOrCreateCustomerByPhone(ctx.db, requirePhone(body.customer.phone), body.customer.name ?? a.customerName)).user.id;
+    else if (body.mode === "counter") {
+      userId = staff.user.id;
+      noCustomer = true;
+    } else throw new HttpError(409, "customer_required", "Add the client's phone number to text them the pay link.");
   }
 
   const items = body.items ?? a.items;
@@ -100,7 +105,7 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
 
   // A reward redeemed at the counter becomes a credit line (it can't earn points).
   let discountCents = 0;
-  if (body.rewardId) {
+  if (body.rewardId && !noCustomer) {
     const [member] = await ctx.db.select({ id: merchantMembers.id }).from(merchantMembers).where(and(eq(merchantMembers.merchantId, merchant.id), eq(merchantMembers.userId, userId))).limit(1);
     if (!member) throw new HttpError(409, "not_a_member", "This client hasn't joined your rewards yet, so there's no reward to apply.");
     const r = await redeemReward(ctx, { merchantId: merchant.id, memberId: member.id, rewardId: body.rewardId, source: "staff_app", staffUserId: staff.user.id, idempotencyKey: `appt_reward:${a.id}:${body.rewardId}`, subtotalCents: serviceTotal });
@@ -152,7 +157,7 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
     await tx
       .update(appointments)
       .set({
-        userId,
+        userId: noCustomer ? a.userId : userId,
         items,
         invoiceId: inv!.id,
         status: "completed",
@@ -166,10 +171,10 @@ export async function checkout(ctx: AppContext, staff: StaffContext, id: string,
     return inv!;
   });
 
-  await autoSetPreferred(ctx, userId, merchant.id, a.staffId);
+  if (!noCustomer) await autoSetPreferred(ctx, userId, merchant.id, a.staffId);
   if (firstCheckout) await recordAddOnsSold(ctx, merchant.id, items); // phase-pro P5: addons_sold for the weekly report
-  await scheduleReviewRequest(ctx, merchant, { kind: "appointment", id: a.id }).catch(() => null); // phase-pro: p4 (a Pro shop with the switch on asks for a review two hours later)
-  if (counter) await markInvoicePaid(ctx, staff, invoice.id, { method: body.counterMethod, note: body.note ?? null });
+  if (!noCustomer) await scheduleReviewRequest(ctx, merchant, { kind: "appointment", id: a.id }).catch(() => null); // phase-pro: p4 (a Pro shop with the switch on asks for a review two hours later)
+  if (counter) await markInvoicePaid(ctx, staff, invoice.id, { method: body.counterMethod, note: body.note ?? null }, { noCustomer });
   else await sendInvoice(ctx, staff, invoice.id);
 
   const [fresh] = await ctx.db.select().from(invoices).where(eq(invoices.id, invoice.id)).limit(1);

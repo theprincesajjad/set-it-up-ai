@@ -500,7 +500,7 @@ export const campaignVisitHook: VisitHook = async (tx: Tx, { merchant, program, 
       const [u] = await tx.select({ locale: users.locale }).from(users).where(eq(users.id, member.userId)).limit(1);
       const t = translator(normalizeLocale(u?.locale) ?? "en");
       if (completesNow) messages.push(c.prize ? t("camp.msg.completeDraw", { name: c.name, prize: c.prize }) : t("camp.msg.complete", { name: c.name }));
-      else messages.push(t("camp.msg.progress", { name: c.name, n: merchantIds.length, goal: c.goalVisits }));
+      else if (!p!.completedAt) messages.push(t("camp.msg.progress", { name: c.name, n: merchantIds.length, goal: c.goalVisits }));
     }
   }
   return { pointsAwarded, messages };

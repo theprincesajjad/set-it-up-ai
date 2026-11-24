@@ -19,6 +19,7 @@ import { useOnline } from "../../state/network";
 import { disp, ui, useTheme } from "../../theme";
 import { Awning, Bell, Button, CardTitle, ChevronLeftGlyph, EmptyState, ErrorState, Gift, hairline, IconTile, SkeletonRows, SlidersGlyph, Store, Text, Trophy, User, useTabBarSpace, WarmCard, type TileTone } from "../../ui";
 import { inboxSections, openNotification, useInbox, useMarkRead } from "./inbox";
+import { pressFx } from "../../ui/pressFx";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -114,15 +115,15 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
       <View style={{ paddingHorizontal: 20, paddingTop: insets.top > 0 ? 8 : 16 }}>
       <View style={styles.bar}>
         {inTab ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.you.title")} onPress={() => router.push("/you")} style={[styles.circle, { backgroundColor: r.card }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.you.title")} onPress={() => router.push("/you")} style={({ pressed }) => [[styles.circle, { backgroundColor: r.card }], pressed ? pressFx.scale : null]}>
             <User size={18} color={c.fg} strokeWidth={1.9} />
           </Pressable>
         ) : (
-          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/map"))} style={[styles.circle, { backgroundColor: r.card }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/map"))} style={({ pressed }) => [[styles.circle, { backgroundColor: r.card }], pressed ? pressFx.scale : null]}>
             <ChevronLeftGlyph size={18} color={c.fg} />
           </Pressable>
         )}
-        <Pressable accessibilityRole="button" accessibilityLabel={t("sh.inbox.settings")} onPress={() => router.push("/settings/notifications")} style={[styles.circle, { backgroundColor: r.card }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t("sh.inbox.settings")} onPress={() => router.push("/settings/notifications")} style={({ pressed }) => [[styles.circle, { backgroundColor: r.card }], pressed ? pressFx.scale : null]}>
           <SlidersGlyph size={18} color={c.fg} />
         </Pressable>
       </View>
@@ -134,7 +135,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
           {unread > 0 ? t("sh.inbox.newN", { n: unread }) : failed || inbox.isLoading ? "" : t("sh.inbox.caughtUp")}
         </Text>
         {unread > 0 ? (
-          <Pressable accessibilityRole="button" onPress={() => markRead.mutate(null)} hitSlop={{ top: 13, bottom: 13, left: 8, right: 8 }}>
+          <Pressable accessibilityRole="button" onPress={() => markRead.mutate(null)} hitSlop={{ top: 13, bottom: 13, left: 8, right: 8 }} style={({ pressed }) => (pressed ? pressFx.dim : null)}>
             <Text style={ui(14, 600, 18)} rawColor={c.brand}>{t("sh.set.markAllRead")}</Text>
           </Pressable>
         ) : null}
@@ -172,7 +173,7 @@ export function InboxScreen({ inTab }: { inTab: boolean }) {
         </Button>
       ) : null}
       {inTab ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push("/history")} style={{ marginTop: 24, alignSelf: "flex-start" }} hitSlop={{ top: 13, bottom: 13, left: 8, right: 8 }}>
+        <Pressable accessibilityRole="button" onPress={() => router.push("/history")} style={({ pressed }) => [{ marginTop: 24, alignSelf: "flex-start" }, pressed ? pressFx.dim : null]} hitSlop={{ top: 13, bottom: 13, left: 8, right: 8 }}>
           <Text style={ui(14, 600, 18)} rawColor={c.brand}>{t("sh.inbox.history")}</Text>
         </Pressable>
       ) : null}

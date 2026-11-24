@@ -51,7 +51,7 @@ export function CardCarousel({ label, items, basis = "basis-[88%] sm:basis-1/2 l
       api.off("reInit", sync);
     };
   }, [api]);
-  const arrow = "grid size-11 place-items-center rounded-full glass-lite text-foreground transition-opacity disabled:pointer-events-none disabled:opacity-0 focus-visible:focus-ring pointer-coarse:hidden";
+  const arrow = "press grid size-11 place-items-center rounded-full glass-lite text-foreground hover:brightness-[0.97] active:brightness-95 disabled:pointer-events-none disabled:opacity-0 focus-visible:focus-ring pointer-coarse:hidden";
   return (
     <Carousel setApi={setApi} opts={{ direction: dir, align: "start", loop, duration: reduced ? 0 : 25, containScroll: "trimSnaps" }} aria-label={label} className={cn("w-full", className)}>
       <CarouselContent className="-ms-3">

@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { CircleAlert, CircleCheck, Info, WifiOff, type LucideIcon } from "./icons";
+import { haptic } from "./haptics";
 import { Text } from "./Text";
+import { pressFx } from "./pressFx";
 
 export type BannerVariant = "info" | "success" | "warning" | "danger" | "neutral";
 
@@ -24,6 +27,10 @@ export interface BannerProps {
  */
 export function Banner({ variant = "info", children, icon, actionLabel, onAction, solid, busy, onPress }: BannerProps) {
   const { c } = useTheme();
+  // A danger banner is a failed action: one error buzz when it appears or its message changes (deduped with the toast).
+  useEffect(() => {
+    if (variant === "danger") haptic.error();
+  }, [variant, children]);
   const I = icon ?? (variant === "success" ? CircleCheck : variant === "danger" || variant === "warning" ? CircleAlert : Info);
   const bg = solid ? (variant === "danger" ? c.negative : c.fg) : c.bgSubtle;
   const fg = solid ? (variant === "danger" ? "#FFFFFF" : c.bg) : c.fg;
@@ -36,7 +43,7 @@ export function Banner({ variant = "info", children, icon, actionLabel, onAction
       </Text>
       {busy ? <ActivityIndicator size="small" color={fg} /> : null}
       {actionLabel && onAction ? (
-        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={12} style={styles.action}>
+        <Pressable accessibilityRole="button" onPress={onAction} hitSlop={12} style={({ pressed }) => [styles.action, pressed ? pressFx.dim : null]}>
           <Text variant="metaStrong" rawColor={fg} style={{ textDecorationLine: "underline" }}>
             {actionLabel}
           </Text>
@@ -45,7 +52,7 @@ export function Banner({ variant = "info", children, icon, actionLabel, onAction
     </View>
   );
   return onPress ? (
-    <Pressable accessibilityRole="button" onPress={onPress}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => (pressed ? pressFx.dim : null)}>
       {body}
     </Pressable>
   ) : (

@@ -37,7 +37,7 @@ export function PresetPicker({ value, onChange, disabled }: { value: SitePreset;
             onClick={() => onChange(p)}
             onKeyDown={(e) => move(e, i)}
             className={cn(
-              "flex min-h-16 items-start gap-3 rounded-r4 p-3 text-start transition-colors focus-visible:focus-ring",
+              "press-soft flex min-h-16 items-start gap-3 rounded-r4 p-3 text-start focus-visible:focus-ring",
               on ? "bg-row-sel ring-2 ring-ring" : "hairline-inset hover:bg-muted",
             )}
           >

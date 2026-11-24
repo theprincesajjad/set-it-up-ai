@@ -49,6 +49,9 @@ export function CheckoutSheet({
   const act = useAction();
   const [nextWeeks, setNextWeeks] = useState("");
   const [items, setItems] = useState<Item[]>(appt.items);
+  // Typed prices for $0 lines, kept as text while typing (lines keep the cents).
+  const [priceText, setPriceText] = useState<Record<number, string>>({});
+  const [priceEdit, setPriceEdit] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<"counter" | "link">("counter");
   const [method, setMethod] = useState<(typeof METHODS)[number]["value"]>("card_terminal");
   const [tip, setTip] = useState<number>(0);
@@ -67,6 +70,8 @@ export function CheckoutSheet({
     // Fresh numbers each time the sheet opens for an appointment.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(appt.items);
+    setPriceText({});
+    setPriceEdit(new Set());
     setTip(0);
     setCustomTip("");
     setRewardId("");
@@ -83,6 +88,11 @@ export function CheckoutSheet({
   const tipsOn = settings?.tipsOn ?? true;
   const needsPhone = !appt.customer.id;
 
+  const setPrice = (idx: number, raw: string) => {
+    const v = raw.replace(/[^\d.]/g, "");
+    setPriceText((cur) => ({ ...cur, [idx]: v }));
+    setItems((cur) => cur.map((it, k) => (k === idx ? { ...it, priceCents: Math.min(10_000_00, Math.round(Number(v || 0) * 100)) } : it)));
+  };
   const addService = (id: string) => {
     const s = services.find((x) => x.id === id);
     if (!s) return;
@@ -91,7 +101,8 @@ export function CheckoutSheet({
   };
 
   async function submit() {
-    if (needsPhone && !phone.replace(/\D/g, "")) return act.setError("Add the client's phone number. They earn points and get the receipt.");
+    // A walk-in can pay at the counter without a number (no points); the pay link is a text, so it needs one.
+    if (needsPhone && mode === "link" && !phone.replace(/\D/g, "")) return act.setError("Add their phone to text the link.");
     const r = await act.run(() =>
       api.appointments.checkout(appt.id, {
         items: items.length ? items : undefined,
@@ -101,7 +112,7 @@ export function CheckoutSheet({
         tipStaffId: tipStaff || null,
         rewardId: rewardId || null,
         nextGroomWeeks: appt.pet && nextWeeks ? Number(nextWeeks) : null,
-        customer: needsPhone ? { phone: `+1${phone.replace(/\D/g, "").slice(-10)}`, name: appt.customer.name } : undefined,
+        customer: needsPhone && phone.replace(/\D/g, "") ? { phone: `+1${phone.replace(/\D/g, "").slice(-10)}`, name: appt.customer.name } : undefined,
       }),
     );
     if (r) {
@@ -139,7 +150,7 @@ export function CheckoutSheet({
             <CircleCheck aria-hidden className="mt-0.5 size-6 shrink-0 text-positive" strokeWidth={1.5} />
             <div>
               <p className="text-body-strong text-fg">{inv.status === "paid" ? `Paid, invoice #${inv.number}` : `Pay link sent, invoice #${inv.number}`}</p>
-              <p className="text-meta text-fg-muted">{inv.status === "paid" ? `${formatPoints(inv.pointsEarned, detail.program?.terminology, false)} earned.` : "They get the link by text and push."}</p>
+              {inv.status !== "paid" ? <p className="text-meta text-fg-muted">They get the link by text and push.</p> : needsPhone && !phone.replace(/\D/g, "") ? null : <p className="text-meta text-fg-muted">{`${formatPoints(inv.pointsEarned, detail.program?.terminology, false)} earned.`}</p>}
               {result.pet ? <p className="mt-1 text-meta text-fg">{result.pet.name}&apos;s groom is logged. Next one is due {formatDate(result.pet.nextDueOn)} (every {result.pet.groomEveryWeeks} weeks).</p> : null}
             </div>
           </div>
@@ -161,14 +172,19 @@ export function CheckoutSheet({
               {items.map((i, idx) => (
                 <li key={`${i.name}${idx}`} className="flex items-center gap-3 py-2">
                   <span className="min-w-0 flex-1 truncate text-body text-fg">{i.name}</span>
-                  <span className="shrink-0 text-body tabular text-fg">{money(i.priceCents)}</span>
-                  <button type="button" aria-label={`Remove ${i.name}`} onClick={() => setItems((cur) => cur.filter((_, k) => k !== idx))} className="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
+                  {/* A walk-in from the line with no priced service comes in at $0: the price is typed here. */}
+                  {priceEdit.has(idx) || i.priceCents === 0 ? (
+                    <TextField label={`Price for ${i.name}`} hideLabel className="w-28 shrink-0" inputMode="decimal" prefix="$" placeholder="0.00" value={priceText[idx] ?? ""} onFocus={() => setPriceEdit((cur) => new Set(cur).add(idx))} onChange={(e) => setPrice(idx, e.target.value)} data-testid="checkout-line-price" />
+                  ) : (
+                    <span className="shrink-0 text-body tabular text-fg">{money(i.priceCents)}</span>
+                  )}
+                  <button type="button" aria-label={`Remove ${i.name}`} onClick={() => { setItems((cur) => cur.filter((_, k) => k !== idx)); setPriceText({}); setPriceEdit(new Set()); }} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-fg-muted transition-transform duration-150 active:scale-95 hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring sm:size-8">
                     <X aria-hidden className="size-4" />
                   </button>
                 </li>
               ))}
             </ul>
-            <Select hideLabel label="Add a service" value={addId} placeholder="Add a service" onChange={(e) => addService(e.target.value)} options={services.filter((s) => s.active).map((s) => ({ value: s.id, label: `${s.name} · ${money(s.priceCents)}` }))} className="mt-2" />
+            {services.some((s) => s.active) ? <Select hideLabel label="Add a service" value={addId} placeholder="Add a service" onChange={(e) => addService(e.target.value)} options={services.filter((s) => s.active).map((s) => ({ value: s.id, label: `${s.name} · ${money(s.priceCents)}` }))} className="mt-2" /> : null}
           </section>
 
           {settings?.taxStatus === "unset" ? (
@@ -219,7 +235,7 @@ export function CheckoutSheet({
           <TextField type="textarea" label={t("people.visitNote.label")} optionalLabel hint={t("people.visitNote.hint")} value={visitNote} onChange={(e) => setVisitNote(e.target.value)} maxLength={2000} data-testid="visit-note" />
           <TextField type="url" label={t("people.visitNote.photo")} optionalLabel value={visitPhoto} onChange={(e) => setVisitPhoto(e.target.value)} placeholder="https://" />
 
-          {needsPhone ? <TextField label="Client phone" hint="Walk-in: add a number to pay, earn points and get a receipt." inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /> : null}
+          {needsPhone ? <TextField label="Client phone" optionalLabel={mode === "counter"} hint={mode === "counter" ? "For points and a receipt." : undefined} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /> : null}
 
           <dl className="divide-y divide-line border-y border-line text-meta">
             <Line label="Services" value={money(due.subtotalCents)} />

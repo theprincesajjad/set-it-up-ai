@@ -140,6 +140,37 @@ describe("kitchen display", () => {
     expect(done.body).toMatchObject({ status: "picked_up", pointsEarned: 0 });
   });
 
+  it("charges no HST once the owner says the shop is not registered: online, counter, menu and the customer's order agree", async () => {
+    const { m, biryani } = await kitchen();
+    const c = await customer(env);
+    // Registered (or not asked yet): 13% HST in Ontario.
+    const before = await placeAtPickup(m, c.token, [{ id: biryani.id }], "kds-tax-00001");
+    expect(before.body.order).toMatchObject({ subtotalCents: 1600, taxCents: 208, totalCents: 1808 });
+
+    const saved = await call(env, m.ownerToken, "PUT", `/v1/merchants/${m.merchant.id}/tax-settings`, { taxRegistered: false, taxSmallSupplierNote: true });
+    expect(saved.status).toBe(200);
+    expect(saved.body.taxRegistered).toBe(false);
+
+    const online = await placeAtPickup(m, c.token, [{ id: biryani.id }], "kds-tax-00002");
+    expect(online.status).toBe(201);
+    expect(online.body.order).toMatchObject({ subtotalCents: 1600, taxCents: 0, totalCents: 1600 });
+    const mine = await call(env, c.token, "GET", `/v1/me/orders/${online.body.order.id}`);
+    expect(mine.body.order ?? mine.body).toMatchObject({ taxCents: 0, totalCents: 1600 });
+
+    const counter = await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/orders/counter`, { items: [{ catalogItemId: biryani.id, quantity: 2 }], tender: "cash" });
+    expect(counter.status).toBe(201);
+    expect(counter.body).toMatchObject({ subtotalCents: 3200, taxCents: 0, totalCents: 3200, paymentStatus: "paid" });
+
+    // The public menu the cart previews from carries no tax rate either.
+    const menu = await call(env, null as unknown as string, "GET", `/v1/public/shops/${m.merchant.slug}/menu`);
+    expect(menu.body.tax).toMatchObject({ ratePpm: 0 });
+
+    // Registered again: tax is back.
+    await call(env, m.ownerToken, "PUT", `/v1/merchants/${m.merchant.id}/tax-settings`, { taxRegistered: true, taxNumber: null });
+    const after = await placeAtPickup(m, c.token, [{ id: biryani.id }], "kds-tax-00003");
+    expect(after.body.order).toMatchObject({ taxCents: 208, totalCents: 1808 });
+  });
+
   it("pre-orders fire on demand (pickup day), not when placed", async () => {
     const { m } = await kitchen();
     const pot = (await call(env, m.ownerToken, "POST", `/v1/merchants/${m.merchant.id}/catalog/items`, { name: "Haleem degh", priceCents: 12000, preorderOnly: true, leadTimeHours: 12, station: "curry" })).body;

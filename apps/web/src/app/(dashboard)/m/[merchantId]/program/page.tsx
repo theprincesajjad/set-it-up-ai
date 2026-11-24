@@ -35,7 +35,7 @@ export default function ProgramPage() {
   const cats = useApi(() => api.categories(), [api]);
   if (!program.data || !rewards.data) return program.error ? (
       <div>
-        <PageHeader title="Rewards" description="Your stamp card. The preview shows exactly what customers see." />
+        <PageHeader title="Rewards" description="Your stamp card." />
         <ErrorLine message={program.error} onRetry={program.reload} />
       </div>
     ) : (
@@ -282,7 +282,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
     <div className="pb-16">
       <PageHeader
         title="Rewards"
-        description={stampCard ? "Your stamp card. The preview shows exactly what customers see." : "How customers earn points and what they cost. The preview shows exactly what customers see."}
+        description={stampCard ? "Your stamp card." : "How customers earn points and what they cost."}
         actions={
           <>
             <ToolbarButton icon={Eye} onClick={() => setPreviewOpen(true)} className="lg:hidden">Preview</ToolbarButton>
@@ -304,7 +304,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               <div id="earn" className="flex flex-col gap-4">
                 <EarnUnitPicker options={modeOptions} value={mode} onChange={(v) => setDraft((d) => setEarnMode(d, v))} disabled={!canEdit} />
                 {mode === "purchase" ? (
-                  <TextField label="Minimum purchase (optional)" inputMode="decimal" prefix="$" hint="Leave it empty and any purchase counts. Set it to your cheapest item to stop tiny purchases from earning." value={draft.minSpendCents ? (draft.minSpendCents / 100).toFixed(2) : ""} onChange={(e) => set("minSpendCents", Math.max(0, Math.round((Number.parseFloat(e.target.value) || 0) * 100)))} error={shown.minSpendCents} className="sm:max-w-60" />
+                  <TextField label="Minimum purchase (optional)" inputMode="decimal" prefix="$" hint="Leave it empty and any purchase counts." value={draft.minSpendCents ? (draft.minSpendCents / 100).toFixed(2) : ""} onChange={(e) => set("minSpendCents", Math.max(0, Math.round((Number.parseFloat(e.target.value) || 0) * 100)))} error={shown.minSpendCents} className="sm:max-w-60" />
                 ) : null}
                 {mode === "pickup" ? <p className="text-[14px] text-fg-muted">Each order gets its {one} once, automatically, when your team marks it picked up. A {one} at the counter needs a reason from staff.</p> : null}
                 {mode === "dollar" ? (
@@ -348,7 +348,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
                           setRewardDraft({ name: p.name, rewardType: p.rewardType, value: p.value });
                         }
                       }}
-                      className={cn("h-11 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                      className={cn("press h-11 rounded-full border px-4 text-[13px] font-medium focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
                     >
                       {p.label}
                     </button>
@@ -363,7 +363,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
               ) : null}
               <TextField
                 label={`What ${rewardNoun.toLowerCase().startsWith("free ") ? `a ${rewardNoun.toLowerCase()}` : rewardNoun.toLowerCase()} costs you (optional)`}
-                hint="Only used in Reports to estimate what you owe in rewards. Customers never see it."
+                hint="For Reports only. Customers never see it."
                 inputMode="decimal"
                 prefix="$"
                 value={draft.rewardCostCents != null ? (draft.rewardCostCents / 100).toFixed(2) : ""}
@@ -380,7 +380,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
                 <SwitchControl ariaLabel={`Add a ${one} on scan`} checked={draft.counterAutoStamp && stampsMode} disabled={!stampsMode || !canEdit} onChange={(v) => set("counterAutoStamp", v)} />
               </SettingRow>
             ) : null}
-            <SettingRow title="Block repeat scans" hint={`No second ${one} within ${draft.visitCooldownMinutes} minutes of the last one. Stops a double scan from counting twice.`}>
+            <SettingRow title="Block repeat scans" hint={`No second ${one} within ${draft.visitCooldownMinutes} minutes of the last one.`}>
               <TextField label="Minutes between awards" hideLabel inputMode="numeric" suffix="min" value={String(draft.visitCooldownMinutes)} onChange={(e) => set("visitCooldownMinutes", intOr(e.target.value))} error={shown.visitCooldownMinutes} className="w-28" />
             </SettingRow>
             {stampsMode ? (
@@ -425,7 +425,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
           ) : (
             <section id="bonuses" className="rounded-card bg-bg-subtle px-6 py-5" aria-labelledby="more-h">
               <h2 id="more-h" className="text-[15px] font-semibold text-fg">More ways to earn</h2>
-              <p className="mt-2 text-[14px] text-fg-muted">Birthday treat, refer a friend and VIP levels come with Pro. They show up here once you subscribe.</p>
+              <p className="mt-2 text-[14px] text-fg-muted">Birthday treat, refer a friend and VIP levels come with Pro.</p>
               {/* They exist today on Pro, so the way on is the plan (a "Notify me when they are ready" read as if they were not built yet). */}
               {role === "owner" ? (
                 <QuietLink href={`${base}/billing?plan=plus`} className="mt-1 min-h-11 text-[14px] text-link hover:text-link">See what Pro adds</QuietLink>
@@ -448,7 +448,7 @@ function Editor({ program, onSaved, rewards, setRewards, vip, setVip, categories
           </div>
 
           {canEdit ? (
-            <Panel title="Change history" description="Every change to your rules and rewards, who made it, and what it was before.">
+            <Panel title="Change history">
               <div id="history">
                 <ChangeHistory items={history.data?.items ?? null} loading={history.loading} />
               </div>

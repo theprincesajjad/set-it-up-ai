@@ -28,6 +28,23 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
   const [results, setResults] = useState<CommandResult[]>([]);
   const [cursor, setCursor] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  // Stays mounted for 150 ms after closing so the panel fades out instead of vanishing; `shown` drives the in and out transition.
+  const [mounted, setMounted] = useState(open);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMounted(true);
+      const r = requestAnimationFrame(() => {
+        setShown(true);
+        input.current?.focus();
+      });
+      return () => cancelAnimationFrame(r);
+    }
+    setShown(false);
+    const t = setTimeout(() => setMounted(false), 150);
+    return () => clearTimeout(t);
+  }, [open]);
 
   useEffect(() => {
     if (open) return;
@@ -67,16 +84,24 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
     ...matchedPages.map((p) => ({ key: `p-${p.href}`, label: p.label, href: p.href, group: t("shell.search.pages"), icon: p.icon })),
   ];
 
-  if (!open) return null;
+  if (!mounted) return null;
   const go = (href: string) => {
     onClose();
     router.push(href);
   };
 
   return (
-    <div dir={dir} className="fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh] print:hidden">
-      <button type="button" aria-label={t("shell.search.close")} tabIndex={-1} className="absolute inset-0 cursor-default bg-overlay" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-label={t("shell.search.label")} className="relative w-full max-w-140 overflow-hidden rounded-card border border-border bg-popover shadow-float motion-safe:animate-fade-in">
+    <div dir={dir} data-state={shown ? "open" : "closed"} className={cn("fixed inset-0 z-modal flex items-start justify-center px-4 pt-[12vh] print:hidden", !open && "pointer-events-none")}>
+      <button type="button" aria-label={t("shell.search.close")} tabIndex={-1} className={cn("absolute inset-0 cursor-default bg-overlay transition-opacity duration-tap ease-out", shown ? "opacity-100" : "opacity-0")} onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("shell.search.label")}
+        className={cn(
+          "relative w-full max-w-140 overflow-hidden rounded-card border border-border bg-popover shadow-float transition-[opacity,translate,scale] duration-tap ease-out motion-reduce:translate-y-0 motion-reduce:scale-100",
+          shown ? "translate-y-0 scale-100 opacity-100" : "-translate-y-2 scale-[0.98] opacity-0",
+        )}
+      >
         <div className="flex h-12 items-center gap-2.5 border-b border-border px-4">
           <Search aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} />
           <input
@@ -106,7 +131,7 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
           />
           <kbd className="rounded-sm border border-border px-1.5 text-caption text-muted-foreground">esc</kbd>
         </div>
-        <ul role="listbox" aria-label={t("shell.search.results")} className="max-h-[50vh] overflow-y-auto p-1.5">
+        <ul role="listbox" aria-label={t("shell.search.results")} className="max-h-[50vh] overflow-y-auto overscroll-contain p-1.5">
           {items.length === 0 ? <li className="px-3 py-6 text-meta text-muted-foreground">{t("shell.search.none")}</li> : null}
           {items.map((it, i) => (
             <li key={it.key} role="option" aria-selected={i === cursor}>
@@ -115,7 +140,7 @@ export function CommandMenu({ open, onClose, pages, search, placeholder }: { ope
                 type="button"
                 onMouseEnter={() => setCursor(i)}
                 onClick={() => go(it.href)}
-                className={cn("flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-start text-meta max-md:h-11", i === cursor ? "bg-muted text-foreground" : "text-foreground")}
+                className={cn("flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-start text-meta text-foreground transition-colors duration-tap active:bg-hover max-md:h-11", i === cursor && "bg-muted")}
               >
                 {it.icon ? <it.icon aria-hidden className="size-4 text-muted-foreground" strokeWidth={1.75} /> : null}
                 <span className="min-w-0 flex-1 truncate">{it.label}</span>

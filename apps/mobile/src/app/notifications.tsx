@@ -14,6 +14,7 @@ import { useLocale } from "../lib/i18n";
 import { apiClient } from "../state/api";
 import { ui, useTheme } from "../theme";
 import { Button, EmptyState, Screen, SkeletonList, Text } from "../ui";
+import { pressFx } from "../ui/pressFx";
 
 export default function Notifications() {
   const { thread } = useLocalSearchParams<{ thread?: string }>();
@@ -38,14 +39,14 @@ function MessagesPill() {
       {open ? (
         <View style={[styles.sheet, { backgroundColor: c.bg, borderColor: c.line }]} accessibilityLabel={t("inbox.me.title")}>
           {items.map((th) => (
-            <Pressable key={th.id} accessibilityRole="button" onPress={() => router.push({ pathname: "/notifications", params: { thread: th.id } } as never)} style={styles.threadRow}>
+            <Pressable key={th.id} accessibilityRole="button" onPress={() => router.push({ pathname: "/notifications", params: { thread: th.id } } as never)} style={({ pressed }) => [styles.threadRow, pressed ? pressFx.dim : null]}>
               <Text style={ui(15, th.unread ? 700 : 500, 20)} numberOfLines={1}>{th.merchant.name}</Text>
               <Text style={ui(13, 400, 18)} rawColor={c.fgMuted} numberOfLines={1}>{th.lastMessage?.body ?? ""}</Text>
             </Pressable>
           ))}
         </View>
       ) : null}
-      <Pressable accessibilityRole="button" accessibilityLabel={t("inbox.me.open")} onPress={() => setOpen((x) => !x)} style={[styles.pill, { backgroundColor: c.brand }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t("inbox.me.open")} onPress={() => setOpen((x) => !x)} style={({ pressed }) => [[styles.pill, { backgroundColor: c.brand }], pressed ? pressFx.scale : null]}>
         <Text style={ui(15, 600, 20)} rawColor={c.onBrand}>
           {q.data?.unreadTotal ? `${t("inbox.me.title")} · ${t("inbox.me.unread", { n: q.data.unreadTotal })}` : t("inbox.me.title")}
         </Text>
@@ -100,7 +101,7 @@ function ThreadScreen({ id }: { id: string }) {
       }
     >
       {q.isLoading ? <SkeletonList /> : null}
-      {q.data && !q.data.messages.length ? <EmptyState title={t("inbox.me.empty")} body={t("inbox.me.emptyBody")} /> : null}
+      {q.data && !q.data.messages.length ? <EmptyState title={t("inbox.me.empty")} /> : null}
       <View style={{ gap: 8, paddingVertical: 12 }}>
         {(q.data?.messages ?? []).map((m) => {
           const mine = m.direction === "in";

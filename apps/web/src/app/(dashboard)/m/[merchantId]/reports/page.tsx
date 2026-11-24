@@ -79,7 +79,7 @@ export default function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Reports" description="Loyalty reports are free. Customer names appear only for your own shop." actions={<Segmented label="Date range" value={range} onChange={setRange} options={[{ value: "week", label: "This week" }, { value: "4w", label: "4 weeks" }, { value: "12w", label: "12 weeks" }]} />} />
+      <PageHeader flush title="Reports" description="Customer names appear only for your own shop." actions={<Segmented label="Date range" value={range} onChange={setRange} options={[{ value: "week", label: "This week" }, { value: "4w", label: "4 weeks" }, { value: "12w", label: "12 weeks" }]} />} />
       <PageTabs<Tab>
         label="Report"
         value={tab}

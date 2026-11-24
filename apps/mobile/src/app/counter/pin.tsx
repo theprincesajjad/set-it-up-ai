@@ -13,6 +13,7 @@ import { useCounter } from "../../state/counter";
 import { qk } from "../../state/query";
 import { useTheme } from "../../theme";
 import { Avatar, Banner, Button, Keypad, Text, dirStyle } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 /**
  * Staff PIN screen (shared device): staff tiles → 4-digit PIN on the Keypad.
@@ -90,7 +91,7 @@ export default function StaffPin() {
                     setPin("");
                     setError(null);
                   }}
-                  style={[styles.tile, { borderColor: picked === s.userId ? c.brand : c.border, backgroundColor: picked === s.userId ? c.brandSubtle : c.surface }]}
+                  style={({ pressed }) => [[styles.tile, { borderColor: picked === s.userId ? c.brand : c.border, backgroundColor: picked === s.userId ? c.brandSubtle : c.surface }], pressed ? pressFx.dim : null]}
                 >
                   <Avatar name={s.name} id={s.userId} size={56} />
                   <Text variant="bodyStrong">{firstName(s.name) ?? t("auth.pin.staff")}</Text>

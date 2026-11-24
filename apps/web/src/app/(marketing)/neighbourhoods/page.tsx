@@ -30,7 +30,7 @@ export default async function NeighbourhoodsPage() {
       <section className="mx-auto max-w-360 px-5 pt-14 pb-12 md:px-10 xl:px-15 md:pt-24 md:pb-16">
         <p className="text-meta-strong text-muted-foreground">Where we are</p>
         <h1 className="display mt-5 max-w-4xl text-mkt-lg text-balance md:text-mkt-xl">One neighbourhood at a time.</h1>
-        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">We launch street by street, with the shops and the BIA. Here’s where your card works today.</p>
+        <p className="mt-6 max-w-2xl text-[18px] leading-[1.55] text-muted-foreground">Here’s where your card works today.</p>
       </section>
       <section className="mx-auto max-w-360 px-5 pb-16 md:px-10 xl:px-15 md:pb-24">
         {items === null ? (
@@ -38,7 +38,7 @@ export default async function NeighbourhoodsPage() {
           <ErrorState
             headingLevel={2}
             title="We couldn’t load the neighbourhoods"
-            description="Something went wrong between us and the list of streets. Nothing is lost. Try again in a minute."
+            description="Try again in a minute."
             action={
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <Button variant="secondary" href="/neighbourhoods">

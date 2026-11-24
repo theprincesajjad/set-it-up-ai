@@ -67,13 +67,40 @@ describe("merchant signup + template", () => {
     const [staff] = await env.db.select().from(merchantStaff).where(eq(merchantStaff.merchantId, body.merchant.id));
     expect(staff!.userId).toBe(owner.id);
 
-    // Second shop with the same name gets a unique slug.
-    const res2 = await signup(await tokenFor(env, owner));
+    // Another owner's shop with the same name gets a unique slug.
+    const other = await createUser(env.db, { email: "other-owner@example.com" });
+    const res2 = await signup(await tokenFor(env, other));
+    expect(res2.statusCode).toBe(201);
     expect(res2.json().merchant.slug).toBe("sorauren-pharmacy-2");
 
     // Lists my merchants.
     const mine = await env.app.inject({ method: "GET", url: "/v1/merchants", headers: auth(await tokenFor(env, owner)) });
-    expect(mine.json().items).toHaveLength(2);
+    expect(mine.json().items).toHaveLength(1);
+  });
+
+  it("a retried create (lost connection, double tap, second tab) answers with the same shop instead of making a twin", async () => {
+    const owner = await createUser(env.db, { email: "retry@example.com" });
+    const token = await tokenFor(env, owner);
+    const first = await signup(token, { name: "Maple Bean", vertical: "cafe" });
+    expect(first.statusCode).toBe(201);
+    // The same request again, with the name typed a little differently: the shop that exists, not a second one.
+    const again = await signup(token, { name: "  maple bean ", vertical: "cafe" });
+    expect(again.statusCode).toBe(200);
+    expect(again.json().merchant.id).toBe(first.json().merchant.id);
+    expect(again.json().locations[0].qrCode).toBe(first.json().locations[0].qrCode);
+    const both = await Promise.all([signup(token, { name: "Maple Bean", vertical: "cafe" }), signup(token, { name: "Maple Bean", vertical: "cafe" })]);
+    expect(both.map((r) => r.json().merchant.id)).toEqual([first.json().merchant.id, first.json().merchant.id]);
+    const mine = async () => (await env.app.inject({ method: "GET", url: "/v1/merchants", headers: auth(token) })).json().items;
+    expect(await mine()).toHaveLength(1);
+    // A different name or kind is a second shop.
+    expect((await signup(token, { name: "Maple Bean Bakery", vertical: "bakery" })).statusCode).toBe(201);
+    expect(await mine()).toHaveLength(2);
+    // Ten minutes on, the same name is a deliberate second shop (with its own slug).
+    env.clock.now = new Date(env.clock.now.getTime() + 11 * 60_000);
+    const later = await signup(token, { name: "Maple Bean", vertical: "cafe" });
+    expect(later.statusCode).toBe(201);
+    expect(later.json().merchant.id).not.toBe(first.json().merchant.id);
+    expect(later.json().merchant.slug).toBe("maple-bean-2");
   });
 
   it("validates input and requires auth", async () => {

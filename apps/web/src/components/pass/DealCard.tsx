@@ -85,7 +85,7 @@ export function DealCard({ deal, terminology, onClaim, claiming, error, highligh
                 type="button"
                 onClick={onClaim}
                 disabled={claiming}
-                className="inline-flex min-h-11 items-center rounded-pill bg-primary px-4 text-meta-strong text-primary-foreground focus-visible:focus-ring disabled:opacity-60"
+                className="inline-flex min-h-11 items-center rounded-pill bg-primary px-4 text-meta-strong text-primary-foreground focus-visible:focus-ring disabled:opacity-60 press"
               >
                 {t("deal.claim")}
               </button>

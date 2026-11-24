@@ -36,7 +36,7 @@ export function StepProgress({ step, total, label, labels, tone = "trade", varia
     const pct = step === null ? 100 : Math.round((done / total) * 100);
     return (
       <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} aria-valuetext={label} aria-label={label} className={cn("h-0.75 w-full bg-lg-seg-track", className)} data-step-progress>
-        <div className={cn("h-full transition-[width] duration-500 ease-out motion-reduce:transition-none", fill)} style={{ width: `${pct}%` }} />
+        <div className={cn("h-full transition-[width] duration-fill ease-out motion-reduce:transition-none", fill)} style={{ width: `${pct}%` }} />
       </div>
     );
   }
@@ -63,7 +63,7 @@ export function StepProgress({ step, total, label, labels, tone = "trade", varia
               <span className="relative block h-1.5 w-full overflow-hidden rounded-full bg-lg-seg-track">
                 <span
                   className={cn(
-                    "absolute inset-0 rounded-full ltr:origin-left rtl:origin-right transition-transform duration-500 ease-out motion-reduce:transition-none",
+                    "absolute inset-0 rounded-full ltr:origin-left rtl:origin-right transition-transform duration-fill ease-out motion-reduce:transition-none",
                     fill,
                     state === "completed" ? "scale-x-100" : state === "active" ? "scale-x-50" : "scale-x-0",
                   )}

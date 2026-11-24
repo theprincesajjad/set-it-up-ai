@@ -28,7 +28,7 @@ export default function MyTiffin() {
       {mine.loading ? (
         <SkeletonList rows={2} rowHeight={64} />
       ) : mine.subs.length === 0 ? (
-        <EmptyState icon={UtensilsCrossed} title={t("rest.tiffin.mine.empty.title")} body={t("rest.tiffin.mine.empty.body")} />
+        <EmptyState icon={UtensilsCrossed} title={t("rest.tiffin.mine.empty.title")} />
       ) : (
         <>
           {live.length > 0 ? (

@@ -43,7 +43,7 @@ export function NumberStepper({ label, value, onChange, min, max, step = 1, hint
   const fieldId = id ?? `ns-${auto}`;
   const big = size === "lg";
   const btn = cn(
-    "rounded-full border border-border bg-card text-foreground shadow-xs transition-[background-color,transform] hover:bg-hover active:scale-95 motion-reduce:active:scale-100 focus-visible:focus-ring data-disabled:opacity-40 [&_svg]:size-5",
+    "press touch-manipulation rounded-full border border-border bg-card text-foreground shadow-xs hover:bg-hover active:bg-hover focus-visible:focus-ring data-disabled:opacity-40 [&_svg]:size-5",
     big ? "size-14" : "size-12",
   );
   return (

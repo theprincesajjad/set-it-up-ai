@@ -44,7 +44,7 @@ export function EarnUnitPicker({ options, value, onChange, disabled }: { options
               (e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("[role=radio]")[options.indexOf(next)])?.focus();
             }}
             className={cn(
-              "flex min-h-14 flex-col items-start gap-0.5 rounded-input border px-4 py-3 text-start transition-colors focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60",
+              "press-soft flex min-h-14 flex-col items-start gap-0.5 rounded-input border px-4 py-3 text-start focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60",
               on ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-line bg-bg hover:bg-bg-subtle",
             )}
           >
@@ -120,7 +120,7 @@ export function EarnScopePicker({ draft, onChange, options, error, disabled, ter
               disabled={off}
               onClick={() => onChange({ earnScope: v })}
               className={cn(
-                "flex min-h-14 flex-col items-start gap-0.5 rounded-input border px-4 py-3 text-start transition-colors focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60",
+                "press-soft flex min-h-14 flex-col items-start gap-0.5 rounded-input border px-4 py-3 text-start focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-60",
                 on ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-line bg-bg hover:bg-bg-subtle",
               )}
             >

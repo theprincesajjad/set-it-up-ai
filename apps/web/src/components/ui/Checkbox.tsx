@@ -33,18 +33,19 @@ export function Checkbox({ checked, onChange, label, caption, disabled, name, id
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
           aria-describedby={caption ? `${id}-caption` : undefined}
-          className="peer absolute inset-0 z-10 cursor-pointer opacity-0"
+          className="peer absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-not-allowed"
         />
         <span
           aria-hidden
           className={cn(
-            "flex items-center justify-center rounded-[6px] border-[1.5px] transition-colors duration-150 ease-out peer-focus-visible:focus-ring",
+            "flex items-center justify-center rounded-[6px] border-[1.5px] transition-[background-color,border-color,filter] duration-tap ease-out peer-focus-visible:focus-ring",
             size === "sm" ? "size-5 rounded-[5px]" : "size-[22px]",
-            checked ? "border-primary bg-primary text-primary-foreground" : "border-line-strong/70 bg-card",
+            checked ? "border-primary bg-primary text-primary-foreground peer-enabled:peer-active:brightness-90" : "border-line-strong/70 bg-card peer-enabled:peer-hover:border-line-strong peer-enabled:peer-active:bg-bg-muted",
             disabled && "opacity-60",
           )}
         >
-          {checked ? <Check className="size-3.5" strokeWidth={3} /> : null}
+          {/* Always mounted so the tick scales in and out (a transition, so a pre-checked box does not animate on load). */}
+          <Check className={cn("size-3.5 transition-[scale,opacity] duration-tap ease-out", checked ? "scale-100 opacity-100" : "scale-50 opacity-0")} strokeWidth={3} />
         </span>
       </span>
       <div className={cn("flex flex-col gap-1", size === "sm" ? "pt-0" : "pt-px")}>

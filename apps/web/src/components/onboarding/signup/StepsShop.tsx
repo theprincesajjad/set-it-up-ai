@@ -11,7 +11,6 @@ import type { Icon3dName } from "@ll/design-tokens";
 import { cn } from "@/lib/cn";
 import { shopColorProps } from "@/lib/shopColor";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
-import { prizePhrase } from "@/lib/dashboard/program";
 import { ColorField } from "@/components/ui/ColorField";
 import { NumberStepper } from "@/components/ui/NumberStepper";
 import { Icon3d } from "@/components/ui/Icon3d";
@@ -149,17 +148,17 @@ export function WhereStep({ draft, update, next }: StepProps) {
   // "A shop or salon" is for the beauty trades; a cafe or a store is just "A shop".
   const plainShop = !!draft.vertical && onboardingPath(draft.vertical, "shop") === "storefront";
   return (
-    <StepFrame id="where" title={t("sf.where.title")} body={t("sf.where.body")} onSubmit={go} primary={t("sf.continue")}>
+    <StepFrame id="where" title={t("sf.where.title")} onSubmit={go} primary={t("sf.continue")}>
       <ChoiceGroup aria-label={t("su.where")} value={draft.work} onValueChange={(w) => { setErrors({}); update({ work: w as Work, workTouched: true }); }} columns={1}>
         {(["shop", "home", "mobile"] as const).map((w) => (
           <ChoiceTile key={w} value={w} icon={WORK_ICON[w]} trade={draft.vertical || null} label={w === "shop" && plainShop ? t("su.where.shopPlain") : t(`su.where.${w}`)} hint={w === "shop" && plainShop ? t("su.where.shopPlainHint") : t(`su.where.${w}Hint`)} layout="row" />
         ))}
       </ChoiceGroup>
       <div key={draft.work} className="animate-in fade-in-0 duration-200 motion-reduce:animate-none">
-        {draft.work === "shop" ? <TextField name="street" label={t("su.street")} autoComplete="street-address" hint={t("su.streetHint")} dir="auto" value={draft.address} onChange={(e) => { setErrors((x) => ({ ...x, address: undefined })); update({ address: e.target.value }); }} error={errors.address} /> : null}
+        {draft.work === "shop" ? <TextField name="street" label={t("su.street")} autoComplete="street-address" autoCapitalize="words" enterKeyHint="next" hint={t("su.streetHint")} dir="auto" value={draft.address} onChange={(e) => { setErrors((x) => ({ ...x, address: undefined })); update({ address: e.target.value }); }} error={errors.address} /> : null}
         {draft.work === "home" ? (
           <div className="flex flex-col gap-3">
-            <TextField name="postal" label={t("su.postal")} autoComplete="postal-code" autoCapitalize="characters" spellCheck={false} hint={t("su.postalHint")} value={draft.postal} onChange={(e) => { setErrors((x) => ({ ...x, postal: undefined })); update({ postal: e.target.value.toUpperCase() }); }} error={errors.postal} maxLength={7} dir="ltr" className="max-w-55" />
+            <TextField name="postal" label={t("su.postal")} autoComplete="postal-code" enterKeyHint="next" autoCapitalize="characters" spellCheck={false} hint={t("su.postalHint")} value={draft.postal} onChange={(e) => { setErrors((x) => ({ ...x, postal: undefined })); update({ postal: e.target.value.toUpperCase() }); }} error={errors.postal} maxLength={7} dir="ltr" className="max-w-55" />
             <p className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg">{t("su.privateNote")}</p>
           </div>
         ) : null}
@@ -187,10 +186,6 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
     if (!Object.keys(e).length) next();
   };
   const earn = card.earnType === "stamps" ? t("sf.card.earnStamp") : card.earnType === "per_visit" ? t("sf.card.earnVisit", { n: card.rate, unit }) : t("sf.card.earnDollar", { n: card.rate, unit });
-  // The hint uses the trade's own first reward as its example in English ("like $10 off a service" for a barber); other languages keep a neutral line,
-  // because the template's reward names are English.
-  const example = card.defaults.reward ? prizePhrase(card.defaults.reward) : "";
-  const rewardHint = locale === "en" && example ? t("sf.card.rewardHintEg", { example }) : t("sf.card.rewardHint");
   const changed = card.goal !== card.defaults.goal || card.reward !== card.defaults.reward;
   // The colour: what "Is this you?" kept from the website, else the owner's pick here (wave Q, ColorField), else the trade's.
   const imported = draft.link === "read" && !!draft.accepted;
@@ -219,7 +214,7 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
         increaseLabel={t("sf.card.more")}
       />
       <div className="flex flex-col gap-2">
-        <TextField name="reward" label={t("sf.card.reward")} hint={rewardHint} dir="auto" value={card.reward} maxLength={120} onChange={(e) => { setErrors((x) => ({ ...x, reward: undefined })); set({ reward: e.target.value }); }} error={errors.reward} />
+        <TextField name="reward" label={t("sf.card.reward")} enterKeyHint="next" dir="auto" value={card.reward} maxLength={120} onChange={(e) => { setErrors((x) => ({ ...x, reward: undefined })); set({ reward: e.target.value }); }} error={errors.reward} />
         {card.suggestions.length > 1 || changed ? (
           <div className="flex flex-wrap gap-2">
             {[...new Set([card.defaults.reward, ...card.suggestions])].filter(Boolean).map((s) => (
@@ -255,11 +250,9 @@ export function LoyaltyStep({ draft, update, next }: StepProps) {
               </span>
             </button>
           )}
-          {colourOpen ? <p className="text-meta text-fg-muted">{t("sf.card.colourHint")}</p> : null}
         </div>
       ) : null}
       {draft.vertical === "pharmacy" ? <p className="rounded-r4 bg-bg-subtle px-4 py-3 text-meta text-fg">{t("sf.card.pharmacy")}</p> : null}
-      <p className="text-meta text-fg-muted">{t("sf.card.later")}</p>
     </StepFrame>
   );
 }

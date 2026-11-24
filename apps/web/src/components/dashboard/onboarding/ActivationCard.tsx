@@ -1,10 +1,10 @@
 "use client";
-import { normalizeLocale, t, type merchantApi } from "@ll/shared";
+import { t, type merchantApi } from "@ll/shared";
 import { Dot, QuietLink } from "@/components/dashboard/kit";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { leadingMarkPct, paceTone, stepsLeft } from "@/lib/dashboard/onboarding";
-import { useMerchant } from "../MerchantContext";
+import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { BookingsActivationCard } from "./BookingsActivationCard";
 
 /**
@@ -22,7 +22,8 @@ export function ActivationCard({ c, base, guide = false }: { c: merchantApi.Onbo
  * of those steps is left to the guide; the card keeps the goal, the milestones and where customers came from.
  */
 function MembersActivationCard({ c, base, guide }: { c: merchantApi.OnboardingChecklist; base: string; guide: boolean }) {
-  const L = normalizeLocale(useMerchant().me.user.locale) ?? "en";
+  // The page's language: Today asks the API for the checklist's words in the same one (`api.onboarding(locale)`).
+  const L = useLocaleOrEnglish().locale;
   const a = c.activation;
   const pct = a.target > 0 ? Math.min(100, (a.members / a.target) * 100) : 0;
   const mark = leadingMarkPct(a);
@@ -81,10 +82,12 @@ function MembersActivationCard({ c, base, guide }: { c: merchantApi.OnboardingCh
       </div>
       ) : null}
 
-      <div className={cn("grid gap-6", !guide && "md:grid-cols-2")}>
+      {/* Before anyone has joined there is nothing to list: the card says where customers came from once someone has. */}
+      {a.sources.length === 0 && guide ? null : (
+      <div className={cn("grid gap-6", !guide && a.sources.length > 0 && "md:grid-cols-2")}>
+        {a.sources.length ? (
         <div>
           <h3 className="text-body-strong text-fg">{t(L, "ob.card.sources")}</h3>
-          {a.sources.length ? (
             <ul className="mt-2 divide-y divide-line">
               {a.sources.map((s) => (
                 <li key={s.source} className="flex min-h-9 items-center justify-between text-body text-fg">
@@ -93,10 +96,8 @@ function MembersActivationCard({ c, base, guide }: { c: merchantApi.OnboardingCh
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="mt-2 text-meta text-fg-muted">{t(L, "ob.card.none")}</p>
-          )}
         </div>
+        ) : null}
         {guide ? null : (
         <div>
           <div className="flex items-center justify-between">
@@ -128,6 +129,7 @@ function MembersActivationCard({ c, base, guide }: { c: merchantApi.OnboardingCh
         </div>
         )}
       </div>
+      )}
     </section>
   );
 }

@@ -49,7 +49,7 @@ const SOLO_LABELS = new Set(["your_link", "services", "hours", "privacy", "share
 const SHOP_LABELS = new Set(["program", "first_stamp", "qr_kit", "staff", "profile", "pharmacy_rules", "trade_setup", "pos"]);
 
 export function SetupGuide({ c, base, booking }: { c: merchantApi.OnboardingChecklist; base: string; booking: boolean }) {
-  const { t } = useLocaleOrEnglish();
+  const { t, locale } = useLocaleOrEnglish();
   const steps = guideSteps(c);
   const labelOf = (s: merchantApi.OnboardingStep) =>
     booking && SOLO_LABELS.has(s.key) ? t(`ob.solo.step.${s.key}` as "ob.solo.step.pos") : SHOP_LABELS.has(s.key) ? t(`own.setup.step.${s.key}` as "own.setup.step.pos") : SOLO_LABELS.has(s.key) ? t(`ob.solo.step.${s.key}` as "ob.solo.step.pos") : s.label;
@@ -98,7 +98,8 @@ export function SetupGuide({ c, base, booking }: { c: merchantApi.OnboardingChec
               <AccordionContent className="flex flex-col items-start gap-3 px-2 pb-3 ps-11">
                 {hint ? <p className="text-meta text-fg-muted">{t(hint as "own.setup.sub")}</p> : s.detail ? <p className="text-meta text-fg-muted">{s.detail}</p> : null}
                 <Link href={`${base}${setupPath(s.key)}`} className={cn(buttonClasses({ size: "sm" }), "no-underline!")} data-testid="setup-guide-go">
-                  {hint ? t(hint.replace(".hint.", ".go.") as "own.setup.sub") : (copy?.action ?? t("own.setup.start"))}
+                  {/* The per-step button words without a key are English: another language says "Start". */}
+                  {hint ? t(hint.replace(".hint.", ".go.") as "own.setup.sub") : locale === "en" && copy?.action ? copy.action : t("own.setup.start")}
                 </Link>
               </AccordionContent>
             </AccordionItem>

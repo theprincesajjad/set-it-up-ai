@@ -7,6 +7,7 @@ import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { getJson, KEYS, setJson } from "../../state/storage";
+import { clampCampaign } from "../../lib/campaignProgress";
 
 export function useWallet() {
   const { status } = useSession();
@@ -59,7 +60,7 @@ export function useCard() {
 
 export function useCampaigns(lat?: number, lng?: number) {
   const { status } = useSession();
-  return useQuery({ queryKey: [...qk.campaigns, lat ?? 0, lng ?? 0], queryFn: () => api.me.campaigns(lat, lng), enabled: status === "signedIn" });
+  return useQuery({ queryKey: [...qk.campaigns, lat ?? 0, lng ?? 0], queryFn: () => api.me.campaigns(lat, lng), select: (d) => ({ ...d, items: d.items.map(clampCampaign) }), enabled: status === "signedIn" });
 }
 
 /** True when the API says the feature is switched off for this shop/user (402/403/404) — hide the entry point. */

@@ -2,7 +2,7 @@
 import { Check, CreditCard } from "lucide-react";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { APPOINTMENT_VERTICALS, FEATURES, FEATURE_KEYS, FEES, NETWORK_GATE_SHOPS, PAID_PLAN_IDS, PLANS, PLATFORM_PAYMENT_FEE_BPS, type PaidPlanId, type PlanId, type billingApi } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/primitives/accordion";
@@ -13,6 +13,7 @@ import { Async, NoAccess } from "@/components/dashboard/PageStates";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/copy/en-CA";
 import { RestaurantBilling } from "./RestaurantBilling";
 import { TrialBanner } from "./TrialBanner";
@@ -91,23 +92,33 @@ const FAQ = [
 ];
 
 export default function BillingPage() {
-  const { api, role } = useMerchant();
+  const { api, role, refresh } = useMerchant();
   const state = useApi(role === "owner" ? () => api.billing.overview() : null, [api, role]);
+  // A plan change (trial started, plan cancelled or kept, payment confirmed) also changes what the sidebar and every gated page offer:
+  // read the shop's features again with the bill, so nothing in the shell is a step behind.
+  const reloadBill = state.reload;
+  const reload = useCallback(async () => {
+    await Promise.all([reloadBill(), refresh().catch(() => undefined)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refresh]);
   if (role !== "owner") return <NoAccess title="Billing is for the owner" body="Ask the shop owner to change plans." />;
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader flush title="Billing & plans" description="Loyalty is free forever. Subscribe to the tools for your kind of shop any time, and cancel any time." />
-      <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(b) => <Billing b={b} reload={state.reload} />}</Async>
+      <PageHeader flush title="Billing & plans" description="Loyalty is free forever. Cancel a paid plan any time." />
+      <Async state={state} skeleton={<SkeletonRows rows={5} />}>{(b) => <Billing b={b} reload={reload} />}</Async>
     </div>
   );
 }
 
 function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload: () => Promise<void> }) {
   const { api, base, enabled, merchantId, detail } = useMerchant();
+  const toast = useToast();
   const params = useSearchParams();
   const { t } = useLocaleOrEnglish();
   const [period, setPeriod] = useState<"month" | "year">(params.get("interval") === "year" ? "year" : "month");
   const [cancel, setCancel] = useState(false);
+  // Which button started the request, so only that one shows progress (the others just lock).
+  const [going, setGoing] = useState<string | null>(null);
   const act = useAction();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const sub = b.subscription;
@@ -120,6 +131,7 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
   const autoRan = useRef(false);
 
   async function checkout(plan: PaidPlanId, interval: "month" | "year" = period) {
+    setGoing(plan);
     const r = await act.run(() => api.billing.checkout({ plan, interval, successUrl: `${origin}${base}/billing?checkout=success`, cancelUrl: `${origin}${base}/billing?checkout=cancelled` }));
     if (r) {
       try {
@@ -130,6 +142,27 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
       window.location.assign(r.url);
     }
   }
+
+  // Back from the checkout: the payment confirms a moment later (a webhook). Look again every 2 s for up to 20 s, until the plan shows.
+  // The return from the checkout is said once: the mark leaves the address, so a refresh or a shared link does not thank anyone twice.
+  const [returned] = useState(() => params.get("checkout"));
+  useEffect(() => {
+    if (!returned) return;
+    const u = new URL(window.location.href);
+    u.searchParams.delete("checkout");
+    window.history.replaceState(null, "", `${u.pathname}${u.search}`);
+  }, [returned]);
+  const paidBack = returned === "success";
+  const waitingForPlan = paidBack && !sub && b.plan === "free" && !b.restaurantTier;
+  useEffect(() => {
+    if (!waitingForPlan) return;
+    let n = 0;
+    const t = setInterval(() => {
+      if (++n > 10) return clearInterval(t);
+      void reload();
+    }, 2000);
+    return () => clearInterval(t);
+  }, [waitingForPlan, reload]);
 
   // A "Start Pro" button on the pricing page lands here with ?subscribe=plus: go straight to the checkout once.
   useEffect(() => {
@@ -152,8 +185,8 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
           <a className="underline" href={`${base}/setup?step=first_stamp`}>Start with my stamp card</a>
         </Banner>
       ) : null}
-      {params.get("checkout") === "success" ? <Banner tone="success">Thanks. Your plan updates as soon as the payment confirms.</Banner> : null}
-      {params.get("checkout") === "cancelled" ? <Banner tone="neutral">Checkout cancelled. Nothing was charged.</Banner> : null}
+      {paidBack ? <Banner tone="success">{waitingForPlan ? "Thanks. Confirming your payment." : "Thanks. Your plan is on."}</Banner> : null}
+      {returned === "cancelled" ? <Banner tone="neutral">Checkout cancelled. Nothing was charged.</Banner> : null}
       {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
 
       <TrialBanner b={b} busy={act.busy} onKeep={(interval) => void checkout("plus", interval)} reload={reload} />
@@ -173,34 +206,30 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
         </h2>
         {b.restaurantTier ? <p className="mt-1 text-meta text-fg-muted">With your restaurant plan, {PLANS.studio.name} tools are included.</p> : null}
         {b.usage?.trial ? <p className="mt-1 text-meta text-fg-muted" data-testid="trial-on">{PLANS[b.usage.trial.plan].name} · {fill(PB.trialOn, { date: formatDateYear(b.usage.trial.endsAt) })}</p> : null}
-        <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2">
-          {["No subscription and no fee on loyalty", "Unlimited locations, staff and customers", "Your loyalty program and reports", "A listing on the local map"].map((t) => (
-            <li key={t} className="flex items-center gap-2 text-meta text-fg">
-              <Check aria-hidden className="size-3.5 text-fg-muted" />
-              {t}
-            </li>
-          ))}
-        </ul>
         {sub ? (
           <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
             <p className="text-body text-fg">
               {sub.cancelAtPeriodEnd ? "Ends" : "Renews"} {formatDateYear(sub.currentPeriodEnd)} · billed {sub.interval === "year" ? "yearly" : "monthly"} · {sub.status.replace("_", " ")}
             </p>
-            <Button variant="secondary" iconStart={CreditCard} loading={act.busy} onClick={async () => {
+            <Button variant="secondary" iconStart={CreditCard} loading={act.busy && going === "portal"} disabled={act.busy} onClick={async () => {
+              setGoing("portal");
               const r = await act.run(() => api.billing.portal(`${origin}${base}/billing`));
               if (r) window.location.assign(r.url);
             }}>
               Cards and invoices
             </Button>
             {sub.cancelAtPeriodEnd ? (
-              <Button variant="ghost" onClick={async () => {
-                await act.run(() => api.billing.resume());
-                await reload();
+              <Button variant="ghost" loading={act.busy && going === "resume"} disabled={act.busy} onClick={async () => {
+                setGoing("resume");
+                if (await act.run(() => api.billing.resume())) {
+                  await reload();
+                  toast({ message: "Plan kept", tone: "success" });
+                }
               }}>
                 Keep my plan
               </Button>
             ) : (
-              <Button variant="ghost" onClick={() => setCancel(true)}>
+              <Button variant="ghost" disabled={act.busy} onClick={() => setCancel(true)}>
                 Cancel plan
               </Button>
             )}
@@ -235,13 +264,18 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
           const price = period === "year" ? p.annualPriceCents : p.priceCents;
           // The first-year price of annual Pro: the list price struck through, never named.
           const fy = period === "year" && p.id === "plus" && b.firstYearPrice?.eligible && b.firstYearPrice.priceCents < p.annualPriceCents ? b.firstYearPrice : null;
-          const isPicked = picked === p.id && !p.current;
+          // On the free trial the shop is on Free underneath (the API's `current`), but the plan it is using is the trial's: mark that one,
+          // and leave Free unmarked until the trial ends.
+          const trialPlan = b.plan === "free" ? (b.usage?.trial?.plan ?? null) : null;
+          const onTrial = trialPlan === p.id;
+          const current = p.current && !trialPlan;
+          const isPicked = picked === p.id && !current;
           return (
             <li key={p.id} data-plan={p.id}>
               <div className={`flex h-full flex-col gap-3 bg-bg p-5 ${isPicked ? "ring-2 ring-inset ring-link" : ""}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-body-strong text-fg">{p.name}</h3>
-                  {p.current ? <Dot tone="positive">Current</Dot> : isPicked ? <Dot tone="info">{PB.preselected}</Dot> : !picked && p.id === fit && !sub ? <Dot tone="info">{t("own.bill.fit")}</Dot> : null}
+                  {current ? <Dot tone="positive">Current</Dot> : onTrial && !isPicked ? <Dot tone="positive">On trial</Dot> : isPicked ? <Dot tone="info">{PB.preselected}</Dot> : !picked && !trialPlan && p.id === fit && !sub ? <Dot tone="info">{t("own.bill.fit")}</Dot> : null}
                 </div>
                 <p className="text-[28px] font-semibold leading-8 tracking-[-0.01em] tabular-nums text-fg">
                   {fy ? (
@@ -263,11 +297,12 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
                       {f}
                     </li>
                   ))}
-                  {feats.length > 8 && p.id !== "free" ? <li className="ps-[22px] text-fg-muted">and {feats.length - 8} more: {feats.slice(8).map((k) => FEATURES[k].name).join(", ")}</li> : null}
+                  {/* The rest by count only (their names are a title away): a 19-name sentence made the Pro card twice as tall as its neighbours. */}
+                  {feats.length > 8 && p.id !== "free" ? <li className="ps-[22px] text-fg-muted" title={feats.slice(8).map((k) => FEATURES[k].name).join(", ")}>and {feats.length - 8} more</li> : null}
                 </ul>
                 <div className="mt-auto flex flex-col gap-3 pt-2">
-                  {p.id === "free" || p.current || sub ? null : (
-                    <Button loading={act.busy} variant={isPicked || (!picked && p.id === fit) ? "primary" : "secondary"} onClick={() => checkout(p.id as PaidPlanId)}>
+                  {p.id === "free" || current || sub ? null : (
+                    <Button loading={act.busy && going === p.id} disabled={act.busy} variant={isPicked || (!picked && p.id === (trialPlan ?? fit)) ? "primary" : "secondary"} onClick={() => checkout(p.id as PaidPlanId)}>
                       {`Subscribe to ${p.name}`}
                     </Button>
                   )}
@@ -312,9 +347,10 @@ function Billing({ b, reload }: { b: billingApi.BillingOverviewResponse; reload:
           ))}
         </Accordion>
       </Section>
-      <ConfirmDialog open={cancel} onClose={() => setCancel(false)} title="Cancel your plan?" body="Your loyalty program keeps running on Free. Paid tools turn off at the end of this period; your data is kept." confirmLabel="Cancel plan" danger onConfirm={async () => {
+      <ConfirmDialog open={cancel} onClose={() => setCancel(false)} title="Cancel your plan?" body="Paid tools turn off at the end of this period. Loyalty stays free and your data is kept." confirmLabel="Cancel plan" cancelLabel="Keep plan" danger onConfirm={async () => {
         await api.billing.cancel();
         await reload();
+        toast({ message: "Plan cancelled", tone: "success" });
       }} />
     </>
   );

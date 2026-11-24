@@ -1,6 +1,7 @@
 "use client";
 import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useSlideIndicator } from "./useSlideIndicator";
 
 export interface TabItem {
   id: string;
@@ -14,6 +15,7 @@ export function Tabs({ items, value, onChange, label, className, idBase }: { ite
   const auto = useId();
   const base = idBase ?? auto;
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const indicator = useSlideIndicator(value);
   const onKey = (e: KeyboardEvent, i: number) => {
     let next = i;
     if (e.key === "ArrowRight") next = (i + 1) % items.length;
@@ -44,12 +46,14 @@ export function Tabs({ items, value, onChange, label, className, idBase }: { ite
             onClick={() => onChange(t.id)}
             onKeyDown={(e) => onKey(e, i)}
             className={cn(
-              "-mb-px inline-flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-body-strong transition-colors duration-150 ease-out focus-visible:focus-ring",
-              active ? "border-fg text-fg" : "border-transparent text-fg-muted hover:text-fg",
+              "relative -mb-px inline-flex h-11 shrink-0 select-none items-center gap-1.5 border-b-2 border-transparent text-body-strong transition-[color,opacity] duration-tap ease-out active:opacity-70 focus-visible:focus-ring",
+              active ? "text-fg" : "text-fg-muted hover:text-fg",
             )}
           >
             {t.label}
             {t.meta}
+            {/* The 2px indicator sits on the tab's own (transparent) bottom border and slides to the next tab. */}
+            {active ? <span ref={indicator} aria-hidden className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-0.5 bg-fg" /> : null}
           </button>
         );
       })}

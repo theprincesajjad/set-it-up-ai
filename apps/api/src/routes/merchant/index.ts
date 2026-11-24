@@ -1,7 +1,7 @@
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, sql } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { merchantStaff, merchants } from "@ll/db";
-import { merchantApi } from "@ll/shared";
+import { merchantApi, normalizeLocale } from "@ll/shared";
 import type { AppContext } from "../../context.js";
 import { requireStaff, requireUser } from "../../lib/auth.js";
 import { tooMany } from "../../lib/errors.js";
@@ -31,6 +31,12 @@ import registerOnboardingSolo from "./onboarding-solo.js";
 
 /** Max merchants one user can create self-serve (abuse guard; reps/admins are unlimited). */
 const MAX_SELF_SERVE_MERCHANTS = 10;
+/**
+ * A second "create my shop" for the same shop is a retry, not a second shop: the phone lost its connection after the first request
+ * went out, the owner tapped again, or a second tab was open. Same owner, same name and kind inside this window answers with the shop
+ * that already exists instead of making a twin.
+ */
+const SIGNUP_RETRY_WINDOW_MS = 10 * 60_000;
 
 export type MerchantReq = FastifyRequest<{ Params: { merchantId: string } }>;
 
@@ -50,6 +56,15 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
       const [row] = await ctx.db.select({ n: count() }).from(merchantStaff).where(and(eq(merchantStaff.userId, user.id), eq(merchantStaff.role, "owner")));
       if (Number(row?.n ?? 0) >= MAX_SELF_SERVE_MERCHANTS) throw tooMany("You've reached the limit of shops per account. Contact support to add more.");
     }
+    // Self-serve only: a rep or an admin setting up shops for others may well make two with one name.
+    const [twin] = user.platformRole !== "none" ? [] : await ctx.db
+      .select({ id: merchants.id })
+      .from(merchants)
+      .innerJoin(merchantStaff, and(eq(merchantStaff.merchantId, merchants.id), eq(merchantStaff.userId, user.id), eq(merchantStaff.role, "owner")))
+      .where(and(eq(sql`lower(${merchants.name})`, body.name.trim().toLowerCase()), eq(merchants.vertical, body.vertical), gt(merchants.createdAt, new Date(ctx.now().getTime() - SIGNUP_RETRY_WINDOW_MS))))
+      .orderBy(desc(merchants.createdAt))
+      .limit(1);
+    if (twin) return loadMerchantDetail(ctx, twin.id, "owner");
     // New shops used to start "Closed" all week, which blanks the open-now line and filter. Start with 9 to 5:30, Monday to Saturday, and ask in setup.
     if (!body.hours) body.hours = { mon: [["09:00", "17:30"]], tue: [["09:00", "17:30"]], wed: [["09:00", "17:30"]], thu: [["09:00", "17:30"]], fri: [["09:00", "17:30"]], sat: [["09:00", "17:30"]] };
     // A pin from the address and the street it is on (nearest open neighbourhood), unless the caller already gave them.
@@ -112,7 +127,10 @@ async function routes(app: FastifyInstance, ctx: AppContext): Promise<void> {
 
   app.get("/merchants/:merchantId/onboarding", async (req: MerchantReq) => {
     const s = await requireStaff(ctx, req, req.params.merchantId, "staff");
-    return getOnboardingChecklist(ctx, s.merchant.id, await userLocale(ctx.db, s.user.id));
+    // The dashboard asks in the language it is being read in (?lang=ur), so Home is not half English after a signup in Urdu;
+    // without it (the mobile app, older clients) the words follow the owner's profile language as before.
+    const asked = normalizeLocale((req.query as { lang?: string } | undefined)?.lang);
+    return getOnboardingChecklist(ctx, s.merchant.id, asked ?? (await userLocale(ctx.db, s.user.id)));
   });
 
   app.post("/merchants/:merchantId/onboarding/complete", async (req: MerchantReq) => {

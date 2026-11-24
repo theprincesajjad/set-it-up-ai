@@ -323,7 +323,8 @@ export async function payInvoice(ctx: AppContext, inv: Invoice, opts: { tipCents
 }
 
 /** Mark paid, award points once, log on the ticket, thank the customer. */
-export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts: { inApp: boolean; paymentIntentId?: string; actorUserId?: string | null; note?: string }): Promise<Invoice> {
+/** `noCustomer`: a walk-in paid at the counter without giving a number. The invoice sits under the staff member who took it, so nobody earns points or gets a text. */
+export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts: { inApp: boolean; paymentIntentId?: string; actorUserId?: string | null; note?: string; noCustomer?: boolean }): Promise<Invoice> {
   const now = ctx.now();
   const patch: Partial<typeof invoices.$inferInsert> = { status: "paid", paidAt: now, paymentProcessingAt: null };
   if (opts.paymentIntentId) patch.stripePaymentIntentId = opts.paymentIntentId;
@@ -337,6 +338,7 @@ export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts
     return cur!;
   }
   let points = 0;
+  if (opts.noCustomer) return paid;
   try {
     const r = await awardPurchase(ctx, {
       merchantId: paid.merchantId,
@@ -384,10 +386,10 @@ export async function completeInvoicePayment(ctx: AppContext, inv: Invoice, opts
   return final!;
 }
 
-export async function markInvoicePaid(ctx: AppContext, staff: StaffContext, invoiceId: string, body: z.infer<typeof serviceApi.markInvoicePaidBody>) {
+export async function markInvoicePaid(ctx: AppContext, staff: StaffContext, invoiceId: string, body: z.infer<typeof serviceApi.markInvoicePaidBody>, opts: { noCustomer?: boolean } = {}) {
   const inv = await getMerchantInvoice(ctx.db, staff.merchant.id, invoiceId);
   if (inv.status !== "open") throw conflict(inv.status === "draft" ? "Send the invoice first" : `Invoice is ${inv.status}`);
-  const done = await completeInvoicePayment(ctx, inv, { inApp: false, actorUserId: staff.user.id, note: body.note ? `${body.method}: ${body.note}` : body.method.replace("_", " ") });
+  const done = await completeInvoicePayment(ctx, inv, { inApp: false, actorUserId: staff.user.id, note: body.note ? `${body.method}: ${body.note}` : body.method.replace("_", " "), noCustomer: opts.noCustomer });
   return invoiceDto(done, ctx.config.publicWebUrl);
 }
 

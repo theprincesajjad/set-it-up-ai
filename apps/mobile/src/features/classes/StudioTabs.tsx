@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useLocale } from "../../lib/i18n";
 import { hairline, Text } from "../../ui";
 import { useTheme } from "../../theme";
+import { pressFx } from "../../ui/pressFx";
 
 /**
  * The studio's three tabs along the bottom (Figma frame 05): Schedule, Passes and the loyalty Card. A plain bar, not the app's
@@ -21,7 +22,7 @@ export function StudioTabs({ slug, current }: { slug: string; current: "schedule
       {items.map((i) => {
         const on = i.key === current;
         return (
-          <Pressable key={i.key} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={i.go} style={styles.tab} testID={`studio-tab-${i.key}`}>
+          <Pressable key={i.key} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={i.go} style={({ pressed }) => [styles.tab, pressed ? pressFx.dim : null]} testID={`studio-tab-${i.key}`}>
             <Text variant={on ? "bodyStrong" : "body"} color={on ? "fg" : "fgMuted"}>
               {i.label}
             </Text>

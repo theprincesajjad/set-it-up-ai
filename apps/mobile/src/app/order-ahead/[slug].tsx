@@ -12,7 +12,7 @@ import { useLocale } from "../../lib/i18n";
 import { LanguageSwitcher } from "../../lib/i18n/LanguageSwitcher";
 import { api } from "../../state/api";
 import { qk } from "../../state/query";
-import { Banner, Button, Card, Chip, EmptyState, ErrorState, IconButton, ListRow, LockedFeature, Minus, Plus, Screen, Section, Sheet, ShoppingBag, SkeletonList, Text, TextField } from "../../ui";
+import { Banner, Button, Card, Chip, EmptyState, ErrorState, IconButton, ListRow, LockedFeature, Minus, Plus, Screen, Section, Sheet, ShoppingBag, SkeletonList, Text, TextField, haptic } from "../../ui";
 
 /** The shop's halal block above the menu: what the owner stated, once, instead of a certifier on every dish. */
 function HalalNote({ cert, date }: { cert: NonNullable<commerceApi.PublicMenuResponse["halalCertification"]>; date: ReturnType<typeof useLocale>["date"] }) {
@@ -90,6 +90,7 @@ export default function OrderAhead() {
       });
       void qc.invalidateQueries({ queryKey: qk.orders });
       setCheckout(false);
+      haptic.success();
       router.replace(`/orders/${res.order.id}`);
     } catch (e) {
       if (isApiError(e) && e.status < 500) setIdemKey(newIdempotencyKey());
@@ -114,7 +115,7 @@ export default function OrderAhead() {
       <LanguageSwitcher />
       {m.halalCertification ? <HalalNote cert={m.halalCertification} date={date} /> : null}
       <Text color="fgMuted">{tr("ms.oa.pickupLine", { place: `${location?.name ?? m.merchant.name}${location?.address ? `, ${location.address}` : ""}` })}</Text>
-      {sections.length === 0 ? <EmptyState icon={ShoppingBag} title={tr("ms.oa.nothingTitle")} body={tr("ms.oa.nothingBody")} /> : null}
+      {sections.length === 0 ? <EmptyState icon={ShoppingBag} title={tr("ms.oa.nothingTitle")} /> : null}
       {sections.map((sec) => (
         <Section key={sec.title} title={sec.title}>
           <Card padded={false} style={{ paddingHorizontal: 16 }}>

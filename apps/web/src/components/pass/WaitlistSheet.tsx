@@ -32,7 +32,7 @@ function addDays(d: string, n: number): string {
 /** The pill choice the booking page uses (44 tall, the shop's colour when picked). */
 function Pill({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" role="radio" aria-checked={on} onClick={onClick} className={cn("h-11 shrink-0 rounded-full border px-4 text-body focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+    <button type="button" role="radio" aria-checked={on} onClick={onClick} className={cn("h-11 shrink-0 rounded-full border px-4 text-body focus-visible:focus-ring press", on ? "border-trade bg-trade text-trade-foreground clear:border-primary clear:bg-primary clear:text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
       {children}
     </button>
   );

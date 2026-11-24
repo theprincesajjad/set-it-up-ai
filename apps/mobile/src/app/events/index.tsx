@@ -31,7 +31,7 @@ export default function MyEvents() {
         <SkeletonList rows={3} rowHeight={64} />
       ) : tab === "catering" ? (
         events.length === 0 ? (
-          <EmptyState icon={Users} title={t("rest.events.empty.title")} body={t("rest.events.empty.body")} />
+          <EmptyState icon={Users} title={t("rest.events.empty.title")} />
         ) : (
           <Card padded={false} style={{ paddingHorizontal: 16 }}>
             {events.map((e, i) => (
@@ -48,7 +48,7 @@ export default function MyEvents() {
           </Card>
         )
       ) : bookings.length === 0 ? (
-        <EmptyState icon={Store} title={t("rest.bk.empty.title")} body={t("rest.bk.empty.body")} />
+        <EmptyState icon={Store} title={t("rest.bk.empty.title")} />
       ) : (
         <Card padded={false} style={{ paddingHorizontal: 16 }}>
           {bookings.map((b, i) => (

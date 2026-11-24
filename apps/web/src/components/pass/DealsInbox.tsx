@@ -90,7 +90,6 @@ function Inbox() {
     return (
       <div aria-busy className="flex flex-col gap-3">
         <Skeleton className="h-5 w-24" />
-        <Skeleton className="h-4 w-56" />
         <Skeleton className="h-28 w-full rounded-card" />
       </div>
     );
@@ -100,7 +99,7 @@ function Inbox() {
         <h2 id="deals-h" className="text-headline text-fg">
           {t("deal.title")}
         </h2>
-        <p className="text-meta text-fg-muted">{items.length ? t("deal.intro") : t("deal.empty")}</p>
+        {items.length ? null : <p className="text-meta text-fg-muted">{t("deal.empty")}</p>}
       </div>
       {items.map((d) => (
         <DealCard key={d.id} deal={d} onClaim={() => void claim(d)} claiming={busy === d.id} error={errors[d.id] || null} highlight={focus === d.id} />

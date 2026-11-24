@@ -57,7 +57,7 @@ export function ColorField({ label, value, onChange, vertical, swatches = DEFAUL
               aria-checked={on}
               aria-label={c}
               onClick={() => pick(c)}
-              className={cn("relative grid size-11 place-items-center rounded-full ring-offset-2 ring-offset-background transition-shadow focus-visible:focus-ring", on && "ring-2 ring-foreground")}
+              className={cn("press relative grid size-11 place-items-center rounded-full ring-offset-2 ring-offset-background focus-visible:focus-ring", on && "ring-2 ring-foreground")}
               style={{ backgroundColor: c }}
             >
               {on ? <Check aria-hidden className="size-5" strokeWidth={3} style={{ color: resolveShopColors(c, vertical).light.foreground }} /> : null}

@@ -69,9 +69,9 @@ export function AppointmentBlock({
       className={cn(
         "absolute inset-x-1 select-none overflow-hidden rounded-[8px] px-2 text-start outline-none focus-visible:focus-ring",
         SURFACE[appt.status] ?? SURFACE.booked,
-        movable && "cursor-grab touch-none active:cursor-grabbing",
+        movable && "cursor-grab touch-pan-y active:cursor-grabbing",
         selected && appt.status !== "in_service" && "ring-2 ring-fg ring-offset-0",
-        dragging && "z-20 opacity-90 shadow-float",
+        dragging && "z-20 scale-[1.02] opacity-90 shadow-float transition-[scale] duration-150 ease-out motion-reduce:scale-100",
         !dragging && "z-10",
         tiny ? "flex items-center py-0" : "py-1",
       )}

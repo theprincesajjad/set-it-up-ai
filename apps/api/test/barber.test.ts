@@ -221,6 +221,41 @@ describe("the barber picks, skip and the chair", () => {
     expect(note.body).toContain(`/shops/${s.merchant.slug}/book`);
   });
 
+  it("a shop that only runs the line (no services, no bookings) takes cash from a first-name walk-in, with the price typed at checkout", async () => {
+    const m = await paidMerchant(env, { plan: "studio", vertical: "barber" });
+    const base = `/v1/merchants/${m.merchant.id}`;
+    const marcus = await staffMember(env, m.merchant.id, "staff");
+    expect((await call(env, m.ownerToken, "PUT", `${base}/queue/settings`, { open: true })).status).toBe(200);
+    const added = await call(env, m.ownerToken, "POST", `${base}/queue`, { name: "Sam", serviceId: null, requestedStaffId: null, textConsent: false });
+    expect(added.status).toBe(201);
+    const id = added.body.entry.id;
+    await call(env, marcus.token, "POST", `${base}/queue/${id}/call`, { staffId: marcus.user.id });
+    const st = await call(env, marcus.token, "POST", `${base}/queue/${id}/start`);
+    expect(st.status).toBe(200);
+    await call(env, marcus.token, "POST", `${base}/queue/${id}/done`);
+    const appt = (await env.db.select().from(appointments).where(eq(appointments.id, st.body.appointmentId)))[0]!;
+    expect(appt.userId).toBeNull();
+    expect(appt.items[0]!.priceCents).toBe(0);
+    // The board keeps the unpaid visit with its Check out until it is paid.
+    expect((await call(env, m.ownerToken, "GET", `${base}/queue`)).body.toPay).toEqual([{ entryId: id, name: "Sam", appointmentId: appt.id }]);
+    expect((await call(env, m.ownerToken, "GET", `${base}/queue?for=tablet`)).body.toPay).toEqual([]);
+    // A pay link is a text: it needs their number.
+    const link = await call(env, marcus.token, "POST", `${base}/appointments/${appt.id}/checkout`, { mode: "link" });
+    expect(link.status).toBe(409);
+    // Cash at the chair, no number: the typed price is billed and paid; nobody earns points and nobody is texted.
+    const before = (await env.db.select().from(notifications)).length;
+    const co = await call(env, marcus.token, "POST", `${base}/appointments/${appt.id}/checkout`, { mode: "counter", counterMethod: "cash", tipCents: 500, items: [{ ...appt.items[0], priceCents: 2500 }] });
+    expect(co.status).toBe(200);
+    expect(co.body.invoice).toMatchObject({ status: "paid", subtotalCents: 2500, tipCents: 500, pointsEarned: 0 });
+    expect((await env.db.select().from(notifications)).length).toBe(before);
+    expect((await env.db.select().from(appointments).where(eq(appointments.id, appt.id)))[0]).toMatchObject({ status: "completed", userId: null });
+    expect((await call(env, m.ownerToken, "GET", `${base}/queue`)).body.toPay).toEqual([]);
+    // The paid visit and the tip show in the barber's payouts.
+    const pay = await call(env, marcus.token, "GET", `${base}/payouts/mine?from=2026-11-01&to=2026-11-30`);
+    expect(pay.status).toBe(200);
+    expect(JSON.stringify(pay.body)).toContain("2500");
+  });
+
   it("a named barber's estimate counts only their own line and the anyone people", async () => {
     const s = await shop();
     await join(s, { name: "A", phone: "416-555-0261", serviceId: s.cut.id, requestedStaffId: s.marcus.user.id });

@@ -346,7 +346,8 @@ function merchantEndpoints(c: ApiClient, merchantId: string) {
     ...inboxEndpoints(c, b),
     detail: () => c.get<merchantApi.MerchantDetail>(b),
     update: (body: merchantApi.UpdateProfileBody) => c.patch<merchantApi.MerchantDetail>(b, body),
-    onboarding: () => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`),
+    /** `lang`: the language the page is read in (the checklist's words come from the API); without it they follow the owner's profile. */
+    onboarding: (lang?: string) => c.get<merchantApi.OnboardingChecklist>(`${b}/onboarding`, lang ? { query: { lang } } : undefined),
     street: () => c.get<merchantApi.StreetStatusResponse>(`${b}/street`),
     requestStreet: (name: string) => c.post<merchantApi.StreetStatusResponse>(`${b}/street`, { name }),
     locateShop: () => c.post<merchantApi.StreetStatusResponse>(`${b}/locate`, {}),

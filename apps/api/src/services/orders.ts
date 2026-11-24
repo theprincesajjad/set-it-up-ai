@@ -19,7 +19,7 @@ import { busyActive, quotedWaitMinutes } from "./busyMode.js";
 import { assertPreorderCapacity, dateKeyIn, eidPlanDays, overrideLeadHours, QURBANI_OPENS_DAYS, addDaysKey } from "./preorderPlanning.js";
 import { createConnectPayment, refundConnectPayment, retrieveConnectPayment } from "./payments.js";
 import { awardPurchase, ensureMember, redeemReward, reverseTransaction } from "./ledger.js";
-import { computeTax, merchantProvince } from "./tax.js";
+import { shopTax } from "./tax.js";
 import { isOpenNow } from "./serializers.js";
 
 type Order = typeof orders.$inferSelect;
@@ -469,9 +469,9 @@ export async function placeOrder(ctx: AppContext, userId: string, body: z.infer<
     }
   };
 
-  const province = await merchantProvince(ctx.db, merchant);
   // Zero-rated groceries (raw meat, flour, rice) carry no GST/HST: tax is on the taxable lines only, less their share of any reward discount.
-  const tax = computeTax(taxableBaseCents(lines, discount), province);
+  // A shop that is not registered for GST/HST charges none (shopTax).
+  const tax = await shopTax(ctx.db, merchant, taxableBaseCents(lines, discount));
   const commissionFree = await isFeatureOn(ctx.db, merchant, "restaurant.commission_free");
   // Pre-orders pay the deposit online (none configured: everything is paid at pickup).
   // The deposit is a share of the whole bill, tax included ("30% deposit" on the confirmation page).
@@ -790,7 +790,7 @@ export async function updateOrderStatus(ctx: AppContext, staff: StaffContext, or
       if (body.tender === "cash" && order.cashDiscountCents === 0 && order.depositCents === 0) {
         const cash = await cashDiscountFor(ctx.db, merchant, order.subtotalCents - order.discountCents);
         if (cash > 0) {
-          const tax = computeTax(order.subtotalCents - order.discountCents - cash, await merchantProvince(ctx.db, merchant));
+          const tax = await shopTax(ctx.db, merchant, order.subtotalCents - order.discountCents - cash);
           Object.assign(patch, { cashDiscountCents: cash, taxCents: tax.taxCents, totalCents: order.subtotalCents - order.discountCents - cash + tax.taxCents + order.tipCents + order.customerFeeCents });
         }
       }

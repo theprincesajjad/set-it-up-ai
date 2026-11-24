@@ -180,7 +180,7 @@ export function Composer({ onSent, standalone }: { onSent?: () => void; /** On i
         type="button"
         aria-pressed={on}
         onClick={() => chosen(a.key)}
-        className={cn("h-11 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+        className={cn("press h-11 rounded-full border px-4 text-[13px] font-medium focus-visible:focus-ring", on ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
       >
         {chipLabel(a, counts[a.key] ?? null, on, channel)}
       </button>
@@ -199,7 +199,7 @@ export function Composer({ onSent, standalone }: { onSent?: () => void; /** On i
           <div role="group" aria-labelledby="who-l" className="flex flex-wrap gap-2">
             {AUDIENCES.filter((a) => !a.more || more || a.key === aud).map(chip)}
             {!more ? (
-              <button type="button" onClick={() => setMore(true)} className="h-11 rounded-full px-3 text-[13px] font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">
+              <button type="button" onClick={() => setMore(true)} className="press h-11 rounded-full px-3 text-[13px] font-medium text-fg-muted hover:text-fg focus-visible:focus-ring">
                 More audiences
               </button>
             ) : null}
@@ -218,7 +218,7 @@ export function Composer({ onSent, standalone }: { onSent?: () => void; /** On i
                   setChannel(c.value);
                   setDraftId(null);
                 }}
-                className={cn("h-11 rounded-[9px] px-4 text-[14px] transition-colors focus-visible:focus-ring", channel === c.value ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted hover:text-fg")}
+                className={cn("press h-11 rounded-[9px] px-4 text-[14px] focus-visible:focus-ring", channel === c.value ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted hover:text-fg")}
               >
                 {c.label}
               </button>
@@ -286,7 +286,7 @@ export function Composer({ onSent, standalone }: { onSent?: () => void; /** On i
                 role="radio"
                 aria-checked={when === o.v}
                 onClick={() => setWhen(o.v)}
-                className={cn("h-11 rounded-full border px-4 text-[13px] font-medium transition-colors focus-visible:focus-ring", when === o.v ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
+                className={cn("press h-11 rounded-full border px-4 text-[13px] font-medium focus-visible:focus-ring", when === o.v ? "border-primary bg-primary text-primary-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}
               >
                 {o.label}
               </button>

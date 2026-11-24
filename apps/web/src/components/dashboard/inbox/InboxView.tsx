@@ -10,6 +10,7 @@ import { ArrowLeft, CalendarPlus, ExternalLink, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { inboxApi } from "@ll/shared";
 import { NewAppointmentSheet } from "@/components/dashboard/calendar/NewAppointmentSheet";
+import { ErrorLine } from "@/components/dashboard/kit";
 import { useMerchant } from "@/components/dashboard/MerchantContext";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
@@ -47,11 +48,21 @@ export function InboxView() {
   const items = list.data?.items ?? [];
   const ig = list.data?.instagram;
 
+  // Opening a thread from the list is a step forward (the phone's Back returns to the list); moving between threads is not.
+  const pushed = useRef(false);
   const select = (id: string | null) => {
+    if (!id && pushed.current) {
+      pushed.current = false;
+      return router.back();
+    }
     const next = new URLSearchParams(params.toString());
     if (id) next.set("c", id);
     else next.delete("c");
-    router.replace(`${pathname}${next.size ? `?${next}` : ""}`, { scroll: false });
+    const url = `${pathname}${next.size ? `?${next}` : ""}`;
+    if (id && !open) {
+      pushed.current = true;
+      router.push(url, { scroll: false });
+    } else router.replace(url, { scroll: false });
   };
 
   const stamp = (iso: string | null) => {
@@ -78,8 +89,21 @@ export function InboxView() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("inbox.search")} className="h-11 w-full rounded-r2 border border-input bg-card ps-9 pe-3 text-body text-fg outline-none focus-visible:focus-ring md:h-8" />
         </label>
       </div>
-      {list.error ? <p className="px-4 pb-4 text-meta text-negative">{t("inbox.loadError")}</p> : null}
-      {!list.data && !list.error ? <div className="mx-4 mb-4 h-40 animate-pulse rounded-r4 bg-bg-subtle" aria-hidden /> : null}
+      {list.error && !list.data ? <div className="px-4 pb-4"><ErrorLine message={t("inbox.loadError")} cause={list.cause} onRetry={() => void list.reload()} /></div> : null}
+      {!list.data && !list.error ? (
+        // The shape of three conversations: avatar, name and a line of the last message.
+        <div aria-hidden className="flex flex-col pb-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex min-h-16 items-start gap-3 px-4 py-3">
+              <span className="skeleton size-9 shrink-0 rounded-full" />
+              <span className="flex flex-1 flex-col gap-2 pt-1">
+                <span className="skeleton h-3.5 w-2/5 rounded-sm" />
+                <span className="skeleton h-3 w-4/5 rounded-sm" />
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {list.data && !items.length ? (
         <div className="flex flex-col items-center gap-2 px-6 pb-8 pt-4 text-center" data-testid="inbox-empty">
           <Icon3d name="inbox_quiet" size={160} trade={detail.merchant.vertical} />
@@ -94,7 +118,7 @@ export function InboxView() {
               type="button"
               onClick={() => select(c.id)}
               aria-current={open === c.id ? "true" : undefined}
-              className={cn("flex min-h-16 w-full items-start gap-3 px-4 py-3 text-start focus-visible:focus-ring", open === c.id ? "bg-row-sel" : "hover:bg-bg-subtle")}
+              className={cn("flex min-h-16 w-full items-start gap-3 px-4 py-3 text-start transition-colors duration-tap focus-visible:focus-ring", open === c.id ? "bg-row-sel" : "hover:bg-bg-subtle active:bg-bg-muted")}
             >
               <span aria-hidden className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-tile text-meta-strong text-fg">
                 {(c.displayName.replace(/^@/, "")[0] ?? "?").toUpperCase()}
@@ -149,6 +173,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [booking, setBooking] = useState<inboxApi.BookingPrefill | null>(null);
+  const [opening, setOpening] = useState(false);
   const staff = useApi(booking ? () => api.appointments.staff() : null, [api, !!booking]);
   const services = useApi(booking ? () => api.appointments.services() : null, [api, !!booking]);
   const end = useRef<HTMLDivElement>(null);
@@ -173,8 +198,19 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
     return out;
   }, [th]);
 
-  if (state.error) return <SurfaceCard padded><p className="text-meta text-negative">{state.error}</p></SurfaceCard>;
-  if (!th) return <SurfaceCard padded><div className="h-60 animate-pulse rounded-r4 bg-bg-subtle" aria-hidden /></SurfaceCard>;
+  if (state.error && !th) return <SurfaceCard padded><ErrorLine message={state.error} cause={state.cause} onRetry={() => void state.reload()} /></SurfaceCard>;
+  if (!th)
+    return (
+      // The shape of a thread: a title row, two bubbles each way.
+      <SurfaceCard padded>
+        <div aria-hidden className="flex min-h-80 flex-col gap-3">
+          <span className="skeleton h-5 w-40 rounded-sm" />
+          <span className="skeleton mt-4 h-9 w-3/5 rounded-r5" />
+          <span className="skeleton ms-auto h-9 w-2/5 rounded-r5" />
+          <span className="skeleton h-9 w-1/2 rounded-r5" />
+        </div>
+      </SurfaceCard>
+    );
   const c = th.conversation;
 
   async function send() {
@@ -196,10 +232,13 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
   }
 
   async function createBooking() {
+    setOpening(true);
     try {
       setBooking(await api.inbox.bookingPrefill(c.id));
     } catch (e) {
       toast({ message: errorMessage(e), tone: "error" });
+    } finally {
+      setOpening(false);
     }
   }
 
@@ -208,7 +247,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
       <CardHead
         title={
           <span className="flex items-center gap-2">
-            <button type="button" onClick={onBack} aria-label={t("inbox.back")} className="relative -ms-2 inline-flex size-8 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-1.5 after:content-[''] hover:bg-bg-subtle md:hidden">
+            <button type="button" onClick={onBack} aria-label={t("inbox.back")} className="press relative -ms-2 inline-flex size-8 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-1.5 after:content-[''] hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring md:hidden">
               <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
             </button>
             <span className="truncate">{c.displayName}</span>
@@ -216,7 +255,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
           </span>
         }
         action={
-          <Button size="sm" variant="secondary" onClick={createBooking} data-testid="create-booking">
+          <Button size="sm" variant="secondary" onClick={createBooking} loading={opening || (!!booking && (!staff.data || !services.data) && !staff.error && !services.error)} data-testid="create-booking">
             <span className="inline-flex items-center gap-1.5">
               <CalendarPlus aria-hidden className="size-4" />
               {t("inbox.createBooking")}

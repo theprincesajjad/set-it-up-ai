@@ -1,5 +1,4 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
@@ -8,7 +7,7 @@ import { scanBus } from "../../features/scanBus";
 import { useLocale } from "../../lib/i18n";
 import { useCounter } from "../../state/counter";
 import { useTheme } from "../../theme";
-import { Button, Camera, EmptyState, Flashlight, IconButton, Text, X } from "../../ui";
+import { Button, Camera, EmptyState, Flashlight, IconButton, Text, X, haptic } from "../../ui";
 
 /** Full-screen barcode scanner: member QR, wallet pass barcode, redeem code QR. Auto-closes on read. */
 export default function Scan() {
@@ -45,7 +44,7 @@ export default function Scan() {
         onBarcodeScanned={(r) => {
           if (done.current || !r.data) return;
           done.current = true;
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+          haptic.success();
           router.back();
           setTimeout(() => scanBus.emit(r.data), 50);
         }}

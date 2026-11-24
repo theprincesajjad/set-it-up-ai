@@ -11,7 +11,8 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { VERTICALS, VERTICAL_TEMPLATES, type MessageKey, type merchantApi, type siteImportApi } from "@ll/shared";
 import { browserClient, BFF_BASE } from "@/lib/api/browser";
-import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
+import { importErrorText } from "./importError";
 import { cn } from "@/lib/cn";
 import { useLocaleOrEnglish } from "@/lib/i18n";
 import { formatNanp } from "@/lib/phone";
@@ -97,6 +98,7 @@ export interface SiteImportStepProps {
 
 export function SiteImportStep({ onDone, onSkip, importer = defaultImporter, logoBase = BFF_BASE, vertical, headingLevel = 2, onPhase }: SiteImportStepProps) {
   const { t } = useLocaleOrEnglish();
+  const errText = useErrorText();
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<"form" | "loading" | "review">("form");
@@ -114,8 +116,8 @@ export function SiteImportStep({ onDone, onSkip, importer = defaultImporter, log
       setResult(await importer(url.trim()));
       setPhase("review");
     } catch (err) {
-      // The API's own sentence when it has one (blocked, too big, robots ...), else a plain one.
-      setError(isApiError(err) && err.message ? err.message : t("imp.err.generic"));
+      // A translated sentence by the API's reason code (never its English one).
+      setError(importErrorText(err, t, errText));
       setPhase("form");
     }
   }

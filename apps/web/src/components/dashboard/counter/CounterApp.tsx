@@ -195,7 +195,14 @@ export function CounterApp({
     setReady(true);
   }, []);
   const [staff, setStaff] = useState<CounterStaff | null>(null);
-  const [pinOpen, setPinOpen] = useState(false);
+  /** The PIN sheet: "verify" signs someone in (anyone with a PIN, also when the signed-in person has none); "choose" sets the signed-in person's own PIN. */
+  const [pinView, setPinView] = useState<null | "verify" | "choose">(null);
+  const pinOpen = pinView !== null;
+  const setPinOpen = useCallback((open: boolean) => setPinView(open ? "verify" : null), []);
+  /** While the PIN sheet is up, every keystroke belongs to it: the page's own key handling (lookup, scanner, amount) stands down. */
+  const pinOpenRef = useRef(false);
+  // eslint-disable-next-line react-hooks/refs
+  pinOpenRef.current = pinOpen;
   /** Someone with no counter PIN yet: the chip and a notice offer to choose one (they use it to sign in here and to have awards under their name). */
   const [hasOwnPin, setHasOwnPin] = useState(pin?.hasPin ?? true);
   const [pinNoticeOff, setPinNoticeOff] = useState(false);
@@ -758,6 +765,8 @@ export function CounterApp({
         (target.tagName === "INPUT" ||
           target.tagName === "TEXTAREA" ||
           target.tagName === "SELECT");
+      // The PIN sheet takes its keys in the capture phase; this is the belt to that: nothing here reads a PIN keystroke.
+      if (pinOpenRef.current || e.defaultPrevented) return;
       if (e.key === "Escape") {
         e.preventDefault();
         reset();
@@ -877,7 +886,7 @@ export function CounterApp({
                   {(staff?.name ?? signedInName ?? "?").trim()[0]}
                 </span>
                 {firstName(staff?.name ?? signedInName ?? "") || t("counter.staff")}
-                <span className="sr-only">. {staff ? t("counter.stampingAs", { name: staff.name ?? t("counter.staff") }) : needsOwnPin ? t("counter.pin.setAction") : t("counter.signInPin")}</span>
+                <span className="sr-only">. {staff ? t("counter.stampingAs", { name: staff.name ?? t("counter.staff") }) : t("counter.signInPin")}</span>
               </button>
             ) : null}
             {exitHref ? (
@@ -926,7 +935,7 @@ export function CounterApp({
                 icon={KeyRound}
                 onDismiss={() => setPinNoticeOff(true)}
                 action={
-                  <Button size="sm" variant="ghost" className="min-h-11" onClick={() => setPinOpen(true)}>
+                  <Button size="sm" variant="ghost" className="min-h-11" onClick={() => setPinView("choose")}>
                     {t("counter.pin.setAction")}
                   </Button>
                 }
@@ -997,9 +1006,9 @@ export function CounterApp({
           {/* Left: find the customer. On a phone it is only there while there is nobody on screen. */}
           <div className={cn(s.lookup, "min-w-0 flex-col gap-4 bg-sidebar p-4 lg:flex lg:border-e lg:border-border lg:p-6", lookupShown || pinOpen ? "flex" : "hidden")}>
             {pinOpen && pin ? (
-              needsOwnPin ? (
+              pinView === "choose" && pin.setOwn ? (
                 <ChoosePin
-                  save={pin.setOwn!}
+                  save={pin.setOwn}
                   onDone={() => {
                     setHasOwnPin(true);
                     setPinOpen(false);
@@ -1009,6 +1018,7 @@ export function CounterApp({
                   onCancel={() => setPinOpen(false)}
                 />
               ) : (
+                // Anyone on the team with a PIN can take over this till, also when the person signed in here has none yet.
                 <PinPad
                   verify={pin.verify}
                   signedInName={staff?.name ?? signedInName ?? null}
@@ -1018,6 +1028,12 @@ export function CounterApp({
                     setPinOpen(false);
                   }}
                   onCancel={() => setPinOpen(false)}
+                  onSetOwn={needsOwnPin && !staff ? () => setPinView("choose") : undefined}
+                  onSignOut={staff ? () => {
+                    setStaff(null);
+                    setPinOpen(false);
+                  } : undefined}
+                  staffName={staff ? firstName(staff.name ?? "") || null : null}
                 />
               )
             ) : null}
@@ -1997,6 +2013,7 @@ function PinSheet({
   disabled,
   onKey,
   onCancel,
+  footer,
 }: {
   title: string;
   body: string;
@@ -2005,12 +2022,37 @@ function PinSheet({
   disabled: boolean;
   onKey: (k: string) => void;
   onCancel: () => void;
+  /** One quiet action under the keypad (set my PIN, sign out). */
+  footer?: React.ReactNode;
 }) {
   const { t } = useCounterText();
   const dialogRef = useRef<HTMLElement>(null);
   // Focus moves into the dialog when it opens, so a physical keyboard or a screen reader starts here.
   useEffect(() => {
     dialogRef.current?.focus();
+  }, []);
+  // A hardware keyboard (or a scanner) types into the PIN and nowhere else, wherever focus is: the window capture phase
+  // runs before every other listener on the page, so the lookup, the scanner buffer and the amount never see a PIN digit.
+  const live = useRef({ onKey, onCancel, disabled });
+  useEffect(() => {
+    live.current = { onKey, onCancel, disabled };
+  });
+  useEffect(() => {
+    function onKeyCapture(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      // Tab and Enter keep working on the sheet's own buttons.
+      if (e.key === "Tab" || (e.key === "Enter" && target?.closest("button"))) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const { onKey: key, onCancel: cancel, disabled: off } = live.current;
+      if (e.key === "Escape") return cancel();
+      if (off || e.repeat) return;
+      if (/^\d$/.test(e.key)) key(e.key);
+      else if (e.key === "Backspace") key("back");
+    }
+    window.addEventListener("keydown", onKeyCapture, true);
+    return () => window.removeEventListener("keydown", onKeyCapture, true);
   }, []);
   return (
     <section
@@ -2019,17 +2061,7 @@ function PinSheet({
       aria-modal="true"
       tabIndex={-1}
       aria-label={title}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") return onCancel();
-        if (disabled || e.metaKey || e.ctrlKey || e.altKey) return;
-        if (/^\d$/.test(e.key)) {
-          e.preventDefault();
-          onKey(e.key);
-        } else if (e.key === "Backspace") {
-          e.preventDefault();
-          onKey("back");
-        }
-      }}
+      data-testid="counter-pin"
       className="flex flex-col gap-3 rounded-card bg-card p-4 shadow-card outline-none"
     >
       <div className="flex items-center justify-between">
@@ -2059,8 +2091,20 @@ function PinSheet({
         </p>
       ) : null}
       <ScanKeypad disabled={disabled} onKey={onKey} />
+      {footer}
     </section>
   );
+}
+
+/** The digits typed so far, also readable between renders (keyboards and scanners type faster than React re-renders). */
+function usePinEntry() {
+  const [pin, setState] = useState("");
+  const ref = useRef("");
+  const set = useCallback((v: string) => {
+    ref.current = v;
+    setState(v);
+  }, []);
+  return [pin, set, ref] as const;
 }
 
 /** Four-digit PIN to say who is stamping: awards are then attributed to that person (Stamps by staff on Home). */
@@ -2070,6 +2114,9 @@ function PinPad({
   onCancel,
   signedInName,
   stamps,
+  onSetOwn,
+  onSignOut,
+  staffName,
 }: {
   verify: (
     body: authApi.StaffPinVerifyBody,
@@ -2080,10 +2127,15 @@ function PinPad({
   signedInName: string | null;
   /** A stamp shop says "stamping"; a points shop says "at the counter". */
   stamps: boolean;
+  /** The signed-in person has no PIN yet: a quiet way to choose one (staff with a PIN still sign in above it). */
+  onSetOwn?: () => void;
+  /** Someone signed in with a PIN: hand the till back to the account signed in on this device. */
+  onSignOut?: () => void;
+  staffName?: string | null;
 }) {
   const errText = useErrorText();
   const { t, time } = useLocaleOrEnglish();
-  const [pin, setPin] = useState("");
+  const [pin, setPin, pinRef] = usePinEntry();
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** After too many wrong PINs the keypad stays off until the lockout ends (the API says when), so nobody keeps guessing into it. */
@@ -2120,7 +2172,7 @@ function PinPad({
         setBusy(false);
       }
     },
-    [verify, onDone, t, time, errText, signedInName],
+    [verify, onDone, t, time, errText, signedInName, setPin],
   );
   return (
     <PinSheet
@@ -2131,10 +2183,18 @@ function PinPad({
       disabled={busy || locked}
       onCancel={onCancel}
       onKey={(k) => {
-        const next = pushDigit(pin, k);
+        const prev = pinRef.current;
+        const next = pushDigit(prev, k);
         setPin(next);
-        if (next.length === 4 && next !== pin) void submit(next);
+        if (next.length === 4 && next !== prev) void submit(next);
       }}
+      footer={
+        onSignOut || onSetOwn ? (
+          <Button variant="ghost" className="w-full" onClick={onSignOut ?? onSetOwn}>
+            {onSignOut ? t("counter.pin.signOut", { name: staffName ?? t("counter.staff") }) : t("counter.pin.setAction")}
+          </Button>
+        ) : null
+      }
     />
   );
 }
@@ -2143,12 +2203,19 @@ function PinPad({
 function ChoosePin({ save, onDone, onCancel }: { save: (pin: string) => Promise<void>; onDone: () => void; onCancel: () => void }) {
   const errText = useErrorText();
   const { t } = useCounterText();
-  const [first, setFirst] = useState<string | null>(null);
-  const [pin, setPin] = useState("");
+  const [first, setFirstState] = useState<string | null>(null);
+  // Read through a ref: a fast keyboard can type the confirmation before React has re-rendered with the first PIN.
+  const firstRef = useRef<string | null>(null);
+  const setFirst = useCallback((v: string | null) => {
+    firstRef.current = v;
+    setFirstState(v);
+  }, []);
+  const [pin, setPin, pinRef] = usePinEntry();
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const finish = useCallback(
     async (value: string) => {
+      const first = firstRef.current;
       if (first === null) {
         setFirst(value);
         setPin("");
@@ -2174,7 +2241,7 @@ function ChoosePin({ save, onDone, onCancel }: { save: (pin: string) => Promise<
         setBusy(false);
       }
     },
-    [first, save, onDone, t, errText],
+    [save, onDone, t, errText, setFirst, setPin],
   );
   return (
     <PinSheet
@@ -2185,9 +2252,10 @@ function ChoosePin({ save, onDone, onCancel }: { save: (pin: string) => Promise<
       disabled={busy}
       onCancel={onCancel}
       onKey={(k) => {
-        const next = pushDigit(pin, k);
+        const prev = pinRef.current;
+        const next = pushDigit(prev, k);
         setPin(next);
-        if (next.length === 4 && next !== pin) void finish(next);
+        if (next.length === 4 && next !== prev) void finish(next);
       }}
     />
   );

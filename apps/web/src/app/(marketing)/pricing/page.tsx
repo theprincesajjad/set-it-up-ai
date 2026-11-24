@@ -16,6 +16,7 @@ import { fill, moneyShort, sentenceCase } from "@/lib/marketing/text";
 import { planNote } from "@/lib/marketing/plan-copy";
 import { JsonLd, faqLd, softwareLd } from "@/lib/marketing/structured-data";
 import { CompareTable, FreeCard, PLUS_TARGET, PaidCard, ServiceLine, SoloTable, pv } from "./PlanCards";
+import { PeriodProvider, PeriodToggle } from "./Period";
 import { TradeRows } from "./TradeRows";
 import { RestaurantPricing } from "./RestaurantPricing";
 import { preloadInter } from "@/lib/fonts/inter";
@@ -72,7 +73,7 @@ function OtherAudiences({ audience }: { audience: Audience }) {
       <ul className="grid gap-4 md:grid-cols-2">
         {others.map((o) => (
           <li key={o.id}>
-            <a href={o.href} className="flex h-full min-h-28 flex-col gap-1 rounded-card bg-card p-6 shadow-card transition-colors hover:bg-muted focus-visible:focus-ring" data-audience={o.id}>
+            <a href={o.href} className="press-soft flex h-full min-h-28 flex-col gap-1 rounded-card bg-card p-6 shadow-card hover:bg-muted active:bg-muted focus-visible:focus-ring" data-audience={o.id}>
               <span className="text-meta-strong text-muted-foreground">{o.eyebrow}</span>
               <span className="text-headline text-foreground">{fill(o.title, { from: AUDIENCE_FROM[o.id] })}</span>
               <span className="text-body text-muted-foreground">{o.body}</span>
@@ -125,18 +126,23 @@ export default async function PricingPage({ searchParams }: Props) {
       {shopPlans ? (
       <>
       <section id="shops" className="scroll-mt-20 pb-12 md:pb-16">
-        <p className="mx-auto mb-4 max-w-360 px-5 text-center text-meta-strong text-muted-foreground md:px-10 xl:px-15">{copy.proPricing.pricesNote}</p>
+        <PeriodProvider initial={one("billing") === "year" ? "year" : "month"}>
+        <div className="mx-auto mb-5 flex max-w-360 flex-col items-center gap-3 px-5 md:px-10 xl:px-15">
+          <PeriodToggle label={P.period.label} monthly={P.period.monthly} yearly={P.period.yearly} save={P.period.save} />
+          <p className="text-center text-meta text-muted-foreground">{copy.proPricing.pricesNote}</p>
+        </div>
         <div className="mx-auto grid max-w-360 items-stretch gap-4 px-5 md:px-10 xl:px-15 lg:grid-cols-3 lg:gap-5 lg:py-4">
           <FreeCard audience={words} />
           <PaidCard id="plus" firstYear={firstYear} audience={words} />
           <PaidCard id="studio" firstYear={firstYear} audience={words} />
         </div>
+        </PeriodProvider>
         <p className="mx-auto mt-4 max-w-360 px-5 text-meta text-muted-foreground md:px-10 xl:px-15">
           {planNote(words)}
           {audience === "shop" ? (
             <>
               {" "}
-              <Link href="/pricing?for=booking#shops" className="font-semibold text-foreground underline decoration-input/60 underline-offset-2 hover:decoration-foreground" data-testid="booking-plans-link">
+              <Link href="/pricing?for=booking#shops" className="font-semibold text-foreground underline decoration-input/60 underline-offset-2 hover:decoration-foreground active:decoration-foreground max-md:flex max-md:min-h-11 max-md:items-center" data-testid="booking-plans-link">
                 {P.bookingLink}
               </Link>
             </>
@@ -148,8 +154,14 @@ export default async function PricingPage({ searchParams }: Props) {
         {/* Wave P: the plan table folds away under the cards (the cards already list what matters), and the four-card booking-app
             strip that sat here is gone: the dated table below (#booking-apps) says the same with sources. */}
         <div className="mx-auto mt-8 max-w-360 px-5 md:px-10 xl:px-15">
-          <details id="compare" open={compareOpen} className="group scroll-mt-20 rounded-card bg-card shadow-card" data-testid="compare">
-            <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 px-5 text-headline text-foreground focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
+          {/* The panel fades in and out where the browser can transition ::details-content (opacity only; instant elsewhere). */}
+          <details
+            id="compare"
+            open={compareOpen}
+            className="group scroll-mt-20 rounded-card bg-card shadow-card [&::details-content]:opacity-0 [&::details-content]:transition-[opacity,content-visibility] [&::details-content]:duration-200 [&::details-content]:ease-out [&::details-content]:[transition-behavior:allow-discrete] open:[&::details-content]:opacity-100"
+            data-testid="compare"
+          >
+            <summary className="press flex min-h-16 cursor-pointer list-none items-center justify-between gap-6 rounded-card px-5 text-headline text-foreground [--press-scale:0.99] hover:bg-muted/60 active:bg-muted focus-visible:focus-ring md:px-7 [&::-webkit-details-marker]:hidden">
               {P.planTableSummary}
               <Plus aria-hidden className="size-5 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-open:rotate-45" strokeWidth={1.75} />
             </summary>

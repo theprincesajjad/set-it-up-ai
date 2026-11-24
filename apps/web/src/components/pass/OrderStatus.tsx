@@ -75,17 +75,17 @@ export function OrderStatus({ initial }: { initial: commerceApi.OrderDto }) {
             <dd className="tabular-nums">{locale === "en" ? formatMoney(order.totalCents) : money(order.totalCents)}</dd>
           </div>
         </dl>
-        <p className="pb-3 text-meta text-fg-muted">{order.paymentMethod === "in_app" ? (order.paymentStatus === "paid" ? t("wp.os.paid") : t("wp.os.pending")) : t("checkout.payAtPickup")}</p>
+        <p className="pb-3 text-meta text-fg-muted">{order.paymentMethod === "in_app" ? (order.paymentStatus === "paid" ? t("wp.os.paid") : t("wp.os.pending")) : order.paymentStatus === "paid" ? t("orderPay.paid") : t("checkout.payAtPickup")}</p>
         {order.pointsEarned > 0 ? <p className="-mt-2 pb-3 text-meta font-semibold text-points-text">{t("wp.os.earned", { amount: unitsText(locale, order.pointsEarned, order.pointsTerminology ?? "points", false) })}</p> : null}
       </section>
       {/* Not a dead end: back to the shop's menu and to the wallet. */}
       <nav aria-label={order.merchantName} className="flex flex-wrap items-center gap-x-5 gap-y-1">
         {order.merchantSlug ? (
-          <Link href={`/shops/${encodeURIComponent(order.merchantSlug)}`} className="inline-flex min-h-11 items-center gap-1 text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring">
+          <Link href={`/shops/${encodeURIComponent(order.merchantSlug)}`} className="inline-flex min-h-11 items-center gap-1 text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring press">
             {t("wp.os.backToShop", { shop: order.merchantName })}
           </Link>
         ) : null}
-        <Link href="/me" className="inline-flex min-h-11 items-center text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring">
+        <Link href="/me" className="inline-flex min-h-11 items-center text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring press">
           {t("sh.fs.ctaCard")}
         </Link>
       </nav>

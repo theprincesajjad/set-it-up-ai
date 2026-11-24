@@ -6,7 +6,7 @@
  */
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { LogoMark } from "@/components/site/Brand";
 import { Button } from "@/components/ui/Button";
 import { StepProgress } from "@/components/ui/StepProgress";
@@ -15,6 +15,13 @@ import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import type { ShopColorProps } from "@/lib/shopColor";
 import type { MessageKey } from "@ll/shared";
 import { STEPS } from "./draft";
+
+/**
+ * Which way the flow last moved, so a step slides in from the side it comes from: forward from the inline end, Back (the button,
+ * the browser's or the phone's) from the inline start. Mirrored under RTL by the logical slide utilities.
+ */
+export type FlowDir = "forward" | "back" | "none";
+export const FlowDirContext = createContext<FlowDir>("none");
 
 export interface FlowShellProps {
   /** 1-based; null hides the counter (the celebration). */
@@ -70,7 +77,8 @@ export function FlowShell({ step, total, onBack, exitHref = "/", colors, aside, 
         </div>
       </header>
       <main id="main" className={cn("mx-auto grid w-full max-w-[1200px] flex-1", !!aside && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-10 lg:px-6")}>
-        <div className="min-w-0">{children}</div>
+        {/* Clipped sideways: a step slides in from the side and must never widen the page. */}
+        <div className="min-w-0 overflow-x-clip">{children}</div>
         {aside ? (
           <aside className="hidden lg:block" data-flow-aside>
             <div className="sticky top-[108px] my-10 flex min-h-[560px] flex-col items-center justify-center overflow-hidden rounded-[28px] bg-trade-soft p-10 ring-1 ring-inset ring-trade/10">
@@ -112,6 +120,7 @@ export interface StepFrameProps {
  */
 export function StepFrame({ id, title, body, bodyExtra, onSubmit, primary, busy, secondary, note, children, eyebrow, after }: StepFrameProps) {
   const ref = useRef<HTMLFormElement>(null);
+  const dir = useContext(FlowDirContext);
   useEffect(() => {
     const root = ref.current;
     if (!root) return;
@@ -137,7 +146,7 @@ export function StepFrame({ id, title, body, bodyExtra, onSubmit, primary, busy,
   };
   return (
     <form ref={ref} onSubmit={submit} onKeyDown={onKeyDown} noValidate aria-labelledby={`${id}-title`} data-step={id} className="mx-auto flex w-full max-w-[560px] flex-col px-4 pb-36 pt-8 md:px-6 md:pb-16 md:pt-14">
-      <div key={id} className="flex flex-col animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out motion-reduce:animate-none">
+      <div key={id} data-flow-enter={dir} className={cn("flex flex-col animate-in fade-in-0 duration-300 ease-out motion-reduce:animate-none", dir === "forward" ? "slide-in-from-end-6" : dir === "back" ? "slide-in-from-start-6" : "slide-in-from-bottom-2")}>
         {eyebrow ? <div className="mb-4">{eyebrow}</div> : null}
         <h1 id={`${id}-title`} tabIndex={-1} className="text-balance text-[28px] font-[700] leading-8.5 tracking-[-0.02em] text-fg outline-none md:text-[34px] md:leading-10">
           {title}

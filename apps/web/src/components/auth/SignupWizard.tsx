@@ -27,12 +27,12 @@ import { useErrorText } from "@/lib/api/useErrorText";
 import { toE164 } from "@/lib/phone";
 import { routes } from "@/lib/routes";
 import { RESTAURANT_VERTICALS, afterSignupPath } from "@/lib/signupRoute";
-import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { rememberLocale, useLocaleOrEnglish } from "@/lib/i18n/client";
 import { shopColorProps } from "@/lib/shopColor";
 import { applyBodyFor } from "@/components/onboarding/SiteImport";
 import { CardPreview } from "@/components/onboarding/signup/CardPreview";
-import { STEPS, cardFor, clearDraft, emptyDraft, loadDraft, resolveStep, saveDraft, withPrefill, type FlowStep, type SignupDraft, type StepErrors } from "@/components/onboarding/signup/draft";
-import { FlowShell } from "@/components/onboarding/signup/Shell";
+import { STEPS, cardFor, clearDraft, emptyDraft, isFlowStep, loadDraft, resolveStep, saveDraft, stepIndex, withPrefill, type FlowStep, type SignupDraft, type StepErrors } from "@/components/onboarding/signup/draft";
+import { FlowDirContext, FlowShell, type FlowDir } from "@/components/onboarding/signup/Shell";
 import { LinkStep, ShopStep, type Importer } from "@/components/onboarding/signup/StepsIntro";
 import { KindStep, LoyaltyStep, WhereStep } from "@/components/onboarding/signup/StepsShop";
 import { AccountStep, type NextStep } from "@/components/onboarding/signup/StepsFinish";
@@ -88,6 +88,16 @@ function beaconSignupStart(): void {
   }
 }
 
+/**
+ * The flow's own part of a history entry (the step it was reached from), without the router's keys. Handing the router's own state
+ * object back to pushState or replaceState makes Next skip the call, so its idea of the address stays on an older step and the next
+ * time it writes the address (a refresh of the route's data) the step in the address bar jumps back. A plain object keeps both in step.
+ */
+function ownState(): { llFrom?: string | null } {
+  const from = (window.history.state as { llFrom?: string | null } | null)?.llFrom;
+  return from === undefined ? {} : { llFrom: from };
+}
+
 export interface SignupWizardProps {
   signedInName?: string | null;
   /** The shop the signed-in owner already has (first one), so the first step can say so. */
@@ -100,7 +110,7 @@ export interface SignupWizardProps {
 
 export function SignupWizard({ signedInName, signedInShop, prefill, importer }: SignupWizardProps) {
   useEffect(beaconSignupStart, []);
-  const { t } = useLocaleOrEnglish();
+  const { t, locale } = useLocaleOrEnglish();
   const errText = useErrorText();
   // The step in the address bar. Read from window.location (not useSearchParams) so a pushState and the render that follows agree.
   const [requested, setRequested] = useState<string | null>(null);
@@ -109,8 +119,11 @@ export function SignupWizard({ signedInName, signedInShop, prefill, importer }: 
   const [errors, setErrors] = useState<StepErrors>({});
   const [banner, setBanner] = useState<ReactNode>(null);
   const [busy, setBusy] = useState(false);
-  // The steps left by "Continue", most recent last: Back then goes back in the browser's history (so Forward works) instead of adding an entry.
-  const trail = useRef<string[]>([]);
+  // Each step's history entry remembers the step it was reached from (history.state.llFrom, which survives a refresh): Back then goes
+  // back in the browser's history when that is where it leads (so Forward and the phone's Back agree) instead of adding an entry.
+  // Which way the last move went (the step slides in from that side); "none" on arrival and after a refresh.
+  const [dir, setDir] = useState<FlowDir>("none");
+  const shown = useRef<string | null>(null);
 
   // Restore the draft (sessionStorage) and lay the link's values over it (once per link: draft.prefillKey).
   useEffect(() => {
@@ -123,7 +136,7 @@ export function SignupWizard({ signedInName, signedInShop, prefill, importer }: 
       // A sales-assistant link starts at "Is this you?" so the owner confirms the name it carries.
       const s = resolveStep(u.searchParams.get("step") ?? (prefill?.shop ? "shop" : null), d);
       u.searchParams.set("step", s);
-      window.history.replaceState(window.history.state, "", u);
+      window.history.replaceState(ownState(), "", u);
       setRequested(s);
     } catch {
       // An odd URL: the flow still works from state.
@@ -136,9 +149,11 @@ export function SignupWizard({ signedInName, signedInShop, prefill, importer }: 
   useEffect(() => {
     const onPop = () => {
       const s = new URL(window.location.href).searchParams.get("step");
-      if (trail.current[trail.current.length - 1] === s) trail.current.pop();
       setErrors({});
       setBanner(null);
+      // Browser Back and Forward: the side follows the order of the steps.
+      const from = shown.current;
+      if (isFlowStep(s) && isFlowStep(from) && s !== from) setDir(stepIndex(s) < stepIndex(from) ? "back" : "forward");
       setRequested(s);
     };
     window.addEventListener("popstate", onPop);
@@ -150,21 +165,22 @@ export function SignupWizard({ signedInName, signedInShop, prefill, importer }: 
 
   // Keep the URL on the step actually shown (a deep link past an unanswered step lands on that step).
   useEffect(() => {
+    shown.current = step;
     if (!step) return;
     const u = new URL(window.location.href);
     if (u.searchParams.get("step") === step) return;
     u.searchParams.set("step", step);
-    window.history.replaceState(window.history.state, "", u);
+    window.history.replaceState(ownState(), "", u);
   }, [step]);
 
   const go = useCallback((s: FlowStep) => {
     setErrors({});
     setBanner(null);
     const from = new URL(window.location.href).searchParams.get("step");
-    if (from) trail.current.push(from);
+    setDir(isFlowStep(from) && stepIndex(s) < stepIndex(from) ? "back" : "forward");
     const u = new URL(window.location.href);
     u.searchParams.set("step", s);
-    window.history.pushState(window.history.state, "", u);
+    window.history.pushState({ llFrom: from }, "", u);
     setRequested(s);
   }, []);
   const idx = step && step !== "live" ? STEPS.indexOf(step) : -1;
@@ -176,7 +192,7 @@ export function SignupWizard({ signedInName, signedInShop, prefill, importer }: 
     idx > 0
       ? () => {
           const prev = STEPS[idx - 1]!;
-          if (trail.current[trail.current.length - 1] === prev) window.history.back();
+          if ((window.history.state as { llFrom?: string } | null)?.llFrom === prev) window.history.back();
           else go(prev);
         }
       : null;
@@ -235,6 +251,8 @@ export function SignupWizard({ signedInName, signedInShop, prefill, importer }: 
       };
       const r = await browserClient.post<merchantApi.MerchantDetail>("/v1/merchants", body);
       const id = r.merchant.id;
+      // The language of the signup (a ?lang= link sets no cookie) follows the owner into the dashboard, as it does from the sign-in page.
+      if (locale !== "en") rememberLocale(locale);
       // The rest of what the owner kept from their website (logo, colour, links, hours, services), now that the shop exists.
       const kept = draft.link === "read" && draft.accepted ? applyBodyFor(draft.accepted) : null;
       if (kept) await browserClient.post(`/v1/merchants/${id}/site-import/apply`, kept).catch(() => undefined);
@@ -300,6 +318,7 @@ export function SignupWizard({ signedInName, signedInShop, prefill, importer }: 
   const props = { draft, update, next };
   const created = draft.created;
   return (
+    <FlowDirContext.Provider value={dir}>
     <FlowShell step={step === "live" ? null : idx + 1} total={STEPS.length} onBack={step === "live" ? null : back} exitHref={step === "live" ? null : "/"} colors={colors} aside={aside}>
       {step === "link" ? (
         <LinkStep
@@ -333,6 +352,7 @@ export function SignupWizard({ signedInName, signedInShop, prefill, importer }: 
         />
       ) : null}
     </FlowShell>
+    </FlowDirContext.Provider>
   );
 }
 

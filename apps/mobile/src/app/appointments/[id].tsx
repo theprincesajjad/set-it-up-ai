@@ -11,7 +11,8 @@ import { dayToDate, torontoToday } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { disp, useTheme } from "../../theme";
-import { Badge, Banner, Button, Chip, ErrorState, Screen, SkeletonList, Text } from "../../ui";
+import { Badge, Banner, Button, Chip, ErrorState, Screen, SkeletonList, Text, haptic } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 /** One appointment: when, who, the cost and the policy in words, with change the time and cancel. */
 const errorMessage = (e: unknown, t: (key: "auth.err.network" | "auth.err.server") => string) => apiError(e, { network: t("auth.err.network"), server: t("auth.err.server") });
@@ -76,6 +77,7 @@ export default function Appointment() {
       const r = await api.appointments.reschedule(a!.id, { startsAt: slot, staffId: a!.staffId });
       setMode("view");
       setSlot(null);
+      haptic.success();
       setNote({ variant: "success", text: [t("bk.manage.rescheduled", { when: when(r.appointment.startsAt) }), r.feeCharged ? t("bk.manage.feeCharged", { fee: money(r.feeCents) }) : null].filter(Boolean).join(" ") });
       await refresh();
     } catch (e) {
@@ -87,7 +89,7 @@ export default function Appointment() {
   const times = bookingLogic.timesOn(avail.data ?? null, day);
 
   return (
-    <Screen back title={t("bk.manage.title")} subtitle={a.merchant.name}>
+    <Screen back title={t("bk.manage.title")} subtitle={a.merchant.name} refreshing={q.isRefetching} onRefresh={() => void q.refetch()}>
       <View style={{ flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <Badge>{t(`bk.status.${a.status}` as "bk.status.booked")}</Badge>
         <Text color="fgMuted">{when(a.startsAt)}</Text>
@@ -114,7 +116,7 @@ export default function Appointment() {
               const n = bookingLogic.timesOn(avail.data ?? null, d).length;
               const on = d === day;
               return (
-                <Pressable key={d} disabled={!avail.data || n === 0} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card, opacity: avail.data && n === 0 ? 0.4 : 1 }]}>
+                <Pressable key={d} disabled={!avail.data || n === 0} onPress={() => { setDay(d); setSlot(null); }} style={({ pressed }) => [[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card, opacity: avail.data && n === 0 ? 0.4 : 1 }], pressed ? pressFx.scale : null]}>
                   <Text variant="caption" rawColor={on ? c.onBrand : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
                   <Text style={disp(22, 800, 26)} rawColor={on ? c.onBrand : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
                 </Pressable>

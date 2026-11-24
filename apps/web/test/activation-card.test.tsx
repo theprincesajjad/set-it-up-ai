@@ -2,8 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { merchantApi } from "@ll/shared";
 
-let userLocale = "en";
-vi.mock("@/components/dashboard/MerchantContext", () => ({ useMerchant: () => ({ me: { user: { locale: userLocale } } }) }));
+// The card is written in the language of the page (Today asks the API for the checklist's words in the same one), not the owner's profile.
+let pageLocale = "en";
+vi.mock("@/components/dashboard/MerchantContext", () => ({ useMerchant: () => ({ me: { user: { locale: "en" } } }) }));
+vi.mock("@/lib/i18n/client", () => ({ useLocaleOrEnglish: () => ({ locale: pageLocale }), useLocale: () => ({ locale: pageLocale }) }));
 vi.mock("next/link", () => ({ default: ({ href, children, ...p }: { href: string; children: React.ReactNode }) => <a href={href} {...p}>{children}</a> }));
 
 import { ActivationCard } from "@/components/dashboard/onboarding/ActivationCard";
@@ -34,7 +36,7 @@ const checklist = (members = 14): merchantApi.OnboardingChecklist =>
 
 describe("ActivationCard", () => {
   it("keeps the English words the e2e specs look for", () => {
-    userLocale = "en";
+    pageLocale = "en";
     render(<ActivationCard c={checklist()} base="/m/1" />);
     expect(screen.getByRole("region", { name: "Your first 30 days" })).toBeTruthy();
     expect(screen.getByText("14 of 25 customers have visited")).toBeTruthy();
@@ -43,8 +45,8 @@ describe("ActivationCard", () => {
     expect(screen.getByText("Setup left")).toBeTruthy();
   });
 
-  it("writes the static words in the owner's language (users.locale)", () => {
-    userLocale = "hi-IN";
+  it("writes the static words in the page's language", () => {
+    pageLocale = "hi";
     render(<ActivationCard c={checklist()} base="/m/1" />);
     expect(screen.getByRole("region", { name: "आपके पहले 30 दिन" })).toBeTruthy();
     expect(screen.getByText("ग्राहक कहाँ से आए")).toBeTruthy();
@@ -52,7 +54,7 @@ describe("ActivationCard", () => {
   });
 
   it("is right to left for Urdu", () => {
-    userLocale = "ur";
+    pageLocale = "ur";
     const { container } = render(<ActivationCard c={checklist(1)} base="/m/1" />);
     expect(container.querySelector("section")?.getAttribute("dir")).toBe("rtl");
   });

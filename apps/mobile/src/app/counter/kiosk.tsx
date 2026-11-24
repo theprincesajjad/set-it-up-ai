@@ -15,6 +15,7 @@ import { useCounter } from "../../state/counter";
 import { ThemeScope, useTheme } from "../../theme";
 import { Banner, Button, CircleCheck, ConsentCheckbox, Keypad, ShopLogo, Text } from "../../ui";
 import type { KeypadKey } from "../../ui/Keypad";
+import { pressFx } from "../../ui/pressFx";
 
 const RESET_MS = 10_000;
 const KEY_GAP = 8;
@@ -148,7 +149,7 @@ function KioskInner() {
   const compactKeyH = Math.max(touchTargets.keypad, Math.min(touchTargets.kiosk, Math.floor((padArea - 3 * KEY_GAP) / 4)));
   if (step === "attract") {
     return (
-      <Pressable style={[styles.full, { backgroundColor: c.fg }]} onPress={reset} accessibilityRole="button" accessibilityLabel={t("mc.k.tapToCheckIn")}>
+      <Pressable style={({ pressed }) => [[styles.full, { backgroundColor: c.fg }], pressed ? pressFx.dim : null]} onPress={reset} accessibilityRole="button" accessibilityLabel={t("mc.k.tapToCheckIn")}>
         <Text variant="headline" rawColor={c.bg} center style={{ opacity: 0.7 }}>
           {shopName}
         </Text>
@@ -163,7 +164,7 @@ function KioskInner() {
   }
   if (step === "done" && result) {
     return (
-      <Pressable style={[styles.full, { backgroundColor: c.bg }]} onPress={reset} accessibilityRole="button" accessibilityLabel={`${result.title} ${result.sub}. ${t("mc.k.tapToFinish")}`}>
+      <Pressable style={({ pressed }) => [[styles.full, { backgroundColor: c.bg }], pressed ? pressFx.dim : null]} onPress={reset} accessibilityRole="button" accessibilityLabel={`${result.title} ${result.sub}. ${t("mc.k.tapToFinish")}`}>
         <CircleCheck size={80} color={c.positive} strokeWidth={1.5} />
         <Text variant="displayNumber" center style={{ fontSize: 44 * scale, lineHeight: 50 * scale }}>
           {result.title}
@@ -186,7 +187,7 @@ function KioskInner() {
     setDigits((d) => (k === "back" ? d.slice(0, -1) : k === "clear" ? "" : d.length < 10 ? d + k : d));
   };
   const logoEl = (size: number) => (
-    <Pressable onPress={onLogoTap} accessibilityLabel={t("mc.k.logo", { shop: shopName })} accessible>
+    <Pressable onPress={onLogoTap} accessibilityLabel={t("mc.k.logo", { shop: shopName })} accessible style={({ pressed }) => (pressed ? pressFx.dim : null)}>
       <ShopLogo shop={{ name: shopName, vertical: merchant?.merchant.vertical ?? "other", logoUrl: merchant?.merchant.logoUrl, brandColor: merchant?.merchant.brandColor }} size={size} />
     </Pressable>
   );

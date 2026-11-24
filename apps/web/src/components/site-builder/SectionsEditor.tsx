@@ -17,7 +17,7 @@ export function SectionsEditor({ content, onChange }: { content: SiteContent; on
     onChange({ order: next, hidden: content.hidden });
   };
   const toggle = (s: SiteSection, show: boolean) => onChange({ order, hidden: show ? content.hidden.filter((h) => h !== s) : [...content.hidden, s] });
-  const iconBtn = "inline-flex size-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:focus-ring disabled:text-muted-foreground disabled:hover:bg-transparent";
+  const iconBtn = "press inline-flex size-11 items-center justify-center rounded-full text-foreground hover:bg-muted focus-visible:focus-ring disabled:text-muted-foreground disabled:hover:bg-transparent";
   return (
     <ul className="divide-overlay">
       {order.map((s, i) => {

@@ -13,7 +13,7 @@
 import { MoreHorizontal, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { DirectionProvider } from "@/components/primitives/direction";
 import {
   Sidebar,
@@ -116,17 +116,96 @@ function useWide() {
   return useSyncExternalStore(subscribeLg, () => window.matchMedia("(min-width: 1024px)").matches, () => true);
 }
 
+/**
+ * The page the finger just chose. A tap on any link inside the dashboard marks its path at once, so the sidebar row or the tab lights up and a
+ * progress line starts before the next page has loaded (no dead tap). It clears when the route lands, or after 12 s if it never does.
+ */
+const PendingNav = createContext<string | null>(null);
+function usePendingNav(pathname: string): string | null {
+  const [pending, setPending] = useState<string | null>(null);
+  const [seen, setSeen] = useState(pathname);
+  if (seen !== pathname) {
+    setSeen(pathname);
+    setPending(null);
+  }
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      // No `defaultPrevented` check: next/link has already prevented the browser's own navigation by the time the click reaches the document.
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download") || a.origin !== window.location.origin) return;
+      // The same page (a tab in the query, an anchor like #needs-you) is not a route change.
+      if (a.pathname === window.location.pathname) return;
+      setPending(a.pathname);
+    };
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, []);
+  useEffect(() => {
+    if (!pending) return;
+    const t = setTimeout(() => setPending(null), 12_000);
+    return () => clearTimeout(t);
+  }, [pending]);
+  return pending;
+}
+
+/** A 2 px line across the top while a page is on its way. It waits 120 ms (a cached page never shows it), creeps toward the end and fades out on arrival. */
+function RouteProgress({ active }: { active: boolean }) {
+  const [phase, setPhase] = useState<"idle" | "start" | "run" | "done">("idle");
+  useEffect(() => {
+    if (!active) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPhase((p) => (p === "run" ? "done" : "idle"));
+      return;
+    }
+    let raf = 0;
+    const t = setTimeout(() => {
+      setPhase("start");
+      raf = requestAnimationFrame(() => setPhase("run"));
+    }, 120);
+    return () => {
+      clearTimeout(t);
+      cancelAnimationFrame(raf);
+    };
+  }, [active]);
+  useEffect(() => {
+    if (phase !== "done") return;
+    const t = setTimeout(() => setPhase("idle"), 220);
+    return () => clearTimeout(t);
+  }, [phase]);
+  if (phase === "idle") return null;
+  return (
+    <div aria-hidden data-route-progress={phase} className="pointer-events-none fixed inset-x-0 top-0 z-toast h-0.5 print:hidden">
+      <div
+        className={cn(
+          "h-full origin-left bg-trade rtl:origin-right motion-reduce:transition-none",
+          phase === "start" && "scale-x-0",
+          phase === "run" && "scale-x-90 transition-transform duration-[8000ms] ease-out motion-reduce:scale-x-100",
+          phase === "done" && "scale-x-100 opacity-0 transition-[transform,opacity] duration-200 ease-out",
+        )}
+      />
+    </div>
+  );
+}
+
 // 32 px rows with a mouse (the spec), 44 px under a finger: on a phone sheet and on a touch tablet in rail mode.
-const ROW = "h-10 gap-3 rounded-xl px-3 text-body max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! group-data-[collapsible=icon]:size-10! hover:bg-sidebar-accent/60 data-active:bg-sidebar-accent data-active:shadow-card focus-visible:focus-ring data-active:font-semibold [&_svg]:size-5";
+const ROW = "press-soft h-10 gap-3 rounded-xl px-3 text-body max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! group-data-[collapsible=icon]:size-10! hover:bg-sidebar-accent/60 data-active:bg-sidebar-accent data-active:shadow-card focus-visible:focus-ring data-active:font-semibold [&_svg]:size-5";
 
 // Clear (audit 2.4 Sidebar): 36 px rows with no gap, r18 lifted pill, 16 px glyph 12 from the text; the active row is glass tinted with the trade
 // colour and its glyph is the trade colour (the only trade on the chrome). 44 px under a finger.
-const ROW_CLEAR = "h-9 gap-3 rounded-[18px] px-3 text-body font-[450] max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center hover:bg-lg-seg-track active:bg-lg-seg-track data-active:glass-nav-on data-active:bg-trade-nav data-active:hover:bg-trade-nav data-active:font-[650] data-active:text-foreground focus-visible:focus-ring [&_svg]:size-4 [&_svg]:text-muted-foreground data-active:[&_svg]:text-trade";
-const SUB_CLEAR = "h-8 rounded-2xl ps-10 pe-3 text-body text-muted-foreground max-md:h-11 pointer-coarse:h-11 hover:bg-lg-seg-track data-active:bg-transparent data-active:font-[650] data-active:text-foreground focus-visible:focus-ring";
+const ROW_CLEAR = "press-soft h-9 gap-3 rounded-[18px] px-3 text-body font-[450] max-md:h-11 pointer-coarse:h-11 group-data-[collapsible=icon]:pointer-coarse:size-11! group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:justify-center hover:bg-lg-seg-track active:bg-lg-seg-track data-active:glass-nav-on data-active:bg-trade-nav data-active:hover:bg-trade-nav data-active:font-[650] data-active:text-foreground focus-visible:focus-ring [&_svg]:size-4 [&_svg]:text-muted-foreground data-active:[&_svg]:text-trade";
+const SUB_CLEAR = "press-soft h-8 rounded-2xl ps-10 pe-3 text-body text-muted-foreground max-md:h-11 pointer-coarse:h-11 hover:bg-lg-seg-track active:bg-lg-seg-track data-active:bg-transparent data-active:font-[650] data-active:text-foreground focus-visible:focus-ring";
 
-function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname: string }) {
+/** The path the nav marks as current: the page being opened when it is one of the nav's own, else the page on screen. */
+function useNavPath(pathname: string, all: NavItem[]) {
+  const pending = useContext(PendingNav);
+  return pending && all.some((i) => matches(pending, i)) ? pending : pathname;
+}
+
+function Rows({ nav, all, pathname: onScreen }: { nav: NavItem[]; all: NavItem[]; pathname: string }) {
   const { setOpenMobile, isMobile } = useSidebar();
   const { clear } = useThemeStyle();
+  const pathname = useNavPath(onScreen, all);
   const close = () => isMobile && setOpenMobile(false);
   const out: ReactNode[] = [];
   nav.forEach((i, idx) => {
@@ -154,7 +233,7 @@ function Rows({ nav, all, pathname }: { nav: NavItem[]; all: NavItem[]; pathname
               const kActive = isNavActive(pathname, k, all);
               return (
                 <SidebarMenuSubItem key={k.href}>
-                  <SidebarMenuSubButton isActive={kActive} className={clear ? SUB_CLEAR : "h-8 text-body max-md:h-11 pointer-coarse:h-11 focus-visible:focus-ring data-active:font-semibold"} render={<Link href={k.href} onClick={close} aria-current={kActive ? "page" : undefined} />}>
+                  <SidebarMenuSubButton isActive={kActive} className={clear ? SUB_CLEAR : "press-soft h-8 text-body max-md:h-11 pointer-coarse:h-11 focus-visible:focus-ring data-active:font-semibold"} render={<Link href={k.href} onClick={close} aria-current={kActive ? "page" : undefined} />}>
                     <span>{k.label}</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
@@ -234,9 +313,10 @@ function SidebarBody({ sections, header, footer, pathname, label, sidebarLabel }
 }
 
 /** Clear phone tab bar (audit 2.4): a 358 × 64 glass capsule, 16 from the sides and the bottom, inset 4 (5 inline), tabs r28, the active tab lifted. */
-function ClearTabBar({ items, hasMore, label, moreLabel, pathname }: { items: NavItem[]; hasMore: boolean; label: string; moreLabel: string; pathname: string }) {
-  const { setOpenMobile } = useSidebar();
-  const cell = "flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[28px] px-1 text-[10px] leading-3 font-semibold focus-visible:focus-ring";
+function ClearTabBar({ items, hasMore, label, moreLabel, pathname: onScreen }: { items: NavItem[]; hasMore: boolean; label: string; moreLabel: string; pathname: string }) {
+  const { setOpenMobile, openMobile } = useSidebar();
+  const pathname = useNavPath(onScreen, items);
+  const cell = "press flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[28px] px-1 text-[10px] leading-3 font-semibold focus-visible:focus-ring";
   return (
     <nav
       aria-label={label}
@@ -250,14 +330,14 @@ function ClearTabBar({ items, hasMore, label, moreLabel, pathname }: { items: Na
       {items.map((i) => {
         const active = isNavActive(pathname, i, items);
         return (
-          <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} className={cn(cell, active ? "glass-lift text-link dark:text-foreground dark:[&_svg]:text-info-text" : "text-muted-foreground")}>
+          <Link key={i.href} href={i.href} aria-current={active ? "page" : undefined} className={cn(cell, active ? "glass-lift text-link dark:text-foreground dark:[&_svg]:text-info-text" : "text-muted-foreground active:bg-lg-seg-track")}>
             <i.icon aria-hidden className="size-6" strokeWidth={1.6} />
             <span className="max-w-full truncate">{i.label}</span>
           </Link>
         );
       })}
       {hasMore ? (
-        <button type="button" onClick={() => setOpenMobile(true)} className={cn(cell, "text-muted-foreground")}>
+        <button type="button" aria-haspopup="dialog" aria-expanded={openMobile} onClick={() => setOpenMobile(true)} className={cn(cell, openMobile ? "bg-lg-seg-track text-foreground" : "text-muted-foreground active:bg-lg-seg-track")}>
           <MoreHorizontal aria-hidden className="size-6" strokeWidth={1.6} />
           <span>{moreLabel}</span>
         </button>
@@ -266,9 +346,10 @@ function ClearTabBar({ items, hasMore, label, moreLabel, pathname }: { items: Na
   );
 }
 
-function BottomBar({ items, hasMore, label, moreLabel, pathname }: { items: NavItem[]; hasMore: boolean; label: string; moreLabel: string; pathname: string }) {
-  const { setOpenMobile } = useSidebar();
-  const cell = "flex min-h-11 flex-col items-center justify-center gap-0.5 text-caption focus-visible:focus-ring";
+function BottomBar({ items, hasMore, label, moreLabel, pathname: onScreen }: { items: NavItem[]; hasMore: boolean; label: string; moreLabel: string; pathname: string }) {
+  const { setOpenMobile, openMobile } = useSidebar();
+  const pathname = useNavPath(onScreen, items);
+  const cell = "press flex min-h-11 flex-col items-center justify-center gap-0.5 text-caption focus-visible:focus-ring active:bg-muted";
   return (
     <nav aria-label={label} data-tabbar="" className="fixed inset-x-0 bottom-0 z-raised flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
       {items.map((i) => {
@@ -281,7 +362,7 @@ function BottomBar({ items, hasMore, label, moreLabel, pathname }: { items: NavI
         );
       })}
       {hasMore ? (
-        <button type="button" onClick={() => setOpenMobile(true)} className={cn(cell, "h-14 min-w-0 flex-1 px-1 text-muted-foreground")}>
+        <button type="button" aria-haspopup="dialog" aria-expanded={openMobile} onClick={() => setOpenMobile(true)} className={cn(cell, "h-14 min-w-0 flex-1 px-1", openMobile ? "text-foreground" : "text-muted-foreground")}>
           <MoreHorizontal aria-hidden className="size-6" strokeWidth={1.75} />
           <span>{moreLabel}</span>
         </button>
@@ -290,8 +371,11 @@ function BottomBar({ items, hasMore, label, moreLabel, pathname }: { items: NavI
   );
 }
 
-export function AppShell({ nav, sections, header, footer, mobileTitle, mobileActions, topBar, bottomNav, bottomLabel = "Main", labels, env, notice, bare = false, trade, children }: AppShellProps) {
+export function AppShell({ nav, sections, header, footer, mobileTitle, mobileActions, topBar, bottomNav, bottomLabel: bottomLabelProp, labels, env, notice, bare = false, trade, children }: AppShellProps) {
   const pathname = usePathname() ?? "";
+  const pending = usePendingNav(pathname);
+  // The bar's name in the reader's language (the sidebar's own name, "Main"), unless a console names it.
+  const bottomLabel = bottomLabelProp ?? labels?.main ?? "Main";
   const { dir } = useLocaleOrEnglish();
   const { clear } = useThemeStyle();
   const wide = useWide();
@@ -319,6 +403,7 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
     return (
       <DirectionProvider direction={dir}>
         <TooltipProvider>
+          <RouteProgress active={!!pending} />
           <div data-shell="bare" data-trade={trade} className="min-h-dvh bg-background text-foreground">
             {env ? <div className="fixed inset-x-0 top-0 z-banner print:hidden"><EnvironmentStrip env={env} /></div> : null}
             {notice ? <div className="px-4 pt-4">{notice}</div> : null}
@@ -334,6 +419,8 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
     return (
       <DirectionProvider direction={dir}>
         <TooltipProvider>
+          <PendingNav.Provider value={pending}>
+          <RouteProgress active={!!pending} />
           <SidebarProvider
             open={wide}
             onOpenChange={() => undefined}
@@ -383,6 +470,7 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
             ) : null}
             <LiquidGlassLens />
           </SidebarProvider>
+          </PendingNav.Provider>
         </TooltipProvider>
       </DirectionProvider>
     );
@@ -390,6 +478,8 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
   return (
     <DirectionProvider direction={dir}>
       <TooltipProvider>
+        <PendingNav.Provider value={pending}>
+        <RouteProgress active={!!pending} />
         <SidebarProvider
           open={wide}
           onOpenChange={() => undefined}
@@ -416,6 +506,7 @@ export function AppShell({ nav, sections, header, footer, mobileTitle, mobileAct
           </div>
           {bar.length ? <BottomBar items={bar} hasMore={moreTab} label={bottomLabel} moreLabel={labels?.more ?? "More"} pathname={pathname} /> : null}
         </SidebarProvider>
+        </PendingNav.Provider>
       </TooltipProvider>
     </DirectionProvider>
   );

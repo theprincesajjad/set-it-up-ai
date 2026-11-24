@@ -155,6 +155,28 @@ test("Done on the line leaves a visit that can be checked out, and Skip only wor
   await expect.poll(async () => (await call<{ state: string }>("GET", `/v1/public/queue/${joined.token}`)).state).toBe("done");
 });
 
+test("a first-name walk-in with no service and no phone is paid in cash at checkout, with the price typed in", async ({ page }) => {
+  const owner = await login("owner+crown-and-fade@example.com");
+  const m = await shopOf(owner);
+  const base = `/v1/merchants/${m}`;
+  await call("PUT", `${base}/queue/settings`, { open: true }, owner);
+  const added = await call<{ entry: { id: string } }>("POST", `${base}/queue`, { name: "Cash Kai", serviceId: null, requestedStaffId: null, textConsent: false }, owner);
+  const board = await call<{ chairs: { staffId: string; name: string }[] }>("GET", `${base}/queue`, undefined, owner);
+  const chairId = board.chairs.find((c) => c.name.startsWith("Ayo"))!.staffId;
+  await call("POST", `${base}/queue/${added.entry.id}/call`, { staffId: chairId }, owner);
+  const started = await call<{ appointmentId: string }>("POST", `${base}/queue/${added.entry.id}/start`, {}, owner);
+  await call("POST", `${base}/queue/${added.entry.id}/done`, {}, owner);
+  await signIn(page, "owner+crown-and-fade@example.com");
+  await page.goto(`/m/${m}/calendar?appt=${started.appointmentId}&checkout=1`);
+  const sheet = page.getByRole("dialog", { name: "Check out" });
+  await expect(sheet.getByText("Check out Cash Kai")).toBeVisible();
+  // The line came in at $0: the price is typed on the line; the phone is optional at the counter.
+  await sheet.getByLabel(/^Price for/).fill("25");
+  await sheet.getByLabel("Paid by").selectOption("cash");
+  await sheet.getByRole("button", { name: "Take $25.00" }).click();
+  await expect(sheet.getByText(/Paid, invoice #\d+/)).toBeVisible();
+});
+
 test("payouts show chair rent and commission, and a renter sees only their own chair", async ({ page }) => {
   await signIn(page, "owner+crown-and-fade@example.com");
   const owner = await login("owner+crown-and-fade@example.com");

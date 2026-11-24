@@ -153,7 +153,13 @@ async function areaOf(ctx: AppContext, m: Merchant, loc: Awaited<ReturnType<type
 
 async function factsOf(ctx: AppContext, m: Merchant): Promise<SiteShopFacts> {
   const loc = await primaryLocation(ctx, m.id);
-  const [books, area] = await Promise.all([isFeatureOn(ctx.db, m, "booking.appointments").catch(() => false), areaOf(ctx, m, loc)]);
+  const [bookingOn, area, bookable] = await Promise.all([
+    isFeatureOn(ctx.db, m, "booking.appointments").catch(() => false),
+    areaOf(ctx, m, loc),
+    ctx.db.select({ id: services.id }).from(services).where(and(eq(services.merchantId, m.id), eq(services.kind, "appointment"), eq(services.active, true))).limit(1),
+  ]);
+  // A shop with nothing to book (a new café, say) gets "Join" words, not "Book online".
+  const books = bookingOn && bookable.length > 0;
   return { name: m.name, tradeLabel: tradeLabelFor(m.vertical), areaLabel: area, city: loc?.city ?? null, books, hasLoyalty: true };
 }
 
@@ -546,7 +552,7 @@ async function pageData(ctx: AppContext, m: Merchant, content: SiteContent, mode
           hours: loc.hours ?? null,
         }
       : null,
-    booking: { enabled: books },
+    booking: { enabled: books && svc.length > 0 },
     services: books ? svc.map((s) => ({ id: s.id, name: s.name, description: s.description, durationMin: s.durationMin, priceCents: s.priceCents, priceFrom: s.priceFrom, categoryName: null })) : [],
     loyalty: shop?.program ? { program: shop.program, rewards: shop.rewards.slice(0, 6) } : null,
     promos: (shop?.promos ?? []).slice(0, 6),

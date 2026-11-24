@@ -13,7 +13,9 @@ describe("pricing cards", () => {
   it("shows Pro's real price in the page's text colour, the trial and the first-year price struck through, never named", () => {
     const html = renderToStaticMarkup(<PaidCard id="plus" firstYear={firstYear} />);
     expect(html).toContain(`>${moneyShort(PLANS.plus.priceCents)}<`);
-    expect(html).toMatch(/text-foreground[^>]*>\$29</); // the price is black like the home page's, never an accent colour or a subdued grey
+    // The price is black like the home page's, never an accent colour or a subdued grey. Round 4: the digits roll when the Monthly / Yearly
+    // switch changes (AnimatedNumber), so the plain-text price sits inside the text-foreground wrapper.
+    expect(html).toMatch(/text-foreground[^>]*>(?:<span[^>]*>)*\$29</);
     expect(html).not.toContain("text-primary-text");
     expect(html).not.toContain("text-fg-subtle");
     expect(html).not.toContain("early access");

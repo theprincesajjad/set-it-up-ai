@@ -238,6 +238,51 @@
   padding-block: revert-layer;
 }
 
+/* ===== Motion language (round 4). One set of values for every kit component; the easings (`ease-out`, `ease-sheet`) are in
+   @ll/design-tokens/theme.css. Use these names instead of repeating numbers:
+     duration-tap (150)   hover, press, toggle, tab and segment changes, and every exit
+     duration-enter (240) a dialog, sheet or toast coming in (`ease-sheet` for a sheet, `ease-out` for the rest); menus use duration-tap
+     duration-fill (500)  a bar, ring or gauge settling on a new value
+     press                the pressed state: scale 0.96, with the 150 ms transition for scale, colour, opacity, filter and shadow
+     press-soft           the same for large surfaces (a card or a tile that is one link): 0.98, so a wide block does not lurch
+     [--press-scale:1]    opt out on one element (a disabled look on a link, a button that must stay still)
+   Reduced motion: the base rule in theme.css cuts every duration to 1 ms; `press` also drops the scale and keeps the tone shift. */
+@theme {
+  --transition-duration-tap: 150ms;
+  --transition-duration-enter: 240ms;
+  --transition-duration-fill: 500ms;
+  --animate-pop-in: ll-pop-in 240ms var(--ease-out) both;
+  --animate-rise-in: ll-rise-in 240ms var(--ease-out) both;
+  @keyframes ll-pop-in {
+    from { opacity: 0; scale: 0.6; }
+  }
+  @keyframes ll-rise-in {
+    from { opacity: 0; translate: 0 8px; }
+  }
+}
+@utility press {
+  -webkit-tap-highlight-color: transparent;
+  transition-property: scale, color, background-color, border-color, box-shadow, opacity, filter;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+  @media (prefers-reduced-motion: no-preference) {
+    &:active:not(:disabled, [aria-disabled="true"], [aria-busy="true"], [data-disabled]) {
+      scale: var(--press-scale, 0.96);
+    }
+  }
+}
+@utility press-soft {
+  -webkit-tap-highlight-color: transparent;
+  transition-property: scale, color, background-color, border-color, box-shadow, opacity, filter;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+  @media (prefers-reduced-motion: no-preference) {
+    &:active:not(:disabled, [aria-disabled="true"], [aria-busy="true"], [data-disabled]) {
+      scale: var(--press-scale, 0.98);
+    }
+  }
+}
+
 /* ===== Kit (wave Q): Magic UI marquee keyframes (components/primitives/marquee.tsx). The RTL pair runs the other way so Urdu has no gap. */
 @theme {
   --animate-marquee: marquee var(--duration) infinite linear;

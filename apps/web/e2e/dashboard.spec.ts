@@ -78,7 +78,7 @@ test("owner: home, onboarding checklist and setup guide", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" }).first();
   for (const paid of ["Promos", "Discount cards", "Messages", "Orders"]) await expect(nav.getByRole("link", { name: paid })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "POS & integrations" })).toBeVisible();
-  await expect(page.getByText(/More with Pro, \$29 a month: 4 promos a month, 300 texts, your week every Sunday and the tools for your kind of shop/)).toBeVisible();
+  await expect(page.getByText(/More with Pro, \$29 a month: 4 promos a month and 300 texts/)).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.screenshot({ path: shot("01-home"), fullPage: true });
 
@@ -377,5 +377,21 @@ test.describe("phone width", () => {
     await page.goto(`/m/${id}/counter`);
     await expect(page.getByRole("region", { name: "Scan a card" })).toBeVisible();
     await page.screenshot({ path: shot("33-mobile-counter"), fullPage: true });
+  });
+
+  test("a staff row menu opens above the tab bar: Remove from staff is reachable with a tap", async ({ page }) => {
+    // 745 tall puts the menu's last item over the floating tab bar (it used to sit under it, z-50 below z-sticky).
+    await page.setViewportSize({ width: 390, height: 745 });
+    const id = await pineconeId();
+    await signIn(page, OWNER, `/m/${id}/staff`);
+    await page.getByRole("button", { name: /^More for Sam/ }).tap();
+    const remove = page.getByRole("menuitem", { name: "Remove from staff" });
+    await expect(remove).toBeVisible();
+    const box = (await remove.boundingBox())!;
+    const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("[role=menuitem]")?.textContent ?? null, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    expect(hit).toContain("Remove from staff");
+    await remove.tap();
+    await expect(page.getByRole("alertdialog").or(page.getByRole("dialog")).filter({ hasText: /Remove Sam/ })).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).tap();
   });
 });

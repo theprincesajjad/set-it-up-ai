@@ -30,7 +30,7 @@ export default function MessagesPageGated() {
 const CHANNEL: Record<string, string> = { sms: "Text", email: "Email", push: "Wallet pass" };
 
 function MessagesPage() {
-  const { api, base, enabled, detail } = useMerchant();
+  const { api, base, enabled, detail, role } = useMerchant();
   const list = useApi(() => api.messages.list({ limit: 30 }), [api]);
   const autos = useApi(enabled("marketing.automations") ? () => api.messages.automations() : null, [api]);
   const sms = enabled("marketing.sms");
@@ -41,7 +41,7 @@ function MessagesPage() {
       <PageHeader
         flush
         title="Messages"
-        description={`${sms ? "Texts and emails" : "Emails"} go only to people who agreed. Your business name, address and a ${sms ? "STOP line" : "way to unsubscribe"} are added for you.`}
+        description={`${sms ? "Texts and emails" : "Emails"} go only to people who agreed.`}
         actions={
           <>
             <Button size="md" variant="secondary" href="#automations" className="max-md:h-11 md:h-[38px] rounded-full px-4 text-[14px] font-medium">Automations</Button>
@@ -60,7 +60,7 @@ function MessagesPage() {
           <span className="text-[13px] text-fg-muted">Run on their own, once per person</span>
         </div>
         {!enabled("marketing.automations") ? (
-          <p className="border-b border-line py-3 text-[14px] text-fg-muted">Automations come with Pro. A free drink waiting, a win-back text and a birthday treat send themselves.</p>
+          <p className="border-b border-line py-3 text-[14px] text-fg-muted">Automations come with Pro. {role === "owner" ? <Link href={`${base}/billing?plan=plus`} className="font-medium text-fg underline underline-offset-4 focus-visible:focus-ring max-md:inline-flex max-md:min-h-11 max-md:items-center">See Pro</Link> : null}</p>
         ) : autos.loading && !autos.data ? (
           <SkeletonRows rows={3} />
         ) : (
@@ -81,7 +81,7 @@ function MessagesPage() {
         {list.loading && !list.data ? (
           <SkeletonRows rows={3} />
         ) : sent.length === 0 && autoRows.length === 0 ? (
-          <p className="border-b border-line py-3 text-[14px] text-fg-muted">Nothing sent yet. Your first message shows how many people came in after it.</p>
+          <p className="border-b border-line py-3 text-[14px] text-fg-muted">Nothing sent yet.</p>
         ) : (
           <ul>
             {sent.map((m) => (
@@ -110,7 +110,7 @@ function SentRow({ m, href }: { m: messagingApi.Message; href: string }) {
   const when = m.sentAt ?? m.scheduledAt ?? m.createdAt;
   return (
     <li>
-      <Link href={href} className="flex items-center justify-between gap-3 border-b border-line py-3.5 hover:bg-bg-subtle focus-visible:focus-ring">
+      <Link href={href} className="flex items-center justify-between gap-3 border-b border-line py-3.5 transition-colors duration-tap hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring">
         <span className="min-w-0">
           <span className="block truncate text-[15px] text-fg">{m.subject ?? m.body.slice(0, 60)}</span>
           <span className="block text-[12px] text-fg-muted">

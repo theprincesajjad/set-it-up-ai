@@ -233,7 +233,9 @@ describe("/auth/me memberships and staff PINs", () => {
     expect((await call("PUT", `/v1/merchants/${merchant.id}/staff-pin`, { pin: "4821" }, ownerToken)).statusCode).toBe(409);
     expect((await call("PUT", `/v1/merchants/${merchant.id}/staff-pin`, { pin: "12" }, ownerToken)).statusCode).toBe(400);
 
-    // The counter tablet is signed in as the owner; the barista taps in with their PIN.
+    // The counter tablet is signed in as the owner, who has no PIN of their own: the barista still taps in with theirs.
+    const ownerMe = await call("GET", "/v1/auth/me", undefined, ownerToken);
+    expect(ownerMe.json().merchants[0].hasPin).toBe(false);
     const ok = await call("POST", `/v1/merchants/${merchant.id}/staff-pin/verify`, { pin: "4821" }, ownerToken);
     expect(ok.statusCode).toBe(200);
     expect(ok.json().staff).toEqual({ userId: barista.id, name: "Jo Barista", role: "staff" });

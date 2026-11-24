@@ -350,4 +350,47 @@ describe("<CounterApp> scan first", () => {
     await waitFor(() => expect(asSam.award).toHaveBeenCalledTimes(1));
     expect(api.award).not.toHaveBeenCalled();
   });
+
+  it("a PIN typed on a hardware keyboard goes only to the PIN: no lookup, no digits on screen, wherever focus is", async () => {
+    const api = mockApi();
+    const verify = vi.fn(async () => ({ accessToken: "tok-sam", accessTokenExpiresAt: "", staff: { userId: "u-sam", name: "Sam Barista", role: "staff" as const } }));
+    render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} pin={{ verify, apiAs: () => mockApi() }} signedInName="Sofia Patel" />);
+    await userEvent.click(screen.getByRole("button", { name: /sign in with a PIN/i }));
+    // Focus leaves the sheet (a tap elsewhere); the keys still belong to the PIN.
+    (document.activeElement as HTMLElement | null)?.blur();
+    await userEvent.keyboard("13");
+    const boxes = screen.getByRole("group", { name: "PIN" });
+    expect(boxes.textContent).toBe("••");
+    expect(boxes.textContent).not.toContain("1");
+    await userEvent.keyboard("57");
+    await waitFor(() => expect(verify).toHaveBeenCalledWith({ pin: "1357" }));
+    await screen.findByRole("button", { name: /Stamping as Sam Barista/ });
+    expect(api.lookup).not.toHaveBeenCalled();
+    expect(api.award).not.toHaveBeenCalled();
+    expect(screen.getByRole("group", { name: "Last 4 digits of their phone" }).textContent).not.toMatch(/\d/);
+  });
+
+  it("staff with a PIN can take over a till whose signed-in owner has none; the owner can still choose one", async () => {
+    const api = mockApi();
+    const verify = vi.fn(async () => ({ accessToken: "tok-sam", accessTokenExpiresAt: "", staff: { userId: "u-sam", name: "Sam Barista", role: "staff" as const } }));
+    const setOwn = vi.fn(async () => undefined);
+    render(<CounterApp api={api} program={stamps} shopName="Shop" locations={[]} pin={{ verify, apiAs: () => mockApi(), hasPin: false, setOwn }} signedInName="Sofia Patel" />);
+    await userEvent.click(screen.getByRole("button", { name: /sign in with a PIN/i }));
+    expect(screen.getByRole("dialog", { name: "Who is stamping?" })).toBeTruthy();
+    await type4("2468");
+    await waitFor(() => expect(verify).toHaveBeenCalledWith({ pin: "2468" }));
+    await screen.findByRole("button", { name: /Stamping as Sam Barista/ });
+    expect(setOwn).not.toHaveBeenCalled();
+    // Sam hands the till back.
+    await userEvent.click(screen.getByRole("button", { name: /Stamping as Sam Barista/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Sign out Sam" }));
+    await screen.findByRole("button", { name: /sign in with a PIN/i });
+    // The owner chooses their own PIN from the same sheet.
+    await userEvent.click(screen.getByRole("button", { name: /sign in with a PIN/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Set my PIN" }));
+    await userEvent.keyboard("4242");
+    await screen.findByRole("dialog", { name: "Type it again" });
+    await userEvent.keyboard("4242");
+    await waitFor(() => expect(setOwn).toHaveBeenCalledWith("4242"));
+  });
 });

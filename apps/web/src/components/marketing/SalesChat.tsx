@@ -95,6 +95,8 @@ function useOffCtas(ref: RefObject<HTMLButtonElement | null>, on: boolean) {
 export function SalesChat() {
   const [info, setInfo] = useState<salesAgentApi.SalesAgentStatus | null>(null);
   const [open, setOpen] = useState(false);
+  /** The panel is on its way out: it fades for 150ms (marketing.css .ll-chat-out), then `open` goes false and the launcher comes back. */
+  const [closing, setClosing] = useState(false);
   const [lang, setLang] = useState<AgentLang>("en");
   const [lines, setLines] = useState<Line[]>([]);
   const [token, setToken] = useState<string | null>(null);
@@ -139,11 +141,20 @@ export function SalesChat() {
     else if (wasOpen.current) launcher.current?.focus();
     wasOpen.current = open;
   }, [open]);
+  // Closing: after the short fade the panel is gone. A timer, not animationend, so a missed event can never leave the panel up.
+  useEffect(() => {
+    if (!closing) return;
+    const t = setTimeout(() => {
+      setClosing(false);
+      setOpen(false);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [closing]);
   // Escape closes the panel wherever focus is (a button that was just pressed may be gone, leaving focus on the page).
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") setClosing(true);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -219,27 +230,27 @@ export function SalesChat() {
           onClick={() => setOpen(true)}
           aria-label={T.launcher}
           data-chat-launcher=""
-          className={`mkt ${marketingFontVars} fixed bottom-4 end-4 z-50 inline-flex h-11 items-center gap-2 rounded-r2 bg-primary px-4 text-meta-strong text-primary-foreground shadow-float transition-[opacity,visibility] duration-200 hover:bg-primary/90 focus-visible:focus-ring data-covered:invisible data-covered:opacity-0 max-sm:bottom-[calc(6px+env(safe-area-inset-bottom))] max-sm:size-12 max-sm:justify-center max-sm:rounded-full max-sm:px-0 ring-1 ring-white/20 motion-reduce:transition-none font-mkt-sans`}
+          className={`mkt ${marketingFontVars} fixed bottom-4 end-4 z-50 inline-flex h-11 items-center gap-2 rounded-r2 bg-primary px-4 text-meta-strong text-primary-foreground shadow-float transition-[opacity,visibility,scale,background-color] duration-200 ease-out hover:bg-primary/90 active:scale-96 motion-reduce:active:scale-100 focus-visible:focus-ring data-covered:invisible data-covered:opacity-0 max-sm:bottom-[calc(6px+env(safe-area-inset-bottom))] max-sm:size-12 max-sm:justify-center max-sm:rounded-full max-sm:px-0 ring-1 ring-white/20 motion-reduce:transition-none font-mkt-sans`}
         >
           <MessageCircle aria-hidden className="size-4 max-sm:size-5" />
           <span className="max-sm:hidden">{T.launcher}</span>
         </button>
       ) : null}
       {open ? (
-        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} className={`mkt ${marketingFontVars} font-mkt-sans fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-border bg-background shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]`}>
+        <section role="dialog" aria-label={T.title} lang={lang === "en" ? undefined : lang === "fr" ? "fr-CA" : lang} className={`mkt ${marketingFontVars} ${closing ? "ll-chat-out" : "ll-chat-in"} font-mkt-sans fixed inset-x-2 bottom-2 z-50 flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-sheet border border-border bg-background shadow-xl md:inset-x-auto md:bottom-4 md:end-4 md:w-[380px]`}>
           <header className="flex items-center gap-3 border-b border-border px-4 py-3">
             <div className="min-w-0 flex-1">
               <h2 className="text-body font-semibold text-foreground">{T.title}</h2>
               <p className="truncate text-caption text-muted-foreground">{status === "human" ? T.human : T.subtitle}</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)} aria-label={T.close} className="inline-flex size-11 items-center justify-center rounded-full hover:bg-muted focus-visible:focus-ring">
+            <button type="button" onClick={() => setClosing(true)} aria-label={T.close} className="inline-flex size-11 items-center justify-center rounded-full transition-[background-color,scale] duration-150 ease-out hover:bg-muted active:scale-96 active:bg-muted motion-reduce:active:scale-100 focus-visible:focus-ring">
               <X aria-hidden className="size-4" />
             </button>
           </header>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-muted px-3 py-3" aria-live="polite">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted px-3 py-3" aria-live="polite">
             <ol className="flex flex-col gap-2">
               {shown.map((l) => (
-                <li key={l.id} className={cn("flex flex-col", l.role === "user" ? "items-end" : "items-start")}>
+                <li key={l.id} className={cn("flex flex-col", l.role === "user" ? "items-end" : "ll-chat-line items-start")}>
                   {l.role === "human" ? <span className="mb-0.5 px-1 text-caption text-muted-foreground">{T.human}</span> : null}
                   <p dir="auto" className={cn("max-w-[85%] whitespace-pre-wrap rounded-[16px] px-3.5 py-2.5 text-meta", l.role === "user" ? "bg-primary text-primary-foreground" : "border border-border bg-background text-foreground")}>
                     {l.text}
@@ -250,7 +261,7 @@ export function SalesChat() {
             {fresh ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 {T.chips.map((c) => (
-                  <button key={c} type="button" onClick={() => void send(c)} className="min-h-11 rounded-full border border-border bg-background px-3.5 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring">
+                  <button key={c} type="button" onClick={() => void send(c)} className="min-h-11 rounded-full border border-border bg-background px-3.5 text-meta-strong text-foreground transition-[background-color,scale] duration-150 ease-out hover:bg-hover active:scale-96 active:bg-hover motion-reduce:active:scale-100 focus-visible:focus-ring">
                     {c}
                   </button>
                 ))}
@@ -280,7 +291,7 @@ export function SalesChat() {
                     input.current?.focus();
                     void send(text.trim() ? text : failed.text);
                   }}
-                  className="min-h-11 rounded-full border border-border bg-background px-4 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring disabled:opacity-40">
+                  className="min-h-11 rounded-full border border-border bg-background px-4 text-meta-strong text-foreground transition-[background-color,scale] duration-150 ease-out hover:bg-hover enabled:active:scale-96 motion-reduce:active:scale-100 focus-visible:focus-ring disabled:opacity-40">
                   {T.retry}
                 </button>
               </div>
@@ -297,7 +308,7 @@ export function SalesChat() {
             <div className="flex items-center gap-2">
               <label htmlFor="sales-chat-input" className="sr-only">{T.placeholder}</label>
               <input id="sales-chat-input" ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} placeholder={T.placeholder} dir="auto" className="h-11 min-w-0 flex-1 rounded-full border border-border bg-background px-4 text-body text-foreground placeholder:text-muted-foreground focus-visible:focus-ring" />
-              <button type="submit" disabled={busy || !text.trim()} aria-label={T.send} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:focus-ring disabled:opacity-40">
+              <button type="submit" disabled={busy || !text.trim()} aria-label={T.send} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-[background-color,scale,opacity] duration-150 ease-out hover:bg-primary/90 enabled:active:scale-96 motion-reduce:active:scale-100 focus-visible:focus-ring disabled:opacity-40">
                 <Send aria-hidden className="size-4 rtl:-scale-x-100" />
               </button>
             </div>

@@ -106,6 +106,8 @@ export interface QueueBoardResponse {
   chairs: QueueChairDto[];
   stats: { waiting: number; longestWaitMin: number; estimateMin: number | null; chairsTaking: number; chairsTotal: number; servedToday: number; noShowsToday: number };
   services: { id: string; name: string; durationMin: number }[];
+  /** Done at the chair today and not paid yet (never on the door tablet). */
+  toPay?: { entryId: string; name: string; appointmentId: string }[];
 }
 
 export interface PublicQueueResponse {

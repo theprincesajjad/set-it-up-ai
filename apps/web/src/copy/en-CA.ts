@@ -169,8 +169,6 @@ export const copy = {
       sub: "The stamp card that lives in their phone’s wallet.",
       primary: "Make your free card",
       secondary: "or try it with your shop’s name",
-      /** Wave X: moved out of the hero, under how it works. */
-      points: ["Nothing for customers to download", "Any phone or tablet", "Unlimited staff"],
       /** Sample notes: the sign-in stage (AuthLayout) uses the first. */
       floats: [
         { icon: "stamp_card", b: "Stamp added for Maya", s: "9 of 10, one to go" },
@@ -185,9 +183,9 @@ export const copy = {
     },
     /** The card maker under the hero (components/marketing/landing/TryCard.tsx): no sign-up, nothing saved until "Keep this card". */
     tryIt: {
-      eyebrow: "Try it now. No sign-up.",
+      eyebrow: "No sign-up",
       title: "Make your card *right here*.",
-      sub: "Type your shop’s name and pick your kind of business. This is the card your customers will carry, with the reward shops like yours usually start with.",
+      sub: "This is the card your customers will carry.",
       name: "Your shop’s name",
       namePlaceholder: "e.g. Morning Glory Café",
       /** On the pass while the name field is empty. */
@@ -200,7 +198,7 @@ export const copy = {
       reward: "Their reward",
       stamps: "{reward} after {goal} stamps",
       points: "{reward} at {goal} points, 1 point a dollar",
-      rewardNote: "You can change the reward, the goal and the colour any time.",
+      rewardNote: "Change it any time.",
       cta: "Keep this card, start free",
       /** Once a name is typed (cut at 22 characters with "…"). No possessive, so names that end in s read right ("Sam’s Cuts"). */
       ctaNamed: "Keep the {name} card, start free",
@@ -275,21 +273,19 @@ export const copy = {
       title: "Ready before the *morning rush*.",
       sub: "Three small steps, **about 5 minutes**, and no new hardware.",
       steps: [
-        { t: "Make it look like you", b: "Your name, your colour and a reward for the last stamp. Change any of it later." },
-        { t: "Leave the code by the till", b: "Customers scan it once and the card lands in their phone’s wallet. No app to download." },
-        { t: "Stamp, and say hello", b: "One tap from any phone or tablet. Their card fills up visit by visit, and they come back to finish it." },
+        { t: "Make it look like you", b: "Your name, your colour and a reward for the last stamp." },
+        { t: "Leave the code by the till", b: "Customers scan it once. No app to download." },
+        { t: "Stamp, and say hello", b: "One tap from any phone or tablet." },
       ],
       tent: "Collect stamps at {name}",
       tentScan: "Point your camera here",
       label: "The counter screen on a tablet: a keypad to find a customer and the recent stamps",
     },
-    /** What you get (the black band): four outcomes, each with its product moment. Sample shop and people; the caption says so. */
+    /** What you get (the black band): the nudge and the week, each with its product moment. Sample shop and people; the caption says so. */
     outcomes: {
       title: "What you get from *the first stamp*.",
-      sub: "All of it is in the free plan unless it says {pro}, and every new shop gets {trial} days of {pro} to try.",
+      sub: "Every new shop gets {trial} days of {pro} to try.",
       rows: [
-        { id: "pass", title: "Your card in their pocket", body: "It sits in Apple Wallet or Google Wallet next to their boarding passes, so it never gets left at home." },
-        { id: "stamp", title: "A stamp in one tap", body: "Scan their card or type the last four digits of their phone. The card on their phone updates on the spot." },
         { id: "winback", title: "A nudge before they drift", body: "See who hasn’t been in for a while and send them a reason to come back.", tag: "{pro}" },
         { id: "week", title: "Your regulars, counted", body: "A weekly note on who came back, who’s new and who’s close to a reward." },
       ],
@@ -302,7 +298,7 @@ export const copy = {
     /** The shop types: a photo, a short headline on what the card does, and the reward it starts with (VERTICAL_TEMPLATES). */
     shops: {
       title: "Made for the *main street*.",
-      sub: "Pick your kind of business and the card sets itself up with a reward that suits it.",
+      sub: "Pick your kind of business and the card sets itself up.",
       /** Under the tiles: the people in the photos (stock and generated pictures, public/marketing/photos/CREDITS.md) are not our customers. */
       photosNote: "Photos on this page are illustrative, not customers.",
       tiles: [
@@ -312,14 +308,6 @@ export const copy = {
         { key: "nails", label: "Nail studios", title: "Keep the standing appointment", line: "$10 off every 6th visit, counted for you.", link: "Make a nail studio card", alt: "A nail tech in an apron painting a smiling client’s nails by the window" },
         { key: "corner", label: "Corner stores", title: "Turn quick stops into regulars", line: "Points on every purchase add up to $5 off.", link: "Make a corner store card", alt: "A smiling clerk at the counter of a corner store" },
         { key: "florist", label: "Florists", title: "Be the shop for every birthday", line: "Points on every bouquet toward a free stem.", link: "Make a florist card", alt: "A smiling florist handing a bouquet across the counter" },
-      ],
-      /** Wave W: the next step after the tiles, a big link up to the card maker (not a sign-up link: the page keeps to 8). */
-      next: "Try it with your shop’s name",
-      nextNote: "See your own card in a few seconds. No sign-up.",
-      also: "Also on Local Loyalty",
-      more: [
-        { href: "/for-restaurants", label: "Restaurants", line: "Commission-free ordering" },
-        { href: "/for-bias", label: "BIAs", line: "Street campaigns" },
       ],
     },
     pricing: {
@@ -358,7 +346,7 @@ export const copy = {
     compare: {
       eyebrow: "Free means free",
       title: "How we *compare*.",
-      sub: "Loyalty programs for independent businesses, from each company’s public pricing page.",
+      sub: "Loyalty programs for independent businesses.",
       rows: ["Monthly fee", "Locations", "Fee on sales through the program"],
       us: ["$0", "Unlimited", "0%"],
       foot: "From each company’s public pricing page. Loyalty never moves to a paid plan.",
@@ -378,7 +366,7 @@ export const copy = {
     },
     faqTitle: "Questions, *answered*.",
     faq: [
-      { q: "Do my customers need an app?", a: "No. They scan your code once and add the card to Apple Wallet or Google Wallet, which is already on their phone. Nothing to download." },
+      { q: "Do my customers need an app?", a: "No. They scan your code once and add the card to Apple Wallet or Google Wallet, which is already on their phone." },
       { q: "Is the loyalty program really free?", a: "Yes. Stamps and points, rewards, the wallet card, your customer list, reports and your map listing are free forever, for unlimited locations and staff. There is no subscription and no fee on loyalty. Online orders on the Free plan carry a {orderFee}% fee." },
       { q: "How do you make money?", a: "From optional paid plans. {pro} is {monthly} a month for businesses that want more; restaurant plans and BIA street campaigns are priced separately. Your loyalty program never moves to a paid plan." },
       { q: "Do I need a POS system?", a: "No. Staff add stamps in the free counter app on any phone or tablet. They scan the customer’s card or type the last four digits of their phone number." },
@@ -396,7 +384,7 @@ export const copy = {
     final: {
       title: "Your regulars are *already here*.",
       /** Wave Z2: the reassurance line under the button already says free, no card and 5 minutes, so the lede does not repeat it. */
-      sub: "Give them a reason to come back, starting with their next visit.",
+      sub: "Give them a reason to come back.",
       cta: "Make your free card",
       /** The quiet second ask beside the button: back up to the card maker. */
       tryIt: "Try it with your shop’s name",
@@ -526,7 +514,7 @@ export const copy = {
   pricing: {
     eyebrow: "Pricing",
     title: "free loyalty. flat prices for the rest.",
-    sub: "No fee on loyalty and no contract. Prices in CAD, per month, per business.",
+    sub: "No fee on loyalty and no contract.",
     chips: [
       { id: "shop", label: "I run a shop", href: "/pricing?for=shop#shops" },
       { id: "booking", label: "I take bookings", href: "/pricing?for=booking#shops" },
@@ -534,6 +522,8 @@ export const copy = {
       { id: "bia", label: "I run a BIA", href: "/pricing?for=bia#bias" },
     ],
     freeBadge: "Every shop",
+    /** The Monthly / Yearly switch above the plan cards. Yearly Pro reads "~~$290~~ $199 first year". */
+    period: { label: "Billing period", monthly: "Monthly", yearly: "Yearly", save: "2 months free", perYear: "/year", firstYear: "first year", orMonthly: "or {price} a month" },
     planTableSummary: "See everything in each plan",
     othersLabel: "Pricing for restaurants, BIAs and shops",
     others: [
@@ -545,7 +535,7 @@ export const copy = {
     freeLines: ["Points, visits or stamps", "Rewards and a welcome bonus", "Customer list and basic reports", "Map listing and wallet pass", "Unlimited staff and locations"],
     plusLine: "The waitlist that fills cancelled slots, automatic rebooking, review requests, add-ons, promos and your week every Sunday.",
     proLine: "For repair, auto, alterations and print shops: tickets, quotes, deposits and invoices.",
-    openNote: "Subscribe from your dashboard and cancel any time. Sponsored promos and listings, map pins and BIA campaigns open once {target} shops have joined.",
+    openNote: "Sponsored promos and listings, map pins and BIA campaigns open once {target} shops have joined.",
     /** After openNote, only once the network is past the live-proof floor (LIVE_PROOF_MIN_SHOPS): a tiny count proves nothing. */
     openCount: "{n} shops have joined so far.",
     openNever: "Your loyalty program never moves to a paid plan.",
@@ -676,7 +666,7 @@ export const copy = {
     perMonth: "/month",
     plansCta: "See full pricing",
     weekEyebrow: "How we start",
-    weekTitle: "live in a week. Set it up yourself, or we do it with you.",
+    weekTitle: "live in a week.",
     week: [
       { t: "Day 1", b: "Add your dishes in the menu editor, or we visit, type up your menu and photograph your top dishes." },
       { t: "Day 3", b: "Your ordering page and WhatsApp updates go live. We move your tiffin list." },
@@ -704,7 +694,7 @@ export const copy = {
     gap: {
       eyebrow: "Why this exists",
       title: "“Conversion” has no data source in the province’s own BIA study.",
-      body: "The OBIAA and TABIA return-on-investment study listed “event visitors converted to regular visitors” as a desired measure, found no existing data source, and named loyalty programs that share analytics with the BIA as one way to fill the gap. Only 38% of BIAs collect customer-experience data.",
+      body: "Only 38% of BIAs collect customer-experience data.",
       source: "Source: OBIAA / TABIA, Return on Investment of BIAs (McMaster, 2024), Appendix A.",
       sourceUrl: "https://research.degroote.mcmaster.ca/wp-content/uploads/sites/98/2024/07/Perception-and-Action-in-a-Shifting-Retail-World-roi-of-bias-report.pdf",
       cardTitle: "How our report lines map to the study",
@@ -732,7 +722,7 @@ export const copy = {
     },
     pay: {
       title: "How BIAs usually pay for it",
-      body: "From the marketing and events line of the operating budget your members approve at the AGM (the levy is collected through City property taxes). Technology and activation grants, such as the City’s Main Street Innovation Fund (up to $25,000 in past rounds), can cover a campaign if it is in your application. We write the one-page budget and measurement plan for you.",
+      body: "From the marketing and events line of the operating budget your members approve at the AGM. Technology and activation grants, such as the City’s Main Street Innovation Fund (up to $25,000 in past rounds), can cover a campaign if it is in your application.",
       cta: "Get the grant-ready one-pager",
     },
     trust: [
@@ -792,12 +782,10 @@ export const copy = {
       primary: "Get started free",
       how: "See how it works",
       pricing: "See pricing",
-      band: { title: "Start taking bookings today.", sub: "Free to start. No credit card required." },
       sticky: "Get started",
     },
     hero: {
       priceLink: "See pricing",
-      proof: "Built in Toronto. Prices in CAD.",
       trust: ["Your own booking link", "No app for clients", "Your address stays private"],
       stageLabel: "The booking flow, as a client sees it",
       steps: ["Service", "Time", "Details", "Booked"],
@@ -1215,7 +1203,6 @@ export const copy = {
   // ---- phase-solo: G ----
   siteBuilder: {
     title: "Website",
-    subtitle: "Your own site, built from your shop. Services, prices, booking, rewards and offers stay up to date by themselves.",
     statusLive: (path: string) => `Live at ${path}`,
     statusDraft: "Not published yet",
     statusUnpublished: "Taken down. Publish to put it back.",
@@ -1241,14 +1228,13 @@ export const copy = {
     desktop: "Desktop",
     phone: "Phone",
     lookTitle: "Look",
-    lookHint: "Each one is already wired to your bookings, prices, rewards and map.",
     presets: {
       studio: { name: "Studio", blurb: "Leads with what you do and a Book button. For nail, brow, lash, hair and grooming pros." },
       portfolio: { name: "Portfolio", blurb: "Leads with you, then what to book. For makeup artists and pros whose name is the brand." },
       shopfront: { name: "Shopfront", blurb: "Leads with this week’s offers, rewards and hours. For cafés, bakeries and shops." },
     },
     wordsTitle: "Words",
-    wordsHint: "Type over any line, or ask for a rewrite. Prices, times and your address come from your shop, never from here.",
+    wordsHint: "Prices, times and your address come from your shop.",
     aiDraft: "Write it for me",
     aiDraftAgain: "Write a new draft",
     aiBrief: "Anything to mention? (optional)",
@@ -1267,7 +1253,6 @@ export const copy = {
     resetConfirm: "Replace every line with the starter words? Your current words will be gone.",
     resetDone: "Starter words are back.",
     sectionsTitle: "Sections",
-    sectionsHint: "Hide what you don’t need and put the rest in order.",
     show: (s: string) => `Show ${s}`,
     moveUp: (s: string) => `Move ${s} up`,
     moveDown: (s: string) => `Move ${s} down`,

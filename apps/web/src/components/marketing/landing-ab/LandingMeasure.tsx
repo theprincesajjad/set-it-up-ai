@@ -21,7 +21,7 @@ export function LandingMeasure({ path }: { path: string }) {
     <>
       <p className="mx-auto max-w-5xl px-4 py-5 text-center text-sm text-muted-foreground" data-landing-notice suppressHydrationWarning>
         {NOTICE.text}{" "}
-        <a className="font-medium text-foreground underline underline-offset-2" href={`/api/public/landing-off?next=${encodeURIComponent(path)}`} rel="nofollow">
+        <a className="py-3.5 font-medium text-foreground underline underline-offset-2" href={`/api/public/landing-off?next=${encodeURIComponent(path)}`} rel="nofollow">
           {NOTICE.off}
         </a>
       </p>

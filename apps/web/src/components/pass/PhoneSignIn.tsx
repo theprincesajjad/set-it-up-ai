@@ -126,7 +126,7 @@ export function PhoneSignIn({ next, devAutofill, title, heading = "h1", intro, t
             {t("auth.otp.sentTo", { phone: formatNanp(digits) })}{" "}
             <button
               type="button"
-              className="inline-flex min-h-11 items-center font-semibold text-fg underline underline-offset-2 focus-visible:focus-ring"
+              className="inline-flex min-h-11 items-center font-semibold text-fg underline underline-offset-2 focus-visible:focus-ring press"
               onClick={() => {
                 setStep("phone");
                 setCode("");

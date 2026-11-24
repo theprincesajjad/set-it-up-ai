@@ -36,8 +36,8 @@ function Ads() {
   ];
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Ads" description="Reach people near your street. Every ad is labelled Sponsored and reviewed before it runs." actions={<Button size="sm" iconStart={Plus} href={`${base}/ads/new`}>New ad</Button>} />
-      <DataTable caption="Ad campaigns" columns={cols} rows={list.data?.items ?? []} rowKey={(a) => a.id} loading={list.loading} error={list.error} onRetry={list.reload} onRowClick={(a) => router.push(`${base}/ads/${a.id}`)} empty={<EmptyState title="No ads yet" description="Boost a live promo or put your shop at the top of the neighbourhood feed." action={<Button variant="secondary" size="sm" href={`${base}/ads/new`}>New ad</Button>} />} />
+      <PageHeader flush title="Ads" description="Every ad is labelled Sponsored and reviewed before it runs." actions={<Button size="sm" iconStart={Plus} href={`${base}/ads/new`}>New ad</Button>} />
+      <DataTable caption="Ad campaigns" columns={cols} rows={list.data?.items ?? []} rowKey={(a) => a.id} loading={list.loading} error={list.error} onRetry={list.reload} onRowClick={(a) => router.push(`${base}/ads/${a.id}`)} empty={<EmptyState title="No ads yet" action={<Button variant="secondary" size="sm" href={`${base}/ads/new`}>New ad</Button>} />} />
     </div>
   );
 }

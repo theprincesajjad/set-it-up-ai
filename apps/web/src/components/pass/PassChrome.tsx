@@ -30,7 +30,7 @@ export function LanguageChip({ className }: { className?: string }) {
       <DropdownMenuTrigger
         aria-label={`${t("lang.label")}: ${info.short}`}
         className={cn(
-          "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-meta-strong text-foreground transition-colors duration-150 ease-out hover:bg-hover focus-visible:focus-ring data-popup-open:bg-hover",
+          "relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-meta-strong text-foreground hover:bg-hover focus-visible:focus-ring data-popup-open:bg-hover press",
           // Clear: a small glass button (it often sits on the pass's brand field or over the map).
           "clear:border-0 clear:glass-lite",
           // 44 px hit area around the 36 px pill.
@@ -63,7 +63,7 @@ export function PassTopBar({ title, backHref, backLabel, className, children }: 
   return (
     <div className={cn("flex min-h-11 items-center gap-2", className)}>
       {backHref ? (
-        <Link href={backHref} aria-label={backLabel ?? t("pass.nav.back")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring">
+        <Link href={backHref} aria-label={backLabel ?? t("pass.nav.back")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring press">
           <ArrowLeft aria-hidden className="size-5 rtl:rotate-180" strokeWidth={1.75} />
         </Link>
       ) : (

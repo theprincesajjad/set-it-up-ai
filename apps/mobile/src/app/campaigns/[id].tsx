@@ -47,7 +47,7 @@ export default function CampaignDetail() {
   const merchants = [...cmp.merchants].sort((a, b) => Number(visited.has(a.id)) - Number(visited.has(b.id)) || dist(a.id) - dist(b.id) || a.name.localeCompare(b.name));
 
   return (
-    <Screen back collapseTitle title={cmp.name} titleCase="as-is" contentStyle={{ paddingTop: 8 }}>
+    <Screen back collapseTitle title={cmp.name} titleCase="as-is" contentStyle={{ paddingTop: 8 }} refreshing={mine.isRefetching} onRefresh={() => void mine.refetch()}>
       <View style={{ gap: 6 }}>
         <Text variant="largeTitle" accessibilityRole="header" style={{ textTransform: "none" }}>
           {cmp.name}

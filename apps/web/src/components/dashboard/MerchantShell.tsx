@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "@/components/ui/Button";
 import { formatTime } from "@/lib/format";
 import { useHeadingTitle } from "@/lib/dashboard/useHeadingTitle";
-import { buildMerchantNav, canOpen, isBareRoute, navSections } from "@/lib/dashboard/nav";
+import { buildMerchantNav, canOpen, hasRestaurantFeature, isBareRoute, navSections } from "@/lib/dashboard/nav";
 import { navLabel } from "@/lib/dashboard/navLabels";
 import { placeLabel } from "@/lib/dashboard/today";
 import { browserApi } from "@/lib/api/browser";
@@ -29,6 +29,7 @@ import { NoAccess } from "./PageStates";
 import { Shell, type ShellNavItem } from "./Shell";
 import { ShopMark } from "./ShopMark";
 import { useThemeStyle } from "@/components/ui/ThemeStyle";
+import { cn } from "@/lib/utils";
 import { AlertsLink, LocationChip } from "./TopBar";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -71,7 +72,7 @@ function Switcher({ me }: { me: authApi.MeResponse }) {
   if (!many) return <div className={row}>{inner}</div>;
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger aria-label={t("shell.switchShop", { shop: m.name })} className={clear ? "flex min-h-8 w-full items-center gap-3 rounded-r3 px-0 hover:bg-lg-seg-track focus-visible:focus-ring max-md:min-h-11 group-data-[collapsible=icon]:justify-center" : "flex min-h-11 w-full items-center gap-2.5 rounded-lg px-1 hover:bg-sidebar-accent focus-visible:focus-ring group-data-[collapsible=icon]:justify-center"}>
+      <DropdownMenuTrigger aria-label={t("shell.switchShop", { shop: m.name })} className={clear ? "press-soft flex min-h-8 w-full items-center gap-3 rounded-r3 px-0 hover:bg-lg-seg-track aria-expanded:bg-lg-seg-track focus-visible:focus-ring max-md:min-h-11 group-data-[collapsible=icon]:justify-center" : "press-soft flex min-h-11 w-full items-center gap-2.5 rounded-lg px-1 hover:bg-sidebar-accent aria-expanded:bg-sidebar-accent focus-visible:focus-ring group-data-[collapsible=icon]:justify-center"}>
         {inner}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" dir={dir} className="w-64">
@@ -107,7 +108,7 @@ function SetupProgress() {
   const done = steps.filter((x) => x.done).length;
   if (!ob.data || steps.length === 0 || done >= steps.length) return null;
   return (
-    <Link href={`${base}/setup`} className="block min-h-11 rounded-lg py-1 focus-visible:focus-ring">
+    <Link href={`${base}/setup`} className="press-soft block min-h-11 rounded-lg py-1 hover:text-foreground focus-visible:focus-ring">
       <span className="flex justify-between text-meta text-muted-foreground">
         <span>{t("shell.setup.title")}</span>
         <span dir="ltr" className="tabular-nums">
@@ -115,7 +116,7 @@ function SetupProgress() {
         </span>
       </span>
       <span aria-hidden className={clear ? "mt-2 block h-1 overflow-hidden rounded-[2px] bg-lg-seg-track" : "mt-1.5 block h-0.75 overflow-hidden rounded-full bg-border"}>
-        <span className={clear ? "block h-1 rounded-[2px] bg-foreground" : "block h-0.75 rounded-full bg-foreground"} style={{ width: `${Math.round((done / steps.length) * 100)}%` }} />
+        <span className={cn("block origin-left transition-transform duration-fill ease-out rtl:origin-right", clear ? "h-1 rounded-[2px] bg-foreground" : "h-0.75 rounded-full bg-foreground")} style={{ transform: `scaleX(${done / steps.length})` }} />
       </span>
     </Link>
   );
@@ -199,7 +200,9 @@ export function MerchantShell({ me, children }: { me: authApi.MeResponse; childr
   });
   insertWaitlistNav(entries, base, role, t("wl.nav")); // phase-pro: p2: Waitlist under Calendar
   // Restaurants: counts after Orders, Phone orders and WhatsApp (new orders in orange; the others are waiting on someone, so muted).
-  const isRestaurant = entries.some((e) => e.badge);
+  // Only a shop on a restaurant plan has these counts: a restaurant still on its free stamp card has an Orders row but the API answers 402.
+  const enabledKeys = useMemo(() => new Set(features.features.filter((f) => f.enabled).map((f) => f.key)), [features]);
+  const isRestaurant = hasRestaurantFeature(enabledKeys) && (role === "owner" || role === "manager") && entries.some((e) => e.badge);
   const badges = useApi(isRestaurant ? () => api.restaurantBadges() : null, [api, isRestaurant], { pollMs: 30_000 });
   const badgeFor = (b: (typeof entries)[number]["badge"]) => (b && badges.data ? { count: badges.data[b], accent: b === "orders" } : undefined);
   const sections = navSections(entries).map((s) => ({

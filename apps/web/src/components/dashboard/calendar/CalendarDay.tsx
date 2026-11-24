@@ -23,8 +23,10 @@ import { StaffColumn } from "./StaffColumn";
 
 type Appt = appointmentsApi.AppointmentDto;
 
-type Drag = { id: string; kind: "move" | "resize"; startX: number; startY: number; dy: number; dx: number; origCol: number; col: number; moved: boolean };
+type Drag = { id: string; kind: "move" | "resize"; startX: number; startY: number; dy: number; dx: number; origCol: number; col: number; moved: boolean; armed: boolean };
 const THRESHOLD = 5;
+/** On a touch screen a block moves after a short press, so a swipe that starts on a block still scrolls the day. */
+const TOUCH_HOLD_MS = 280;
 
 export interface MoveRequest {
   appt: Appt;
@@ -80,17 +82,29 @@ export function CalendarDay({
   const begin = (a: Appt, kind: Drag["kind"], e: ReactPointerEvent<HTMLElement>, colIndex: number) => {
     if (e.button !== 0 || !movable(a)) return;
     e.stopPropagation();
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-    const d: Drag = { id: a.id, kind, startX: e.clientX, startY: e.clientY, dy: 0, dx: 0, origCol: colIndex, col: colIndex, moved: false };
+    const touch = e.pointerType === "touch";
+    if (!touch) (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    const d: Drag = { id: a.id, kind, startX: e.clientX, startY: e.clientY, dy: 0, dx: 0, origCol: colIndex, col: colIndex, moved: false, armed: !touch };
     dragRef.current = d;
     setDrag(d);
+    if (touch) {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+      holdTimer.current = setTimeout(() => {
+        const cur = dragRef.current;
+        if (!cur || cur.id !== d.id) return;
+        dragRef.current = { ...cur, armed: true };
+        setDrag(dragRef.current);
+        navigator.vibrate?.(10);
+      }, TOUCH_HOLD_MS);
+    }
   };
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!drag) return;
     const move = (e: PointerEvent) => {
       const d = dragRef.current;
-      if (!d) return;
+      if (!d || !d.armed) return;
       const dy = e.clientY - d.startY;
       const moved = d.moved || Math.abs(dy) > THRESHOLD || Math.abs(e.clientX - d.startX) > THRESHOLD;
       const box = edges();
@@ -102,7 +116,12 @@ export function CalendarDay({
       dragRef.current = next;
       setDrag(next);
     };
+    // Once a touch drag is armed, the finger moves the block instead of scrolling the page.
+    const holdScroll = (e: TouchEvent) => {
+      if (dragRef.current?.armed) e.preventDefault();
+    };
     const up = () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
       const d = dragRef.current;
       dragRef.current = null;
       setDrag(null);
@@ -131,10 +150,12 @@ export function CalendarDay({
       onMove({ appt: a, startsAt, endsAt, staffId: target.staffId, date: target.date });
     };
     document.addEventListener("pointermove", move);
+    document.addEventListener("touchmove", holdScroll, { passive: false });
     document.addEventListener("pointerup", up);
     document.addEventListener("pointercancel", up);
     return () => {
       document.removeEventListener("pointermove", move);
+      document.removeEventListener("touchmove", holdScroll);
       document.removeEventListener("pointerup", up);
       document.removeEventListener("pointercancel", up);
     };
@@ -203,7 +224,7 @@ export function CalendarDay({
                       top={g.top}
                       height={active && drag.kind === "resize" ? Math.max(14, g.height + drag.dy) : g.height}
                       selected={selectedId === a.id}
-                      dragging={!!active && drag.kind === "move"}
+                      dragging={drag?.id === a.id && drag.armed && drag.kind === "move"}
                       offsetY={active ? drag.dy : 0}
                       offsetX={active && drag.kind === "move" ? drag.dx : 0}
                       now={now}

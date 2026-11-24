@@ -88,7 +88,9 @@ body:has([data-chat-launcher]) footer.mkt { padding-block-end: 64px; }
 
   /* Cards lift a little under the pointer. */
   .mkt-lift { transition: transform 180ms ease-out, box-shadow 180ms ease-out; }
-  .mkt-lift:hover { transform: translateY(-3px); }
+  @media (hover: hover) { .mkt-lift:hover { transform: translateY(-3px); } }
+  /* A card that is a link answers the press (round 4). */
+  a.mkt-lift:active { transform: scale(0.98); }
 }
 
 /*
@@ -101,6 +103,39 @@ body:has([data-chat-launcher]) footer.mkt { padding-block-end: 64px; }
 .ll-hdr[data-lang="hi"] [data-l="hi"],
 .ll-hdr[data-lang="ur"] [data-l="ur"],
 .ll-hdr[data-lang="pa"] [data-l="pa"] { display: inline; }
+
+/*
+ * Round 4: the phone menu and the language menu open and close instead of popping. The <details> content fades (and, where motion is
+ * welcome, its panel drops 12px into place); closing is shorter than opening. `::details-content` keeps the content drawn until the
+ * fade ends (content-visibility, allow-discrete). Browsers without it open and close at once, as before. A closing menu takes no taps.
+ */
+@supports selector(::details-content) {
+  :is(.ll-menu, .ll-pop)::details-content { opacity: 0; transition: opacity 150ms ease-out, content-visibility 150ms allow-discrete; }
+  :is(.ll-menu, .ll-pop)[open]::details-content { opacity: 1; transition-duration: 220ms; }
+  @starting-style { :is(.ll-menu, .ll-pop)[open]::details-content { opacity: 0; } }
+  :is(.ll-menu, .ll-pop):not([open]) :is([data-scrim], [data-panel]) { pointer-events: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    :is(.ll-menu, .ll-pop) [data-panel] { transform: translateY(-12px); transition: transform 150ms ease-out; }
+    :is(.ll-menu, .ll-pop)[open] [data-panel] { transform: none; transition: transform 260ms cubic-bezier(0.2, 0, 0, 1); }
+    @starting-style { :is(.ll-menu, .ll-pop)[open] [data-panel] { transform: translateY(-12px); } }
+  }
+}
+/* The chat panel (SalesChat) comes up from its corner and leaves faster than it came; its replies fade in. Opacity only under reduced motion. */
+.ll-chat-in { animation: ll-chat-in 240ms cubic-bezier(0.2, 0, 0, 1) both; transform-origin: bottom right; }
+[dir="rtl"] .ll-chat-in { transform-origin: bottom left; }
+.ll-chat-out { animation: ll-chat-out 150ms ease-out both; pointer-events: none; }
+.ll-chat-line { animation: ll-chat-line 200ms ease-out both; }
+@keyframes ll-chat-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+@keyframes ll-chat-out { to { opacity: 0; transform: translateY(12px); } }
+@keyframes ll-chat-line { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ll-chat-in { from { opacity: 0; } }
+  @keyframes ll-chat-out { to { opacity: 0; } }
+  @keyframes ll-chat-line { from { opacity: 0; } }
+}
+/* The menu button's two icons (lines and cross) cross-fade in place. */
+.ll-swap { transition: opacity 300ms cubic-bezier(0.2, 0, 0, 1), scale 300ms cubic-bezier(0.2, 0, 0, 1); }
+@media (prefers-reduced-motion: reduce) { .ll-swap { transition-property: opacity; scale: 1 !important; } }
 
 /* Phones: while the menu is open the page behind it stays still. */
 @media (max-width: 1279.98px) {

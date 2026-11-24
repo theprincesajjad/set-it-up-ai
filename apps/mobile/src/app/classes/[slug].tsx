@@ -15,6 +15,7 @@ import { useOnline } from "../../state/network";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
 import { Banner, Button, EmptyState, ErrorState, hairline, LockedFeature, Screen, Sheet, SkeletonList, Store, Text, useToast } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 type Sess = classesApi.ClassSessionDto;
 type Product = classesApi.ProductDto;
@@ -128,7 +129,7 @@ export default function Classes() {
 
   const rule = (p: Product): string => {
     if (p.kind === "drop_in") return t("cl.ui.rule.dropIn");
-    if (p.kind === "pack") return `${t("cl.ui.rule.pack", { n: p.credits ?? 1, days: p.validDays ?? 90 })}${p.introOnly ? `. ${t("cl.ui.intro")}` : ""}`;
+    if (p.kind === "pack") return `${t((p.credits ?? 1) === 1 ? "cl.ui.rule.pack1" : "cl.ui.rule.pack", { n: p.credits ?? 1, days: p.validDays ?? 90 })}${p.introOnly ? `. ${t("cl.ui.intro")}` : ""}`;
     return `${p.classesPerMonth ? t("cl.ui.nClassesMonth", { n: p.classesPerMonth }) : t("cl.ui.unlimited")}. ${p.termMonths ? t("cl.ui.termMonths", { n: p.termMonths }) : t("cl.ui.monthToMonth")}`;
   };
 
@@ -148,7 +149,7 @@ export default function Classes() {
       footer={<StudioTabs slug={shop.slug} current="schedule" />}
     >
       {status === "signedIn" ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/classes/passes", params: { slug: shop.slug } })} style={[styles.pass, { backgroundColor: c.bgSubtle }]} testID="classes-pass">
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/classes/passes", params: { slug: shop.slug } })} style={({ pressed }) => [[styles.pass, { backgroundColor: c.bgSubtle }], pressed ? pressFx.scale : null]} testID="classes-pass">
           <View style={{ flex: 1 }}>
             <Text variant="caption" color="fgMuted">{t("cl.ui.yourPass")}</Text>
             <Text variant="bodyStrong" numberOfLines={1}>{passLine()}</Text>
@@ -163,7 +164,7 @@ export default function Classes() {
           const on = d === selected;
           const n = byDay.get(d)?.length ?? 0;
           return (
-            <Pressable key={d} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => setDay(d)} style={[styles.chip, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card }]} testID={`classes-day-${d}`}>
+            <Pressable key={d} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => setDay(d)} style={({ pressed }) => [[styles.chip, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card }], pressed ? pressFx.scale : null]} testID={`classes-day-${d}`}>
               <Text variant="metaStrong" rawColor={on ? c.bg : n ? c.fg : c.fgSubtle}>
                 {`${date(dayToDate(d), { weekday: "short" })} ${date(dayToDate(d), { day: "numeric" })}`}
               </Text>

@@ -247,7 +247,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
                   {formatSigned(t.points)}
                 </span>
                 {manager && !t.reversedAt && t.type !== "reversal" && new Date(t.createdAt).getTime() > recentCutoff ? (
-                  <button type="button" aria-label={`Reverse ${t.type.replace(/_/g, " ")} of ${t.points}`} title="Reverse" onClick={() => setReverseTx(t)} className="relative inline-flex size-8 shrink-0 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-1.5 after:content-[''] hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
+                  <button type="button" aria-label={`Reverse ${t.type.replace(/_/g, " ")} of ${t.points}`} title="Reverse" onClick={() => setReverseTx(t)} className="press relative inline-flex size-8 shrink-0 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-1.5 after:content-[''] hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
                     <Undo2 aria-hidden className="size-4" strokeWidth={1.75} />
                   </button>
                 ) : (
@@ -296,7 +296,7 @@ export function CustomerView({ d, rewards, onChange, reload, layout }: { d: merc
                 const r = await save.run(() => api.updateCustomer(c.memberId, { tags: c.tags.filter((x) => x !== t) }));
                 if (r) onChange(r);
               }}
-              className="inline-flex size-4 items-center justify-center rounded-full text-fg-muted hover:bg-bg-muted hover:text-fg"
+              className="relative inline-flex size-4 items-center justify-center rounded-full text-fg-muted after:absolute after:-inset-3.5 after:content-[''] hover:bg-bg-muted hover:text-fg active:bg-bg-muted active:text-fg focus-visible:focus-ring"
             >
               <X aria-hidden className="size-3" />
             </button>
@@ -446,7 +446,7 @@ function AdjustSheet({ open, onClose, balance, term, memberId, onDone }: { open:
       }
     >
       <div className="flex flex-col gap-4">
-        <div className="inline-flex h-9 self-start rounded-input bg-bg-subtle p-0.5" role="radiogroup" aria-label="Add or remove">
+        <div className="inline-flex h-9 max-md:h-11 self-start rounded-input bg-bg-subtle p-0.5" role="radiogroup" aria-label="Add or remove">
           {([1, -1] as const).map((v) => (
             <button
               key={v}
@@ -454,7 +454,7 @@ function AdjustSheet({ open, onClose, balance, term, memberId, onDone }: { open:
               role="radio"
               aria-checked={sign === v}
               onClick={() => setSign(v)}
-              className={cn("inline-flex items-center gap-1.5 rounded-[8px] px-3 text-meta", sign === v ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted")}
+              className={cn("press inline-flex items-center gap-1.5 rounded-[8px] px-3 text-meta focus-visible:focus-ring", sign === v ? "bg-bg font-medium text-fg shadow-[0_0_0_1px_var(--ll-color-line)]" : "text-fg-muted")}
             >
               {v === 1 ? <Plus aria-hidden className="size-3.5" /> : <Minus aria-hidden className="size-3.5" />}
               {v === 1 ? "Add" : "Remove"}

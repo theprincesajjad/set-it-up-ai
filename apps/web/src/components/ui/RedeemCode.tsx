@@ -44,7 +44,7 @@ export function RedeemCode({ code, rewardName, label, unit, expiresAt, onExpired
         </p>
       ) : null}
       {onCancel ? (
-        <button type="button" onClick={onCancel} className="min-h-11 text-meta-strong text-fg-muted underline underline-offset-2 hover:text-fg focus-visible:focus-ring">
+        <button type="button" onClick={onCancel} className="min-h-11 text-meta-strong text-fg-muted underline underline-offset-2 transition-[color,opacity] duration-tap ease-out hover:text-fg active:opacity-70 focus-visible:focus-ring">
           {unit ? t("wp.rc.cancelKeepUnit", { unit }) : t("wp.rc.cancelKeep")}
         </button>
       ) : null}

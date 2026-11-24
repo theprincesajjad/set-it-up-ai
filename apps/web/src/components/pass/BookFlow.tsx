@@ -29,33 +29,54 @@ import { cn } from "@/lib/cn";
 import { addOnPriceTime } from "@/lib/dashboard/add-ons"; // phase-pro: P5
 import { addDays, dayDate, todayIso } from "@/lib/restaurant/util";
 import { DateStrip } from "./DateStrip";
+import { queryOf, readBookChoice, writeBookChoice, type BookQuery } from "./bookState";
 
 type Data = appointmentsApi.PublicServicesResponse;
 type Slot = { startsAt: string; staffId: string };
 type Booked = appointmentsApi.CreateMyAppointmentResponse;
 
 const DAYS = 14;
+type Step = "services" | "addons" | "time" | "details" | "pay" | "done";
+/** What is typed on the details step, kept for this tab so a refresh does not lose it (never in the address). */
+type Draft = { notes?: string; firstName?: string; intake?: string };
 
+/** How many steps back this history entry has that the flow itself pushed (0: the entry the page was opened or reloaded on). */
+const pushedDepth = () => Number((window.history.state as { llBook?: number } | null)?.llBook) || 0;
+
+/** The offered time this customer is already holding, if the times in hand include it. */
+function heldIn(av: appointmentsApi.AvailabilityResponse | null) {
+  for (const h of av?.held ?? [])
+    for (const d of av!.days) {
+      const x = d.times.find((x) => x.startsAt === h.startsAt);
+      if (x) return { ...x, date: d.date, appointmentId: h.appointmentId, holdExpiresAt: h.holdExpiresAt };
+    }
+  return null;
+}
 
 /**
  * /shops/<slug>/book: pick a stylist and services (Figma M1), pick a time with the policy in plain words and the
  * card or deposit row (M2), pay the deposit or save a card, then a confirmation with a calendar file.
  * The bridal row is a quote, not a slot.
  */
-export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null; terminology?: string }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: { service?: string; staff?: string; pet?: string; rebook?: string }; meName?: string | null }) {
+export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }: { shop: { name: string; slug: string; logoUrl: string | null; brandColor: string | null; phone: string | null; terminology?: string }; data: Data; signedIn: boolean; devAutofill?: boolean; initial?: BookQuery & { pet?: string; rebook?: string }; meName?: string | null }) {
   const errText = useErrorText();
   const f = useFmt();
   const { t, money, date, time, pick } = f;
   const dur = (min: number) => durationText(t as never, min);
   // wave-p: "details" is its own step (who is coming, the note, the policy and sign-in), so the time step is only the time.
-  const [step, setStep] = useState<"services" | "addons" | "time" | "details" | "pay" | "done">("services"); // phase-pro: P5 "addons"
+  // The address carries the step and the choices (bookState.ts): a refresh or the device Back button lands where they were.
+  const [boot] = useState(() => readBookChoice(initial ?? {}, data));
+  const [step, setStep] = useState<Step>(boot.step); // phase-pro: P5 "addons"
   // A one-person shop (a solo nail tech) has nobody to choose between: book with her, and skip the "Anyone" picker.
   const solo = data.staff.length === 1;
-  const [staffId, setStaffId] = useState<string | null>(initial?.staff && data.staff.some((s) => s.id === initial.staff) ? initial.staff : solo ? data.staff[0]!.id : null);
+  const soloId = solo ? data.staff[0]!.id : null;
+  const [staffId, setStaffId] = useState<string | null>(boot.staffId ?? soloId);
   const [category, setCategory] = useState<string>("all");
-  const [ids, setIds] = useState<string[]>(initial?.service && data.services.some((s) => s.id === initial.service) ? [initial.service] : []);
-  const [day, setDay] = useState<string>(() => todayIso());
-  const [slot, setSlot] = useState<Slot | null>(null);
+  const [ids, setIds] = useState<string[]>(boot.ids);
+  const [day, setDay] = useState<string>(() => (boot.day && boot.day >= todayIso() ? boot.day : todayIso()));
+  const [slot, setSlot] = useState<Slot | null>(boot.slot);
+  // The unpaid booking the card step is for (in the address, so a refresh on that step finds it again).
+  const [holdId, setHoldId] = useState<string | null>(boot.hold);
   const [av, setAv] = useState<appointmentsApi.AvailabilityResponse | null>(null);
   const [anyAv, setAnyAv] = useState<appointmentsApi.AvailabilityResponse | null>(null);
   const [avLoading, setAvLoading] = useState(false);
@@ -75,6 +96,8 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const bookedRef = useRef<HTMLElement>(null);
   const [wantsSignIn, setWantsSignIn] = useState(false);
   const pending = useRef(false);
+  // A second tap in the same frame lands before `busy` has rendered: this stops it there.
+  const submitting = useRef(false);
   const signInRef = useRef<HTMLDivElement>(null);
   // wave-p: the sign-in box replaces the button, so bring it into view (the phone field takes focus by itself).
   useEffect(() => {
@@ -104,7 +127,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const picked = data.services.filter((s) => ids.includes(s.id));
   const intakeQuestion = picked.find((s) => s.intakeQuestion)?.intakeQuestion ?? null;
   // ---- phase-pro: P5 ---- add-ons offered with the picked services (only a Pro shop's payload carries them)
-  const [addOnIds, setAddOnIds] = useState<string[]>([]);
+  const [addOnIds, setAddOnIds] = useState<string[]>(boot.addOnIds);
   const offeredAddOns = useMemo(() => {
     const seen = new Map<string, appointmentsApi.PublicAddOnDto>();
     for (const s of data.services) if (ids.includes(s.id)) for (const a of s.addOns ?? []) if (!seen.has(a.id)) seen.set(a.id, a);
@@ -130,19 +153,24 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   const categories = useMemo(() => [...new Set(data.services.map((s) => s.categoryName).filter((c): c is string => !!c))], [data.services]);
   const visible = useMemo(() => data.services.filter((s) => (category === "all" || s.categoryName === category) && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand)), [data.services, category, staffId, pickedPet?.sizeBand]);
   // wave-q: the strip shows two weeks from today; "More dates" (DateStrip's calendar) moves the window to a later day.
-  const [fromDay, setFromDay] = useState<string>(() => todayIso());
+  const [fromDay, setFromDay] = useState<string>(() => (boot.day && boot.day > addDays(todayIso(), DAYS - 1) ? boot.day : todayIso()));
   const days = useMemo(() => nextDays(fromDay, DAYS), [fromDay]);
 
   const servicesKey = data.services.map((s) => s.id).join(",");
+  const choiceKey = `${staffId}|${servicesKey}|${pickedPet?.sizeBand ?? ""}|${ids.join(",")}|${addOnIds.join(",")}`;
+  const lastChoiceKey = useRef(choiceKey);
   // Drop chosen services the newly picked stylist doesn't do.
   useEffect(() => {
     // Keep the selection valid when the stylist changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIds((cur) => cur.filter((id) => data.services.some((s) => s.id === id && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand))));
+    setIds((cur) => (cur.every((id) => data.services.some((s) => s.id === id && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand))) ? cur : cur.filter((id) => data.services.some((s) => s.id === id && staffDoes(s, staffId) && serviceFitsSize(s.name, pickedPet?.sizeBand)))));
+    // Only a real change drops the chosen time: on the first run the time is the one the address restored.
+    if (lastChoiceKey.current === choiceKey) return;
+    lastChoiceKey.current = choiceKey;
     setSlot(null);
     // wave-p: keyed on the service ids, not the array: signing in refreshes the page props, and a new array must not drop the chosen time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [staffId, servicesKey, pickedPet?.sizeBand]);
+  }, [choiceKey]);
 
   const loadTimes = useCallback(async () => {
     if (!ids.length) return;
@@ -176,7 +204,153 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     void publicWaitlistEndpoints(browserClient).info(shop.slug, { from: days[0]!, to: days[days.length - 1]! }).then((r) => setWorkDays(r.open ? new Set(r.workDays) : new Set())).catch(() => setWorkDays(new Set()));
   }, [step, workDays, shop.slug, days]);
 
+  // The time they are already holding (they left the card step, refreshed, or picked up another phone): shown as theirs, never hidden.
+  const held = heldIn(av);
+  const heldShown = useRef<string | null>(null);
+  useEffect(() => {
+    const h = heldIn(av);
+    if (!h || heldShown.current === h.appointmentId) return;
+    heldShown.current = h.appointmentId;
+    // With no time chosen yet, it comes back chosen, on its day.
+    if (slot) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDay(h.date);
+    setSlot({ startsAt: h.startsAt, staffId: h.staffId });
+  }, [av, slot]);
+
+  // A restored time that is no longer offered (someone took it) is dropped as soon as the times are in, not at the last tap.
+  useEffect(() => {
+    if (step !== "time" || !av || avLoading || !slot) return;
+    const d = av.days.find((x) => x.date === day);
+    if (!d) return;
+    const x = d.times.find((x) => x.startsAt === slot.startsAt);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!x) setSlot(null);
+    else if (x.staffId !== slot.staffId) setSlot(x);
+  }, [step, av, avLoading, slot, day]);
+
+  // ---- the address follows the step and the choices; Back and Forward put them back.
+  const nav = useRef<"push" | "replace">("replace");
+  /** Once booked: the confirmation's own address. */
+  const doneRef = useRef<string | null>(null);
+  /** A step the customer moved forward to gets its own history entry, so the device Back button returns to the step before. */
+  const forward = (to: Step) => {
+    nav.current = "push";
+    setBanner(null);
+    setStep(to);
+    window.scrollTo?.({ top: 0 });
+  };
+  /** Somewhere the flow sends them (a taken time, a hold that ended): the same history entry, never a new one. */
+  const send = (to: Step) => {
+    nav.current = "replace";
+    setStep(to);
+  };
+  /** The on-page back arrow: the history entry we pushed for this step if there is one, else the same entry one step earlier. */
+  const goBack = (to: Step) => {
+    setBanner(null);
+    if (pushedDepth()) window.history.back();
+    else send(to);
+  };
+  /** Put the choices an address carries on screen (Back, Forward, or an address that moved before the page could hear it). */
+  const follow = (c: ReturnType<typeof readBookChoice>) => {
+    nav.current = "replace";
+    setBanner(null);
+    setWantsSignIn(false);
+    setIds(c.ids);
+    setStaffId(c.staffId ?? soloId);
+    setAddOnIds(c.addOnIds);
+    if (c.day) setDay(c.day);
+    setSlot(c.slot);
+    if (c.hold) setHoldId(c.hold);
+    setStep(c.step);
+  };
+  const heardAddress = useRef(false);
+  const staleChoice = useRef<string | null>(null);
+  useEffect(() => {
+    if (step === "done") return; // the confirmation has its own address (rememberBooked)
+    const mode = nav.current;
+    nav.current = "replace";
+    try {
+      const mine = { step, ids, staffId, addOnIds, day, slot, hold: holdId };
+      if (!heardAddress.current) {
+        heardAddress.current = true;
+        // Back or Forward pressed before the page was interactive: the address moved and nothing heard it. Follow it, never overwrite it.
+        const there = readBookChoice(queryOf(window.location.search), data);
+        // (Compared by step and time only: a book-again link preselects a service the address does not carry.)
+        if (JSON.stringify([there.step, there.slot, there.hold]) !== JSON.stringify([boot.step, boot.slot, boot.hold])) {
+          staleChoice.current = JSON.stringify(mine);
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          follow(there);
+          return;
+        }
+      }
+      // Until the choices from that address are on screen, the ones from the first render are not written back.
+      if (staleChoice.current) {
+        if (staleChoice.current === JSON.stringify(mine)) return;
+        staleChoice.current = null;
+      }
+      const search = writeBookChoice(window.location.search, mine, { solo });
+      if (search === window.location.search) return;
+      const url = `${window.location.pathname}${search}`;
+      // Only our own key goes in: handing Next its own history state back makes it treat the call as its own and keep the old address,
+      // which the next router.refresh() (signing in) would then put back.
+      const depth = pushedDepth();
+      if (mode === "push") window.history.pushState({ llBook: depth + 1 }, "", url);
+      else window.history.replaceState(depth ? { llBook: depth } : null, "", url);
+    } catch {
+      /* no history API: the flow still works, it just cannot be restored */
+    }
+    // `follow`, `boot` and `data` do not change what is written; the choices do
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, ids, staffId, addOnIds, day, slot, holdId, solo]);
+  useEffect(() => {
+    const onPop = () => {
+      const inFlow = /\/book\/?$/.test(window.location.pathname);
+      if (doneRef.current) {
+        // Booked: the steps behind the confirmation are over. Each one becomes the booking's own address and Back carries on, out of the
+        // flow, instead of offering the same booking again. With nothing further back, the confirmation stays up.
+        if (!inFlow) return;
+        window.history.replaceState(null, "", doneRef.current);
+        window.history.back();
+        return;
+      }
+      if (!inFlow) return;
+      follow(readBookChoice(queryOf(window.location.search), data));
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // data and soloId are the page's own props: they do not change while the flow is open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- what they typed on the details step survives a refresh (this tab only, cleared once booked).
+  const draftKey = `ll.book.${shop.slug}`;
+  const [draftRead, setDraftRead] = useState(false);
+  useEffect(() => {
+    try {
+      const d = JSON.parse(window.sessionStorage.getItem(draftKey) ?? "null") as Draft | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (d?.notes) setNotes((cur) => cur || d.notes!);
+      if (d?.firstName) setFirstName((cur) => cur || d.firstName!);
+      if (d?.intake) setIntake((cur) => cur || d.intake!);
+    } catch {
+      /* private mode or blocked storage: nothing to restore */
+    }
+    setDraftRead(true);
+  }, [draftKey]);
+  useEffect(() => {
+    if (!draftRead || step === "done") return;
+    try {
+      const d: Draft = { notes: notes || undefined, firstName: firstName || undefined, intake: intake || undefined };
+      if (d.notes || d.firstName || d.intake) window.sessionStorage.setItem(draftKey, JSON.stringify(d));
+      else window.sessionStorage.removeItem(draftKey);
+    } catch {
+      /* storage blocked */
+    }
+  }, [draftRead, draftKey, step, notes, firstName, intake]);
+
   const times = timesOn(av, day);
+  const heldText = held ? t("bk.holding", { time: time(held.holdExpiresAt).replace(/\.$/, "") }) : "";
   const anyCount = staffId ? timesOn(anyAv, day).length : 0;
   const when = (iso: string) => date(iso, { weekday: "short", month: "short", day: "numeric" }) + ", " + time(iso);
   const endsAtOf = (s: Slot) => new Date(new Date(s.startsAt).getTime() + (av?.blockMin ?? sel.durationMin) * 60_000).toISOString();
@@ -186,8 +360,15 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   /** The confirmation lives at the booking's own address: a refresh (or Back) lands on it, never on a blank "Step 1 of 3" that invites a second booking. */
   function rememberBooked(id: string) {
     try {
+      window.sessionStorage.removeItem(draftKey);
+    } catch {
+      /* storage blocked */
+    }
+    try {
       const lang = new URLSearchParams(window.location.search).get("lang");
-      window.history.replaceState(window.history.state, "", `/shops/${encodeURIComponent(shop.slug)}/book/${encodeURIComponent(id)}?booked=1${lang ? `&lang=${encodeURIComponent(lang)}` : ""}`);
+      const url = `/shops/${encodeURIComponent(shop.slug)}/book/${encodeURIComponent(id)}?booked=1${lang ? `&lang=${encodeURIComponent(lang)}` : ""}`;
+      doneRef.current = url;
+      window.history.replaceState(null, "", url);
     } catch {
       /* no history API: the confirmation still shows */
     }
@@ -227,7 +408,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         const r = await browserApi.me.appointment(id);
         if (!r.appointment.pending) {
           setFinished(r.appointment);
-          setStep("done");
+          send("done");
           rememberBooked(r.appointment.id);
           return;
         }
@@ -238,6 +419,52 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     }
     setBanner({ tone: "info", text: t("bk.done.pending") });
   }
+
+  /** The hold is gone (ten minutes passed, or it was replaced on another phone): back to the times, with their choices kept. */
+  const holdEnded = useCallback(() => {
+    setBooked(null);
+    setHoldId(null);
+    setBanner({ tone: "info", text: t("cust.bk.holdEnded") });
+    nav.current = "replace";
+    setStep("time");
+  }, [t]);
+  /** Where a held booking stands now: still waiting on the card, confirmed, or gone. */
+  const checkHold = useCallback(
+    async (id: string) => {
+      try {
+        const r = await browserApi.me.appointment(id);
+        const a = r.appointment;
+        if (a.status === "booked" && !a.pending) {
+          setFinished(a);
+          nav.current = "replace";
+          setStep("done");
+          rememberBooked(a.id);
+        } else if (a.status === "booked" && a.pending && (r.deposit || r.setup)) setBooked({ appointment: a, deposit: r.deposit, setup: r.setup, confirmed: false });
+        else holdEnded();
+      } catch (e) {
+        // No signal: keep the step and say so. Anything else (not theirs, not found, signed out): the hold is not there to pay.
+        if (isApiError(e) && e.isNetwork) setBanner({ tone: "danger", text: t("rc.error.body") });
+        else holdEnded();
+      }
+    },
+    // rememberBooked only reads the shop and the address
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [holdEnded, t],
+  );
+  // A refresh (or Forward) on the card step: fetch the hold again instead of starting over.
+  const bookedId = booked?.appointment.id ?? null;
+  useEffect(() => {
+    if (step !== "pay" || !holdId || bookedId === holdId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void checkHold(holdId);
+  }, [step, holdId, bookedId, checkHold]);
+  // The ten minutes ran out while the card step was open.
+  const holdUntil = step === "pay" ? (booked?.appointment.holdExpiresAt ?? null) : null;
+  useEffect(() => {
+    if (!holdUntil || !bookedId) return;
+    const id = window.setTimeout(() => void checkHold(bookedId), Math.max(0, new Date(holdUntil).getTime() - Date.now()) + 1500);
+    return () => window.clearTimeout(id);
+  }, [holdUntil, bookedId, checkHold]);
 
   async function submit() {
     if (!slot) return;
@@ -251,26 +478,32 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       setWantsSignIn(true);
       return;
     }
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setBanner(null);
     try {
-      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null, addOnIds /* phase-pro: P5 */, intakeAnswer: !pharmacy && intakeQuestion ? intake.trim() || null : null, rebook: initial?.rebook ?? null /* phase-pro: p3 */ });
+      const r = await browserApi.me.bookAppointment({ serviceIds: ids, staffId, startsAt: slot.startsAt, notes: pharmacy ? null : notes.trim() || null, customerName: needsName ? firstName.trim() || null : null, petId: petId || null, addOnIds /* phase-pro: P5 */, intakeAnswer: !pharmacy && intakeQuestion ? intake.trim() || null : null, rebook: initial?.rebook ?? null /* phase-pro: p3 */, replaces: booked?.appointment.id ?? holdId ?? held?.appointmentId ?? null /* the hold this choice takes the place of */ });
       setBooked(r);
       if (r.confirmed) {
         setFinished(r.appointment);
-        setStep("done");
+        send("done");
         rememberBooked(r.appointment.id);
-      } else setStep("pay");
-      window.scrollTo?.({ top: 0 });
+        window.scrollTo?.({ top: 0 });
+      } else {
+        setHoldId(r.appointment.id);
+        forward("pay");
+      }
     } catch (e) {
       if (isApiError(e) && e.status === 409) {
         setBanner({ tone: "danger", text: t("bk.taken") });
         setSlot(null);
-        setStep("time");
+        send("time");
         void loadTimes();
       } else if (isApiError(e) && e.status === 402) setBanner({ tone: "info", text: t("bk.unavailable") });
       else setBanner({ tone: "danger", text: isApiError(e) && e.isNetwork ? t("rc.error.body") : errText(e) });
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   }
@@ -301,7 +534,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
     </div>
   );
   const back = (to: "services" | "addons" | "time" | "details", label = t("bk.back")) => (
-    <button type="button" onClick={() => { setStep(to); setBanner(null); }} aria-label={label} className="inline-flex size-11 items-center justify-center rounded-full border border-line text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+    <button type="button" onClick={() => goBack(to)} aria-label={label} className="inline-flex size-11 items-center justify-center rounded-full border border-line text-fg hover:bg-bg-subtle focus-visible:focus-ring press">
       <ChevronLeft aria-hidden className="size-5 rtl:rotate-180" strokeWidth={1.75} />
     </button>
   );
@@ -381,15 +614,30 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
   }
 
   // ---- pay (the 10-minute hold)
+  if (step === "pay" && !booked) {
+    // A refresh on the card step: the hold is being fetched (checkHold).
+    return (
+      <div className="flex flex-col gap-6" aria-busy data-testid="book-pay-loading">
+        {head}
+        <div className="flex flex-col gap-3">
+          {back("details")}
+          <Heading>{t("bk.card.title")}</Heading>
+          <Skeleton className="h-5 w-48" />
+        </div>
+        {banner ? <Banner tone={banner.tone} action={holdId ? <Button size="sm" variant="secondary" onClick={() => { setBanner(null); void checkHold(holdId); }}>{t("rc.tryAgain")}</Button> : undefined}>{banner.text}</Banner> : <Skeleton className="h-40 w-full rounded-card" />}
+      </div>
+    );
+  }
   if (step === "pay" && booked) {
     const a = booked.appointment;
     return (
       <div className="flex flex-col gap-6">
         {head}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
+          {back("details")}
           <Heading>{t("bk.card.title")}</Heading>
           <p className="text-body text-fg-muted">{when(a.startsAt)}{a.staffName ? ` · ${a.staffName}` : ""}</p>
-          {a.holdExpiresAt ? <p className="text-meta text-fg-muted">{t("bk.holding", { time: time(a.holdExpiresAt).replace(/\.$/, "") })}</p> : null}
+          {a.holdExpiresAt ? <p className="text-meta text-fg-muted" data-testid="book-holding">{t("bk.holding", { time: time(a.holdExpiresAt).replace(/\.$/, "") })}</p> : null}
         </div>
         {booked.deposit ? <BigNumber tone="accent" className="text-[32px]">{money(booked.deposit.amountCents)}</BigNumber> : null}
         {policy}
@@ -420,7 +668,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             const p = pick(a);
             return (
               <li key={a.id}>
-                <button type="button" role="switch" aria-checked={on} onClick={() => setAddOnIds((cur) => (on ? cur.filter((x) => x !== a.id) : [...cur, a.id]))} className="flex min-h-16 w-full items-center gap-3 py-3 text-start focus-visible:focus-ring">
+                <button type="button" role="switch" aria-checked={on} onClick={() => setAddOnIds((cur) => (on ? cur.filter((x) => x !== a.id) : [...cur, a.id]))} className="flex min-h-16 w-full items-center gap-3 py-3 text-start focus-visible:focus-ring press-soft">
                   <span className="min-w-0 flex-1">
                     <span className="block text-body-strong text-fg">{p.name}</span>
                     {p.description ? <span className="block text-meta text-fg-muted">{p.description}</span> : null}
@@ -442,7 +690,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             </div>
             {deposit > 0 ? <p className="text-meta text-fg-muted">{t("bk.depositHold", { amount: money(deposit) })}</p> : null}
           </div>
-          <Button size="lg" variant="shop" fullWidth onClick={() => { setSlot(null); setStep("time"); window.scrollTo?.({ top: 0 }); }}>{t("bk.chooseTime")}</Button>
+          <Button size="lg" variant="shop" fullWidth onClick={() => forward("time")}>{t("bk.chooseTime")}</Button>
         </div>
       </div>
     );
@@ -487,11 +735,17 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
               <div key={part} className="flex flex-col gap-2" data-testid={`times-${part}`}>
                 <p className="text-caption uppercase tracking-[0.06em] text-fg-muted">{t(`cust.bk.part.${part}`)}</p>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  {items.map((x) => (
-                    <button key={x.startsAt} type="button" aria-pressed={slot?.startsAt === x.startsAt} disabled={avLoading} onClick={() => setSlot(x)} className={cn("h-11 whitespace-nowrap rounded-input border px-1 text-body tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 focus-visible:focus-ring motion-safe:active:scale-95", slot?.startsAt === x.startsAt ? "border-trade bg-trade font-semibold text-trade-foreground shadow-card" : "border-line bg-card text-fg hover:border-trade/50 hover:bg-trade-soft")}>
-                      {time(x.startsAt)}
-                    </button>
-                  ))}
+                  {items.map((x) => {
+                    const on = slot?.startsAt === x.startsAt;
+                    const theirs = held?.startsAt === x.startsAt;
+                    return (
+                      <button key={x.startsAt} type="button" aria-pressed={on} data-held={theirs || undefined} aria-label={theirs ? `${time(x.startsAt)}, ${heldText}` : undefined} disabled={avLoading} onClick={() => setSlot(x)} className={cn("relative h-11 whitespace-nowrap rounded-input border px-1 text-body tabular-nums transition-[background-color,border-color,box-shadow,transform] duration-150 focus-visible:focus-ring motion-safe:active:scale-95", on ? "border-trade bg-trade font-semibold text-trade-foreground shadow-card" : theirs ? "border-trade bg-trade-soft text-fg" : "border-line bg-card text-fg hover:border-trade/50 hover:bg-trade-soft")}>
+                        {time(x.startsAt)}
+                        {/* The time this customer is holding: a dot in the corner, and the "holding until" line under the grid. */}
+                        {theirs ? <span aria-hidden className={cn("absolute end-1.5 top-1.5 size-1.5 rounded-full", on ? "bg-trade-foreground" : "bg-trade")} /> : null}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -503,7 +757,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
                   <Button variant="secondary" onClick={() => setWaitSheet(true)}>{t("wl.book.cta")}</Button>
                 </div>
               ) : times.length > 0 ? (
-                <button type="button" onClick={() => setWaitSheet(true)} className="min-h-11 self-start text-start text-meta text-fg underline underline-offset-2 focus-visible:focus-ring">{t("wl.book.other")}</button>
+                <button type="button" onClick={() => setWaitSheet(true)} className="min-h-11 self-start text-start text-meta text-fg underline underline-offset-2 focus-visible:focus-ring press">{t("wl.book.other")}</button>
               ) : null
             ) : null}
             {waitSheet ? <WaitlistSheet open onClose={() => setWaitSheet(false)} shop={{ slug: shop.slug, name: shop.name }} serviceId={ids[0]!} serviceName={picked[0] ? pick(picked[0]).name : ""} staffId={staffId} day={day} full={times.length === 0} signedIn={signedIn} needsName={needsName} /> : null}
@@ -511,14 +765,15 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             {staffId && anyCount > 0 ? (
               <p className="text-meta text-fg-muted">
                 {t("bk.time.anyHas", { n: anyCount, day: date(dayDate(day), { weekday: "long" }, "UTC") })}{" "}
-                <button type="button" className="text-fg underline underline-offset-2" onClick={() => { setStaffId(null); }}>{t("bk.time.seeThem")}</button>
+                <button type="button" className="text-fg underline underline-offset-2 active:opacity-60" onClick={() => { setStaffId(null); }}>{t("bk.time.seeThem")}</button>
               </p>
             ) : null}
           </div>
         )}
         <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-bg px-4 pb-4 pt-3">
           <p className="text-meta text-fg-muted">{slot ? `${when(slot.startsAt)} – ${time(endsAtOf(slot))}${shownStaff ? ` · ${shownStaff}` : ""}` : t("cust.bk.pickOne")}</p>
-          <Button size="lg" variant="shop" fullWidth disabled={!slot} onClick={() => { setBanner(null); setStep("details"); window.scrollTo?.({ top: 0 }); }}>{t("cust.bk.continue")}</Button>
+          {held && slot?.startsAt === held.startsAt ? <p className="text-meta-strong text-fg" data-testid="book-held">{heldText}</p> : null}
+          <Button size="lg" variant="shop" fullWidth disabled={!slot} onClick={() => forward("details")}>{t("cust.bk.continue")}</Button>
         </div>
       </div>
     );
@@ -542,7 +797,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
               <p className="text-headline text-fg">{date(slot.startsAt, { weekday: "long", month: "long", day: "numeric" })}</p>
               <p className="text-body text-fg">{time(slot.startsAt)} – {time(endsAtOf(slot))}</p>
             </div>
-            <button type="button" onClick={() => setStep("time")} className="min-h-11 shrink-0 px-1 text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring">{t("cust.bk.details.change")}</button>
+            <button type="button" onClick={() => goBack("time")} className="min-h-11 shrink-0 px-1 text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring press">{t("cust.bk.details.change")}</button>
           </div>
           <div className="flex items-end justify-between gap-3 border-t border-line pt-3">
             <div className="min-w-0">
@@ -620,7 +875,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
         {[{ id: null as string | null, name: t("bk.anyone"), initials: null as string | null }, ...data.staff].map((s) => {
           const on = s.id === staffId;
           return (
-            <button key={s.id ?? "any"} type="button" role="radio" aria-checked={on} onClick={() => setStaffId(s.id)} className={cn("flex h-11 shrink-0 items-center gap-2 rounded-full border ps-1.5 pe-4 text-body focus-visible:focus-ring", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+            <button key={s.id ?? "any"} type="button" role="radio" aria-checked={on} onClick={() => setStaffId(s.id)} className={cn("flex h-11 shrink-0 items-center gap-2 rounded-full border ps-1.5 pe-4 text-body focus-visible:focus-ring press", on ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
               <span aria-hidden className={cn("flex size-8 items-center justify-center rounded-full text-[11px] font-semibold", on ? "bg-bg text-fg" : "bg-bg-muted text-fg")}>{s.initials ?? <Users aria-hidden className="size-4" strokeWidth={1.75} />}</span>
               <bdi>{s.name}</bdi>
             </button>
@@ -632,11 +887,11 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           <p className="text-meta-strong text-fg">{t("bk.pet.title")}</p>
           <div role="radiogroup" aria-label={t("bk.pet.title")} className="flex flex-wrap gap-2">
             {myPets.map((p) => (
-              <button key={p.id} type="button" role="radio" aria-checked={petId === p.id} onClick={() => setPetId(p.id)} className={cn("h-11 rounded-full border px-4 text-body focus-visible:focus-ring", petId === p.id ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+              <button key={p.id} type="button" role="radio" aria-checked={petId === p.id} onClick={() => setPetId(p.id)} className={cn("h-11 rounded-full border px-4 text-body focus-visible:focus-ring press", petId === p.id ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
                 <bdi>{p.name}</bdi>
               </button>
             ))}
-            <a href={`/me/pets?next=${encodeURIComponent(`/shops/${shop.slug}/book`)}`} className="inline-flex h-11 items-center rounded-full border border-dashed border-line-strong px-4 text-body text-fg focus-visible:focus-ring">+ {t("bk.pet.add")}</a>
+            <a href={`/me/pets?next=${encodeURIComponent(`/shops/${shop.slug}/book`)}`} className="inline-flex h-11 items-center rounded-full border border-dashed border-line-strong px-4 text-body text-fg focus-visible:focus-ring press">+ {t("bk.pet.add")}</a>
           </div>
           {pickedPet ? <p className="text-meta text-fg-muted">{t("bk.pet.sizeNote", { pet: pickedPet.name })}</p> : null}
         </div>
@@ -644,7 +899,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
       {categories.length > 1 ? (
         <div role="radiogroup" aria-label={t("bk.all")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {["all", ...categories].map((c) => (
-            <button key={c} type="button" role="radio" aria-checked={category === c} onClick={() => setCategory(c)} className={cn("h-11 shrink-0 rounded-full border px-4 text-meta-strong focus-visible:focus-ring", category === c ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
+            <button key={c} type="button" role="radio" aria-checked={category === c} onClick={() => setCategory(c)} className={cn("h-11 shrink-0 rounded-full border px-4 text-meta-strong focus-visible:focus-ring press", category === c ? "border-trade bg-trade text-trade-foreground" : "border-line bg-bg text-fg hover:bg-bg-subtle")}>
               {c === "all" ? t("bk.all") : c}
             </button>
           ))}
@@ -657,7 +912,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           const p = pick(s);
           return (
             <li key={s.id}>
-              <button type="button" role="checkbox" aria-checked={on} onClick={() => setIds((cur) => (on ? cur.filter((x) => x !== s.id) : [...cur, s.id]))} className="flex min-h-[64px] w-full items-center gap-3 py-3 text-start focus-visible:focus-ring">
+              <button type="button" role="checkbox" aria-checked={on} onClick={() => setIds((cur) => (on ? cur.filter((x) => x !== s.id) : [...cur, s.id]))} className="flex min-h-[64px] w-full items-center gap-3 py-3 text-start focus-visible:focus-ring press-soft">
                 <span aria-hidden className={cn("flex size-7 shrink-0 items-center justify-center rounded-full border", on ? "border-trade bg-trade text-trade-foreground" : "border-line-strong")}>{on ? <CircleCheck className="size-5" strokeWidth={2} /> : null}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-body-strong text-fg">{p.name}</span>
@@ -669,7 +924,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
           );
         })}
         {pharmacy || (data.shop.vertical && data.shop.vertical !== "salon") ? null : <li>
-          <a href={shop.phone ? `tel:${shop.phone}` : `/shops/${encodeURIComponent(shop.slug)}`} className="flex min-h-[64px] items-center gap-3 py-3 focus-visible:focus-ring">
+          <a href={shop.phone ? `tel:${shop.phone}` : `/shops/${encodeURIComponent(shop.slug)}`} className="flex min-h-[64px] items-center gap-3 py-3 focus-visible:focus-ring press-soft">
             <span aria-hidden className="size-7 shrink-0 rounded-full border border-line-strong" />
             <span className="min-w-0 flex-1">
               <span className="block text-body-strong text-fg">{t("bk.bridal.title")}</span>
@@ -690,7 +945,7 @@ export function BookFlow({ shop, data, signedIn, devAutofill, initial, meName }:
             {deposit > 0 ? <p className="text-meta text-fg-muted">{t("bk.depositHold", { amount: money(deposit) })}</p> : null}
           </div>
         ) : null}
-        <Button size="lg" variant="shop" fullWidth disabled={!ids.length} onClick={() => { setStep(offeredAddOns.length ? "addons" : "time"); window.scrollTo?.({ top: 0 }); }}>{t(offeredAddOns.length ? "addon.book.next" : "bk.chooseTime") /* phase-pro: P5 */}</Button>
+        <Button size="lg" variant="shop" fullWidth disabled={!ids.length} onClick={() => forward(offeredAddOns.length ? "addons" : "time")}>{t(offeredAddOns.length ? "addon.book.next" : "bk.chooseTime") /* phase-pro: P5 */}</Button>
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ describe("/neighbourhoods", () => {
     });
     const html = await page();
     expect(html).toContain("We couldn’t load the neighbourhoods");
-    expect(html).toContain("Nothing is lost");
+    expect(html).toContain("Try again in a minute.");
     expect(html).toMatch(/href="\/neighbourhoods"[^>]*>(<[^>]+>)*Try again/);
     expect(html).toMatch(/href="\/"[^>]*>(<[^>]+>)*Back to home/);
     // One h1 (the page's own); the failure is a section of it. Nothing of the error itself is shown, and no empty state that looks real.

@@ -1,10 +1,11 @@
 import { shadows } from "@ll/design-tokens";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AccessibilityInfo, Animated, Pressable, StyleSheet, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme";
 import { haptic } from "./haptics";
 import { CircleAlert, CircleCheck } from "./icons";
+import { useReducedMotion } from "./motion";
 import { Text } from "./Text";
 
 interface ToastSpec {
@@ -24,6 +25,7 @@ export function useToast() {
 export function ToastProvider({ children, bottomOffset = 96 }: { children: ReactNode; bottomOffset?: number }) {
   const { c } = useTheme();
   const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const [toast, setToast] = useState<ToastSpec | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -33,11 +35,12 @@ export function ToastProvider({ children, bottomOffset = 96 }: { children: React
       const spec = typeof t === "string" ? { message: t } : t;
       setToast(spec);
       if (spec.tone === "error") haptic.error();
+      else if (spec.tone === "success") haptic.success();
       AccessibilityInfo.announceForAccessibility(spec.message);
-      Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      Animated.timing(opacity, { toValue: 1, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(
-        () => Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => setToast(null)),
+        () => Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => setToast(null)),
         spec.onAction ? 8000 : 4000,
       );
     },
@@ -51,14 +54,14 @@ export function ToastProvider({ children, bottomOffset = 96 }: { children: React
     <ToastContext.Provider value={value}>
       {children}
       {toast ? (
-        <Animated.View pointerEvents="box-none" style={[styles.host, { bottom: insets.bottom + bottomOffset, opacity }]}>
+        <Animated.View pointerEvents="box-none" style={[styles.host, { bottom: insets.bottom + bottomOffset, opacity, transform: reduce ? undefined : [{ translateY: opacity.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] }]}>
           <View accessibilityRole={toast.tone === "error" ? "alert" : "text"} accessibilityLiveRegion="polite" style={[styles.toast, { backgroundColor: c.fg }, shadows.float.native]}>
             {Icon ? <Icon size={18} color={toast.tone === "error" ? c.negative : c.positive} strokeWidth={2} /> : null}
             <Text variant="meta" rawColor={c.bg} style={{ flex: 1, fontWeight: "500" }}>
               {toast.message}
             </Text>
             {toast.actionLabel && toast.onAction ? (
-              <Pressable accessibilityRole="button" hitSlop={12} onPress={toast.onAction}>
+              <Pressable accessibilityRole="button" hitSlop={12} onPress={toast.onAction} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
                 <Text variant="metaStrong" rawColor={c.bg} style={{ textDecorationLine: "underline" }}>
                   {toast.actionLabel}
                 </Text>

@@ -24,9 +24,10 @@ import { placeKindLabel } from "@ll/shared";
 import { capFirst } from "../../lib/sentenceCase";
 import { verticalVisual } from "@ll/design-tokens";
 import { shortName } from "../../lib/award";
-import { Glass, QrCodeIcon, ActionPill, Awning, Trophy, Banner, BellOff, Button, CardTitle, categorySource, IconTile, PassCard, verticalIcon, WarmCard, ChevronRightGlyph, CountUp, EmptyState, ErrorState, hairline, ListRow, OfflineBanner, ORDER_STATUS_KEYS, PromoCard, SearchGlyph, ShopLogo, SkeletonRows, Store, Text, Ticket, TICKET_STATUS_KEYS, useTabBarSpace } from "../../ui";
+import { Appear, Glass, QrCodeIcon, ActionPill, Awning, Trophy, Banner, BellOff, Button, CardTitle, categorySource, IconTile, PassCard, verticalIcon, WarmCard, ChevronRightGlyph, CountUp, EmptyState, ErrorState, hairline, ListRow, OfflineBanner, ORDER_STATUS_KEYS, PromoCard, SearchGlyph, ShopLogo, SkeletonRows, Store, Text, Ticket, TICKET_STATUS_KEYS, useTabBarSpace } from "../../ui";
 import { readableOn, shopInitials } from "../../ui/ShopTile";
 import type { TileName } from "@ll/design-tokens";
+import { pressFx } from "../../ui/pressFx";
 
 const TONES: TileName[] = ["peach", "mint", "butter", "lilac", "sky", "rose"];
 
@@ -277,7 +278,7 @@ export default function Wallet() {
                 {capFirst(placeKindLabel(locale, passM!.merchant.vertical))}
               </Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => router.navigate({ pathname: "/map", params: { search: "1" } })}>
+            <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => router.navigate({ pathname: "/map", params: { search: "1" } })} style={({ pressed }) => (pressed ? pressFx.dim : null)}>
               <Glass radius={22} style={styles.glassCircle}>
                 <SearchGlyph size={20} color={c.fg} strokeWidth={2} />
               </Glass>
@@ -301,7 +302,7 @@ export default function Wallet() {
               tr("sh.wallet.title")
             )}
           </Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => router.navigate({ pathname: "/map", params: { search: "1" } })} style={[styles.circle, { backgroundColor: r.card }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr("sh.wallet.search")} onPress={() => router.navigate({ pathname: "/map", params: { search: "1" } })} style={({ pressed }) => [[styles.circle, { backgroundColor: r.card }], pressed ? pressFx.scale : null]}>
             <SearchGlyph size={18} color={c.fg} strokeWidth={2} />
           </Pressable>
         </View>
@@ -346,10 +347,10 @@ export default function Wallet() {
         ) : memberships.length === 0 ? (
           <EmptyState body={tr("cp.empty.walletBody")} actionLabel={tr("sh.nav.myCard")} onAction={() => router.push("/card")} />
         ) : (
-          <>
+          <Appear>
             {ready.length > 0 ? block(tr("sh.wallet.readyNow"), ready.map((m, i) => shopRow(m, i, ready.length)), ready.length) : null}
             {rest.length > 0 ? block(ready.length > 0 ? tr("sh.wallet.earning") : tr("sh.wallet.yourShops"), rest.map((m, i) => shopRow(m, i, rest.length))) : null}
-          </>
+          </Appear>
         )}
 
         {inProgress.length > 0
@@ -415,12 +416,13 @@ export default function Wallet() {
                   const tone = TONES[i % TONES.length]!;
                   const Glyph = verticalIcon(verticalVisual(f.merchant.vertical).iconComponent);
                   return (
+                    <View key={`p-${f.promo.id}`} style={[styles.row, { borderBottomColor: c.line, borderBottomWidth: i < list.length - 1 ? hairline : 0 }]}>
+                    {/* The row and its Join pill are siblings: a button inside a button is invalid on web and steals the tap. */}
                     <Pressable
-                      key={`p-${f.promo.id}`}
                       accessibilityRole="button"
                       accessibilityLabel={`${f.merchant.name}. ${f.promo.title}`}
                       onPress={() => router.push(`/shop/${f.merchant.slug}`)}
-                      style={({ pressed }) => [styles.row, { borderBottomColor: c.line, borderBottomWidth: i < list.length - 1 ? hairline : 0 }, pressed ? { opacity: 0.7 } : null]}
+                      style={({ pressed }) => [styles.rowMain, pressed ? { opacity: 0.7 } : null]}
                     >
                       <IconTile icon={Glyph} tone={tone} size={46} />
                       <View style={{ flex: 1, minWidth: 0 }}>
@@ -431,8 +433,9 @@ export default function Wallet() {
                           {[placeKindLabel(locale, f.merchant.vertical), f.promo.title].filter(Boolean).join(" · ")}
                         </Text>
                       </View>
-                      {f.isMember ? null : <ActionPill tone={tone} label={tr("sh.wallet.join")} onPress={() => setJoining(f)} />}
                     </Pressable>
+                    {f.isMember ? null : <ActionPill tone={tone} label={tr("sh.wallet.join")} onPress={() => setJoining(f)} />}
+                    </View>
                   );
                 })}
                 {feedItems.filter((it) => it.sponsored).length > 0 ? <View style={{ gap: 12, marginTop: 8 }}>{feedItems.filter((it) => it.sponsored).map(renderFeed)}</View> : null}
@@ -471,6 +474,7 @@ const styles = StyleSheet.create({
   heroBar: { height: 3, borderRadius: 999, marginTop: 12, overflow: "hidden" },
   sec: { paddingBottom: 8, borderBottomWidth: hairline, marginTop: 28 },
   row: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14 },
+  rowMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 14 },
   av: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   bar: { height: 6, borderRadius: 999, marginTop: 8, width: 150, maxWidth: "100%", overflow: "hidden" },
   bal: { marginStart: "auto", alignItems: "flex-end" },

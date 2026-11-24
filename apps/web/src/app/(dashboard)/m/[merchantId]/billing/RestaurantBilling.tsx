@@ -22,7 +22,7 @@ const addedBy = (tier: RestaurantTier) => RESTAURANT_FEATURES.filter((k) => FEAT
 
 /** Restaurant pack: current tier, upgrade cards, add-ons, fee explainer and invoice history. */
 export function RestaurantBilling({ autoTier = null, recommended = null }: { autoTier?: RestaurantTier | null; recommended?: RestaurantTier | null }) {
-  const { api } = useMerchant();
+  const { api, refresh } = useMerchant();
   const state = useApi(() => api.billing.restaurant(), [api]);
   const invoices = useApi(() => api.billing.invoices(), [api]);
   return (
@@ -34,7 +34,8 @@ export function RestaurantBilling({ autoTier = null, recommended = null }: { aut
           autoTier={autoTier}
           recommended={recommended}
           reload={async () => {
-            await Promise.all([state.reload(), invoices.reload()]);
+            // A new tier changes the sidebar's restaurant tools too: read the shop's features with the bill.
+            await Promise.all([state.reload(), invoices.reload(), refresh().catch(() => undefined)]);
           }}
         />
       )}
@@ -47,12 +48,15 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
   const act = useAction();
   const [period, setPeriod] = useState<"month" | "year">("month");
   const [cancel, setCancel] = useState(false);
+  // Which button started the request, so only that one shows progress.
+  const [going, setGoing] = useState<string | null>(null);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const sub = r.subscription;
   const founding = r.foundingOffer;
   const current = r.plans.find((p) => p.current);
 
   async function choose(tier: RestaurantTier) {
+    setGoing(tier);
     if (sub) {
       await act.run(() => api.billing.restaurantChange(tier));
       await reload();
@@ -73,7 +77,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
 
   return (
     <>
-      <Section title="Restaurant plan" description={`For restaurants, sweet shops and tiffin kitchens. Every restaurant plan includes ${PLANS.studio.name}.`}>
+      <Section title="Restaurant plan" description={`Every restaurant plan includes ${PLANS.studio.name}.`}>
         {act.error ? <Banner tone="danger">{act.error}</Banner> : null}
         <Panel>
           <p className="text-meta text-fg-muted">Current restaurant plan</p>
@@ -86,7 +90,10 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
               {sub.cancelAtPeriodEnd ? (
                 <Button
                   variant="ghost"
+                  loading={act.busy && going === "resume"}
+                  disabled={act.busy}
                   onClick={async () => {
+                    setGoing("resume");
                     await act.run(() => api.billing.restaurantResume());
                     await reload();
                   }}
@@ -100,7 +107,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
               )}
             </div>
           ) : (
-            <p className="mt-3 text-meta text-fg-muted">Commission-free ordering, your own ordering page, WhatsApp updates and more. Pick a plan below.</p>
+            <p className="mt-3 text-meta text-fg-muted">Commission-free ordering, your own ordering page and WhatsApp updates.</p>
           )}
           {founding.eligible ? (
             <p className="mt-4 border-t border-line pt-3 text-meta text-fg">
@@ -150,7 +157,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
                   </ul>
                   <div className="mt-auto pt-2">
                     {p.current ? null : (
-                      <Button variant={down ? "secondary" : "primary"} loading={act.busy} onClick={() => choose(p.tier)}>
+                      <Button variant={down ? "secondary" : "primary"} loading={act.busy && going === p.tier} disabled={act.busy} onClick={() => choose(p.tier)}>
                         {sub ? (down ? `Switch to ${p.name}` : `Upgrade to ${p.name}`) : `Start ${p.name}`}
                       </Button>
                     )}
@@ -261,6 +268,7 @@ function Pack({ r, invoices, reload, autoTier, recommended }: { r: billingApi.Re
         title="Cancel your restaurant plan?"
         body="Restaurant tools turn off at the end of this period. Your menu, customers and loyalty program are kept."
         confirmLabel="Cancel restaurant plan"
+        cancelLabel="Keep plan"
         danger
         onConfirm={async () => {
           await api.billing.restaurantCancel();

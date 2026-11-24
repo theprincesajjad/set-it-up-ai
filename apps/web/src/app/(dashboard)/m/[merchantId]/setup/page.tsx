@@ -18,7 +18,7 @@ import { SubscribeButton } from "@/components/dashboard/SubscribeButton";
 import { TRADE_COPY, TradeSetup } from "@/components/dashboard/onboarding/TradeSetup";
 import { SoloSetup } from "@/components/dashboard/onboarding/SoloSetup";
 import { PageTitle } from "@/components/ui/ClearKit";
-import { useLocale } from "@/lib/i18n/client";
+import { LocaleProvider, useLocale } from "@/lib/i18n/client";
 import { Select } from "@/components/ui/Select";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
@@ -40,7 +40,12 @@ export default function SetupPage() {
   useEffect(() => {
     if (doneCount !== null) window.dispatchEvent(new Event("ll:onboarding-changed"));
   }, [doneCount]);
-  return (
+  // The storefront's steps are written in English only (the booking-link cards are translated). In Hindi, Urdu or Punjabi they are
+  // shown as one clean left-to-right English screen under a translated line that says so, like the other English-only screens
+  // (components/dashboard/EnglishFallback), instead of English sentences inside a right-to-left page.
+  const { locale, t } = useLocale();
+  const englishOnly = !!state.data && !solo && locale !== "en";
+  const body = (
     <div className="flex flex-col gap-6">
       {/* No header until the path is known: a solo pro (in Urdu too) must not see the storefront's English header flash first. */}
       {!state.data ? null : solo ? <SoloHeader /> : <PageHeader flush title="Set up your shop" description="A few steps to live on the street. Each saves as you go." />}
@@ -48,6 +53,15 @@ export default function SetupPage() {
         {(c) => (c.solo && c.path !== "storefront" ? <SoloSetup checklist={c} onChange={(n) => state.setData(n)} footer={<NudgeToggle checklist={c} onChange={(n) => state.setData(n)} />} /> : <Wizard checklist={c} onChange={(n) => state.setData(n)} base={base} />)}
       </Async>
     </div>
+  );
+  if (!englishOnly) return body;
+  return (
+    <>
+      <Banner tone="info">{t("dash.englishOnly")}</Banner>
+      <div lang="en" dir="ltr" data-english-screen="" className="mt-4 text-start font-sans leading-normal">
+        <LocaleProvider locale="en">{body}</LocaleProvider>
+      </div>
+    </>
   );
 }
 
@@ -95,7 +109,7 @@ function Wizard({ checklist, onChange, base }: { checklist: merchantApi.Onboardi
             {steps.map((s, n) => (
               <li key={s.key} className={cn(n === core.length && "lg:mt-4 lg:border-t lg:border-line lg:pt-3")}>
                 {n === core.length ? <span className="mb-1 hidden px-2 text-caption font-semibold uppercase tracking-wide text-fg-muted lg:block">Later, optional</span> : null}
-                <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("flex h-9 w-full items-center gap-2.5 whitespace-nowrap rounded-[8px] px-2 text-start text-meta", n === i ? "bg-bg-muted font-medium text-fg" : "text-fg hover:bg-bg-subtle")}>
+                <button type="button" onClick={() => go(n)} aria-current={n === i ? "step" : undefined} className={cn("flex h-11 w-full items-center gap-2.5 whitespace-nowrap rounded-[8px] px-2 text-start text-meta transition-colors duration-tap focus-visible:focus-ring lg:h-9", n === i ? "bg-bg-muted font-medium text-fg" : "text-fg hover:bg-bg-subtle active:bg-bg-muted")}>
                   <span aria-hidden className={cn("inline-flex size-[18px] shrink-0 items-center justify-center rounded-full text-[10px] tabular", s.done ? "bg-primary text-primary-foreground" : "border border-line-strong text-fg-muted")}>
                     {s.done ? <Check className="size-3" strokeWidth={2.5} /> : n + 1}
                   </span>

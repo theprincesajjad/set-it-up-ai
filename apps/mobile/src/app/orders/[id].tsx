@@ -46,7 +46,7 @@ export default function OrderDetail() {
           {o.tipCents > 0 ? <Row label={t("sv.i.tipLine")} value={formatMoney(o.tipCents)} /> : null}
           <Row label={t("cart.total")} value={formatMoney(o.totalCents)} strong />
           <Text variant="bodySm" color="fgMuted">
-            {o.paymentMethod === "at_pickup" ? t("ms.order.payAtPickup") : o.paymentStatus === "paid" ? t("ms.order.paidInApp") : t("ms.order.payPending")}
+            {o.paymentMethod === "at_pickup" ? (o.paymentStatus === "paid" ? t("orderPay.paid") : t("ms.order.payAtPickup")) : o.paymentStatus === "paid" ? t("ms.order.paidInApp") : t("ms.order.payPending")}
           </Text>
           {o.pointsEarned > 0 ? <Text variant="bodySm" color="onSuccessSubtle">{t("ms.order.earned", { amount: formatPtsL(L, o.pointsEarned, "points") })}</Text> : null}
           {o.notes ? <Text variant="bodySm" color="fgMuted">{t("ms.order.note", { note: o.notes })}</Text> : null}

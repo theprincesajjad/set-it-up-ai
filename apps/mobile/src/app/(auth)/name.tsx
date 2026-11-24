@@ -1,6 +1,5 @@
 import { BRAND, customerApi, t as translate, type networkApi } from "@ll/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { View, type TextInputInstance } from "react-native";
@@ -16,7 +15,7 @@ import { api } from "../../state/api";
 import { qk } from "../../state/query";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
-import { Banner, Button, Card, ConsentCheckbox, Screen, ShopLogo, StampCard, Text, TextField, useToast } from "../../ui";
+import { Banner, Button, Card, ConsentCheckbox, Screen, ShopLogo, StampCard, Text, TextField, useToast, haptic } from "../../ui";
 
 /** 1.4 Name and consent (+ Joined success when the user came from a shop QR). */
 export default function NameStep() {
@@ -83,7 +82,7 @@ export default function NameStep() {
         const res = await api.me.join({ locationQrCode: join, ...(shopConsent ? { consent: { text: shopConsentText } } : {}) });
         await qc.invalidateQueries({ queryKey: qk.wallet });
         setJoined(res);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        haptic.success();
         setTimeout(() => router.replace("/map"), 1500);
         return;
       }

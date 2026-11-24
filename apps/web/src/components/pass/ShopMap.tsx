@@ -77,7 +77,7 @@ function ClearShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMap
 
       {/* Top row: home, Map / List. */}
       <div data-map-obstacle className="absolute inset-x-4 top-[max(12px,env(safe-area-inset-top))] z-[2] flex items-center gap-2 md:inset-x-auto md:start-4 md:w-[358px]">
-        <Link href="/" aria-label={t("auth.notFound.home")} data-lens className="glass-chrome inline-flex size-11 shrink-0 items-center justify-center rounded-full text-foreground focus-visible:focus-ring">
+        <Link href="/" aria-label={t("auth.notFound.home")} data-lens className="glass-chrome inline-flex size-11 shrink-0 items-center justify-center rounded-full text-foreground focus-visible:focus-ring press">
           <LogoMark size={22} />
         </Link>
         <SegmentedControl label={t("wp.map.viewLabel")} value={state.view} onChange={state.setView} options={[{ value: "map", label: t("sh.nav.map") }, { value: "list", label: t("wp.map.list") }]} floating className="min-w-0 flex-1 [&>button]:flex-1" />
@@ -85,10 +85,10 @@ function ClearShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMap
 
       {/* Map buttons: one glass stack on the end edge, 44 each (audit 2.4 "circles 44 ... map stack"). */}
       <div data-map-obstacle data-lens data-lens-r="22" data-lens-bezel="18" className="glass-chrome absolute! end-4 top-[calc(max(12px,env(safe-area-inset-top))+60px)] z-[2] flex flex-col rounded-[22px]">
-        <button type="button" aria-label={t("wp.map.showAll")} title={t("wp.map.showAll")} onClick={() => setFitAll((n) => n + 1)} className="inline-flex size-11 items-center justify-center rounded-t-[22px] text-foreground focus-visible:focus-ring">
+        <button type="button" aria-label={t("wp.map.showAll")} title={t("wp.map.showAll")} onClick={() => setFitAll((n) => n + 1)} className="inline-flex size-11 items-center justify-center rounded-t-[22px] text-foreground focus-visible:focus-ring press">
           <Maximize2 aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
-        <button type="button" aria-label={state.coords ? t("wp.map.sorted") : t("ms.map.useLoc")} title={t("ms.map.useLoc")} onClick={state.locate} className="inline-flex size-11 items-center justify-center rounded-b-[22px] text-foreground focus-visible:focus-ring">
+        <button type="button" aria-label={state.coords ? t("wp.map.sorted") : t("ms.map.useLoc")} title={t("ms.map.useLoc")} onClick={state.locate} className="inline-flex size-11 items-center justify-center rounded-b-[22px] text-foreground focus-visible:focus-ring press">
           {state.locating ? <Spinner className="size-5" /> : <LocateFixed aria-hidden className="size-5" strokeWidth={1.75} />}
         </button>
       </div>
@@ -98,7 +98,7 @@ function ClearShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMap
           {notice ? (
             <div className="glass-chrome flex items-start gap-3 rounded-r5 px-4 py-3 text-meta text-foreground">
               <p className="flex-1">{notice}</p>
-              <button type="button" aria-label={t("wp.map.dismiss")} onClick={onDismissNotice} className="relative text-muted-foreground after:absolute after:-inset-3 hover:text-foreground">
+              <button type="button" aria-label={t("wp.map.dismiss")} onClick={onDismissNotice} className="relative text-muted-foreground after:absolute after:-inset-3 hover:text-foreground press">
                 <X aria-hidden className="size-4" />
               </button>
             </div>
@@ -155,7 +155,7 @@ function ClearShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMap
             <ul className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-2 divide-overlay">
               {nearest.slice(0, 30).map((s) => (
                 <li key={s.merchant.id} data-trade={s.merchant.vertical}>
-                  <button type="button" onClick={() => setSelected(s.merchant.id)} className="flex min-h-16 w-full items-center gap-3 py-3 text-start focus-visible:focus-ring">
+                  <button type="button" onClick={() => setSelected(s.merchant.id)} className="flex min-h-16 w-full items-center gap-3 py-3 text-start focus-visible:focus-ring press-soft">
                     <span aria-hidden className="inline-flex size-9 shrink-0 items-center justify-center rounded-r4 bg-trade text-[12px] font-semibold text-trade-foreground">{shopInitials(s.merchant.name)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-body-strong text-foreground"><bdi>{s.merchant.name}</bdi></span>
@@ -191,7 +191,7 @@ function WarmShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMapP
       {/* Top chrome */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex flex-col gap-2 px-4 pt-[max(12px,env(safe-area-inset-top))] md:px-6 md:pt-5">
         <div data-map-obstacle className="pointer-events-auto flex items-center gap-2 md:w-fit md:min-w-[560px]">
-          <Link href="/" aria-label={t("auth.notFound.home")} className="chrome inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:focus-ring">
+          <Link href="/" aria-label={t("auth.notFound.home")} className="chrome inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:focus-ring press">
             <LogoMark size={22} />
           </Link>
           <label className="chrome relative flex h-11 min-w-0 flex-1 items-center rounded-full md:max-w-[420px]">
@@ -218,7 +218,7 @@ function WarmShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMapP
         {notice ? (
           <div data-map-obstacle className="chrome pointer-events-auto flex items-start gap-3 rounded-card px-4 py-3 text-meta text-fg md:max-w-[420px]">
             <p className="flex-1">{notice}</p>
-            <button type="button" aria-label={t("wp.map.dismiss")} onClick={onDismissNotice} className="text-fg-muted hover:text-fg">
+            <button type="button" aria-label={t("wp.map.dismiss")} onClick={onDismissNotice} className="text-fg-muted hover:text-fg press">
               <X aria-hidden className="size-4" />
             </button>
           </div>
@@ -229,7 +229,7 @@ function WarmShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMapP
       {/* Map controls (right) */}
       <div data-map-obstacle className={cn("pointer-events-none absolute end-4 z-[3] flex flex-col items-end gap-2.5 transition-[bottom] duration-200 ease-sheet md:end-6", sel ? "bottom-[calc(252px+env(safe-area-inset-bottom))] md:bottom-[124px]" : "bottom-[calc(112px+env(safe-area-inset-bottom))] md:bottom-[124px]")}>
         {/* Desktop only: on phones the List switch already gives the overview. */}
-        <button type="button" aria-label={t("wp.map.showAll")} title={t("wp.map.showAll")} onClick={() => setFitAll((n) => n + 1)} className="chrome pointer-events-auto hidden size-10 items-center justify-center rounded-full text-fg focus-visible:focus-ring md:inline-flex">
+        <button type="button" aria-label={t("wp.map.showAll")} title={t("wp.map.showAll")} onClick={() => setFitAll((n) => n + 1)} className="chrome pointer-events-auto hidden size-10 items-center justify-center rounded-full text-fg focus-visible:focus-ring md:inline-flex press">
           <Maximize2 aria-hidden className="size-[18px]" strokeWidth={1.75} />
         </button>
         <button
@@ -237,7 +237,7 @@ function WarmShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMapP
           aria-label={state.coords ? t("wp.map.sorted") : t("ms.map.useLoc")}
           title={t("ms.map.useLoc")}
           onClick={state.locate}
-          className="pointer-events-auto inline-flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-float focus-visible:focus-ring"
+          className="pointer-events-auto inline-flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-float focus-visible:focus-ring press"
         >
           {state.locating ? <Spinner className="size-5" /> : <LocateFixed aria-hidden className="size-5" strokeWidth={1.75} />}
         </button>
@@ -251,7 +251,7 @@ function WarmShopMap({ items, state, notice, onDismissNotice, onFail }: ShopMapP
             {state.categories.map((c) => {
               const on = state.cat === c;
               return (
-                <button key={c} type="button" aria-pressed={on} onClick={() => state.setCat(c)} className="group flex w-[54px] shrink-0 flex-col items-center gap-1 focus-visible:outline-none">
+                <button key={c} type="button" aria-pressed={on} onClick={() => state.setCat(c)} className="group flex w-[54px] shrink-0 flex-col items-center gap-1 focus-visible:outline-none press">
                   <span className={cn("flex size-10 items-center justify-center rounded-full bg-card shadow-float transition-transform duration-150 ease-out group-focus-visible:focus-ring", on ? "bg-primary ring-2 ring-primary" : "group-hover:scale-105")}>
                     <CategoryIcon category={c} size={24} />
                   </span>
@@ -302,7 +302,7 @@ function ShopSheetBody({ s, onClose }: { s: networkApi.ShopListItemDto; onClose:
             {s.memberCount ? <span className="text-fg-muted">{t("shop.membersCount", { n: s.memberCount })}</span> : null}
           </div>
         </div>
-        <button type="button" onClick={onClose} aria-label={t("sh.card.close")} className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted after:absolute after:-inset-2 hover:text-fg focus-visible:focus-ring clear:me-0 clear:size-10 clear:bg-lg-seg-track clear:text-foreground clear:after:-inset-0.5">
+        <button type="button" onClick={onClose} aria-label={t("sh.card.close")} className="relative -me-1 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-fg-muted after:absolute after:-inset-2 hover:text-fg focus-visible:focus-ring clear:me-0 clear:size-10 clear:bg-lg-seg-track clear:text-foreground clear:after:-inset-0.5 press">
           <X aria-hidden className="size-4" strokeWidth={2} />
         </button>
       </div>

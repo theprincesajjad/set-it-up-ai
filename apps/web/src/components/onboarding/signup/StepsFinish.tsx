@@ -53,11 +53,7 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, c
       onSubmit={() => onCreate(password)}
       primary={busy ? t("sf.acct.creating") : t("su.create")}
       busy={busy}
-      note={
-        <>
-          {t("su.later")} {terms}
-        </>
-      }
+      note={terms}
     >
       {/* Phones: what they are making, in one line (desktop has the live card beside the form). */}
       <div {...shopColorProps({ vertical: draft.vertical || null, brandColor: brandColor ?? null })} className="flex items-center gap-3 rounded-r4 border border-border bg-card p-3 shadow-sm lg:hidden" data-account-summary>
@@ -91,6 +87,7 @@ export function AccountStep({ draft, update, registered, busy, banner, errors, c
               label={t("su.password")}
               type={show ? "text" : "password"}
               autoComplete="new-password"
+              enterKeyHint="go"
               hint={
                 <span className={cn("inline-flex items-center gap-1.5 transition-colors duration-200", pwOk && "text-positive-text")} data-pw-ok={pwOk || undefined}>
                   {pwOk ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : <Circle aria-hidden className="size-3.5" strokeWidth={2} />}

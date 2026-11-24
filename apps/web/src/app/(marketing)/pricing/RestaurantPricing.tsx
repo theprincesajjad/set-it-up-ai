@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { ADD_ONS, ADD_ON_IDS, FEATURES, FEES, FOUNDING_OFFER, RESTAURANT_FEATURES, RESTAURANT_PLANS, RESTAURANT_TIERS, type RestaurantTier } from "@ll/shared";
+import { ADD_ONS, ADD_ON_IDS, FEATURES, FEES, FOUNDING_OFFER, PLANS, RESTAURANT_FEATURES, RESTAURANT_PLANS, RESTAURANT_TIERS, type RestaurantTier } from "@ll/shared";
 import { FoundingLine } from "@/components/marketing/FoundingStrip";
 import { SavingsCalculator } from "@/components/marketing/SavingsCalculator";
 import { MSection } from "@/components/marketing/Section";
@@ -14,8 +14,16 @@ const P = copy.pricing;
 const pct = (bps: number) => `${(bps / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
 
 /** Features a tier adds over the one below it (from the shared list, so the page can't drift from gating). */
-const added = (tier: RestaurantTier) => RESTAURANT_FEATURES.filter((k) => FEATURES[k].packTier === tier).map((k) => FEATURES[k].name);
-const below: Record<RestaurantTier, string> = { starter: "Everything in Pro, plus", growth: "Everything in Starter, plus", pro: "Everything in Growth, plus" };
+/**
+ * In the shared list but not on the page until there is something behind them (round 4, from the completeness pass): "Restaurant
+ * analytics" has no screen and no API yet. The key stays in FEATURES for gating; the page promises nothing it cannot show.
+ */
+const NOT_BUILT: readonly string[] = ["restaurant.analytics"];
+const added = (tier: RestaurantTier) => RESTAURANT_FEATURES.filter((k) => FEATURES[k].packTier === tier && !NOT_BUILT.includes(k)).map((k) => FEATURES[k].name);
+/** Add-ons that buy nothing today are not listed: locations are free and unlimited for every shop, so "Extra restaurant location" is off the page. */
+const LISTED_ADD_ONS = ADD_ON_IDS.filter((id) => id !== "extra_location");
+// Every restaurant plan includes Studio (the line above the cards and the FAQ say so), so Starter builds on Studio.
+const below: Record<RestaurantTier, string> = { starter: `Everything in ${PLANS.studio.name}, plus`, growth: "Everything in Starter, plus", pro: "Everything in Growth, plus" };
 const shortName = (tier: RestaurantTier) => RESTAURANT_PLANS[tier].name.replace(/^Restaurant /, "");
 
 function TierCard({ tier, featured }: { tier: RestaurantTier; featured?: boolean }) {
@@ -111,7 +119,7 @@ export function RestaurantPricing() {
             <p className="mt-4 text-body text-muted-foreground">{P.addOnsSub}</p>
           </div>
           <ul className="flex flex-col divide-y divide-border border-y border-border">
-            {ADD_ON_IDS.map((id) => (
+            {LISTED_ADD_ONS.map((id) => (
               <li key={id} className="flex items-baseline justify-between gap-6 py-4">
                 <p className="text-body text-foreground">{ADD_ONS[id].name}</p>
                 <p className="shrink-0 text-body-strong tabular-nums text-foreground">

@@ -76,7 +76,7 @@ export function MyFoodCards() {
                 {/* The switch stays off until we know how much they feed: say so, and link to the field that fixes it. */}
                 {!c.dailyGrams && !grams[c.id] ? (
                   <p id={`grams-need-${c.id}`} className="text-meta text-fg-muted">
-                    <a href={`#grams-${c.id}`} className="underline underline-offset-4 focus-visible:focus-ring">{t("pet.food.needGrams")}</a>
+                    <a href={`#grams-${c.id}`} className="underline underline-offset-4 focus-visible:focus-ring active:opacity-60">{t("pet.food.needGrams")}</a>
                   </p>
                 ) : null}
                 <p className="text-caption text-fg-muted">{t("pet.food.consent", { shop: c.shop?.name ?? "" })}</p>

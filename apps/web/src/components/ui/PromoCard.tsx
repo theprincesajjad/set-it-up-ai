@@ -120,7 +120,7 @@ export function PromoCard({ promo, shop, sponsored, variant = "feed", href, term
         </div>
       ) : null}
       {href ? (
-        <Link href={href} className="block focus-visible:focus-ring">
+        <Link href={href} className="block transition-opacity duration-tap ease-out active:opacity-80 focus-visible:focus-ring">
           {content}
         </Link>
       ) : (

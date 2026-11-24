@@ -64,7 +64,7 @@ export default function ShopsAndMessages() {
       {wallet.isError && !wallet.data ? (
         <LoadFailed error={wallet.error} onRetry={() => void wallet.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyState icon={Store} title={lt("sh.wallet.emptyTitle")} body={lt("cp.empty.walletBody")} />
+        <EmptyState icon={Store} body={lt("cp.empty.walletBody")} />
       ) : (
         <Card padded={false} style={{ paddingHorizontal: 16 }}>
           {items.map((m, i) => (

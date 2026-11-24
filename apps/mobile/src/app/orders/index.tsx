@@ -39,7 +39,7 @@ export default function OrdersAndTickets() {
       ) : failure && rows.length === 0 ? (
         <LoadFailed error={failure} onRetry={() => void refetch()} />
       ) : rows.length === 0 ? (
-        <EmptyState icon={ShoppingBag} title={t("cp.empty.ordersTitle")} body={t("cp.empty.ordersBody")} />
+        <EmptyState icon={ShoppingBag} title={t("cp.empty.ordersTitle")} />
       ) : (
         <Card padded={false} style={{ paddingHorizontal: 16 }}>
           {rows.map((r, i) =>

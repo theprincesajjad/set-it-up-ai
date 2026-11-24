@@ -312,7 +312,7 @@ export function PreorderView({ shop, menu, item, availability, restaurant, signe
           <span className="min-w-0 break-words">{summaryTitle}</span>
           <span className="shrink-0 tabular-nums">{money(bill.subtotal)}</span>
         </div>
-        {item.taxable === false ? null : (
+        {item.taxable === false || menu.tax.ratePpm === 0 ? null : (
           <div className="flex justify-between text-fg-muted">
             <span>{menu.tax.label}</span>
             <span className="tabular-nums">{money(bill.tax)}</span>

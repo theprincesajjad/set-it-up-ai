@@ -132,7 +132,7 @@ function Board() {
             <ListLoading label="Loading the line" rows={3} avatar={false} className="rounded-none border-0" />
           ) : b.waiting.length === 0 && b.called.length === 0 ? (
             <div className="flex flex-col items-start gap-3 px-5 py-6">
-              <p className="text-meta text-fg-muted">{open ? "Nobody is waiting. Put the tablet by the door or share your line link, and people show up here the moment they join." : "The line is closed, so nobody can join. Open it when you are ready for walk-ins."}</p>
+              <p className="text-meta text-fg-muted">{open ? "Nobody is waiting." : "The line is closed."}</p>
               {open ? (
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" iconStart={Tablet} href={`${base}/queue/door`}>Door tablet</Button>
@@ -203,9 +203,22 @@ function Board() {
               </div>
             );
           })}
+          {b?.toPay?.length ? (
+            <div className="flex flex-col gap-1 rounded-card bg-card px-4 py-3 shadow-card animate-in fade-in-0 slide-in-from-bottom-1 duration-200 motion-reduce:animate-none" data-testid="to-pay">
+              <p className="text-meta-strong text-fg">To check out</p>
+              <ul className="divide-y divide-line">
+                {b.toPay.map((t) => (
+                  <li key={t.entryId} className="flex items-center justify-between gap-3 py-1.5">
+                    <span className="min-w-0 truncate text-meta text-fg">{t.name}</span>
+                    <Button size="sm" className="max-sm:min-h-11" href={`${base}/calendar?appt=${t.appointmentId}&checkout=1`}>Check out</Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="rounded-card bg-bg-subtle px-4 py-3.5">
             <p className="text-meta-strong text-fg">No-show rule</p>
-            <p className="mt-1 text-meta text-fg-muted">Called and no answer after {b?.settings.callHoldMinutes ?? 5} minutes: Skip puts them back 2 places and texts them again. A second skip takes them off. Skip only works on someone you have called. No fee, no card needed.</p>
+            <p className="mt-1 text-meta text-fg-muted">No answer {b?.settings.callHoldMinutes ?? 5} min after a call: Skip moves them back 2 places. A second skip takes them off.</p>
           </div>
         </section>
       </div>}
@@ -213,7 +226,7 @@ function Board() {
         open={!!confirmSkip}
         onClose={() => setConfirmSkip(null)}
         title={`Take ${confirmSkip?.name ?? "them"} off the line?`}
-        body="They were already skipped once. Skipping again removes them and they would have to join again. You can undo it for a few seconds."
+        body="This is their second skip. They would have to join again."
         confirmLabel="Take off the line"
         danger
         onConfirm={() => (confirmSkip ? skip(confirmSkip) : undefined)}
@@ -222,7 +235,7 @@ function Board() {
         open={!!confirmRemove}
         onClose={() => setConfirmRemove(null)}
         title={`Remove ${confirmRemove?.name ?? "them"}?`}
-        body="Use this when someone left. They drop off the line and are not texted."
+        body="For someone who left. No text is sent."
         confirmLabel="Remove"
         danger
         onConfirm={() => (confirmRemove ? run(() => api.barber.remove(confirmRemove.id)) : undefined)}

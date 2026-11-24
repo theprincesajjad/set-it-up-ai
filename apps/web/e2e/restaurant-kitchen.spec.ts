@@ -66,3 +66,32 @@ test("fire -> advance items -> bump -> recall", async ({ page }) => {
   await page.getByRole("button", { name: `Recall #${order.number}` }).click();
   await expect(page.getByRole("article", { name: `Ticket ${order.number}` })).toBeVisible();
 });
+
+test("not registered for HST: a cash counter order has no tax and reads Paid, for the owner and on the order's own page", async ({ page }) => {
+  const { accessToken } = await call<{ accessToken: string }>("POST", "/v1/auth/login", OWNER);
+  const { items: shops } = await call<{ items: { id: string }[] }>("GET", "/v1/merchants", undefined, accessToken);
+  const m = shops[0]!.id;
+  const catalog = await call<{ items: { id: string; name: string; priceCents: number }[] }>("GET", `/v1/merchants/${m}/catalog`, undefined, accessToken);
+  const naan = catalog.items.find((i) => i.name === "Garlic Naan")!;
+  const before = await call<{ taxRegistered: boolean | null; taxNumber: string | null }>("GET", `/v1/merchants/${m}/tax-settings`, undefined, accessToken);
+  try {
+    await call("PUT", `/v1/merchants/${m}/tax-settings`, { taxRegistered: false }, accessToken);
+    const placed = await call<{ id: string; number: number; subtotalCents: number; taxCents: number; totalCents: number; paymentStatus: string }>("POST", `/v1/merchants/${m}/orders/counter`, { items: [{ catalogItemId: naan.id, quantity: 2 }], tender: "cash" }, accessToken);
+    expect(placed.taxCents).toBe(0);
+    expect(placed.totalCents).toBe(placed.subtotalCents);
+    expect(placed.paymentStatus).toBe("paid");
+
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(OWNER.email);
+    await page.getByLabel("Password").fill(OWNER.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+    await page.goto(`/m/${m}/orders`);
+    const card = page.getByRole("article", { name: `Order ${placed.number}` });
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("Paid ·");
+    await expect(card).not.toContainText("pay at the counter");
+  } finally {
+    await call("PUT", `/v1/merchants/${m}/tax-settings`, { taxRegistered: before.taxRegistered !== false, taxNumber: before.taxNumber }, accessToken);
+  }
+});

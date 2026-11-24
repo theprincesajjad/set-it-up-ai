@@ -6,8 +6,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { siteImportApi } from "@ll/shared";
+import { t as translate, type siteImportApi } from "@ll/shared";
 import { SiteImportReview, SiteImportStep, applyBodyFor, type SiteImportAccepted } from "@/components/onboarding";
+import { importErrorText } from "@/components/onboarding/importError";
 import { ApiError } from "@/lib/api/errors";
 import { LocaleScope } from "@/lib/i18n";
 
@@ -134,14 +135,30 @@ describe("SiteImportStep", () => {
     expect(onSkip).toHaveBeenCalled();
   });
 
-  it("shows the server's reason when the site can't be read", async () => {
+  it("says why the site can't be read from the reason code, never with the API's English sentence", async () => {
     const user = userEvent.setup();
+    let error = new ApiError(422, "site_import_robots", "This website asks robots not to read it, so we didn't. Type your details in instead.");
     const importer = vi.fn(async (): Promise<siteImportApi.SiteImportResult> => {
-      throw new ApiError(422, "site_import_blocked_address", "That address points inside a private network, so we can't read it.");
+      throw error;
     });
     render(<SiteImportStep onDone={vi.fn()} onSkip={vi.fn()} importer={importer} />);
     await user.type(screen.getByLabelText("Website or Instagram"), "http://169.254.169.254");
     await user.click(screen.getByRole("button", { name: "Fill it in for me" }));
-    await waitFor(() => expect(screen.getByText(/private network/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("This website asks not to be read. Type your details in instead.")).toBeTruthy());
+    // A reason with no sentence of its own (a private address) gets the plain one, and what was typed stays.
+    error = new ApiError(422, "site_import_blocked_address", "That address points inside a private network, so we can't read it.");
+    await user.click(screen.getByRole("button", { name: "Fill it in for me" }));
+    await waitFor(() => expect(screen.getByText("We couldn’t read that site. Check the link, or type your details in.")).toBeTruthy());
+    expect(screen.queryByText(/private network/)).toBeNull();
+    expect((screen.getByLabelText("Website or Instagram") as HTMLInputElement).value).toBe("http://169.254.169.254");
+  });
+
+  it("the reason is translated: Urdu for an Urdu page", () => {
+    const t = (k: string) => translate("ur", k as never);
+    expect(importErrorText(new ApiError(422, "site_import_timeout", "That website took too long to answer."), t, () => "x")).toBe(translate("ur", "imp.err.timeout"));
+    expect(importErrorText(new ApiError(422, "site_import_fetch_failed", "That website didn't open."), t, () => "x")).not.toMatch(/[A-Za-z]{4,}/);
+    // Rate limits and outages use the shared translated sentences.
+    expect(importErrorText(new ApiError(429, "rate_limited", "That's a lot of imports in an hour."), t, () => "shared")).toBe("shared");
+    expect(importErrorText(new Error("boom"), t, () => "shared")).toBe(translate("ur", "imp.err.generic"));
   });
 });

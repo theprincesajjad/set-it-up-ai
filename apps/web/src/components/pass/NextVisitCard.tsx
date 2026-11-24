@@ -41,7 +41,7 @@ export function NextVisitCard({ appt, showManage = true }: { appt: appointmentsA
           </span>
           <div className="min-w-0">
             <p className="text-body text-fg"><bdi>{appt.merchant.address}</bdi></p>
-            {map ? <a href={map} target="_blank" rel="noopener noreferrer" className="text-meta text-fg underline underline-offset-2">{t("bk.next.directions")}</a> : null}
+            {map ? <a href={map} target="_blank" rel="noopener noreferrer" className="text-meta text-fg underline underline-offset-2 active:opacity-60">{t("bk.next.directions")}</a> : null}
           </div>
         </div>
       ) : null}

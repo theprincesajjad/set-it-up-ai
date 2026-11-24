@@ -7,7 +7,7 @@ import { errorMessage } from "@/lib/api/errors";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 
 /** Confirm dialog: title states the action, body the consequence, [Cancel] [Action] (system.md Modal). */
-export function ConfirmDialog({ open, onClose, title, body, confirmLabel, danger, onConfirm, children, disabled }: { open: boolean; onClose: () => void; title: string; body?: ReactNode; confirmLabel: string; danger?: boolean; onConfirm: () => Promise<unknown> | unknown; children?: ReactNode; disabled?: boolean }) {
+export function ConfirmDialog({ open, onClose, title, body, confirmLabel, cancelLabel, danger, onConfirm, children, disabled }: { open: boolean; onClose: () => void; title: string; body?: ReactNode; confirmLabel: string; /** The way out, when "Cancel" would be confused with the action ("Cancel plan" beside "Keep plan"). */ cancelLabel?: string; danger?: boolean; onConfirm: () => Promise<unknown> | unknown; children?: ReactNode; disabled?: boolean }) {
   const { t } = useLocaleOrEnglish();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export function ConfirmDialog({ open, onClose, title, body, confirmLabel, danger
       actions={
         <>
           <Button variant="secondary" onClick={onClose}>
-            {t("forms.cancel")}
+            {cancelLabel ?? t("forms.cancel")}
           </Button>
           <Button
             variant={danger ? "danger" : "primary"}

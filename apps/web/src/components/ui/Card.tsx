@@ -38,7 +38,7 @@ export function Card({ tone = "raised", padding = "md", href, as = "div", classN
     tone === "flat" && "border border-line clear:border-0 clear:hairline-inset",
     tone === "dashed" && "border border-dashed border-line-strong/60",
     pad[padding],
-    href && "block transition-colors duration-150 ease-out hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring",
+    href && "press-soft block hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring",
     className,
   );
   if (href)
@@ -86,7 +86,7 @@ export function ListRow({ leading, title, subtitle, trailing, href, className, c
     </>
   );
   // Clear: rows 64 (two lines) and 44 (one line), padding 12 (audit #17).
-  const cls = cn("flex min-h-14 items-center gap-3 py-2.5 clear:min-h-11 clear:py-3", href && "-mx-4 px-4 transition-colors hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring clear:hover:bg-hover", className);
+  const cls = cn("flex min-h-14 items-center gap-3 py-2.5 clear:min-h-11 clear:py-3", href && "-mx-4 px-4 transition-colors duration-tap ease-out hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring clear:hover:bg-hover clear:active:bg-hover", className);
   return href ? (
     <Link href={href} className={cls}>
       {inner}

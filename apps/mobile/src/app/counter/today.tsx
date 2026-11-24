@@ -18,6 +18,7 @@ import { useLocale } from "../../lib/i18n";
 import { greetingKey, hourBars, needsItems, statCards } from "../../lib/ownerToday";
 import { useSession } from "../../state/session";
 import { last4Label } from "../../lib/phone";
+import { pressFx } from "../../ui/pressFx";
 
 /** Today: Clear (mock `?s=today-m`) or Warm, the same data and the same Undo. */
 export default function Today() {
@@ -370,7 +371,7 @@ function ClearToday() {
       <ScrollEdge edge="top" offset={insets.top} />
       {/* Glass capsule row over the scrolling page (y 12, 16 gutter): back, and the shop (32 mark + name + street). */}
       <View style={[clearStyles.capsules, { top: insets.top + 12 }]} pointerEvents="box-none">
-        <Pressable accessibilityRole="button" accessibilityLabel={tr("rc.back")} onPress={goCounter} hitSlop={4}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr("rc.back")} onPress={goCounter} hitSlop={4} style={({ pressed }) => (pressed ? pressFx.dim : null)}>
           <Glass radius={22} style={clearStyles.circle}>
             <ChevronLeft size={20} color={c.fg} strokeWidth={2} />
           </Glass>

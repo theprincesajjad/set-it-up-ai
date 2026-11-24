@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { type MessageKey, type merchantApi, type siteImportApi } from "@ll/shared";
 import { BFF_BASE, browserClient } from "@/lib/api/browser";
-import { isApiError } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { LanguageSwitcher, useLocaleOrEnglish } from "@/lib/i18n";
 import { formatNanp } from "@/lib/phone";
@@ -19,6 +19,7 @@ import { ColorField } from "@/components/ui/ColorField";
 import { Icon3d } from "@/components/ui/Icon3d";
 import { TextField } from "@/components/ui/TextField";
 import type { SiteImportAccepted } from "../SiteImport";
+import { importErrorText } from "../importError";
 import { CardPreview } from "./CardPreview";
 import { hostOf, type SignupDraft } from "./draft";
 import { StepFrame } from "./Shell";
@@ -45,6 +46,7 @@ export const fromLabel = (r: Result) => (r.kind === "instagram" ? `@${r.fields.i
 // ---------------------------------------------------------------------------
 export function LinkStep({ draft, update, next, importer = defaultImporter, notice }: StepProps & { importer?: Importer; notice?: ReactNode }) {
   const { t } = useLocaleOrEnglish();
+  const errText = useErrorText();
   const [url, setUrl] = useState(draft.linkUrl);
   const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export function LinkStep({ draft, update, next, importer = defaultImporter, noti
       update({ link: "read", imported: r, readFor: u, preview: null, accepted: null, name: f.name?.value ?? draft.name, ...guess });
       next();
     } catch (err) {
-      setError(isApiError(err) && err.message ? err.message : t("imp.err.generic"));
+      setError(importErrorText(err, t, errText));
       setReading(null);
     }
   }
@@ -101,7 +103,7 @@ export function LinkStep({ draft, update, next, importer = defaultImporter, noti
       }
     >
       {notice}
-      <TextField name="siteImportUrl" label={t("imp.label")} placeholder={t("imp.placeholder")} value={url} onChange={(e) => { setUrl(e.target.value); setError(null); update({ linkUrl: e.target.value.slice(0, 500) }); }} type="text" inputMode="url" autoComplete="url" autoCapitalize="none" spellCheck={false} dir="ltr" maxLength={500} error={error} hint={t("sf.link.hint")} />
+      <TextField name="siteImportUrl" label={t("imp.label")} placeholder={t("imp.placeholder")} value={url} onChange={(e) => { setUrl(e.target.value); setError(null); update({ linkUrl: e.target.value.slice(0, 500) }); }} type="text" inputMode="url" enterKeyHint="go" autoComplete="url" autoCapitalize="none" spellCheck={false} dir="ltr" maxLength={500} error={error} />
     </StepFrame>
   );
 }
@@ -181,7 +183,7 @@ export function ShopStep({ draft, update, next, onRelink, logoBase = BFF_BASE }:
   if (!r || !f)
     return (
       <StepFrame id="shop" title={t("sf.shop.title")} body={t("sf.shop.body")} onSubmit={go} primary={t("sf.continue")} secondary={{ label: t("sf.shop.haveSite"), onClick: onRelink }}>
-        <TextField name="shopName" label={t("su.shopName")} hint={t("su.shopNameHint")} value={name} onChange={(e) => setNameValue(e.target.value)} error={error} maxLength={120} autoComplete="organization" dir="auto" />
+        <TextField name="shopName" label={t("su.shopName")} value={name} onChange={(e) => setNameValue(e.target.value)} error={error} maxLength={120} autoComplete="organization" autoCapitalize="words" enterKeyHint="next" dir="auto" />
         <div className="lg:hidden">
           <CardPreview name={name} vertical={draft.vertical} card={null} compact />
         </div>
@@ -206,7 +208,7 @@ export function ShopStep({ draft, update, next, onRelink, logoBase = BFF_BASE }:
           </ul>
         ) : null}
         <div data-import-row="name">
-          <TextField name="shopName" label={t("su.shopName")} hint={f.name ? t("imp.review.from", { source: t(`imp.src.${f.name.source}` as MessageKey) }) : t("su.shopNameHint")} value={name} onChange={(e) => setNameValue(e.target.value)} error={error} maxLength={120} autoComplete="organization" dir="auto" />
+          <TextField name="shopName" label={t("su.shopName")} hint={f.name ? t("imp.review.from", { source: t(`imp.src.${f.name.source}` as MessageKey) }) : undefined} value={name} onChange={(e) => setNameValue(e.target.value)} error={error} maxLength={120} autoComplete="organization" dir="auto" />
         </div>
         {f.logo ? (
           <div className="flex items-center gap-4 rounded-r4 border border-border bg-card p-3 shadow-sm" data-import-row="logo">

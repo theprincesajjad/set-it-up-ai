@@ -128,7 +128,7 @@ function Stars({ value, onChange, readOnly, label }: { value: number; onChange?:
             e.preventDefault();
             move((value || (next > 0 ? 0 : 2)) + next);
           }}
-          className="group/star inline-flex size-12 items-center justify-center rounded-full focus-visible:focus-ring"
+          className="group/star inline-flex size-12 items-center justify-center rounded-full focus-visible:focus-ring press"
         >
           <Star key={i <= value ? `on-${value}` : "off"} aria-hidden className={cn("size-9 transition-[color,fill,transform] duration-150 group-hover/star:scale-110 motion-reduce:transition-none", i <= value ? "fill-points text-points motion-safe:animate-stamp-pop" : "text-line-strong group-hover/star:text-points/70")} strokeWidth={1.5} />
         </button>

@@ -1,7 +1,7 @@
 import { layout, shadows } from "@ll/design-tokens";
 import { router } from "expo-router";
-import { useRef, type ReactNode } from "react";
-import { Animated, RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { Fragment, useRef, type ReactNode } from "react";
+import { Animated, KeyboardAvoidingView, Platform, RefreshControl, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context";
 import { useLocale } from "../lib/i18n";
 import { DISPLAY_HEAVY, useTheme } from "../theme";
@@ -97,6 +97,9 @@ export function Screen({
   const ruleOpacity = y.interpolate({ inputRange: [0, 12], outputRange: [0, 1], extrapolate: "clamp" });
   const bottomPad = (tabBar ? tabSpace : 0) + (footer ? 16 : 40);
 
+  // A pinned footer (Book, Order, Send) rides above the keyboard on iOS; Android resizes the window itself.
+  const Wrap = footer && Platform.OS === "ios" ? KeyboardWrap : Fragment;
+
   const content = (
     <>
       {largeTitle && title ? (
@@ -128,6 +131,7 @@ export function Screen({
           <Animated.View style={[styles.rule, { backgroundColor: c.line, opacity: ruleOpacity }]} />
         </View>
       ) : null}
+      <Wrap>
       {scroll ? (
         <Animated.ScrollView
           scrollEventThrottle={16}
@@ -148,6 +152,7 @@ export function Screen({
         </View>
       ) : null}
       {footer ? <View style={[styles.footer, { borderTopColor: c.line, backgroundColor: bg, paddingBottom: Math.max(12, tabBar ? tabSpace : 0) }]}>{footer}</View> : null}
+      </Wrap>
     </SafeAreaView>
   );
 }
@@ -188,3 +193,11 @@ const styles = StyleSheet.create({
   floatingBack: { position: "absolute", start: layout.gutterMobile, borderRadius: 999, ...shadows.none.native },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 28 },
 });
+
+function KeyboardWrap({ children }: { children: ReactNode }) {
+  return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+      {children}
+    </KeyboardAvoidingView>
+  );
+}

@@ -3,6 +3,7 @@ import { useLocale } from "../lib/i18n";
 import { useTheme } from "../theme";
 import { Info, type LucideIcon } from "./icons";
 import { Text } from "./Text";
+import { pressFx } from "./pressFx";
 
 export type BadgeTone = "neutral" | "brand" | "accent" | "success" | "warning" | "danger" | "info";
 
@@ -80,7 +81,7 @@ export function StatusDot({ open, label }: { open: boolean; label: string }) {
 export function SponsoredBadge({ onPress }: { onPress?: () => void }) {
   const { t } = useLocale();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={t("ui.sponsoredWhy")} onPress={onPress} hitSlop={12}>
+    <Pressable accessibilityRole="button" accessibilityLabel={t("ui.sponsoredWhy")} onPress={onPress} hitSlop={12} style={({ pressed }) => (pressed ? pressFx.dim : null)}>
       <Badge tone="neutral" trailingIcon={Info}>
         {t("ui.sponsored")}
       </Badge>

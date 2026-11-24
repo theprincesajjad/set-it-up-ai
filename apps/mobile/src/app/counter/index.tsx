@@ -1,7 +1,6 @@
 import { layout } from "@ll/design-tokens";
 import type { staffApi } from "@ll/shared";
 import { useQuery } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
 import { Redirect, router } from "expo-router";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native";
@@ -37,7 +36,7 @@ import { useCounter, type RecentAward } from "../../state/counter";
 import { qk } from "../../state/query";
 import { useLocale } from "../../lib/i18n";
 import { typo, useTheme } from "../../theme";
-import { Banner, Button, Camera, Chip, EmptyState, Glass, Keypad, ListRow, OfflineBanner, Search, Sheet, Text, Ticket, useToast, Avatar, type KeypadKey } from "../../ui";
+import { Banner, Button, Camera, Chip, EmptyState, Glass, Keypad, ListRow, OfflineBanner, Search, Sheet, Text, Ticket, useToast, Avatar, type KeypadKey, haptic } from "../../ui";
 
 type Panel = { kind: "redeemSuccess"; view: SuccessView; transactionId: string | null; startedAt: number } | null;
 
@@ -255,7 +254,7 @@ export default function Counter() {
     };
 
     // Optimistic success in <= 150 ms; the server result replaces it.
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    haptic.success();
     dispatch({ type: "awarded", view: optimistic, customer: cust, transactionId: null, queuedKey: online ? null : key, at: Date.now() });
     setLastStamp({ at: Date.now(), name: display.name, transactionId: null, queuedKey: online ? null : key, key });
     setCategoryId(null);
@@ -286,7 +285,7 @@ export default function Counter() {
         toast(t("counter.queued.body"));
         scheduleReturn();
       } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+        haptic.error();
         // The server said no, so nothing was stamped: take the "Stamp added" strip and its Undo away.
         setLastStamp(null);
         const message = counterErrorL(L, isApiError(e) ? e : null, { last4: cust.kind === "member" ? last4(cust.member.maskedPhone) : undefined, terminology: program.terminology, firstName: cust.kind === "member" ? firstName(cust.member.name) : null });
@@ -331,7 +330,7 @@ export default function Counter() {
       } else {
         dispatch({ type: "notice", tone: "neutral", message: t("mc.stillSending") });
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+      haptic.warning();
     } catch (e) {
       dispatch({ type: "notice", tone: "danger", message: isApiError(e) && e.status === 403 ? t("counter.err.tooLate") : failText(e) });
     } finally {
@@ -351,7 +350,7 @@ export default function Counter() {
 
   // ---------------------------------------------------------------- redeem
   const showRedeemSuccess = (res: staffApi.CounterRedemptionResponse) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    haptic.success();
     const view: SuccessView = {
       title: t("counter.redeemed.title", { reward: res.redemption.reward.name }),
       hero: program?.earnType === "stamps" && program.stampGoal && res.member.balance <= program.stampGoal ? `${res.member.balance} / ${program.stampGoal}` : formatPtsL(L, res.member.balance, res.member.terminology),

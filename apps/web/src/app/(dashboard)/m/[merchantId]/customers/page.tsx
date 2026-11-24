@@ -161,7 +161,7 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
     <div>
       <PageHeader
         title="Customers"
-        description={counts.data && !filtered ? `${formatNumber(counts.data.all)} ${counts.data.all === 1 ? "customer" : "customers"} · ${formatNumber(counts.data.canText)} can get texts · Phone numbers stay hidden. Each one you reveal is logged.` : total != null ? `${formatNumber(total)} ${filtered ? "matching" : total === 1 ? "customer" : "customers"} · Phone numbers stay hidden. Each one you reveal is logged.` : "Everyone in your program"}
+        description={counts.data && !filtered ? `${formatNumber(counts.data.all)} ${counts.data.all === 1 ? "customer" : "customers"} · ${formatNumber(counts.data.canText)} can get texts` : total != null ? `${formatNumber(total)} ${filtered ? "matching" : total === 1 ? "customer" : "customers"}` : "Everyone in your program"}
         actions={
           role !== "staff" && (canImport || enabled("customers.csv_export")) ? (
             <>
@@ -200,7 +200,6 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
         filtered ? (
           <EmptyState
             title="No customers match."
-            description="Try a different filter or search."
             action={
               <Button
                 variant="secondary"
@@ -217,7 +216,6 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
         ) : (
           <EmptyState
             title="No customers yet."
-            description="They join when they scan your QR stand or give their number at the counter."
             action={
               <Button href={`${base}/locations`} size="sm">
                 Print your QR stand
@@ -243,7 +241,8 @@ function LoyaltyCustomers({ toggle }: { toggle?: ReactNode } = {}) {
         </>
       )}
 
-      {rows.length ? (
+      {/* Only while there is more to load: the list says "All customers loaded" itself, and the header has the total. */}
+      {rows.length && cursor ? (
         <div className="cust-foot mt-3 flex items-center justify-between text-meta text-fg-muted">
           <span className="tabular">
             Showing {formatNumber(rows.length)}

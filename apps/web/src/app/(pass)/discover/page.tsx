@@ -119,7 +119,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
       <header className="mt-3 flex items-center gap-2">
         <span className="min-w-0 flex-1 font-wordmark text-[19px] font-extrabold leading-none text-foreground">{BRAND.name.toLowerCase()}</span>
         <LanguageChip />
-        <Link href="/me#activity" aria-label={t("sh.activity.title")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring">
+        <Link href="/me#activity" aria-label={t("sh.activity.title")} className="flex size-11 items-center justify-center rounded-full text-foreground hover:bg-hover focus-visible:focus-ring press">
           <Bell aria-hidden className="size-5" strokeWidth={1.75} />
         </Link>
       </header>
@@ -137,7 +137,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
       {!knowsStreet && streetChoices.length > 1 ? (
         <nav aria-label={t("sh.disc.chooseStreet")} className="no-scrollbar -mx-4 mt-5 flex gap-2 overflow-x-auto px-4">
           {streetChoices.map((h) => (
-            <Link key={h.id} href={`/discover?street=${encodeURIComponent(h.slug)}`} aria-current={hood?.id === h.id ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong lowercase", hood?.id === h.id ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
+            <Link key={h.id} href={`/discover?street=${encodeURIComponent(h.slug)}`} aria-current={hood?.id === h.id ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong lowercase press", hood?.id === h.id ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
               <MapPin aria-hidden className="size-4" strokeWidth={1.75} />
               <bdi>{short(h.name, locale)}</bdi>
             </Link>
@@ -146,11 +146,11 @@ export default async function DiscoverPage({ searchParams }: Props) {
       ) : null}
 
       <nav aria-label={t("wp.cat.label")} className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4">
-        <Link href={qs()} aria-current={!only ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong", !only ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
+        <Link href={qs()} aria-current={!only ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-meta-strong press", !only ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
           {t("sh.disc.forYou")}
                   </Link>
         {chips.map((c) => (
-          <Link key={c.id} href={qs(c.id)} aria-current={only === c.id ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-meta-strong", only === c.id ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
+          <Link key={c.id} href={qs(c.id)} aria-current={only === c.id ? "page" : undefined} className={cn("inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-meta-strong press", only === c.id ? "bg-primary text-primary-foreground shadow-glow clear:shadow-none" : "border border-line bg-card text-fg clear:border-0 clear:glass-tint")}>
             {t(CHIP_KEY[c.id])}
           </Link>
         ))}
@@ -161,7 +161,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
           <h2 id="near" className="font-display text-[22px] font-bold leading-7 text-foreground clear:text-[17px] clear:font-semibold clear:leading-6">{knowsStreet || !name ? t("sh.disc.near") : name}</h2>
           <span className="text-meta text-muted-foreground">{t("sh.disc.shopsN", { n: shops.length })}</span>
         </div>
-        <Link href="/map" className="relative mt-3 block h-[132px] overflow-hidden rounded-card border border-line bg-tile-mint shadow-card focus-visible:focus-ring clear:border-0 clear:card-clear clear:bg-ll-map-land">
+        <Link href="/map" className="relative mt-3 block h-[132px] overflow-hidden rounded-card border border-line bg-tile-mint shadow-card focus-visible:focus-ring clear:border-0 clear:card-clear clear:bg-ll-map-land press-soft">
           <svg aria-hidden width="100%" height="132" viewBox="0 0 358 132" preserveAspectRatio="none" className="absolute inset-0">
             <g strokeWidth="9" fill="none" strokeLinecap="round" className="stroke-card"><path d="M120 -10 L 170 140" /><path d="M-10 44 L 370 28" /><path d="M-10 100 L 370 86" /></g>
           </svg>
@@ -181,7 +181,7 @@ export default async function DiscoverPage({ searchParams }: Props) {
           <ul className="no-scrollbar -mx-4 mt-3 flex gap-3 overflow-x-auto px-4">
             {r.shops.slice(0, 12).map((s) => (
               <li key={s.merchant.id} className="w-[168px] shrink-0 overflow-hidden rounded-card border border-line bg-card shadow-card clear:border-0 clear:card-clear">
-                <Link href={`/shops/${s.merchant.slug}`} className="block pb-3 focus-visible:focus-ring">
+                <Link href={`/shops/${s.merchant.slug}`} className="block pb-3 focus-visible:focus-ring press-soft">
                   <span data-trade={s.merchant.vertical} className="relative flex h-[140px] items-center justify-center bg-trade-soft">
                     <CategoryIcon vertical={s.merchant.vertical} size={76} />
                     {ready.has(s.merchant.id) ? <span className="absolute left-2.5 top-2.5 inline-flex h-6 items-center rounded-full bg-tile-butter px-2.5 text-caption font-bold text-tile-butter-foreground">{t("sh.wallet.rewardReady")}</span> : null}

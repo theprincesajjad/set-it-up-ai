@@ -253,6 +253,20 @@ export async function board(ctx: AppContext, staff: StaffContext, opts: { tablet
   const services_ = await ctx.db.select({ id: services.id, name: services.name, durationMin: services.durationMin }).from(services).where(and(eq(services.merchantId, merchant.id), eq(services.kind, "appointment"), eq(services.active, true))).orderBy(asc(services.sort), asc(services.name));
   const longest = s.waiting.reduce((m, e) => Math.max(m, Math.round((now.getTime() - e.joinedAt.getTime()) / MIN)), 0);
   const estimate = await estimateFor(ctx, s, s.waiting, null);
+  // Done at the chair today but not paid yet: the board keeps a Check out for each, so a missed toast never loses a payment.
+  const toPay = tablet
+    ? []
+    : (
+        await ctx.db
+          .select({ entryId: queueEntries.id, name: queueEntries.name, appointmentId: appointments.id, staffId: appointments.staffId, finishedAt: queueEntries.finishedAt, invoiceStatus: invoices.status })
+          .from(queueEntries)
+          .innerJoin(appointments, eq(appointments.id, queueEntries.appointmentId))
+          .leftJoin(invoices, eq(invoices.id, appointments.invoiceId))
+          .where(and(eq(queueEntries.merchantId, merchant.id), eq(queueEntries.status, "done"), gte(queueEntries.finishedAt, day0), eq(appointments.status, "completed")))
+          .orderBy(asc(queueEntries.finishedAt))
+      )
+        .filter((r) => r.invoiceStatus !== "paid" && (!restricted || r.staffId === staff.user.id))
+        .map((r) => ({ entryId: r.entryId, name: r.name, appointmentId: r.appointmentId }));
   return {
     settings: s.settings,
     waiting: tablet ? [] : waiting.map((e) => dto(e, rank.get(e.id) ?? null, s.names, s.parents, now)),
@@ -261,6 +275,7 @@ export async function board(ctx: AppContext, staff: StaffContext, opts: { tablet
     chairs,
     stats: { waiting: waiting.length, longestWaitMin: longest, estimateMin: estimate, chairsTaking: s.chairs.filter((c) => c.takesWalkIns).length, chairsTotal: s.chairs.length, servedToday: today?.served ?? 0, noShowsToday: today?.noShows ?? 0 },
     services: services_,
+    toPay,
   };
 }
 

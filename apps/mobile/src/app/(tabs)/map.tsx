@@ -59,6 +59,7 @@ import {
   X,
   glassStyle,
 } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 type Shop = networkApi.ShopListItemDto;
 
@@ -329,7 +330,7 @@ export default function Explore() {
       ) : null}
       {/* Grouped capsule (Corner): the neighbourhood ▾ · the bell with an accent dot while something is unread. */}
       <View style={[styles.group, chromeBg(c.bg)]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.hoodA11y", { name: placeName ?? tr("ms.map.notSet") })} onPress={() => setHoodOpen(true)} style={styles.groupItem}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.map.hoodA11y", { name: placeName ?? tr("ms.map.notSet") })} onPress={() => setHoodOpen(true)} style={({ pressed }) => [styles.groupItem, pressed ? pressFx.scale : null]}>
           <Text style={[isClear ? { fontSize: 15, lineHeight: 20, fontWeight: "600" } : disp(15, 800, 18), { maxWidth: 170 }]} numberOfLines={1}>
             {capFirst(shortHood(placeName) || tr("ms.map.yourStreet"))}
           </Text>
@@ -355,7 +356,7 @@ export default function Explore() {
   const empty = failed ? (
     failBlock
   ) : q ? (
-    <EmptyState icon={Search} title={tr("cp.empty.mapSearchTitle", { query: q })} body={tr("cp.empty.mapSearchBody")} actionLabel={tr("ms.map.clearSearch")} onAction={() => setQ("")} />
+    <EmptyState icon={Search} title={tr("cp.empty.mapSearchTitle", { query: q })} actionLabel={tr("ms.map.clearSearch")} onAction={() => setQ("")} />
   ) : audience !== "all" || openNow || readyOnly || category !== "all" ? (
     <EmptyState
       title={tr("ms.map.noMatch")}
@@ -369,7 +370,7 @@ export default function Explore() {
       }}
     />
   ) : (
-    <EmptyState icon={MapPin} title={tr("cp.empty.noHoodTitle")} body={tr("cp.empty.noHoodBody")} actionLabel={tr("ms.suggest.title")} onAction={() => router.push("/settings/suggest")} />
+    <EmptyState icon={MapPin} title={tr("cp.empty.noHoodTitle")} actionLabel={tr("ms.suggest.title")} onAction={() => router.push("/settings/suggest")} />
   );
 
   const sheets = (
@@ -616,7 +617,7 @@ export default function Explore() {
                 if (mapCenter) setSearchCenter(mapCenter);
                 setMapCenter(null);
               }}
-              style={[styles.searchHere, { backgroundColor: c.brand }, floatShadow]}
+              style={({ pressed }) => [[styles.searchHere, { backgroundColor: c.brand }, floatShadow], pressed ? pressFx.dim : null]}
             >
               <Text variant="mapLabel" rawColor={c.onBrand}>
                 {tr("ms.map.searchHere")}

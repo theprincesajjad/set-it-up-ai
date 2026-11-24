@@ -7,7 +7,7 @@ import { Button } from "./Button";
 import { Check, type LucideIcon } from "./icons";
 import { Text } from "./Text";
 
-/** Staff-only "coming soon" line with Notify me. Never shown to customers, never "Upgrade". */
+/** A feature this shop has off: one line, never "Upgrade". Notify me shows only when `onNotify` records it. */
 export function LockedFeature({ icon: Icon, title, body, onNotify }: { icon: LucideIcon; title: string; body: string; onNotify?: () => void }) {
   const { c } = useTheme();
   const { t } = useLocale();
@@ -23,6 +23,8 @@ export function LockedFeature({ icon: Icon, title, body, onNotify }: { icon: Luc
       <Text variant="meta" color="fgMuted">
         {body}
       </Text>
+      {/* Only when something records the request: a "Notified" tick that saves nothing would be a fake success. */}
+      {onNotify ? (
       <Button
         variant="secondary"
         size="sm"
@@ -36,6 +38,7 @@ export function LockedFeature({ icon: Icon, title, body, onNotify }: { icon: Luc
       >
         {notified ? t("ui.notified") : t("ui.notifyMe")}
       </Button>
+      ) : null}
     </View>
   );
 }

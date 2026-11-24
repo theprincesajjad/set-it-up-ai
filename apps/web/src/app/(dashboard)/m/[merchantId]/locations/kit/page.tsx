@@ -30,7 +30,7 @@ export default function QrKitPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="print:hidden">
-        <PageHeader flush back={params.get("from") === "setup" ? { href: `${base}/setup?step=qr_kit`, label: "Setup" } : { href: `${base}/locations`, label: "Locations & QR kit" }} title="Print your QR stand" description="Put the stand right next to the till. Customers scan it to join in 30 seconds." />
+        <PageHeader flush back={params.get("from") === "setup" ? { href: `${base}/setup?step=qr_kit`, label: "Setup" } : { href: `${base}/locations`, label: "Locations & QR kit" }} title="Print your QR stand" description="Put the stand right next to the till." />
       </div>
       <Async state={kit}>{(k) => <QrKitPrint kit={k} street={street} initialLocationId={params.get("location")} initialSize={params.get("print") === "script" ? "script" : undefined} localScript={ob.data?.playbook.tillLineLocal ?? null} tillLine={ob.data?.playbook.tillLine ?? null} programLine={programLine(k)} setupHref={setupHref} onPrinted={onPrinted} />}</Async>
     </div>

@@ -20,7 +20,7 @@ import { nextNumber } from "./counters.js";
 import { isFeatureOn, requireFeature, requireAnyFeature, PREORDER_FEATURES } from "./features.js";
 import * as ordersSvc from "./orders.js";
 import { assertPreorderCapacity, buildPlan, capFor, localMidnightUtc, overrideLeadHours, rulesDto, waitlistCounts, type PlanInputLine } from "./preorderPlanning.js";
-import { computeTax, merchantProvince } from "./tax.js";
+import { shopTax } from "./tax.js";
 
 type Order = typeof orders.$inferSelect;
 type OrderItem = typeof orderItems.$inferSelect;
@@ -317,7 +317,7 @@ export async function placeCounterOrder(ctx: AppContext, staff: StaffContext, bo
   }
   const subtotal = lines.reduce((s, l) => s + l.lineTotalCents, 0);
   const cashDiscount = body.tender === "cash" && !isPreorder ? await ordersSvc.cashDiscountFor(ctx.db, merchant, subtotal) : 0;
-  const tax = computeTax(ordersSvc.taxableBaseCents(lines, cashDiscount), await merchantProvince(ctx.db, merchant));
+  const tax = await shopTax(ctx.db, merchant, ordersSvc.taxableBaseCents(lines, cashDiscount));
   const total = subtotal - cashDiscount + tax.taxCents + body.tipCents;
   depositCents = Math.min(depositCents, total);
 

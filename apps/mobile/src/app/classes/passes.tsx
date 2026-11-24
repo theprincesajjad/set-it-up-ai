@@ -13,6 +13,7 @@ import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { useTheme } from "../../theme";
 import { Banner, Button, Chip, ConfirmDialog, EmptyState, ErrorState, hairline, Screen, Sheet, SkeletonList, Store, Text, useToast } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 type Membership = classesApi.MyMembershipDto;
 
@@ -129,7 +130,7 @@ export default function Passes() {
               {a.keep ? <Button size="sm" variant="secondary" loading={busy === `keep-${m.id}`} onPress={() => void run(`keep-${m.id}`, () => api.classes.keepMembership(m.id))}>{t("cl.ui.m.keep")}</Button> : null}
             </View>
             {a.cancel ? (
-              <Pressable accessibilityRole="button" onPress={() => setCancelling(m)} style={styles.cancel} testID={`cancel-membership-${m.id}`}>
+              <Pressable accessibilityRole="button" onPress={() => setCancelling(m)} style={({ pressed }) => [styles.cancel, pressed ? pressFx.dim : null]} testID={`cancel-membership-${m.id}`}>
                 <Text variant="bodyStrong" rawColor={c.negative}>{t("cl.ui.m.cancel")}</Text>
               </Pressable>
             ) : null}

@@ -27,6 +27,7 @@ import { cn } from "@/lib/cn";
 import { SOLO_COMPETITORS } from "@/lib/marketing/competitors-solo";
 import { marketingPlans, type PlanAudience } from "@/lib/marketing/plan-copy";
 import { fill, moneyShort } from "@/lib/marketing/text";
+import { PlanButton, PlanPrice } from "./Period";
 
 const P = copy.pricing;
 
@@ -187,17 +188,29 @@ export function PaidCard({ id, firstYear, audience = "shop" }: { id: "plus" | "s
       data-plan={id}
     >
       <PlanHead name={plan.name} />
-      <p className="mt-6 flex items-baseline gap-2">
-        <span className="display text-mkt-lg tabular-nums text-foreground">{price(id)}</span>
-        <span className="text-body text-muted-foreground">{S.monthly.per}</span>
-      </p>
-      <YearlyLine id={id} firstYear={firstYear} />
+      {/* The price follows the Monthly / Yearly switch above the cards (Period.tsx); monthly is what the server sends. */}
+      <PlanPrice
+        monthCents={plan.priceCents}
+        yearCents={plan.annualPriceCents}
+        firstYearCents={pro && firstYear?.shown ? firstYear.priceCents : null}
+        perMonth={S.monthly.per}
+        perYear={P.period.perYear}
+        firstYear={P.period.firstYear}
+        monthLine={<YearlyLine id={id} firstYear={firstYear} />}
+        yearLine={fill(P.period.orMonthly, { price: price(id) })}
+      />
       {audience === "solo" ? <p className="mt-2 text-meta text-muted-foreground">{pv(pro ? PP.proCalendars : PP.studioCalendars)}</p> : null}
       <p className="mt-3 text-body text-foreground">{card.tagline}</p>
       {/* Pro starts as the 14-day trial (no card); Studio carries its plan in the link and opens its checkout after signup. */}
-      <Button href={pro ? "/signup" : `/signup?plan=${id}`} variant={pro ? "primary" : "secondary"} fullWidth size="lg" className="mt-6">
-        {card.cta}
-      </Button>
+      {pro ? (
+        <Button href="/signup" variant="primary" fullWidth size="lg" className="mt-6">
+          {card.cta}
+        </Button>
+      ) : (
+        <PlanButton href={`/signup?plan=${id}`} yearHref={`/signup?plan=${id}&interval=year`} variant="secondary">
+          {card.cta}
+        </PlanButton>
+      )}
       {pro ? (
         <p className="mt-2 text-center text-meta-strong text-foreground" data-testid="trial-line">
           {pv(PP.trialLine)}
@@ -233,7 +246,10 @@ export function ServiceLine() {
   );
 }
 
-/** pro-value.md §2.2, row for row: Free, Pro and Studio. Horizontal scroll on a phone, the first column stays put. */
+/**
+ * pro-value.md §2.2, row for row: Free, Pro and Studio. A table from 768 px; on a phone each row is a block (the label, then one line
+ * per plan with its name in front), so nothing scrolls sideways.
+ */
 export function SoloTable() {
   const cols = [
     { key: "free", name: PLANS.free.name, price: "$0" },
@@ -241,33 +257,37 @@ export function SoloTable() {
     { key: "studio", name: PLANS.studio.name, price: `${moneyShort(PLANS.studio.priceCents)} a month` },
   ] as const;
   return (
-    <div className="overflow-x-auto" data-testid="solo-table">
-      <table className="w-full min-w-[640px] text-meta">
+    <div data-testid="solo-table">
+      <table role="table" className="w-full text-meta max-md:block">
         <caption className="sr-only">{pv(PP.table.caption)}</caption>
-        <thead>
-          <tr className="border-b border-border">
-            <th scope="col" className="sticky start-0 z-10 bg-card py-4 text-start">
+        <thead role="rowgroup" className="max-md:sr-only">
+          <tr role="row" className="border-b border-border">
+            <th role="columnheader" scope="col" className="py-4 text-start">
               <span className="sr-only">{PP.table.feature}</span>
             </th>
             {cols.map((c) => (
-              <th key={c.key} scope="col" className="w-[22%] px-3 py-4 text-start">
+              <th key={c.key} role="columnheader" scope="col" className="w-[22%] px-3 py-4 text-start">
                 <span className="block text-body-strong text-foreground">{c.name}</span>
                 <span className="block font-normal tabular-nums text-muted-foreground">{c.price}</span>
               </th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup" className="max-md:block">
           {PP.table.rows.map((r) => (
-            <tr key={r.label} className="border-t border-border align-top">
-              <th scope="row" className="sticky start-0 z-10 bg-card py-3 pe-4 text-start font-normal text-foreground">
+            <tr key={r.label} role="row" className="border-t border-border align-top max-md:block max-md:py-3 max-md:first:border-t-0">
+              <th role="rowheader" scope="row" className="py-3 pe-4 text-start font-normal text-foreground max-md:block max-md:p-0 max-md:pb-1.5 max-md:font-semibold">
                 {r.label}
               </th>
               {cols.map((c) => {
                 const v = pv(r[c.key]);
                 return (
-                  <td key={c.key} className={cn("px-3 py-3", v === "No" ? "text-muted-foreground" : "text-foreground")}>
-                    {v}
+                  <td key={c.key} role="cell" className={cn("px-3 py-3 max-md:flex max-md:gap-3 max-md:px-0 max-md:py-0.5", v === "No" ? "text-muted-foreground" : "text-foreground")}>
+                    {/* Phones: the plan's name in front of its value (the header row is off screen there). */}
+                    <span aria-hidden className="w-14 shrink-0 text-muted-foreground md:hidden">
+                      {c.name}
+                    </span>
+                    <span>{v}</span>
                   </td>
                 );
               })}
@@ -330,9 +350,12 @@ export function CompareStrip() {
   );
 }
 
+/** The plan names row of the feature table: stuck under the site header, with a hairline under it. */
+const HEAD = "sticky top-18.25 z-10 bg-card py-4 shadow-[inset_0_-1px_0_var(--border)] max-md:py-3";
+
 function Cell({ on, soon }: { on: boolean; soon?: boolean }) {
   return (
-    <td className="px-3 py-3 text-center">
+    <td className="px-3 py-3 text-center max-md:px-0">
       {on ? <Check aria-label={soon ? "Included, early access" : "Included"} className={cn("mx-auto size-4", soon ? "text-muted-foreground" : "text-foreground")} strokeWidth={2.25} /> : <Minus aria-label="Not included" className="mx-auto size-4 text-input/50" strokeWidth={1.75} />}
     </td>
   );
@@ -341,18 +364,20 @@ function Cell({ on, soon }: { on: boolean; soon?: boolean }) {
 export function CompareTable({ available }: { available: Record<PlanId, boolean> }) {
   const plans: PlanId[] = ["free", "plus", "studio", "pro"];
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-meta">
+    <div>
+      {/* No sideways scroll at any width: on a phone the four plan columns are 44 px ticks and each feature is its name alone. The plan
+          names stay in view under the site header (73 px) while the long list scrolls. */}
+      <table className="w-full text-meta max-md:table-fixed">
         <caption className="sr-only">Compare plans</caption>
         <thead>
-          <tr className="border-b border-border">
-            <th scope="col" className="py-4 text-start">
+          <tr>
+            <th scope="col" className={cn(HEAD, "text-start")}>
               <span className="sr-only">Feature</span>
             </th>
             {plans.map((p) => (
-              <th key={p} scope="col" className="w-[15%] px-3 py-4 text-center">
-                <span className="block text-body-strong text-foreground">{PLANS[p].name}</span>
-                <span className="block font-normal text-muted-foreground">
+              <th key={p} scope="col" className={cn(HEAD, "w-[15%] px-3 text-center max-md:w-11.5 max-md:px-0")}>
+                <span className="block text-body-strong text-foreground max-md:text-caption max-md:font-semibold">{PLANS[p].name}</span>
+                <span className="block font-normal text-muted-foreground max-md:sr-only">
                   {p === "free" ? "$0" : `${price(p)} a month`}
                   {p !== "free" && !available[p] ? " · early access" : ""}
                 </span>
@@ -374,10 +399,10 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
                 const f = FEATURES[k];
                 return (
                   <tr key={k} className="border-t border-border">
-                    <th scope="row" className="py-3 pe-4 text-start font-normal">
+                    <th scope="row" className="py-3 pe-4 text-start font-normal max-md:pe-2">
                       <span className="text-foreground">{f.name}</span>
-                      <span className="block text-muted-foreground">{f.description}</span>
-                      {f.networkGated ? <span className="mt-0.5 block text-muted-foreground">Opens once {f.unlockAtMerchants} shops have joined.</span> : null}
+                      <span className="block text-muted-foreground max-md:hidden">{f.description}</span>
+                      {f.networkGated ? <span className="mt-0.5 block text-muted-foreground max-md:hidden">Opens once {f.unlockAtMerchants} shops have joined.</span> : null}
                     </th>
                     {plans.map((p) => (
                       <Cell key={p} on={PLAN_RANK[p] >= PLAN_RANK[f.minPlan]} soon={p !== "free" && !available[p] && f.minPlan !== "free"} />
@@ -393,8 +418,8 @@ export function CompareTable({ available }: { available: Record<PlanId, boolean>
             <th scope="row" className="py-3 pe-4 text-start font-normal text-foreground">
               Transaction fee
             </th>
-            <td className="px-3 py-3 text-center text-foreground">None</td>
-            <td colSpan={plans.length - 1} className="px-3 py-3 text-center text-muted-foreground">
+            <td className="px-3 py-3 text-center text-foreground max-md:px-0">None</td>
+            <td colSpan={plans.length - 1} className="px-3 py-3 text-center text-muted-foreground max-md:px-1">
               On in-app payments only
             </td>
           </tr>

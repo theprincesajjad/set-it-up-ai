@@ -62,6 +62,9 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
   const toast = useToast();
   const act = useAction();
   const catalog = useApi(() => api.catalog(), [api]);
+  // A shop that is not registered for GST/HST adds no tax, so the estimate is the total.
+  const taxStatus = useApi(() => api.settings.tax(), [api]);
+  const noTax = taxStatus.data?.taxRegistered === false;
   const [phone, setPhone] = useState(prefill?.phone ?? "");
   const [name, setName] = useState(prefill?.name ?? "");
   const [lines, setLines] = useState<Line[]>([]);
@@ -192,7 +195,7 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
       width={560}
       footer={
         <>
-          <p className="me-auto text-meta text-fg-muted tabular">{total > 0 ? `About ${formatMoney(total)} before tax` : "Add a dish to start"}</p>
+          <p className="me-auto text-meta text-fg-muted tabular">{total > 0 ? (noTax ? formatMoney(total) : `About ${formatMoney(total)} before tax`) : "Add a dish to start"}</p>
           <Button variant="ghost" onClick={requestClose}>Cancel</Button>
           <Button disabled={!canSend} loading={act.busy} onClick={() => void send()}>{copy.send}</Button>
         </>
@@ -233,15 +236,15 @@ function Body({ mode, onClose, onPlaced, prefill }: { mode: TakeOrderMode; onClo
                     <span className="block text-meta text-fg-muted tabular">{grocer && lineUnit(l.catalogItemId) ? `about ${formatMoney(l.priceCents)} each (${lineUnit(l.catalogItemId)})` : `${l.choices ? `${l.choices} · ` : ""}${formatMoney(l.priceCents)} each`}</span>
                   </span>
                   <span className="inline-flex items-center rounded-full border border-line">
-                    <button type="button" aria-label={`One fewer ${l.name}`} onClick={() => bump(l.key, -1)} className="inline-flex size-9 items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring">
+                    <button type="button" aria-label={`One fewer ${l.name}`} onClick={() => bump(l.key, -1)} className="inline-flex size-11 items-center justify-center rounded-full transition-transform duration-150 active:scale-95 hover:bg-bg-subtle focus-visible:focus-ring sm:size-9">
                       <Minus aria-hidden className="size-4" />
                     </button>
                     <span className="w-7 text-center text-body tabular" aria-live="polite">{l.quantity}</span>
-                    <button type="button" aria-label={`One more ${l.name}`} onClick={() => bump(l.key, 1)} className="inline-flex size-9 items-center justify-center rounded-full hover:bg-bg-subtle focus-visible:focus-ring">
+                    <button type="button" aria-label={`One more ${l.name}`} onClick={() => bump(l.key, 1)} className="inline-flex size-11 items-center justify-center rounded-full transition-transform duration-150 active:scale-95 hover:bg-bg-subtle focus-visible:focus-ring sm:size-9">
                       <Plus aria-hidden className="size-4" />
                     </button>
                   </span>
-                  <button type="button" aria-label={`Remove ${l.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} className="inline-flex size-8 items-center justify-center rounded-full text-fg-muted hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring">
+                  <button type="button" aria-label={`Remove ${l.name}`} onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} className="inline-flex size-11 items-center justify-center rounded-full text-fg-muted transition-transform duration-150 active:scale-95 hover:bg-bg-subtle hover:text-fg focus-visible:focus-ring sm:size-8">
                     <X aria-hidden className="size-4" />
                   </button>
                 </li>

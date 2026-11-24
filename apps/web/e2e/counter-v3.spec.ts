@@ -121,6 +121,38 @@ test.describe("counter (café)", () => {
     await expect(page.getByRole("navigation", { name: "Main" }).first()).toBeVisible();
   });
 
+  test("a PIN typed on a hardware keyboard goes only to the PIN, and staff can take over a till whose owner has no PIN", async ({ page }) => {
+    const { token, id } = await owner(OWNER);
+    const me = await call<{ merchants: { merchantId: string; hasPin: boolean }[] }>("GET", "/v1/auth/me", token);
+    const ownerHasPin = me.merchants.find((m) => m.merchantId === id)?.hasPin ?? true;
+    await signIn(page, OWNER, `/m/${id}/counter`);
+    await counterReady(page);
+    const lookups: string[] = [];
+    page.on("request", (r) => {
+      if (/\/counter\/(lookup|award)/.test(r.url())) lookups.push(r.url());
+    });
+    await page.getByRole("button", { name: /sign in with a pin/i }).click();
+    const sheet = page.getByTestId("counter-pin");
+    await expect(sheet).toBeVisible();
+    // A tap elsewhere moves focus off the sheet: the keys still go only to the PIN, masked.
+    await page.mouse.click(1100, 700);
+    await page.keyboard.type("12", { delay: 40 });
+    await expect(sheet.getByRole("group", { name: "PIN" })).toHaveText(/^\s*•\s*•\s*$/);
+    // The seeded barista's PIN, typed fast like a keyboard wedge.
+    await page.keyboard.type("34");
+    await expect(page.getByRole("button", { name: /stamping as sam/i })).toBeVisible({ timeout: 20_000 });
+    await expect(sheet).toHaveCount(0);
+    expect(lookups).toEqual([]);
+    await expect(page.getByRole("group", { name: "Last 4 digits of their phone" })).not.toContainText(/\d/);
+    // Sam hands the till back; an owner with no PIN finds "Set my PIN" on the same sheet.
+    await page.getByRole("button", { name: /stamping as sam/i }).click();
+    await page.getByRole("button", { name: /^sign out sam/i }).click();
+    await page.getByRole("button", { name: /sign in with a pin/i }).click();
+    await expect(page.getByTestId("counter-pin").getByRole("button", { name: "Set my PIN" })).toHaveCount(ownerHasPin ? 0 : 1);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("counter-pin")).toHaveCount(0);
+  });
+
   test("Urdu: the counter reads right to left in Nastaliq, with Urdu copy and no clipped rows", async ({ page }) => {
     const { id } = await owner(OWNER);
     await signIn(page, OWNER, `/m/${id}/counter?lang=ur`);

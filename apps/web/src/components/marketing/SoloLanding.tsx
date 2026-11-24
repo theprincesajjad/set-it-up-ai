@@ -3,7 +3,7 @@ import { photoSrcSet, type NailTrade, type SoloPageId } from "@/lib/marketing/so
 import { soloView } from "@/lib/marketing/solo-view";
 import { marketingFontVars } from "@/lib/marketing/fonts";
 import { marketingSerifVar, preloadSerif } from "@/lib/marketing/serif";
-import { Bookings, CtaBand, Facts, Jobs, PriceBlock, ProFeatures, Promos, Regulars, StickyCta, Week } from "./solo/Blocks";
+import { Bookings, Facts, Jobs, PriceBlock, ProFeatures, Promos, Regulars, StickyCta, Week } from "./solo/Blocks";
 import { Hero, WORK_SIZES } from "./solo/Hero";
 import { SoloNav } from "./solo/Nav";
 import { Start } from "./solo/Start";
@@ -11,8 +11,8 @@ import "./solo/solo.css";
 
 /**
  * One solo-pro landing page, v4 (product-led, professional voice; docs/marketing/landing-pages.md): the hook and the phone, four facts
- * with a button, the owner's week, every booking in one calendar, promos, regulars, the variant's three tool cards, a call-to-action
- * band, two plan cards (lib/marketing/plan-copy.ts) and the three-field start; on phones a sticky bar keeps the button in reach. Server-rendered and static: English copy from copy.solo, the trade's photos from public/marketing, CSS-only
+ * with a button, the owner's week, every booking in one calendar, promos, regulars, the variant's three tool cards, the Pro
+ * features, three plan cards (lib/marketing/plan-copy.ts) and the three-field start; on phones a sticky bar keeps the button in reach. Server-rendered and static: English copy from copy.solo, the trade's photos from public/marketing, CSS-only
  * motion, and no script except the start form's source field.
  * `trade` only applies to the nail page (`?trade=brows|lashes|makeup`, served by the static /for-nail-techs/[trade] route).
  */
@@ -35,7 +35,6 @@ export function SoloLanding({ id, trade = "nails", variant }: { id: SoloPageId; 
         <Regulars v={v} />
         <Jobs v={v} />
         <ProFeatures v={v} />
-        <CtaBand v={v} />
         <PriceBlock v={v} />
         <Start v={v} />
       </main>

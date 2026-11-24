@@ -32,7 +32,7 @@ export function NearbyOnStreet({ shops }: { shops: networkApi.ShopListItemDto[] 
           // Clear row (audit 2.4 "Row"): 64 tall, padding 12 16, a 36 r12 tile in the shop's trade tint, 12 to the text, a 20px badge.
           return (
             <li key={m.id} data-trade={m.vertical}>
-              <Link href={`/shops/${m.slug}`} className="-mx-4 flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-hover focus-visible:focus-ring">
+              <Link href={`/shops/${m.slug}`} className="-mx-4 flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-hover focus-visible:focus-ring press-soft">
                 <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-r4 bg-trade-tint text-trade">
                   <Icon className="size-[18px]" strokeWidth={1.8} />
                 </span>
@@ -47,7 +47,7 @@ export function NearbyOnStreet({ shops }: { shops: networkApi.ShopListItemDto[] 
         }
         return (
           <li key={m.id}>
-            <Link href={`/shops/${m.slug}`} className="-mx-4 flex min-h-[68px] items-center gap-3.5 px-4 py-3 transition-colors hover:bg-hover focus-visible:focus-ring">
+            <Link href={`/shops/${m.slug}`} className="-mx-4 flex min-h-[68px] items-center gap-3.5 px-4 py-3 transition-colors hover:bg-hover focus-visible:focus-ring press-soft">
               <IconTile icon={verticalIcon(m.vertical)} tone={CATEGORY_TONE[verticalCategory(m.vertical)] ?? "peach"} size="lg" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-body-strong text-foreground"><bdi>{m.name}</bdi></span>

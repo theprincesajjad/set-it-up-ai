@@ -308,7 +308,7 @@ export default function StaffPage() {
             <p id="invite-role" className="mb-2 text-meta-strong text-fg">{t("own.staff.roleLegend")}</p>
             <div className="flex flex-col divide-y divide-line overflow-hidden rounded-input border border-line">
               {roles.map((r) => (
-                <label key={r} className={cn("flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2.5", newRole === r && "bg-bg-subtle")}>
+                <label key={r} className={cn("flex min-h-11 cursor-pointer items-start gap-3 px-3 py-2.5 transition-colors duration-tap hover:bg-bg-subtle active:bg-bg-muted", newRole === r && "bg-bg-subtle")}>
                   <input type="radio" name="role" checked={newRole === r} onChange={() => setNewRole(r)} className="mt-0.5 size-4 shrink-0 accent-[var(--ll-color-fg)]" />
                   <span className="min-w-0">
                     <span className="block text-meta-strong text-fg">{roleLabel(r)}</span>
@@ -366,6 +366,7 @@ export default function StaffPage() {
         danger
         onConfirm={async () => {
           await api.removeStaff(remove!.userId);
+          toast({ message: t("own.staff.removed"), tone: "success" });
           await state.reload();
         }}
       />

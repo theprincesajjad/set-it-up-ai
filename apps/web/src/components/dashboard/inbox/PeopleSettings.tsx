@@ -91,10 +91,10 @@ function InstagramCard() {
       <div className="flex flex-col gap-3 px-4 pb-4 sm:flex-row sm:items-start">
         <Icon3d name="instagram_mark" size={64} trade={detail.merchant.vertical} className="shrink-0" />
         <div className="flex min-w-0 flex-col gap-2">
-          <p className="text-body text-fg">{t("ig.card.body")}</p>
-          {s?.mode === "off" ? <p className="text-meta text-fg-muted">{t("ig.card.comingBody")}</p> : null}
+          {/* Not switched on yet (Instagram's review): one honest line, not a description of something the owner cannot use. */}
+          {s?.mode === "off" ? <p className="text-body text-fg">{t("ig.card.comingBody")}</p> : <p className="text-body text-fg">{t("ig.card.body")}</p>}
           {s?.mode === "stub" ? <p className="text-meta text-fg-muted">{t("ig.card.stub")}</p> : null}
-          <p className="text-caption text-fg-muted">{t("ig.card.keeps")}</p>
+          {s && s.mode !== "off" ? <p className="text-caption text-fg-muted">{t("ig.card.keeps")}</p> : null}
           {s && s.mode !== "off" ? (
             <div className="flex flex-wrap items-center gap-2">
               {s.connected ? (

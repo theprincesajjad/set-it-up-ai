@@ -530,6 +530,98 @@ describe("online booking: deposit, card on file and the 10-minute hold", () => {
     expect(codes).toEqual([201, 201, 201, 429]);
   });
 
+  it("an abandoned hold never hides the customer's own time: the same choice reuses it, a new one replaces it", async () => {
+    const s = await salon({ feeCents: 2500 });
+    const c = await customer(env, { name: "Neha Sharma" });
+    const start = at("2026-11-04 10:30");
+    const day = `serviceIds=${s.highlights.id}&staffId=${s.simran.user.id}&from=2026-11-04&to=2026-11-04`;
+    const times = async (token: string | null, q = day) => (await call(env, token, "GET", `/v1/public/shops/${s.merchant.slug}/availability?${q}`)).body;
+    const has = (av: { days: { times: { startsAt: string }[] }[] }, t: string) => av.days[0]!.times.some((x) => x.startsAt === t);
+    const live = async () => (await env.db.select().from(appointments).where(and(eq(appointments.userId, c.user.id), eq(appointments.status, "booked")))).map((a) => a.id);
+
+    const first = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id], staffId: s.simran.user.id, startsAt: start });
+    expect(first.status).toBe(201);
+    expect(first.body.confirmed).toBe(false);
+    const holdId = first.body.appointment.id as string;
+
+    // Everyone else loses the time; the customer who holds it still sees it, marked as theirs.
+    const anon = await times(null);
+    expect(has(anon, start)).toBe(false);
+    expect(anon.held).toBeUndefined();
+    const other = await customer(env);
+    expect(has(await times(other.token), start)).toBe(false);
+    const own = await times(c.token);
+    expect(has(own, start)).toBe(true);
+    expect(own.held).toEqual([{ appointmentId: holdId, startsAt: start, staffId: s.simran.user.id, holdExpiresAt: first.body.appointment.holdExpiresAt }]);
+
+    // They refreshed on the card step and chose the same thing again, four minutes later: the same booking and payment, ten fresh minutes, no second row.
+    env.clock.now = new Date(env.clock.now.getTime() + 4 * 60_000);
+    const again = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id], staffId: s.simran.user.id, startsAt: start, notes: "Running late" });
+    expect(again.status).toBe(201);
+    expect(again.body.appointment.id).toBe(holdId);
+    expect(again.body.deposit.paymentIntentId).toBe(first.body.deposit.paymentIntentId);
+    expect(again.body.appointment.holdExpiresAt).toBe(plusMin(env.clock.now.toISOString(), 10));
+    expect(await live()).toEqual([holdId]);
+    expect((await env.db.select().from(appointments).where(eq(appointments.id, holdId)))[0]!.clientNote).toBe("Running late");
+
+    // "Anyone" for the same time is still the same hold when the shop would assign the same person; otherwise it replaces it. Never two.
+    const any = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id], startsAt: start });
+    expect(any.status).toBe(201);
+    expect(await live()).toEqual([any.body.appointment.id]);
+    const cur = any.body.appointment.id as string;
+
+    // Back to the time step and a different time (named with `replaces`): the old hold is released in the same step.
+    const later = at("2026-11-04 14:00");
+    const moved = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id], staffId: s.simran.user.id, startsAt: later, replaces: cur });
+    expect(moved.status).toBe(201);
+    expect(moved.body.appointment.id).not.toBe(cur);
+    expect(await live()).toEqual([moved.body.appointment.id]);
+    expect((await env.db.select().from(appointments).where(eq(appointments.id, cur)))[0]).toMatchObject({ status: "cancelled", cancelReason: "hold_expired", holdExpiresAt: null });
+    // The first time is free for everyone again.
+    expect(has(await times(null), start)).toBe(true);
+
+    // A choice that overlaps their own hold replaces it without being told to (a longer visit at the same time, from another phone).
+    const longer = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id, s.toner.id], staffId: s.simran.user.id, startsAt: later });
+    expect(longer.status).toBe(201);
+    expect(await live()).toEqual([longer.body.appointment.id]);
+
+    // If the new time is taken, the hold they have is kept (the swap is one step, not release-then-hope).
+    expect((await staffBooking(s, s.aisha.user.id, "2026-11-05 10:00", [s.cut.id])).status).toBe(201);
+    const lost = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id], staffId: s.aisha.user.id, startsAt: at("2026-11-05 10:00"), replaces: longer.body.appointment.id });
+    expect(lost.status).toBe(409);
+    expect(await live()).toEqual([longer.body.appointment.id]);
+
+    // Someone else's hold is never replaced or reused, whatever id is sent.
+    const theirs = await call(env, other.token, "POST", "/v1/me/appointments", { serviceIds: [s.cut.id], staffId: s.aisha.user.id, startsAt: at("2026-11-05 13:00") });
+    expect(theirs.status).toBe(201);
+    const grab = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.cut.id], staffId: s.aisha.user.id, startsAt: at("2026-11-05 13:00"), replaces: theirs.body.appointment.id });
+    expect(grab.status).toBe(409);
+    expect((await env.db.select().from(appointments).where(eq(appointments.id, theirs.body.appointment.id)))[0]).toMatchObject({ status: "booked" });
+
+    // Paying the hold that is left confirms it once; a paid booking is no longer something a new choice can replace.
+    await deliver(env, fake(env).succeedPaymentIntent(longer.body.deposit.paymentIntentId));
+    expect((await env.db.select().from(appointments).where(eq(appointments.id, longer.body.appointment.id)))[0]).toMatchObject({ status: "booked", holdExpiresAt: null });
+    expect((await times(c.token, `serviceIds=${s.highlights.id}&staffId=${s.simran.user.id}&from=2026-11-04&to=2026-11-04`)).held).toBeUndefined();
+    const over = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.cut.id], staffId: s.simran.user.id, startsAt: later, replaces: longer.body.appointment.id });
+    expect(over.status).toBe(409);
+  });
+
+  it("a deposit paid on a hold the customer replaced is refunded when the chair went to their new booking", async () => {
+    const s = await salon();
+    const c = await customer(env);
+    const start = at("2026-11-04 10:00");
+    const one = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id], staffId: s.simran.user.id, startsAt: start });
+    // Same person, a longer visit at the same time: the first hold is replaced.
+    const two = await call(env, c.token, "POST", "/v1/me/appointments", { serviceIds: [s.highlights.id, s.toner.id], staffId: s.simran.user.id, startsAt: start });
+    expect(two.status).toBe(201);
+    expect(two.body.appointment.id).not.toBe(one.body.appointment.id);
+    // An old tab still pays the first deposit: it cannot take the chair back from the new booking, so the money goes back.
+    await deliver(env, fake(env).succeedPaymentIntent(one.body.deposit.paymentIntentId));
+    expect((await env.db.select().from(appointments).where(eq(appointments.id, one.body.appointment.id)))[0]).toMatchObject({ status: "cancelled", cancelReason: "hold_expired" });
+    expect(fake(env).intents.get(one.body.deposit.paymentIntentId)!.refundedCents).toBe(4000);
+    expect((await env.db.select().from(appointments).where(eq(appointments.id, two.body.appointment.id)))[0]).toMatchObject({ status: "booked" });
+  });
+
   it("takes the chair back when the deposit lands just after the hold lapsed, or refunds it if someone else booked", async () => {
     const s = await salon();
     const c = await customer(env);
@@ -894,12 +986,12 @@ describe("checkout", () => {
     expect(await earned(s, v.c.user.id)).toBe(65);
   });
 
-  it("needs a phone for an anonymous walk-in, then attaches the client", async () => {
+  it("needs a phone to text an anonymous walk-in the pay link, then attaches the client", async () => {
     const s = await salon();
     const w = await book(s, s.desk.token, { source: "walk_in", staffId: s.aisha.user.id, serviceIds: [s.threading.id], customer: { name: "Zane" } });
     expect(w.body.customer.id).toBeNull();
     const desk = s.desk.token;
-    const noPhone = await call(env, desk, "POST", `${s.base}/appointments/${w.body.id}/checkout`, { mode: "counter" });
+    const noPhone = await call(env, desk, "POST", `${s.base}/appointments/${w.body.id}/checkout`, { mode: "link" });
     expect(noPhone.status).toBe(409);
     expect(noPhone.body.error.code).toBe("customer_required");
     const ok = await call(env, desk, "POST", `${s.base}/appointments/${w.body.id}/checkout`, { mode: "counter", tipCents: 200, customer: { phone: "+14165550177", name: "Zane Ali" } });

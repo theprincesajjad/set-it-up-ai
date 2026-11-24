@@ -15,7 +15,8 @@ import { qk } from "../state/query";
 import { useSession } from "../state/session";
 import { shadows } from "@ll/design-tokens";
 import { disp, ui, useTheme } from "../theme";
-import { Banner, Button, Awning, Chip, CloseGlyph, DiscountCard, hairline, QrCode, SegmentedControl, Sheet, Skeleton, Text, TextField, haptic, shadow, monoFamily, useToast } from "../ui";
+import { Appear, Banner, Button, Awning, Chip, CloseGlyph, DiscountCard, hairline, QrCode, SegmentedControl, Sheet, Skeleton, Text, TextField, haptic, shadow, monoFamily, useToast } from "../ui";
+import { pressFx } from "../ui/pressFx";
 
 /**
  * My card (foundations § My card): a white sheet opened from the black card
@@ -88,7 +89,7 @@ export default function CardSheet() {
         <Text style={disp(20, 800, 26)} accessibilityRole="header">
           {lt("sh.card.title")}
         </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={lt("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} style={[styles.close, { backgroundColor: r.card }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={lt("sh.card.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} style={({ pressed }) => [[styles.close, { backgroundColor: r.card }], pressed ? pressFx.scale : null]}>
           <CloseGlyph size={16} color={c.fg} />
         </Pressable>
       </View>
@@ -108,17 +109,15 @@ export default function CardSheet() {
       {tab === "card" ? (
         <>
           <Text style={[disp(28, 800, 32, -0.01), { marginTop: 40, textAlign: "center" }]}>{lt("sh.card.show")}</Text>
-          <Text style={[ui(15, 400, 20), { marginTop: 8, textAlign: "center" }]} rawColor={c.fgMuted}>
-            {lt("sh.card.sub")}
-          </Text>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={lt("ms.qr.label")}
             accessibilityHint={lt("ms.card.qrHint")}
             disabled={!card}
             onPress={() => card && router.push({ pathname: "/qr", params: { payload: card.qrPayload, code: card.memberCode } })}
-            style={[styles.qrTile, { backgroundColor: c.qrBg, borderColor: r.border }, shadow(shadows.card.css, shadows.card.native)]}
+            style={({ pressed }) => [[styles.qrTile, { backgroundColor: c.qrBg, borderColor: r.border }, shadow(shadows.card.css, shadows.card.native)], pressed ? pressFx.scale : null]}
           >
-            {card ? <QrCode value={card.qrPayload} size={qrSize} accessibilityLabel={lt("ui.memberQr", { code: card.memberCode.split("").join(" ") })} /> : <Skeleton width={qrSize} height={qrSize} radius={8} />}
+            {card ? <Appear><QrCode value={card.qrPayload} size={qrSize} accessibilityLabel={lt("ui.memberQr", { code: card.memberCode.split("").join(" ") })} /></Appear> : <Skeleton width={qrSize} height={qrSize} radius={8} />}
           </Pressable>
           <Text rawColor={c.fg} center selectable style={styles.code}>
             {card ? groupMemberCode(card.memberCode) : "•••• ••••"}
@@ -134,7 +133,7 @@ export default function CardSheet() {
                 <Text style={ui(13, 400, 17)} rawColor={c.fgMuted}>
                   {lt("sh.card.forgot")}
                 </Text>
-                <Pressable accessibilityRole="button" accessibilityLabel={`${lt("sh.card.forgot")} ${lt("sh.card.claim")}`} onPress={() => setClaimOpen(true)} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`${lt("sh.card.forgot")} ${lt("sh.card.claim")}`} onPress={() => setClaimOpen(true)} hitSlop={{ top: 14, bottom: 14, left: 10, right: 10 }} style={({ pressed }) => (pressed ? pressFx.dim : null)}>
                   <Text style={ui(13, 600, 17)} rawColor={c.brand}>{lt("sh.card.claim")}</Text>
                 </Pressable>
               </View>
@@ -150,7 +149,7 @@ export default function CardSheet() {
               onPress={() =>
                 router.push({ pathname: "/discount", params: { name: dc.name, percentOff: String(dc.percentOff), amountOffCents: String(dc.amountOffCents), terms: dc.terms ?? "", shopName: m.merchant.name, vertical: m.merchant.vertical, logoUrl: m.merchant.logoUrl ?? "" } })
               }
-            >
+             style={({ pressed }) => (pressed ? pressFx.dim : null)}>
               <DiscountCard card={dc} shop={m.merchant} live={false} />
             </Pressable>
           ))}

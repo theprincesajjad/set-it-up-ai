@@ -50,7 +50,6 @@ export function Hero({ v }: { v: SoloView }) {
               </li>
             ))}
           </ul>
-          <p className="sl-proof sl-rise sl-i4">{v.hero.proof}</p>
         </div>
 
         <div className="sl-stage">

@@ -24,7 +24,7 @@ export default function Referrals() {
   if (!wallet.isLoading && shops.length === 0) {
     return (
       <Screen back title={t("sh.inv.title")}>
-        <EmptyState icon={UserPlus} title={t("ms.ref.emptyTitle")} body={t("ms.ref.emptyBody")} />
+        <EmptyState icon={UserPlus} title={t("ms.ref.emptyTitle")} />
       </Screen>
     );
   }

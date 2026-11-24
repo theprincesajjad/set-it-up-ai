@@ -31,6 +31,7 @@ import {
   UtensilsCrossed,
   Wallet,
 } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 /** 10. You: profile header + rows. Counter mode appears for staff. */
 export default function You() {
@@ -48,7 +49,7 @@ export default function You() {
 
   return (
     <Screen title={t("sh.you.title")} largeTitle tabBar>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${name || t("sh.you.addName")}. ${t("sh.you.edit")}`} onPress={() => router.push("/settings/profile")} style={styles.me}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${name || t("sh.you.addName")}. ${t("sh.you.edit")}`} onPress={() => router.push("/settings/profile")} style={({ pressed }) => [styles.me, pressed ? pressFx.dim : null]}>
         <Avatar name={name} id={user?.id} size={64} />
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="title">{name || t("sh.you.addName")}</Text>

@@ -1,5 +1,5 @@
 "use client";
-import { ArrowRight, ChevronDown, Menu } from "lucide-react";
+import { ArrowRight, ChevronDown, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type SyntheticEvent } from "react";
@@ -180,13 +180,13 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
   const phoneMenu = useMenu(pathname);
 
   const switcher = translated ? (
-    <details className="group relative" {...langMenu.props}>
-      <summary aria-expanded={langMenu.open} className="flex h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-body text-mkt-body hover:bg-mkt-grey hover:text-mkt-black focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
+    <details className="ll-pop group relative" {...langMenu.props}>
+      <summary aria-expanded={langMenu.open} className="flex h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-body text-mkt-body transition-colors duration-150 hover:bg-mkt-grey hover:text-mkt-black active:bg-mkt-grey focus-visible:focus-ring [&::-webkit-details-marker]:hidden">
         <span className="sr-only">{say((l) => labels[l].language)}: </span>
         {say((l) => LOCALES[l].name)}
         <ChevronDown aria-hidden className="size-4 transition-transform group-open:rotate-180" strokeWidth={1.5} />
       </summary>
-      <ul className="absolute end-0 top-12 z-sticky w-44 rounded-r5 border border-mkt-rule bg-mkt-paper p-1.5 shadow-mkt-float">
+      <ul data-panel className="absolute end-0 top-12 z-sticky w-44 rounded-r5 border border-mkt-rule bg-mkt-paper p-1.5 shadow-mkt-float">
         {LOCALE_LIST.map((l) => (
           <li key={l.code}>
             <Link
@@ -198,7 +198,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                 setChosen(l.code);
               }}
               aria-current={l.code === locale ? "true" : undefined}
-              className={cn("flex min-h-11 items-center rounded-r4 px-3 text-body hover:bg-mkt-grey", l.code === locale ? "font-semibold text-mkt-black" : "text-mkt-body")}
+              className={cn("flex min-h-11 items-center rounded-r4 px-3 text-body transition-colors duration-150 hover:bg-mkt-grey active:bg-mkt-grey", l.code === locale ? "font-semibold text-mkt-black" : "text-mkt-body")}
             >
               {l.name}
             </Link>
@@ -226,7 +226,7 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
               key={n.href}
               href={n.href}
               aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
-              className={cn("inline-flex h-11 items-center rounded-md px-3.5 text-base font-medium text-mkt-black underline decoration-1 underline-offset-8 transition-colors hover:decoration-mkt-black focus-visible:focus-ring", isCurrent(pathname, n.href) ? "decoration-mkt-black" : "decoration-transparent")}
+              className={cn("inline-flex h-11 items-center rounded-md px-3.5 text-base font-medium text-mkt-black underline decoration-1 underline-offset-8 transition-[color,text-decoration-color,opacity] duration-150 hover:decoration-mkt-black active:opacity-60 focus-visible:focus-ring", isCurrent(pathname, n.href) ? "decoration-mkt-black" : "decoration-transparent")}
             >
               {n.label}
             </Link>
@@ -234,23 +234,25 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
         </nav>
         <div className={cn("hidden items-center gap-2 whitespace-nowrap xl:justify-self-end", translated ? "xl:flex" : "lg:flex")}>
           {switcher}
-          <Link href={login.href} className="inline-flex h-11 items-center rounded-md px-3.5 text-base font-medium text-mkt-black underline decoration-transparent decoration-1 underline-offset-8 transition-colors hover:decoration-mkt-black focus-visible:focus-ring">
+          <Link href={login.href} className="inline-flex h-11 items-center rounded-md px-3.5 text-base font-medium text-mkt-black underline decoration-transparent decoration-1 underline-offset-8 transition-[color,text-decoration-color,opacity] duration-150 hover:decoration-mkt-black active:opacity-60 focus-visible:focus-ring">
             {login.label}
           </Link>
-          <Link href={cta.href} prefetch={false} className="ms-1 inline-flex h-11 items-center rounded-full bg-mkt-black px-5.5 text-base font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
+          <Link href={cta.href} prefetch={false} className="ms-1 inline-flex h-11 items-center rounded-full bg-mkt-black px-5.5 text-base font-semibold text-mkt-on-black transition-[background-color,scale] duration-150 ease-out hover:bg-mkt-black-hover active:scale-96 active:bg-mkt-black-hover motion-reduce:active:scale-100 focus-visible:focus-ring">
             {cta.label}
           </Link>
         </div>
         <details className={cn("ll-menu group", translated ? "xl:hidden" : "lg:hidden")} {...phoneMenu.props}>
-          <summary aria-expanded={phoneMenu.open} className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full bg-mkt-grey hover:bg-mkt-grey focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
-            <Menu aria-hidden className="size-5" strokeWidth={1.5} />
+          <summary aria-expanded={phoneMenu.open} className="grid size-11 cursor-pointer list-none place-items-center rounded-full bg-mkt-grey transition-[background-color,scale] duration-150 ease-out hover:bg-mkt-grey-hover active:scale-96 active:bg-mkt-grey-hover motion-reduce:active:scale-100 focus-visible:focus-ring [&::-webkit-details-marker]:hidden" aria-label={copy.nav.menu}>
+            {/* The lines become a cross while the menu is open: both icons stay in the DOM and cross-fade (marketing.css .ll-swap). */}
+            <Menu aria-hidden className="ll-swap col-start-1 row-start-1 size-5 group-open:scale-25 group-open:opacity-0" strokeWidth={1.5} />
+            <X aria-hidden className="ll-swap col-start-1 row-start-1 size-5 scale-25 opacity-0 group-open:scale-100 group-open:opacity-100" strokeWidth={1.5} />
           </summary>
           {/* The scrim: the page behind is dimmed, and a tap on it closes the menu (useMenu). */}
           <div aria-hidden data-scrim className="absolute inset-x-0 top-full h-dvh bg-overlay" />
-          <div className="absolute inset-x-0 top-full max-h-[calc(100dvh-4.5rem)] overflow-y-auto rounded-b-r7 border-b border-mkt-rule bg-mkt-paper px-3 pt-2 pb-4 shadow-mkt-float">
+          <div data-panel className="absolute inset-x-0 top-full max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain rounded-b-r7 border-b border-mkt-rule bg-mkt-paper px-3 pt-2 pb-4 shadow-mkt-float">
             <nav aria-label="Main" className="mx-auto flex max-w-xl flex-col">
               {nav.map((n) => (
-                <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="flex min-h-12 items-center rounded-r4 px-3 text-lg font-medium text-mkt-black hover:bg-mkt-grey aria-[current=page]:underline aria-[current=page]:decoration-1 aria-[current=page]:underline-offset-8">
+                <Link key={n.href} href={n.href} aria-current={isCurrent(pathname, n.href) ? "page" : undefined} className="flex min-h-12 items-center rounded-r4 px-3 text-lg font-medium text-mkt-black transition-colors duration-150 hover:bg-mkt-grey active:bg-mkt-grey aria-[current=page]:underline aria-[current=page]:decoration-1 aria-[current=page]:underline-offset-8">
                   {n.label}
                 </Link>
               ))}
@@ -266,18 +268,18 @@ export function SiteHeader({ labels }: { labels: HeaderLabelsByLocale }) {
                         setChosen(l.code);
                       }}
                       aria-current={l.code === locale ? "true" : undefined}
-                      className={cn("inline-flex min-h-11 items-center rounded-full border px-3 text-body", l.code === locale ? "border-mkt-black bg-mkt-black text-mkt-on-black" : "border-mkt-rule text-mkt-black")}
+                      className={cn("inline-flex min-h-11 items-center rounded-full border px-3 text-body", l.code === locale ? "border-mkt-black bg-mkt-black text-mkt-on-black" : "border-mkt-rule text-mkt-black active:bg-mkt-grey")}
                     >
                       {l.name}
                     </Link>
                   ))}
                 </div>
               ) : null}
-              <Link href={login.href} className="flex min-h-12 items-center rounded-r4 px-3 text-lg font-medium text-mkt-black hover:bg-mkt-grey">
+              <Link href={login.href} className="flex min-h-12 items-center rounded-r4 px-3 text-lg font-medium text-mkt-black transition-colors duration-150 hover:bg-mkt-grey active:bg-mkt-grey">
                 {login.label}
               </Link>
               {/* The page's primary button (landing.css .lp-btn): 56px, the arrow, darker on hover, the focus ring. */}
-              <Link href={cta.href} prefetch={false} className="group/cta mt-2 flex min-h-14 items-center justify-center gap-2.5 rounded-full bg-mkt-black px-6 text-lg font-semibold text-mkt-on-black transition-colors hover:bg-mkt-black-hover focus-visible:focus-ring">
+              <Link href={cta.href} prefetch={false} className="group/cta mt-2 flex min-h-14 items-center justify-center gap-2.5 rounded-full bg-mkt-black px-6 text-lg font-semibold text-mkt-on-black transition-[background-color,scale] duration-150 ease-out hover:bg-mkt-black-hover active:scale-96 active:bg-mkt-black-hover motion-reduce:active:scale-100 focus-visible:focus-ring">
                 {cta.label}
                 <ArrowRight aria-hidden strokeWidth={2} className="-me-1 size-4.5 transition-transform group-hover/cta:translate-x-0.5 motion-reduce:transition-none rtl:-scale-x-100" />
               </Link>

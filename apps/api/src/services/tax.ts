@@ -87,3 +87,13 @@ export async function merchantTax(db: DbOrTx, merchant: { neighbourhoodId: strin
   if (salesTaxBps({ province, taxRegistered: merchant.taxRegistered }) === 0) return { province, taxCents: 0, lines: [], label: "No tax (not registered)" };
   return { ...computeTax(taxableCents, province), label: taxLabel(province).label };
 }
+
+/**
+ * Tax on an order (online, counter, phone, kitchen, a grocer's weigh-in): the province's components, or none at all when the shop
+ * said it is not registered for GST/HST. Every order total goes through here so the order, its receipt and the customer's page agree.
+ */
+export async function shopTax(db: DbOrTx, merchant: { neighbourhoodId: string | null; taxRegistered?: boolean | null }, taxableCents: number): Promise<TaxResult> {
+  const province = await merchantProvince(db, merchant);
+  if (merchant.taxRegistered === false) return { province, taxCents: 0, lines: [] };
+  return computeTax(taxableCents, province);
+}

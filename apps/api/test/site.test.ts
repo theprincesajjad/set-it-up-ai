@@ -117,6 +117,15 @@ describe("zero AI: presets and template copy", () => {
     const again = await req(env, null, "GET", `/v1/public/sites/${s.merchant.slug}`);
     expect(again.body.services[0].priceCents).toBe(6000);
   });
+
+  it("a shop with no active services is not bookable, so its site leads with Join", async () => {
+    const s = await shop({ annual: true });
+    await env.db.update(services).set({ active: false }).where(eq(services.merchantId, s.merchant.id));
+    expect((await req(env, s.ownerToken, "POST", `${s.base}/publish`)).status).toBe(200);
+    const pub = await req(env, null, "GET", `/v1/public/sites/${s.merchant.slug}`);
+    expect(pub.body.booking.enabled).toBe(false);
+    expect(pub.body.services).toEqual([]);
+  });
 });
 
 describe("publish needs the annual plan", () => {

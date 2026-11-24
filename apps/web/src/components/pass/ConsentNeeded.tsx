@@ -15,7 +15,7 @@ export function ConsentNeeded({ shop, className }: { shop: string; className?: s
   return (
     <p role="alert" className={className ?? "text-meta font-medium text-negative"}>
       {t("pet.food.noConsent", { shop })}{" "}
-      <Link href="/me#settings" className="underline underline-offset-4 focus-visible:focus-ring">
+      <Link href="/me#settings" className="underline underline-offset-4 focus-visible:focus-ring active:opacity-60">
         {t("pet.food.noConsentLink")}
       </Link>
     </p>

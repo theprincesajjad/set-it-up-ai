@@ -15,7 +15,7 @@ import { CardHead, SurfaceCard } from "@/components/ui/ClearKit";
 import { Icon3d } from "@/components/ui/Icon3d";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { useApi } from "@/lib/dashboard/useApi";
@@ -25,6 +25,7 @@ export function PromoPicker({ standalone }: { /** On its own page under a page t
   const { api, base, detail } = useMerchant();
   const { t, locale, date } = useLocaleOrEnglish();
   const toast = useToast();
+  const errText = useErrorText();
   const state = useApi(() => api.regularsPromos.templates(locale), [api, locale]);
   const [pick, setPick] = useState<messagingApi.PromoTemplateDto | null>(null);
   const [title, setTitle] = useState("");
@@ -54,7 +55,7 @@ export function PromoPicker({ standalone }: { /** On its own page under a page t
       setPick(null);
       await state.reload();
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     } finally {
       setSending(false);
     }
@@ -64,7 +65,7 @@ export function PromoPicker({ standalone }: { /** On its own page under a page t
     <SurfaceCard as="section" aria-labelledby="promo-picker" data-testid="promo-picker">
       <CardHead id="promo-picker" title={t("promo.title")} action={counter ? <Badge tone="neutral"><span data-testid="promo-counter">{counter}</span></Badge> : null} />
       <div className="flex flex-col gap-4 px-4 pb-4">
-        {standalone ? null : <p className="text-meta text-fg-muted">{t("promo.subtitle")}</p>}
+        {standalone || d?.offer ? null : <p className="text-meta text-fg-muted">{t("promo.subtitle")}</p>}
         {d?.offer ? (
           <PlanLine href={`${base}/billing?plan=plus`} linkLabel={t("promo.planCta", { plan: d.offer.name })}>
             {t("promo.planLine", { plan: d.offer.name, count: PROMOS_PER_MONTH_PLUS })} {t("people.perMonth", { price: formatMoney(PLANS.plus.priceCents).replace(/\.00$/, "") })}
@@ -87,7 +88,7 @@ export function PromoPicker({ standalone }: { /** On its own page under a page t
                 type="button"
                 onClick={() => choose(x)}
                 aria-pressed={pick?.key === x.key}
-                className={cn("flex h-full min-h-28 w-full flex-col gap-1 rounded-r4 border px-4 py-3 text-start focus-visible:focus-ring", pick?.key === x.key ? "border-foreground bg-row-sel" : "border-border hover:bg-bg-subtle")}
+                className={cn("press-soft flex h-full min-h-28 w-full flex-col gap-1 rounded-r4 border px-4 py-3 text-start focus-visible:focus-ring", pick?.key === x.key ? "border-foreground bg-row-sel" : "border-border hover:bg-bg-subtle")}
                 data-testid={`promo-tpl-${x.key}`}
               >
                 <span className="flex items-center justify-between gap-2">

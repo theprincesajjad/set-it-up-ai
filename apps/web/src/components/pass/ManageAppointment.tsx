@@ -153,7 +153,7 @@ export function ManageAppointment({ initial, slug, pay, justBooked = false }: { 
             <MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-fg" strokeWidth={1.5} />
             <div className="min-w-0">
               <p className="text-body text-fg"><bdi>{m.address}</bdi></p>
-              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${m.name} ${m.address}`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-meta-strong text-fg underline underline-offset-2">{t("bk.next.directions")}</a>
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${m.name} ${m.address}`)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-meta-strong text-fg underline underline-offset-2 press">{t("bk.next.directions")}</a>
             </div>
           </div>
         ) : null}
@@ -179,7 +179,7 @@ export function ManageAppointment({ initial, slug, pay, justBooked = false }: { 
       {mode === "move" ? (
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setMode("view")} aria-label={t("bk.back")} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-line focus-visible:focus-ring"><ChevronLeft aria-hidden className="size-5 rtl:rotate-180" /></button>
+            <button type="button" onClick={() => setMode("view")} aria-label={t("bk.back")} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-line focus-visible:focus-ring press"><ChevronLeft aria-hidden className="size-5 rtl:rotate-180" /></button>
             <h2 className="text-headline text-fg">{t("cust.manage.pickNew")}</h2>
           </div>
           <DateStrip

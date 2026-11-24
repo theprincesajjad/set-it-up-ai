@@ -43,7 +43,7 @@ export function CampaignList({ base, neighbourhoods, isAdmin, neighbourhoodId }:
             <ul className="divide-y divide-line border-y border-line">
               {d.items.map((c) => (
                 <li key={c.id}>
-                  <Link href={`${base}/${c.id}`} className="flex flex-col gap-1 py-3 hover:bg-bg-subtle sm:flex-row sm:items-center sm:gap-6 sm:px-2">
+                  <Link href={`${base}/${c.id}`} className="flex flex-col gap-1 py-3 transition-colors duration-tap hover:bg-bg-subtle active:bg-bg-muted focus-visible:focus-ring sm:flex-row sm:items-center sm:gap-6 sm:px-2">
                     <div className="min-w-0 flex-1">
                       <h2 className="truncate text-meta-strong text-fg">{c.name}</h2>
                       <p className="truncate text-meta text-fg-muted">{hoodName(c.neighbourhoodId)} · {KIND_LABEL[c.kind]} · {formatDate(c.startsAt)} to {formatDate(c.endsAt)}</p>

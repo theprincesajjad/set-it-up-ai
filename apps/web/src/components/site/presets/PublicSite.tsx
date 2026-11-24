@@ -71,10 +71,11 @@ export async function PublicSite({ lookup, searchParams }: { lookup: SiteLookup;
             {t("site.lapseBanner", { url: `${env.siteUrl.replace(/^https?:\/\//, "")}/s/${s.slug}` })}
           </div>
         ) : null}
-        <header className="mx-auto flex w-full max-w-260 items-center justify-between gap-3 px-4 pt-4 md:px-8">
+        <header className="mx-auto flex min-h-15 w-full max-w-260 items-center justify-between gap-3 px-4 pt-4 md:px-8">
           <span className="text-body-strong text-foreground">{s.shop.name}</span>
-          {s.booking.enabled ? (
-            <a href={`${base}/shops/${encodeURIComponent(s.slug)}/book`} className="inline-flex min-h-11 items-center rounded-full px-4 text-body font-[550] text-link hover:underline focus-visible:focus-ring">
+          {/* Only when there is something to book (the same rule as the buttons in SiteRenderer). */}
+          {s.booking.enabled && s.services.length > 0 ? (
+            <a href={`${base}/shops/${encodeURIComponent(s.slug)}/book`} className="press inline-flex min-h-11 items-center rounded-full px-4 text-body font-[550] text-link hover:underline active:underline focus-visible:focus-ring">
               {t("site.skipToBook")}
             </a>
           ) : null}
@@ -83,7 +84,7 @@ export async function PublicSite({ lookup, searchParams }: { lookup: SiteLookup;
           <SiteRenderer data={s} links={{ base }} />
         </main>
         <footer className="mx-auto flex w-full max-w-260 items-center justify-center px-4 pb-10">
-          <Link href={`${env.siteUrl}/for-shoppers`} className="inline-flex min-h-11 items-center gap-2 text-meta text-muted-foreground hover:text-foreground">
+          <Link href={`${env.siteUrl}/for-shoppers`} className="press inline-flex min-h-11 items-center gap-2 text-meta text-muted-foreground [--press-scale:0.98] hover:text-foreground active:text-foreground focus-visible:focus-ring">
             <LogoMark size={16} />
             {t("site.madeWith")}
           </Link>

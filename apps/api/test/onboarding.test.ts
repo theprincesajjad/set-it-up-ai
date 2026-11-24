@@ -173,6 +173,19 @@ describe("activation card in the owner's language", () => {
     const pa = await signup("cafe", "Pind Cafe", "pa-IN");
     expect((await checklist(pa.id)).activation.milestones[3].label).toBe("25 ਗਾਹਕ");
   });
+
+  it("?lang= asks for the language the dashboard is read in, whatever the profile says; an unknown one falls back to the profile", async () => {
+    const en = await signup("cafe", "Sunrise Bakery");
+    const get = async (id: string, lang: string) => (await env.app.inject({ method: "GET", url: `/v1/merchants/${id}/onboarding?lang=${lang}`, headers: auth(await tokenFor(env, owners.get(id)!)) })).json();
+    const ur = await get(en.id, "ur");
+    expect(ur.activation.milestones[1].label).not.toBe("First stamp");
+    expect(ur.activation.nextMove.cta).not.toBe("Add your first stamp");
+    expect((await get(en.id, "hi")).activation.milestones[0].label).toBe("साइन अप किया");
+    expect((await get(en.id, "xx")).activation.nextMove.cta).toBe("Add your first stamp");
+    const hi = await signup("cafe", "Sarson Dhaba", "hi");
+    expect((await get(hi.id, "en")).activation.nextMove.cta).toBe("Add your first stamp");
+    expect((await get(hi.id, "xx")).activation.nextMove.cta).toBe("पहला स्टैम्प लगाएँ");
+  });
 });
 
 describe("setup nudges", () => {

@@ -82,7 +82,7 @@ function Catalog() {
         flush
         back={restaurant ? { href: `${base}/restaurant/menu`, label: "Menu & dietary" } : undefined}
         title="Menu and prices"
-        description="What customers can order ahead, and what it costs. Prices are always set here."
+        description="What customers can order ahead, and what it costs."
         actions={state.data && !state.data.items.length ? undefined : <Button size="sm" iconStart={Plus} onClick={() => openEdit(blank)}>Add item</Button>}
       />
       {act.error && !edit ? <Banner tone="danger">{act.error}</Banner> : null}

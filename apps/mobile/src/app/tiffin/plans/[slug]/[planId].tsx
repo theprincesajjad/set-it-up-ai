@@ -45,7 +45,7 @@ export default function TiffinPlanDetail() {
   if (!plan || !q.data) {
     return (
       <Screen back title={t("rest.tiffin.plan")}>
-        {q.data ? <EmptyState icon={Store} title={t("rest.tiffin.gone.title")} body={t("rest.tiffin.gone.body")} /> : <ErrorState offline={!online} message={t("rest.err.load")} onRetry={() => q.refetch()} />}
+        {q.data ? <EmptyState icon={Store} title={t("rest.tiffin.gone.title")} /> : <ErrorState offline={!online} message={t("rest.err.load")} onRetry={() => q.refetch()} />}
       </Screen>
     );
   }

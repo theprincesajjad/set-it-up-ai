@@ -1,5 +1,6 @@
 "use client";
 import { cn } from "@/lib/cn";
+import { useSlideIndicator } from "./useSlideIndicator";
 
 /**
  * 2-4 options view switch (List / Map, Day / Week). Not navigation. iOS-style: grey capsule track, white thumb.
@@ -9,6 +10,7 @@ import { cn } from "@/lib/cn";
 export function SegmentedControl<T extends string>({ options, value, onChange, label, className, floating, size = "md" }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string; className?: string; floating?: boolean; size?: "sm" | "md" | "lg" }) {
   const clearTrack = floating ? "clear:glass-chrome clear:h-11 clear:p-0.5" : { sm: "clear:h-11 clear:md:h-7", md: "clear:h-11 clear:md:h-8", lg: "clear:h-11" }[size] + " clear:max-md:p-0";
   const clearSeg = floating || size === "lg" ? "clear:px-4 clear:text-body" : size === "sm" ? "clear:px-3 clear:text-meta-strong" : "clear:px-3.5 clear:text-body";
+  const thumb = useSlideIndicator(value);
   return (
     <div role="radiogroup" aria-label={label} className={cn("inline-flex rounded-full", floating ? "chrome h-11 p-1" : "h-9 bg-bg-subtle p-0.5 clear:seg-track", clearTrack, className)}>
       {options.map((o) => (
@@ -19,12 +21,14 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "relative min-w-14 rounded-full px-3.5 text-meta-strong transition-colors duration-150 ease-out focus-visible:focus-ring after:absolute after:-inset-y-1 after:inset-x-0 clear:font-[550] clear:min-w-0 clear:max-md:min-w-11",
+            "relative isolate min-w-14 select-none rounded-full px-3.5 text-meta-strong transition-[color,opacity] duration-tap ease-out focus-visible:focus-ring after:absolute after:-inset-y-1 after:inset-x-0 clear:font-[550] clear:min-w-0 clear:max-md:min-w-11",
             clearSeg,
             size === "sm" && !floating && "clear:after:-inset-y-2",
-            o.value === value ? "bg-bg text-fg shadow-[0_1px_2px_rgba(0,0,0,0.08)] ring-1 ring-line clear:glass-seg-on clear:ring-0" : "text-fg-muted hover:text-fg clear:text-foreground",
+            o.value === value ? "text-fg" : "text-fg-muted hover:text-fg active:opacity-70 clear:text-foreground",
           )}
         >
+          {/* The lifted thumb is a layer under the label of the selected segment; it slides to the next one. */}
+          {o.value === value ? <span ref={thumb} aria-hidden className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-bg shadow-[0_1px_2px_rgba(0,0,0,0.08)] ring-1 ring-line clear:glass-seg-on clear:ring-0" /> : null}
           {o.label}
         </button>
       ))}

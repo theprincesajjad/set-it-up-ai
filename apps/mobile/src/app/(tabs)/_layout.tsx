@@ -12,6 +12,7 @@ import { useLocale } from "../../lib/i18n";
 import { useSession } from "../../state/session";
 import { useTheme } from "../../theme";
 import { CardQrIcon, Glass, glow, haptic, ScrollEdge, shadow, TabDiscoverIcon, TabMapIcon, TabWalletIcon, Text, useTabBarBottom } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 type TabName = "map" | "discover" | "wallet" | "activity";
 const LABEL_KEYS = { map: "sh.nav.map", discover: "sh.nav.discover", wallet: "sh.nav.wallet", activity: "sh.nav.activity" } as const satisfies Record<TabName, MessageKey>;
@@ -80,7 +81,7 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
           haptic.select();
           navigateToTab(route.key);
         }}
-        style={[styles.item, focused ? { backgroundColor: r.card, borderRadius: 999, width: 56 } : null, focused ? shadow(shadows.card.css, shadows.card.native) : null]}
+        style={({ pressed }) => [[styles.item, focused ? { backgroundColor: r.card, borderRadius: 999, width: 56 } : null, focused ? shadow(shadows.card.css, shadows.card.native) : null], pressed ? pressFx.dim : null]}
       >
         {name === "map" ? <TabMapIcon color={color} strokeWidth={sw} /> : null}
         {name === "discover" ? <TabDiscoverIcon color={color} filled={focused} /> : null}
@@ -125,7 +126,7 @@ function AppTabBar({ state, navigateToTab }: BottomTabBarProps) {
             haptic.select();
             navigateToTab(route.key);
           }}
-          style={styles.tabClear}
+          style={({ pressed }) => [styles.tabClear, pressed ? pressFx.dim : null]}
         >
           {focused ? <Glass variant="lift" radius={28} style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none" /> : null}
           {icon}

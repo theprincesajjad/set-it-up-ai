@@ -17,7 +17,7 @@ import {
   BarChart3, CalendarDays, Calculator, CalendarX, ChevronRight, Clock, CreditCard, Gift, Moon, PackageCheck, ScanLine, ShoppingBag, Sun, Sunset, Ticket, User, Users, Wrench, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { PLANS, PROMOS_PER_MONTH_PLUS } from "@ll/shared";
 import { GroceryHome } from "@/components/dashboard/grocery/GroceryHome";
 import { PageHeader, StatBlock } from "@/components/dashboard/kit";
@@ -47,7 +47,7 @@ import { TrialCard } from "./TrialCard"; // phase-pro: p1
 import { useThemeStyle } from "@/components/ui/ThemeStyle";
 
 /** Clear: the page header's glass secondary (ClearKit GlassButton, default size). */
-const GLASS_HEADER_BTN = "glass-lite inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 text-body font-[550] text-foreground transition-colors hover:bg-lg-lift focus-visible:focus-ring";
+const GLASS_HEADER_BTN = "press glass-lite inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-4 text-body font-[550] text-foreground hover:bg-lg-lift focus-visible:focus-ring";
 
 /** Clear stat-card icons, in the order each trade lists its numbers (lib/dashboard/today.ts). */
 const STAT_ICONS: Record<string, LucideIcon[]> = {
@@ -100,7 +100,18 @@ export function TodayPage() {
   const trendTo = useMemo(() => new Date(startOfTorontoDay(now).getTime() - 60_000).toISOString(), [now]);
   const daily = useApi(manager && family === "loyalty" ? () => api.reports.daily({ from: trendFrom, to: trendTo }) : null, [api, manager, family, trendFrom, trendTo], { pollMs: 300_000 });
   const counter = useApi(!manager ? () => api.counter.today() : null, [api, manager], { pollMs: 30_000 });
-  const onboarding = useApi(manager ? () => api.onboarding() : null, [api, manager]);
+  // The checklist's words (step names, the first-30-days card) are written by the API: ask for them in the language this page is read in.
+  const onboarding = useApi(manager ? () => api.onboarding(loc.locale) : null, [api, manager, loc.locale]);
+  // A setup step finished elsewhere: read the checklist again.
+  const reloadOnboarding = useRef(onboarding.reload);
+  useEffect(() => {
+    reloadOnboarding.current = onboarding.reload;
+  });
+  useEffect(() => {
+    const again = () => void reloadOnboarding.current();
+    window.addEventListener("ll:onboarding-changed", again);
+    return () => window.removeEventListener("ll:onboarding-changed", again);
+  }, []);
   const ordersOn = manager && family === "loyalty" && navVisible("orders", set, shop);
   const orders = useApi(ordersOn ? () => api.orders({}) : null, [api, ordersOn], { pollMs: 30_000 });
   const restaurant = useApi(manager && family === "restaurant" ? () => api.restaurantHome() : null, [api, manager, family], { pollMs: 30_000 });
@@ -178,15 +189,21 @@ export function TodayPage() {
   }
   // Wave P: while the setup guide is up, its next step is not repeated as a Needs you row.
   const failed = !!failedQ;
-  const retryAll = () => { void today.reload(); void restaurant.reload(); void appts.reload(); void sessions.reload(); void tickets.reload(); void counter.reload(); };
+  // The setup checklist feeds Needs you ("Print the QR stand"). When it fails the card says so with a retry, never "Nothing needs you".
+  const setupFailed = manager && !!onboarding.error && !onboarding.data;
+  // With no rows yet, Needs you waits for the checklist too, so "Nothing needs you" never flashes before the setup row lands. Rows that are
+  // already here show at once.
+  const needsLoading = loading || (manager && needs.length === 0 && onboarding.loading && !onboarding.data);
+  const needsFailure = setupFailed ? <ErrorPanel error={onboarding.cause ?? onboarding.error} onRetry={() => void onboarding.reload()} className="rounded-none border-0 bg-transparent" /> : null;
+  const retryAll = () => { void today.reload(); void restaurant.reload(); void appts.reload(); void sessions.reload(); void tickets.reload(); void counter.reload(); void onboarding.reload(); };
   const failurePanel = failedQ ? <ErrorPanel error={failedQ.cause ?? failedQ.error} onRetry={retryAll} /> : null;
   const guide = manager && showSetupGuide(onboarding.data);
   if (guide) needs = needs.filter((r) => r.key !== "setup");
 
   useEffect(() => {
-    if (!manager || loading) return;
-    publishNeedsYou(failed ? null : needs.length);
-  }, [manager, loading, needs.length, failed]);
+    if (!manager || needsLoading) return;
+    publishNeedsYou(failed || setupFailed ? null : needs.length);
+  }, [manager, needsLoading, needs.length, failed, setupFailed]);
   useEffect(() => () => publishNeedsYou(null), []);
 
   const can = {
@@ -295,7 +312,7 @@ export function TodayPage() {
         clear ? (
           <div className="grid gap-4 lg:grid-cols-8">
             {/* Needs you and Quick actions run under the glass sidebar as in the mock (`bleed-under-sidebar`: x 120, content still at 268). */}
-            <NeedsYouCard rows={needs} loading={loading} base={base} className="bleed-under-sidebar lg:col-span-5 lg:row-start-2" />
+            <NeedsYouCard rows={needs} loading={needsLoading} failure={needsFailure} base={base} className="bleed-under-sidebar lg:col-span-5 lg:row-start-2" />
             <NumbersCard items={numberItems} icons={STAT_ICONS[family]} loading={loading} className="max-lg:order-first lg:col-span-8 lg:row-start-1" />
             <div className="flex min-w-0 flex-col gap-4 lg:col-span-3 lg:row-start-2">
               {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} currentHour={hour} /> : null}
@@ -305,7 +322,7 @@ export function TodayPage() {
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-12">
-            <NeedsYouCard rows={needs} loading={loading} base={base} className="lg:col-span-8 lg:row-start-2" />
+            <NeedsYouCard rows={needs} loading={needsLoading} failure={needsFailure} base={base} className="lg:col-span-8 lg:row-start-2" />
             <NumbersCard items={numberItems} loading={loading} className="lg:col-span-12 lg:row-start-1" />
             <div className="flex min-w-0 flex-col gap-6 lg:col-span-4 lg:row-start-2">
               {family === "loyalty" ? <HoursCard hourly={today.data?.hourly} loading={today.loading && !today.data} /> : null}
@@ -347,7 +364,7 @@ export function TodayPage() {
           {upsellKeys.length === 3 ? (
             <p className="border-t border-border pt-4 text-meta text-muted-foreground">
               {t("own.today.pro", { plan: PLANS.plus.name, price: loc.money(PLANS.plus.priceCents).replace(/\.00$/, ""), tools: TRADE_TOOLS[m.vertical] ? `${t(TRADE_TOOLS[m.vertical]!)}${loc.dir === "rtl" ? "، " : ", "}` : "", promos: PROMOS_PER_MONTH_PLUS, texts: PLANS.plus.smsPerMonth })}{" "}
-              <a href={`${base}/billing?plan=plus`} className="inline-flex min-h-11 items-center text-foreground underline underline-offset-4">{t("own.today.proSubscribe")}</a>
+              <Link href={`${base}/billing?plan=plus`} className="inline-flex min-h-11 items-center text-foreground underline underline-offset-4 hover:text-link">{t("own.today.proSubscribe")}</Link>
             </p>
           ) : null}
         </>

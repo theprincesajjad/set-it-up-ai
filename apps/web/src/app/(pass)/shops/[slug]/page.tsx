@@ -366,7 +366,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
                   </ListGroup>
                 ) : loc ? (
                   <ListGroup title={t("wp.shop.visit")} as="div">
-                    <a href={directionsUrl(loc)} rel="noopener noreferrer" className="-mx-4 flex items-center gap-3 px-4 py-3.5 hover:bg-bg-subtle focus-visible:focus-ring">
+                    <a href={directionsUrl(loc)} rel="noopener noreferrer" className="-mx-4 flex items-center gap-3 px-4 py-3.5 hover:bg-bg-subtle focus-visible:focus-ring press-soft">
                       <div className="min-w-0 flex-1">
                         <p className="text-body-strong text-fg"><bdi>{loc.address}</bdi></p>
                         <p className="text-meta text-fg-muted">
@@ -393,7 +393,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
                       </table>
                     ) : null}
                     {m.instagram ? (
-                      <a href={m.instagram.startsWith("http") ? m.instagram : `https://instagram.com/${m.instagram.replace(/^@/, "")}`} rel="noopener noreferrer" className="-mx-4 flex items-center justify-between px-4 py-3.5 text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring">
+                      <a href={m.instagram.startsWith("http") ? m.instagram : `https://instagram.com/${m.instagram.replace(/^@/, "")}`} rel="noopener noreferrer" className="-mx-4 flex items-center justify-between px-4 py-3.5 text-body text-fg hover:bg-bg-subtle focus-visible:focus-ring press-soft">
                         <span>Instagram</span>
                         <span className="text-fg-muted">@{m.instagram.replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "")}</span>
                       </a>

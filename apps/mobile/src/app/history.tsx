@@ -7,10 +7,10 @@ import { LoadFailed } from "../features/customer/LoadFailed";
 import { useWallet } from "../features/customer/queries";
 import { activityTitleL, groupByDayL } from "../lib/activity";
 import { signed } from "../lib/format";
-import { formatDateL, formatMoneyL, formatTimeL, termWordL } from "../lib/formatL";
+import { formatDateL, formatMoneyL, formatTimeL } from "../lib/formatL";
 import { useLocale } from "../lib/i18n";
 import { api } from "../state/api";
-import { Button, Chip, EmptyState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonRows, Text } from "../ui";
+import { Appear, Button, Chip, EmptyState, History, ListRow, Screen, Section, Sheet, ShopLogo, SkeletonRows, Text } from "../ui";
 
 type Row = customerApi.LedgerTxDto & { membership: customerApi.MembershipDto };
 
@@ -53,7 +53,7 @@ export default function PointsHistory() {
   const groups = groupByDayL(L, rows);
 
   return (
-    <Screen back title={t("sh.activity.history")} largeTitle={!params.memberId}>
+    <Screen back title={t("sh.activity.history")} largeTitle={!params.memberId} refreshing={q.isRefetching && !q.isFetchingNextPage} onRefresh={() => { void wallet.refetch(); void q.refetch(); }}>
       {memberships.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
           <Chip label={t("ms.allShops")} selected={!shop} onPress={() => setShop(null)} />
@@ -69,9 +69,10 @@ export default function PointsHistory() {
       ) : q.isError && rows.length === 0 ? (
         <LoadFailed error={q.error} onRetry={() => void q.refetch()} />
       ) : rows.length === 0 ? (
-        <EmptyState icon={History} title={t("sh.activity.emptyTitle")} body={t("cp.empty.activityBody", { terminology: termWordL(L, "points") })} actionLabel={t("sh.wallet.empty")} onAction={() => router.push("/map")} />
+        <EmptyState icon={History} title={t("sh.activity.emptyTitle")} actionLabel={t("sh.wallet.empty")} onAction={() => router.push("/map")} />
       ) : (
-        groups.map((g) => (
+        <Appear key={shop ?? "all"} style={{ gap: 24 }}>
+        {groups.map((g) => (
           <Section key={g.label} title={g.label}>
             <View>
               {g.items.map((tx, i) => (
@@ -91,7 +92,8 @@ export default function PointsHistory() {
               ))}
             </View>
           </Section>
-        ))
+        ))}
+        </Appear>
       )}
       {q.hasNextPage ? (
         <Button variant="secondary" loading={q.isFetchingNextPage} onPress={() => q.fetchNextPage()}>

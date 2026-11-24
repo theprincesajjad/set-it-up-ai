@@ -61,7 +61,7 @@ export default function WeekReportPage() {
   return (
     <div className="flex flex-col gap-4">
       <BackLink href={`${base}/reports`}>{t("insights.page.back")}</BackLink>
-      <PageHeader title={t("insights.page.title")} description={t("insights.page.description")} actions={nav} />
+      <PageHeader title={t("insights.page.title")} actions={nav} />
       {week.error ? <ErrorLine message={week.error} onRetry={() => void week.reload()} /> : null}
       {!w && week.loading ? <Panel><SkeletonRows rows={3} /></Panel> : null}
 

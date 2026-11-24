@@ -110,7 +110,7 @@ describe("landing v2", () => {
     expect(page).not.toContain("sl-eyebrow");
     // Calls to action between the blocks, each one counted by the beacon (lower-case letters, 10 at most).
     const ctas = [...page.matchAll(/data-cta="([^"]+)"/g)].map((m) => m[1]!);
-    for (const c of ["nav", "hero", "how", "afterhero", "week", "promos", "pro", "prepricing", "plans", "start", "sticky", "seepricing"]) expect(ctas).toContain(c);
+    for (const c of ["nav", "hero", "how", "afterhero", "week", "promos", "pro", "plans", "start", "sticky", "seepricing"]) expect(ctas).toContain(c);
     for (const c of ctas) expect(c).toMatch(/^[a-z]{1,10}$/);
     expect(page).toContain('action="/signup" method="get"');
     expect(page).toContain(`name="trade" checked="" value="nails"`);

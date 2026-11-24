@@ -240,3 +240,88 @@ test("customer books with a deposit; a taken time says so", async ({ page }) => 
   const online = await call<{ items: { source: string; customer: { name: string }; startsAt: string }[] }>("GET", `${c.base}/appointments?from=${encodeURIComponent(new Date().toISOString())}&to=${encodeURIComponent(new Date(Date.now() + 30 * 86_400_000).toISOString())}`, undefined, c.token);
   expect(online.items.some((a) => a.source === "online" && a.customer.name === "Tess")).toBe(true);
 });
+
+test("a refresh or Back keeps the booking, and the time on hold stays the customer's own", async ({ page }) => {
+  const TIMES = page.getByRole("button", { name: TIMES_RE });
+  await setup();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/shops/bloom-hair-studio/book");
+  await page.getByRole("radio", { name: /Aisha/ }).click();
+  await page.getByRole("checkbox", { name: /Highlights/ }).click();
+  await page.getByRole("button", { name: "Choose a time" }).click();
+  await expect(TIMES.first()).toBeVisible();
+  const picked = (await TIMES.first().textContent())!.trim();
+  await TIMES.first().click();
+  // The step and the choices are in the address, so a refresh on the time step keeps the stylist, the service, the day and the time.
+  await expect(page).toHaveURL(/step=time.*at=/);
+  await page.reload();
+  await expect(page.getByRole("button", { name: picked, exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByLabel("Your first name").fill("Tess");
+  await page.getByLabel("Note for the shop (optional)").fill("Ring the bell");
+  // On the details step what was typed comes back too (it is kept in this tab, never in the address).
+  await expect(page).toHaveURL(/step=details/);
+  expect(page.url()).not.toContain("Tess");
+  await page.reload();
+  await expect(page.getByTestId("book-summary")).toContainText("Highlights, half head");
+  await expect(page.getByLabel("Your first name")).toHaveValue("Tess");
+  await expect(page.getByLabel("Note for the shop (optional)")).toHaveValue("Ring the bell");
+  // The device Back button is one step back, with the time still chosen; Forward returns.
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Pick a time", level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: picked, exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.goForward();
+  await expect(page.getByRole("heading", { name: "Check and book", level: 1 })).toBeVisible();
+
+  // Sign in: the booking carries on to the card step, which holds the time for ten minutes.
+  await page.getByRole("button", { name: "Sign in to book" }).click();
+  await page.locator("input[type=tel]").first().fill(phone().slice(2));
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/Dev mode: code/)).toBeVisible({ timeout: 15_000 });
+  await page.keyboard.press("Enter");
+  const holding = page.getByTestId("book-holding");
+  await expect(holding).toBeVisible({ timeout: 20_000 });
+  const until = (await holding.textContent())!;
+  const holdId = () => new URL(page.url()).searchParams.get("hold");
+  await expect(page).toHaveURL(/step=pay.*hold=/);
+  const first = holdId();
+  // A refresh on the card step is the same card step for the same hold, not "Step 1 of 3".
+  await page.reload();
+  await expect(holding).toHaveText(until);
+  expect(holdId()).toBe(first);
+
+  // Back from the card step: the details, then the times. Their own held time is offered, chosen and marked as theirs.
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Check and book", level: 1 })).toBeVisible();
+  await expect(page.getByLabel("Note for the shop (optional)")).toHaveValue("Ring the bell");
+  await page.goBack();
+  const mine = page.locator("button[data-held]");
+  await expect(mine).toHaveText(picked);
+  await expect(mine).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("book-held")).toHaveText(until);
+  // A refresh there, and a second tab with nothing chosen yet, show the same.
+  await page.reload();
+  await expect(page.locator("button[data-held]")).toHaveAttribute("aria-pressed", "true");
+
+  // Booking the same time again is the same hold, never a second one ...
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();
+  await expect(holding).toBeVisible({ timeout: 20_000 });
+  expect(holdId()).toBe(first);
+  // ... and a different time takes its place: the first one is free again and the new one is theirs.
+  await page.goBack();
+  await page.goBack();
+  await expect(page.locator("button[data-held]")).toHaveText(picked);
+  await TIMES.first().click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();
+  await expect(holding).toBeVisible({ timeout: 20_000 });
+  await expect.poll(holdId).not.toBe(first);
+  const mineNow = await page.evaluate(async () => (await (await fetch("/api/ll/v1/me/appointments")).json()) as { items: { id: string; status: string; pending: boolean }[] });
+  expect(mineNow.items.filter((a) => a.status === "booked" && a.pending).map((a) => a.id)).toEqual([holdId()]);
+
+  // Paying confirms it. Back from the confirmation leaves the flow instead of offering the same booking again.
+  await page.getByRole("button", { name: "Book and pay $40 deposit" }).click();
+  await expect(page.getByRole("heading", { name: "You’re booked", level: 1 })).toBeVisible({ timeout: 20_000 });
+  await expect(page).toHaveURL(/\/book\/[0-9a-f-]{36}\?booked=1/);
+});

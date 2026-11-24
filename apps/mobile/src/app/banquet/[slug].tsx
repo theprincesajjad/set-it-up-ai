@@ -38,7 +38,7 @@ export default function Banquet() {
   return (
     <Screen back title={t("rest.bk.title")} onRefresh={() => q.refetch()} refreshing={q.isRefetching}>
       <Text color="fgMuted">{t("rest.bk.intro")}</Text>
-      {halls.length === 0 ? <EmptyState icon={Store} title={t("rest.bk.none.title")} body={t("rest.bk.none.body")} /> : null}
+      {halls.length === 0 ? <EmptyState icon={Store} title={t("rest.bk.none.title")} /> : null}
       <View>
         {halls.map((h, i) => {
           const from = fromPerHeadCents(h);

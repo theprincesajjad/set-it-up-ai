@@ -13,6 +13,7 @@ import { formatPtsL, rewardInSentenceL, termWordL } from "../../lib/formatL";
 import { useLocale } from "../../lib/i18n";
 import { disp, ui, useTheme } from "../../theme";
 import { Avatar, Button, CountUp, Text, dirStyle, haptic } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"] as const;
 
@@ -52,7 +53,7 @@ export function ScanViewfinder({ onScan, hint, lastScanGuardMs = 4000 }: { onSca
           <Pressable
             accessibilityRole="button"
             onPress={() => (permission.canAskAgain ? request() : Linking.openSettings())}
-            style={{ marginTop: 6, minHeight: 44, paddingHorizontal: 12, justifyContent: "center" }}
+            style={({ pressed }) => [{ marginTop: 6, minHeight: 44, paddingHorizontal: 12, justifyContent: "center" }, pressed ? pressFx.dim : null]}
           >
             <Text style={[ui(13, 600, 18), { textDecorationLine: "underline" }]} rawColor={c.bg}>
               {permission.canAskAgain ? t("mc.cam.turnOn") : t("mc.cam.openSettings")}
@@ -174,7 +175,7 @@ export function MatchList({ digits, items, program, now, onPick, onNew }: { digi
           </View>
         ))}
       </View>
-      <Pressable accessibilityRole="button" onPress={onNew} style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}>
+      <Pressable accessibilityRole="button" onPress={onNew} style={({ pressed }) => [{ minHeight: 44, alignItems: "center", justifyContent: "center" }, pressed ? pressFx.dim : null]}>
         <Text style={ui(14, 500, 19)}>{t("counter.pick.notHere")}</Text>
       </Pressable>
     </View>
@@ -211,7 +212,7 @@ export function UndoToast({ at, name, time, onUndo, busy }: { at: number; name?:
       <Text style={[ui(13, 500, 18), { flex: 1 }]} rawColor={c.bg} numberOfLines={1}>
         {`${name ? `${name.split(/\s+/)[0]} · ` : ""}${t("mc.stampAdded", { time })}`}
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={t("mc.undoLeft", { n: left })} disabled={busy} onPress={onUndo} style={{ minHeight: 36, justifyContent: "center", paddingLeft: 12, opacity: busy ? 0.6 : 1 }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={t("mc.undoLeft", { n: left })} disabled={busy} onPress={onUndo} style={({ pressed }) => [{ minHeight: 36, justifyContent: "center", paddingLeft: 12, opacity: busy ? 0.6 : 1 }, pressed ? pressFx.dim : null]}>
         <Text style={[ui(13, 700, 18), { fontVariant: ["tabular-nums"] }]} rawColor={c.bg}>
           {t("counter.undoSecs", { n: left })}
         </Text>
@@ -283,7 +284,7 @@ export function RewardReadyScreen({ member, program, busy, onRedeem, onStamp, on
         <Pressable accessibilityRole="button" disabled={busy} onPress={onStamp} style={({ pressed }) => [styles.stampInstead, { borderColor: c.line, backgroundColor: pressed ? c.bgSubtle : c.bg, opacity: busy ? 0.6 : 1 }]}>
           <Text style={ui(15, 500, 20)}>{t("counter.stampInstead")}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={onBack} style={{ minHeight: 40, alignItems: "center", justifyContent: "center" }}>
+        <Pressable accessibilityRole="button" onPress={onBack} style={({ pressed }) => [{ minHeight: 40, alignItems: "center", justifyContent: "center" }, pressed ? pressFx.dim : null]}>
           <Text style={ui(13, 500, 18)} rawColor={c.fgMuted}>{t("counter.notThem")}</Text>
         </Pressable>
       </View>
@@ -302,7 +303,7 @@ export function ScanFooter({ online, stampsToday, terminology, onCode }: { onlin
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: online ? c.positive : c.negative }} />
         <Text style={ui(13, 400, 18)} rawColor={c.fgMuted}>{`${online ? t("counter.status.online") : t("counter.status.offline")}${stampsToday != null ? ` · ${t("counter.today", { points: `${stampsToday} ${termWordL(L, terminology)}` })}` : ""}`}</Text>
       </View>
-      <Pressable accessibilityRole="button" onPress={onCode} style={{ minHeight: 44, justifyContent: "center" }}>
+      <Pressable accessibilityRole="button" onPress={onCode} style={({ pressed }) => [{ minHeight: 44, justifyContent: "center" }, pressed ? pressFx.dim : null]}>
         <Text style={ui(14, 600, 19)}>{t("counter.redeemCode")}</Text>
       </Pressable>
     </View>

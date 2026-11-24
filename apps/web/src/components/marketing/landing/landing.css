@@ -86,13 +86,13 @@
 @media (max-width: 639.98px) { .lp-ask .lp-btn, .lp-try-cta .lp-btn { inline-size: 100%; white-space: normal; text-align: center; padding-block: 12px; } }
 .lp-btn svg { flex: none; inline-size: 18px; block-size: 18px; margin-inline-end: -4px; transition: transform 200ms var(--mkt-ease); }
 .lp-btn-black { background: var(--mkt-black); color: var(--mkt-on-black); }
-.lp-btn-black:hover { background: var(--mkt-black-hover); }
+@media (hover: hover) { .lp-btn-black:hover { background: var(--mkt-black-hover); } }
 .lp-btn-outline { background: transparent; color: var(--mkt-black); box-shadow: inset 0 0 0 1.5px var(--mkt-black); }
-.lp-btn-outline:hover { background: var(--mkt-black); color: var(--mkt-on-black); }
+@media (hover: hover) { .lp-btn-outline:hover { background: var(--mkt-black); color: var(--mkt-on-black); } }
 .lp-btn-white { background: var(--mkt-paper); color: var(--mkt-black); }
-.lp-btn-white:hover { background: var(--mkt-grey-hover); }
+@media (hover: hover) { .lp-btn-white:hover { background: var(--mkt-grey-hover); } }
 .lp-link { display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; font-weight: 600; color: inherit; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 6px; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); transition: text-decoration-color 160ms var(--mkt-ease); }
-.lp-link:hover { text-decoration-color: currentColor; }
+@media (hover: hover) { .lp-link:hover { text-decoration-color: currentColor; } }
 /* Beside a button the link stays in one piece: when the row is too narrow it moves under the button whole (at 1024 to 1180px it used
    to break in two with its arrow left alone on the second line). */
 .lp-actions .lp-link, .lp-hero-try { white-space: nowrap; }
@@ -107,6 +107,23 @@
   [dir="rtl"] .lp :is(.lp-btn, .lp-link, .lp-also-row a):hover svg { transform: scaleX(-1) translateX(3px); }
 }
 [dir="rtl"] .lp :is(.lp-btn, .lp-link, .lp-tile-go, .lp-also-row a) svg { transform: scaleX(-1); }
+/* Round 4. Pressed: everything tappable answers the finger at once, a small scale where motion is welcome and a tone shift always
+   (hover never latches on touch: every :hover above and below sits inside `@media (hover: hover)`). */
+.lp :is(.lp-btn, .lp-chip, .lp-also-row a, .lp-live-toggle) { -webkit-tap-highlight-color: transparent; }
+.lp :is(.lp-chip, .lp-also-row a, .lp-live-toggle) { transition-property: background-color, color, box-shadow, transform; }
+.lp .lp-btn-black:active, .lp .lp-book-form button[type="submit"]:enabled:active { background: var(--mkt-black-hover); }
+.lp .lp-btn-white:active { background: var(--mkt-grey-hover); }
+.lp .lp-btn-outline:active { background: var(--mkt-black); color: var(--mkt-on-black); }
+.lp :is(.lp-chip:not([data-on]), .lp-also-row a, .lp-live-toggle):active { background: var(--mkt-grey); }
+.lp :is(.lp-link, .lp-tile-go):active { text-decoration-color: currentColor; opacity: 0.6; }
+.lp .lp-faq-list [data-slot="accordion-trigger"]:active { background: var(--mkt-grey); }
+@media (prefers-reduced-motion: no-preference) {
+  /* The visit form's button is the kit Button: its press is the kit's own. */
+  .lp :is(.lp-btn, .lp-chip, .lp-also-row a, .lp-live-toggle):active { transform: scale(0.96); }
+  .lp .lp-swatch:active span { transform: scale(0.9); }
+  .lp-tile-photo { transition: transform 160ms var(--mkt-ease); }
+  .lp-tile:has(.lp-tile-go:active) .lp-tile-photo { transform: scale(0.98); }
+}
 /* The reassurance line right under each primary ask. */
 .lp-ask { display: grid; gap: 14px; justify-items: start; }
 .lp-ask .lp-link { font-size: 17px; }
@@ -159,11 +176,7 @@
 
 /* The trade pill: a dot in the shop's colour, "For", and the word sliding up (VIDEO_SCRIPT steps it with the video). */
 
-.lp-trust { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; line-height: 22px; color: var(--mkt-body); }
-.lp-trust li { display: inline-flex; align-items: center; gap: 7px; }
-.lp :is(.lp-trust, .lp-plan ul) svg { flex: none; inline-size: 17px; block-size: 17px; color: var(--mkt-accent); }
-.lp-how-trust { justify-content: center; margin-block-start: 36px; }
-@media (min-width: 1024px) { .lp-how-trust { margin-block-start: 56px; gap: 8px 32px; font-size: 16px; } }
+.lp .lp-plan ul svg { flex: none; inline-size: 17px; block-size: 17px; color: var(--mkt-accent); }
 
 /* The art: phones and tablets show the live phone alone, cut off by the band's edge; desktop puts it over the bakery photo. */
 .lp-hero-art { position: relative; }
@@ -200,7 +213,7 @@
    there), at its foot on desktop. VIDEO_SCRIPT unhides it once the video plays and swaps the icon with data-held. */
 .lp-live-toggle { position: absolute; z-index: 4; inset-block-start: 4%; inset-inline-start: calc(100% + 8px); display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 50%; background: var(--mkt-paper); color: var(--mkt-black); box-shadow: 0 0 0 1px var(--mkt-rule), 0 4px 12px -4px rgb(0 0 0 / 0.18); cursor: pointer; transition: background-color 160ms var(--mkt-ease); }
 .lp-live-toggle[hidden] { display: none; }
-.lp-live-toggle:hover { background: var(--mkt-grey); }
+@media (hover: hover) { .lp-live-toggle:hover { background: var(--mkt-grey); } }
 .lp .lp-live-toggle:focus-visible { outline: 3px solid var(--mkt-black); outline-offset: 2px; }
 .lp-live-toggle svg { inline-size: 16px; block-size: 16px; fill: currentColor; }
 .lp-live-play, .lp-live[data-held] .lp-live-pause { display: none; }
@@ -271,7 +284,7 @@
 legend.lp-label { margin-block-end: 10px; }
 .lp-input { inline-size: 100%; min-block-size: 58px; padding-inline: 18px; border-radius: 14px; border: 0; background: var(--mkt-paper); box-shadow: inset 0 0 0 1.5px var(--mkt-rule); color: var(--mkt-black); font: inherit; font-size: 19px; font-weight: 500; letter-spacing: -0.01em; transition: box-shadow 160ms var(--mkt-ease); }
 .lp-input::placeholder { color: var(--mkt-quiet); font-weight: 400; }
-.lp-input:hover { box-shadow: inset 0 0 0 1.5px var(--mkt-quiet); }
+@media (hover: hover) { .lp-input:hover { box-shadow: inset 0 0 0 1.5px var(--mkt-quiet); } }
 .lp-input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--mkt-black); }
 .lp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 /* Phones: one row of trades that scrolls sideways, so the card stays close above the fields. */
@@ -279,12 +292,12 @@ legend.lp-label { margin-block-end: 10px; }
 .lp-chip, .lp-swatch { position: relative; }
 .lp-chip { display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; padding-inline: 14px 16px; border-radius: var(--mkt-radius-pill); background: var(--mkt-paper); box-shadow: inset 0 0 0 1px var(--mkt-rule); font-size: 15px; font-weight: 500; cursor: pointer; user-select: none; transition: background-color 140ms var(--mkt-ease), color 140ms var(--mkt-ease), box-shadow 140ms var(--mkt-ease); }
 .lp-chip svg { inline-size: 17px; block-size: 17px; }
-.lp-chip:hover { box-shadow: inset 0 0 0 1.5px var(--mkt-black); }
+@media (hover: hover) { .lp-chip:hover { box-shadow: inset 0 0 0 1.5px var(--mkt-black); } }
 .lp-chip[data-on] { background: var(--mkt-black); color: var(--mkt-on-black); box-shadow: none; }
 .lp-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
 .lp-swatch { display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 50%; cursor: pointer; }
 .lp-swatch span { inline-size: 32px; block-size: 32px; border-radius: 50%; background: var(--sw); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12); transition: transform 160ms var(--mkt-ease); }
-.lp-swatch:hover span { transform: scale(1.08); }
+@media (hover: hover) { .lp-swatch:hover span { transform: scale(1.08); } }
 .lp-swatch[data-on] { box-shadow: inset 0 0 0 2px var(--mkt-black); }
 .lp-swatch[data-on] span { transform: scale(0.82); }
 .lp-try-reward { display: grid; gap: 8px; padding: 18px 20px; border-radius: 18px; background: var(--mkt-paper); }
@@ -346,21 +359,21 @@ legend.lp-label { margin-block-end: 10px; }
 /* ---------- 4. What you get, on the black band ---------- */
 .lp-gets { display: grid; gap: 48px; }
 @media (min-width: 640px) { .lp-gets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 24px; } }
-@media (min-width: 1280px) { .lp-gets { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; } }
+@media (min-width: 1024px) { .lp-gets { gap: 28px; } }
 .lp-get { display: grid; gap: 10px; align-content: start; }
-/* Four columns: every title takes two lines' room, so the four bodies start on one line. */
-@media (min-width: 1280px) { .lp-get .lp-h3 { min-block-size: 2lh; text-wrap: balance; } }
 .lp-get-art { display: grid; place-items: center; overflow: hidden; aspect-ratio: 4 / 4.4; margin-block-end: 14px; border-radius: 28px; background: var(--mkt-black-hover); }
 .lp-get-art > * { inline-size: 72%; }
-.lp-get-pass > * { inline-size: 70%; }
-.lp-get-stamp > * { inline-size: 64%; }
 .lp-get-winback > * { inline-size: 76%; }
 .lp-get-week > * { inline-size: 78%; }
-/* Phones: shorter panels, so four outcomes do not become a wall. */
+/* Round 4: two outcomes side by side. Wide screens: a wider, shorter panel, the drawn card at about its phone size. */
+@media (min-width: 1024px) {
+  .lp-get-art { aspect-ratio: 16 / 10; margin-block-end: 20px; }
+  .lp-get-winback > * { inline-size: 52%; }
+  .lp-get-week > * { inline-size: 50%; }
+}
+/* Phones: shorter panels. */
 @media (max-width: 639.98px) {
   .lp-get-art { aspect-ratio: 5 / 4; }
-  .lp-get-pass > * { inline-size: 58%; }
-  .lp-get-stamp > * { inline-size: 52%; }
   .lp-get-winback > * { inline-size: 74%; }
   .lp-get-week > * { inline-size: 64%; }
   .lp-panel { aspect-ratio: 5 / 4; }
@@ -375,14 +388,9 @@ legend.lp-label { margin-block-end: 10px; }
 .lp-gets + .lp-caption, .lp-gets + .lp-dots + .lp-caption { margin-block-start: 40px; }
 @media (max-width: 639.98px) { .lp-gets + .lp-dots + .lp-caption { margin-block-start: 20px; } }
 .lp-gets-end { margin-block-start: 32px; }
-/* After the shop tiles: the next step, centred, up to the card maker. */
-/* The note that the photos are not customers: quiet, centred, between the tiles and the button. */
+/* The note that the photos are not customers: quiet, centred, under the tiles. */
 .lp-tiles-note { margin-block: 20px 0; text-align: center; }
 @media (min-width: 640px) { .lp-tiles-note { margin-block: 0 40px; } }
-.lp-shops-next { justify-items: center; margin-block-start: 48px; text-align: center; }
-@media (min-width: 640px) { .lp-shops-next { margin-block-start: 8px; } }
-@media (min-width: 1024px) { .lp-shops-next { margin-block-start: 0; } }
-@media (max-width: 639.98px) { .lp-shops-next { margin-block-start: 32px; } }
 
 /* ---------- 5. Shop types: photo tiles, each one link ---------- */
 /* Phones: one row that scrolls sideways with snap points; the page itself never scrolls sideways. */
@@ -416,14 +424,14 @@ legend.lp-label { margin-block-end: 10px; }
 }
 @media (hover: none) { .lp-tile-go { text-decoration-color: currentColor; } }
 .lp-also { display: grid; gap: 14px; margin-block-start: 40px; padding-block-start: 28px; border-block-start: 1px solid var(--mkt-rule); }
-@media (min-width: 1024px) { .lp-also { grid-template-columns: auto auto; justify-content: space-between; margin-block-start: 88px; } }
+@media (min-width: 640px) { .lp-also { justify-content: center; } }
 .lp-also-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 16px; }
 .lp-also-row > span { margin-inline-end: 6px; font-weight: 600; }
 @media (max-width: 1023.98px) { .lp-also-row > span { flex-basis: 100%; } }
 .lp-also-row a { display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding-inline: 16px; border-radius: var(--mkt-radius-pill); box-shadow: inset 0 0 0 1px var(--mkt-rule); color: var(--mkt-black); font-weight: 500; transition: box-shadow 140ms var(--mkt-ease), background-color 140ms var(--mkt-ease); }
 .lp-also-row a b { font-weight: 600; }
 .lp-also-sep { color: var(--mkt-quiet); }
-.lp-also-row a:hover { box-shadow: inset 0 0 0 1.5px var(--mkt-black); }
+@media (hover: hover) { .lp-also-row a:hover { box-shadow: inset 0 0 0 1.5px var(--mkt-black); } }
 .lp-also-row a svg { inline-size: 16px; block-size: 16px; transition: transform 200ms var(--mkt-ease); }
 
 /* ---------- 6. Pricing on the grey band; Pro is the black card ---------- */
@@ -478,7 +486,7 @@ legend.lp-label { margin-block-end: 10px; }
 .lp-compare-m dd { color: var(--mkt-body); }
 .lp-compare-m .lp-us { color: var(--mkt-black); font-weight: 600; }
 .lp-sources { margin-block-start: 20px; max-inline-size: 64rem; }
-.lp-sources a { color: var(--mkt-black); text-decoration: underline; text-underline-offset: 3px; }
+.lp-sources a { padding-block: 14px; color: var(--mkt-black); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---------- 8. Questions: hairline rows that tint under the pointer ---------- */
 .lp-faq { display: grid; gap: 32px; }
@@ -486,7 +494,7 @@ legend.lp-label { margin-block-end: 10px; }
 .lp .lp-faq-list { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; border-block-start: 1px solid var(--mkt-black); }
 .lp .lp-faq-list [data-slot="accordion-item"] { border-color: var(--mkt-rule); }
 .lp .lp-faq-list [data-slot="accordion-trigger"] { margin-inline: -14px; padding-inline: 14px; border-radius: 14px; color: var(--mkt-black); font-family: var(--mkt-face-sans); font-size: 18px; font-weight: 600; transition: background-color 140ms var(--mkt-ease); }
-.lp .lp-faq-list [data-slot="accordion-trigger"]:hover { background: var(--mkt-grey); }
+@media (hover: hover) { .lp .lp-faq-list [data-slot="accordion-trigger"]:hover { background: var(--mkt-grey); } }
 .lp .lp-faq-list [data-slot="accordion-content"] { color: var(--mkt-body); font-size: 17px; line-height: 1.6; }
 
 /* ---------- 9. A visit, on the grey band ---------- */
@@ -500,7 +508,7 @@ legend.lp-label { margin-block-end: 10px; }
 .lp-book-form :is(input, select, textarea, [data-slot="input-group"]) { border-radius: 12px; }
 .lp-book-form :is(input, select) { min-block-size: 52px; font-size: 17px; }
 .lp-book-form button[type="submit"] { inline-size: 100%; min-block-size: 56px; border-radius: var(--mkt-radius-pill); background: var(--mkt-black); color: var(--mkt-on-black); font-weight: 600; }
-.lp-book-form button[type="submit"]:hover { background: var(--mkt-black-hover); }
+@media (hover: hover) { .lp-book-form button[type="submit"]:hover { background: var(--mkt-black-hover); } }
 
 /* ---------- 10. The closing ask, on the black band ---------- */
 .lp-final { padding-block: 80px; }
@@ -541,6 +549,21 @@ body:has([data-chat-launcher]) .lp-sticky { padding-inline-end: 140px; }
   .lp-h1[data-fw] .lp-w, .lp-h1[data-fw] em::after { animation-play-state: paused; }
   @keyframes lp-word { from { transform: translateY(0.42em); } }
   @keyframes lp-draw { from { transform: scaleX(0); } }
+
+  /* Round 4. Each band's heading and its cards rise 16px as they scroll in, tied to the scroll itself (the same reveal as the other
+     marketing pages, marketing.css mkt-rise-in): nothing waits on a timer, content is never hidden (it is sharp and fully opaque once a
+     quarter of it shows), and a browser without scroll timelines simply shows it. Cards in a row start a beat apart. Phones animate
+     the sideways rows whole: their cards scroll inside the row, not with the page. */
+  @supports (animation-timeline: view()) {
+    .lp :is(.lp-head, .lp-try-head, .lp-snap, .lp-plan, .lp-table-card, .lp-compare-m, .lp-faq > *, .lp-book > *, .lp-final-in) { animation: lp-in linear both; animation-timeline: view(); animation-range: entry 0% entry 25%; }
+    @media (min-width: 640px) {
+      .lp .lp-snap { animation: none; }
+      .lp .lp-snap > li { animation: lp-in linear both; animation-timeline: view(); animation-range: entry 0% entry 25%; }
+      .lp :is(.lp-snap > li, .lp-plan):nth-child(3n + 2) { animation-range: entry 8% entry 33%; }
+      .lp :is(.lp-snap > li, .lp-plan):nth-child(3n) { animation-range: entry 16% entry 41%; }
+    }
+    @keyframes lp-in { from { opacity: 0.4; transform: translateY(16px); } }
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .lp *, .lp *::after { transition: none !important; }

@@ -30,4 +30,4 @@ export const TONE_TEXT: Record<Tone, string> = {
 };
 
 /** Hover: a hair darker, never a new colour. */
-export const TONE_HOVER = "transition-[filter] duration-150 ease-out hover:brightness-[0.97] active:brightness-95";
+export const TONE_HOVER = "press-soft hover:brightness-[0.97] active:brightness-95";

@@ -128,8 +128,8 @@ export function ShopTile({ shop, balance, variant = "list", rewardReady, muted, 
     "flex items-center gap-3",
     (variant === "wallet" || variant === "list") && "min-h-[64px] py-2.5",
     variant === "compact" && "min-h-14 rounded-card border border-line bg-card p-2.5 pe-3",
-    href && "transition-colors duration-150 ease-out focus-visible:focus-ring",
-    href && variant === "compact" && "hover:bg-bg-subtle",
+    href && "press-soft focus-visible:focus-ring",
+    href && variant === "compact" && "hover:bg-bg-subtle active:bg-bg-muted",
     className,
   );
   return href ? (

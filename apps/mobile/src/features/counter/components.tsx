@@ -36,6 +36,7 @@ import {
   UserPlus,
 } from "../../ui";
 import type { CounterCustomer } from "../../lib/award";
+import { pressFx } from "../../ui/pressFx";
 
 /**
  * Counter header (canvas Counter.dc.html): the shop in Bricolage 800 17 over "counter · <location>", and the
@@ -143,7 +144,7 @@ export function CustomerCard({ customer, program, onCode, onClear, cooldown }: {
   const L = useLocale();
   const { t } = L;
   const clear = onClear ? (
-    <Pressable accessibilityRole="button" accessibilityLabel={t("counter.clear")} onPress={onClear} style={[styles.clear, { backgroundColor: c.bgSubtle }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={t("counter.clear")} onPress={onClear} style={({ pressed }) => [[styles.clear, { backgroundColor: c.bgSubtle }], pressed ? pressFx.dim : null]}>
       <CloseGlyph size={16} color={c.fg} />
     </Pressable>
   ) : null;

@@ -11,6 +11,7 @@ import { useLocale } from "../../lib/i18n";
 import { addDays, dayToDate, dietBadges, paymentUrl, setupUrl, torontoToday, weekdayOf, type CountdownParts, type DietaryLike } from "../../lib/restaurant";
 import { ui, useTheme } from "../../theme";
 import { Badge, Button, Chip, ChevronLeft, ChevronRight, ChevronRightLtr, IconButton, Minus, Plus, Text } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 /**
  * `money` for the app language. In right-to-left text the currency sign would jump to the wrong side of the digits
@@ -214,7 +215,7 @@ export function CalendarGrid({ value, onChange, min, max, isDisabled, busy }: { 
                 accessibilityLabel={`${date(dayToDate(day), { weekday: "long", day: "numeric", month: "long" })}${busy?.(day) ? `, ${t("rest.cal.busy")}` : ""}`}
                 disabled={disabled}
                 onPress={() => onChange(day)}
-                style={[styles.day, selected ? { backgroundColor: c.fg } : null]}
+                style={({ pressed }) => [[styles.day, selected ? { backgroundColor: c.fg } : null], pressed ? pressFx.scale : null]}
               >
                 <Text style={ui(15, selected ? 600 : 400, 20)} rawColor={selected ? c.bg : disabled ? c.fgSubtle : c.fg} tabular>
                   {String(Number(day.slice(8)))}
@@ -244,7 +245,7 @@ export function DateField({ label, value, onChange, min, max, isDisabled, busy, 
         accessibilityLabel={`${label}${value ? `, ${date(dayToDate(value), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : ""}`}
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen((o) => !o)}
-        style={[styles.field, { borderColor: open ? c.fg : c.lineStrong, borderWidth: open ? 2 : 1, backgroundColor: c.bg }]}
+        style={({ pressed }) => [[styles.field, { borderColor: open ? c.fg : c.lineStrong, borderWidth: open ? 2 : 1, backgroundColor: c.bg }], pressed ? pressFx.dim : null]}
       >
         <Text variant="body" color={value ? "fg" : "fgSubtle"} style={{ flex: 1 }}>
           {value ? date(dayToDate(value), { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : (placeholder ?? "")}

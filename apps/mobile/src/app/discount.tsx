@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useBrightScreen } from "../features/customer/brightness";
@@ -14,6 +14,8 @@ export default function DiscountFull() {
   const { t } = useLocale();
   const { user } = useSession();
   useBrightScreen("discount-card");
+  // Opened without a card (an old link, a reload on web): the card screen lists them.
+  if (!p.name) return <Redirect href="/card" />;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg, padding: 16, justifyContent: "center", gap: 16 }}>
       <DiscountCard

@@ -219,6 +219,8 @@ function OrderCard({ o, myId, view, restaurant, grocer, canSplitIt, selected, on
           </span>
         ) : o.paymentMethod === "in_app" ? (
           `Paid online · ${formatMoney(o.totalCents)}${o.paymentStatus === "paid" ? "" : ` (${o.paymentStatus})`}`
+        ) : o.paymentStatus === "paid" ? (
+          `Paid · ${formatMoney(o.totalCents)}`
         ) : (
           `${formatMoney(o.totalCents)} · ${restaurant && o.channel === "counter" ? "pay at the counter" : "pay at pickup"}`
         )}

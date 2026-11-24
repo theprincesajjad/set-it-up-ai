@@ -61,6 +61,7 @@ import { useMembershipDetail, usePhase2, useWallet } from "./queries";
 import { JoinSheet, RedeemConfirmSheet } from "./sheets";
 import { WalletPassButton } from "./WalletPassButton";
 import { useLocale } from "../../lib/i18n";
+import { pressFx } from "../../ui/pressFx";
 
 export function useShopModel(slug: string | null | undefined) {
   const shop = useQuery({ queryKey: qk.shop(slug ?? ""), queryFn: () => api.network.shop(slug!), enabled: !!slug });
@@ -379,7 +380,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
                   accessibilityRole="button"
                   accessibilityLabel={tr("ms.shop.open", { name: dc.name })}
                   onPress={() => router.push({ pathname: "/discount", params: { name: dc.name, percentOff: String(dc.percentOff), amountOffCents: String(dc.amountOffCents), terms: dc.terms ?? "", shopName: s.merchant.name, vertical: s.merchant.vertical, logoUrl: s.merchant.logoUrl ?? "" } })}
-                >
+                 style={({ pressed }) => (pressed ? pressFx.dim : null)}>
                   <DiscountCard card={dc} shop={s.merchant} live={false} />
                 </Pressable>
               ))}
@@ -434,7 +435,7 @@ export function ShopBody({ model, variant = "page", peek = false }: { model: Sho
                 {`${earnLine ?? tr("ms.shop.askCounter")}${noEarn}${m ? ` · ${lowerFirst(expiryLineL(L, m)).replace(/[.।۔]$/, "")}` : ""}`}
               </Text>
               {loc ? (
-                <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.shop.getDirections", { address: loc.address })} onPress={directions} style={{ gap: 2 }}>
+                <Pressable accessibilityRole="button" accessibilityLabel={tr("ms.shop.getDirections", { address: loc.address })} onPress={directions} style={({ pressed }) => [{ gap: 2 }, pressed ? pressFx.dim : null]}>
                   <Text variant="bodyStrong">{loc.address}</Text>
                   <Text variant="meta" color="fgMuted">{`${loc.city}${loc.postalCode ? ` ${loc.postalCode}` : ""}${dist != null ? ` · ${formatDistanceL(L, dist, true)}` : ""}`}</Text>
                 </Pressable>

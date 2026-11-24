@@ -45,6 +45,8 @@ function markBlanks(html: string): string {
 /**
  * A legal page: the DRAFT banner (when the source is a draft), the language switch (when there is another language) and the article.
  * Wave Q: on wide screens a sticky "On this page" rail lists the sections (anchors on each h2), so a long policy is easy to move around.
+ * Round 4: the text is 16 px on a 680 px measure (it was 13 px on 720, about 120 characters a line), and the draft banner sits under the
+ * 73 px site header, not 9 px behind it.
  */
 export function LegalDocView({ html, isDraft, lang, otherHref }: { html: string; isDraft: boolean; lang: "en" | "fr"; otherHref?: string }) {
   const c = COPY[lang];
@@ -54,7 +56,7 @@ export function LegalDocView({ html, isDraft, lang, otherHref }: { html: string;
       {/* The root layout says en-CA; the French pages correct <html lang> so screen readers and translation tools read them as French. */}
       {lang === "fr" ? <HtmlLocale lang="fr-CA" dir="ltr" /> : null}
       {isDraft ? (
-        <div role="note" className="sticky top-16 z-banner border-b border-line bg-bg-subtle text-fg">
+        <div role="note" className="sticky top-18.25 z-banner border-b border-line bg-bg-subtle text-fg">
           <p className="mx-auto flex max-w-[1080px] items-center gap-2 px-4 py-2.5 text-meta-strong md:px-6">
             <TriangleAlert aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
             {c.banner}
@@ -80,7 +82,7 @@ export function LegalDocView({ html, isDraft, lang, otherHref }: { html: string;
         ) : (
           <span className="max-lg:hidden" />
         )}
-        <div className="min-w-0 max-w-[720px]">
+        <div className="min-w-0 max-w-170">
           <div className="mb-6 flex items-center justify-between gap-4">
             <p className="text-meta-strong text-fg-muted">
               {c.legal}
@@ -92,7 +94,7 @@ export function LegalDocView({ html, isDraft, lang, otherHref }: { html: string;
               </Link>
             ) : null}
           </div>
-          <article lang={lang === "fr" ? "fr-CA" : undefined} className="prose-ll [&_h2]:scroll-mt-32" dangerouslySetInnerHTML={{ __html: doc.html }} />
+          <article lang={lang === "fr" ? "fr-CA" : undefined} className="prose-ll text-base! leading-[1.65]! [&_h2]:scroll-mt-32 [&_h2]:text-xl! [&_h3]:text-base! [&_table]:text-sm!" dangerouslySetInnerHTML={{ __html: doc.html }} />
         </div>
       </div>
     </>

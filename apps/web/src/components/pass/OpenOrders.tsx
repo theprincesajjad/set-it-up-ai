@@ -18,7 +18,7 @@ export function OpenOrders({ orders }: { orders: OpenOrder[] }) {
   return (
     <section aria-label={t("cust.me.yourOrder")} className="flex flex-col gap-2" data-testid="open-orders">
       {orders.map((o) => (
-        <Link key={o.id} href={`/o/${encodeURIComponent(o.id)}`} className="flex min-h-16 items-center gap-3 rounded-card border border-border bg-card px-4 py-3 hover:bg-hover focus-visible:focus-ring">
+        <Link key={o.id} href={`/o/${encodeURIComponent(o.id)}`} className="flex min-h-16 items-center gap-3 rounded-card border border-border bg-card px-4 py-3 hover:bg-hover focus-visible:focus-ring press-soft">
           <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-r4 bg-trade-soft text-trade-deep">
             <ShoppingBag className="size-5" strokeWidth={1.75} />
           </span>

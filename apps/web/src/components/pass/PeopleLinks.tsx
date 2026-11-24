@@ -34,7 +34,7 @@ export function PeopleLinks({ last, hasVisits }: { last: appointmentsApi.MyAppoi
             <p className="text-body-strong text-fg"><bdi>{last.merchant.name}</bdi></p>
             <p className="truncate text-meta text-fg-muted">{last.staffName ? t("people.bookAgainWith", { service, name: last.staffName }) : t("people.bookAgainLast", { service })}</p>
           </div>
-          <Link href={bookAgainHref(last)} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-pill bg-primary px-4 text-meta-strong text-primary-foreground focus-visible:focus-ring">
+          <Link href={bookAgainHref(last)} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-pill bg-primary px-4 text-meta-strong text-primary-foreground focus-visible:focus-ring press">
             <RotateCcw aria-hidden className="size-4" />
             {t("people.bookAgain")}
           </Link>
@@ -42,7 +42,7 @@ export function PeopleLinks({ last, hasVisits }: { last: appointmentsApi.MyAppoi
       ) : null}
       {threads && threads.n > 0 ? (
         <nav aria-label={t("inbox.me.title")} className="rounded-card border border-border bg-card px-4">
-          <Link href="/me/messages" className="flex min-h-12 items-center justify-between gap-3 py-3 text-body-strong text-fg" data-testid="my-messages-link">
+          <Link href="/me/messages" className="flex min-h-12 items-center justify-between gap-3 py-3 text-body-strong text-fg press-soft" data-testid="my-messages-link">
             <span className="inline-flex items-center gap-2">
               <MessageCircle aria-hidden className="size-4" />
               {t("inbox.me.title")}

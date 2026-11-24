@@ -92,7 +92,7 @@ export function DatePicker({ value, onChange, label, placeholder, disabled, tone
         <PopoverTrigger
           id={id}
           aria-label={`${label}: ${text}`}
-          className="flex h-11 w-full items-center gap-2 rounded-r3 border border-border bg-card px-3 text-start text-body text-foreground hover:bg-hover focus-visible:focus-ring data-popup-open:border-foreground"
+          className="flex h-11 w-full items-center gap-2 rounded-r3 border border-border bg-card px-3 text-start text-body text-foreground transition-[background-color,border-color] duration-tap ease-out hover:bg-hover active:bg-hover focus-visible:focus-ring data-popup-open:border-foreground"
         >
           <CalendarDays aria-hidden className="size-4.5 shrink-0 text-muted-foreground" strokeWidth={1.8} />
           <span className={cn("min-w-0 flex-1 truncate", !value && "text-muted-foreground")}>{text}</span>

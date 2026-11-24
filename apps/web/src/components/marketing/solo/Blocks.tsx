@@ -40,26 +40,6 @@ export function CtaRow({ id, center }: { id: string; center?: boolean }) {
   );
 }
 
-/** The band before the prices: one line, the trial as the button. */
-export function CtaBand({ v }: { v: SoloView }) {
-  return (
-    <section className="sl-band" aria-labelledby="sl-band">
-      <div className="sl-wrap sl-band-in">
-        <div>
-          <h2 className="sl-d3" id="sl-band">
-            {C.cta.band.title}
-          </h2>
-          <p>{v.hero.price}</p>
-        </div>
-        <a className="sl-btn sl-btn-inv" href="#start" data-cta="prepricing">
-          {v.trialCta}
-          <Arrow />
-        </a>
-      </div>
-    </section>
-  );
-}
-
 /** The Pro money features: the waitlist, rebooking, reviews and the weekly report, each with an illustrative sample (plan-copy.ts). */
 export function ProFeatures({ v }: { v: SoloView }) {
   const P = v.pro;

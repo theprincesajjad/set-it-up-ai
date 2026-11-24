@@ -29,7 +29,7 @@ export default function Rewards() {
   const detailsFailed = memberships.length > 0 && details.some((d) => d.isError && !d.data);
   const retryAll = () => void Promise.all([wallet.refetch(), ...details.map((d) => d.refetch())]);
   const noShops = !wallet.isLoading && !walletFailed && memberships.length === 0;
-  const firstRun = <EmptyState icon={Store} title={t("sh.wallet.emptyTitle")} body={t("cp.empty.walletBody")} actionLabel={t("err.action.findShops")} onAction={() => router.push("/map")} />;
+  const firstRun = <EmptyState icon={Store} body={t("cp.empty.walletBody")} actionLabel={t("err.action.findShops")} onAction={() => router.push("/map")} />;
 
   return (
     <Screen back largeTitle title={t("sh.tab.rewards")} refreshing={wallet.isRefetching} onRefresh={() => Promise.all([wallet.refetch(), campaigns.refetch(), ...details.map((d) => d.refetch())])}>
@@ -51,7 +51,7 @@ export default function Rewards() {
         ready.length === 0 && detailsFailed ? (
           <LoadFailed error={details.find((d) => d.isError)?.error} onRetry={retryAll} />
         ) : ready.length === 0 ? (
-          <EmptyState icon={Gift} title={t("sh.rewards.emptyTitle")} body={t("sh.rewards.emptyBody")} actionLabel={t("sh.rewards.seeShops")} onAction={() => setTab("all")} />
+          <EmptyState icon={Gift} title={t("sh.rewards.emptyTitle")} actionLabel={t("sh.rewards.seeShops")} onAction={() => setTab("all")} />
         ) : (
           ready.map((d) => {
             const rs = d.rewards.filter((r) => r.affordable);
@@ -111,7 +111,7 @@ export default function Rewards() {
         campaigns.isError && !campaigns.data ? (
           <LoadFailed error={campaigns.error} onRetry={() => void campaigns.refetch()} />
         ) : (campaigns.data?.items ?? []).length === 0 ? (
-          <EmptyState icon={Trophy} title={t("cp.empty.campaignsTitle")} body={t("cp.empty.campaignsBody")} />
+          <EmptyState icon={Trophy} title={t("cp.empty.campaignsTitle")} />
         ) : (
           (campaigns.data?.items ?? []).map((cmp) => (
             <Card key={cmp.id} onPress={() => router.push(`/campaigns/${cmp.id}`)} accessibilityLabel={t("ms.camp.a11y", { name: cmp.name, visited: cmp.progress.visited, goal: cmp.progress.goal })}>

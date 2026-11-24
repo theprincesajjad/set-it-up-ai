@@ -12,7 +12,8 @@ import { dayToDate, torontoToday } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { disp, useTheme } from "../../theme";
-import { Banner, Button, Chip, EmptyState, ErrorState, hairline, LockedFeature, Screen, SkeletonList, Store, SwitchRow, Text, TextField, useToast, WarmCard } from "../../ui";
+import { Banner, Button, Chip, EmptyState, ErrorState, hairline, LockedFeature, Screen, SkeletonList, Store, SwitchRow, Text, TextField, useToast, WarmCard, haptic } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 type Slot = { startsAt: string; staffId: string };
 const DAYS = 14;
@@ -142,8 +143,10 @@ export default function Book() {
     try {
       const r = await api.appointments.book({ serviceIds: ids, addOnIds: pickedAddOns.map((a) => a.id) /* phase-pro: P5 */, staffId, startsAt: slot.startsAt, notes: data?.shop.pharmacy ? null : notes.trim() || null });
       setBooked(r);
-      if (r.confirmed) router.replace(`/appointments/${r.appointment.id}`);
-      else setStep("pay");
+      if (r.confirmed) {
+        haptic.success();
+        router.replace(`/appointments/${r.appointment.id}`);
+      } else setStep("pay");
     } catch (e) {
       if (isApiError(e) && e.status === 409) {
         setError(t("bk.taken"));
@@ -228,7 +231,7 @@ export default function Book() {
             const n = bookingLogic.timesOn(av, d).length;
             const on = d === day;
             return (
-              <Pressable key={d} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !!av && n === 0 }} disabled={loadingTimes || (!!av && n === 0)} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card, opacity: av && n === 0 ? 0.4 : 1 }]}>
+              <Pressable key={d} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: !!av && n === 0 }} disabled={loadingTimes || (!!av && n === 0)} onPress={() => { setDay(d); setSlot(null); }} style={({ pressed }) => [[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card, opacity: av && n === 0 ? 0.4 : 1 }], pressed ? pressFx.scale : null]}>
                 <Text variant="caption" rawColor={on ? c.onBrand : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
                 <Text style={disp(22, 800, 26)} rawColor={on ? c.onBrand : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
               </Pressable>
@@ -279,7 +282,7 @@ export default function Book() {
         <View style={{ gap: 8 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
             <View>
-              <Text variant="meta" color="fgMuted">{ids.length ? t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) }) : t("bk.chooseTime")}</Text>
+              {ids.length ? <Text variant="meta" color="fgMuted">{t("bk.summary", { n: sel.count, duration: dur(sel.durationMin) })}</Text> : null}
               {ids.length && !(data.shop.pharmacy && sel.priceCents <= 0) ? <Text style={disp(22, 800, 26)}>{bookingLogic.totalText(t as never, data, sel, money)}</Text> : null}
             </View>
             {ids.length && deposit > 0 ? <Text variant="meta" color="fgMuted">{t("bk.depositHold", { amount: money(deposit) })}</Text> : null}
@@ -299,7 +302,7 @@ export default function Book() {
           const on = ids.includes(s.id);
           const v = bookingLogic.serviceFor(s, staffId);
           return (
-            <Pressable key={s.id} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => setIds((cur) => (on ? cur.filter((x) => x !== s.id) : [...cur, s.id]))} style={[styles.row, { borderBottomColor: c.line, borderBottomWidth: hairline }]}>
+            <Pressable key={s.id} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => setIds((cur) => (on ? cur.filter((x) => x !== s.id) : [...cur, s.id]))} style={({ pressed }) => [[styles.row, { borderBottomColor: c.line, borderBottomWidth: hairline }], pressed ? pressFx.dim : null]}>
               <View style={[styles.check, { borderColor: on ? c.brand : c.lineStrong, backgroundColor: on ? c.brand : "transparent" }]}>{on ? <Check size={16} color={c.onBrand} strokeWidth={3} /> : null}</View>
               <View style={{ flex: 1 }}>
                 <Text variant="bodyStrong">{pick(s).name}</Text>

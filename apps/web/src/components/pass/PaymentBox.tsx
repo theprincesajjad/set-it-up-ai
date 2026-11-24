@@ -7,7 +7,7 @@
  * The server marks things paid from the webhook, so callers poll afterwards.
  */
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { browserApi } from "@/lib/api/browser";
 import { useErrorText } from "@/lib/api/useErrorText";
 import { env } from "@/lib/env";
@@ -33,6 +33,8 @@ export function PaymentBox({ paymentIntentId, clientSecret, amountCents, label, 
   const { t } = useLocaleOrEnglish();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A second tap in the same frame lands before `busy` has rendered: this stops it there.
+  const sending = useRef(false);
   if (env.stripePublishableKey) {
     return <StripePayment publishableKey={env.stripePublishableKey} clientSecret={clientSecret} amountCents={amountCents} label={label} onSucceeded={onPaid} />;
   }
@@ -48,6 +50,8 @@ export function PaymentBox({ paymentIntentId, clientSecret, amountCents, label, 
         fullWidth
         loading={busy}
         onClick={async () => {
+          if (sending.current) return;
+          sending.current = true;
           setBusy(true);
           setError(null);
           try {
@@ -56,6 +60,7 @@ export function PaymentBox({ paymentIntentId, clientSecret, amountCents, label, 
           } catch (e) {
             setError(errText(e));
           } finally {
+            sending.current = false;
             setBusy(false);
           }
         }}

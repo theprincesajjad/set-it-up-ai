@@ -115,7 +115,7 @@ export function Row({ leading, title, subtitle, trailing, href, onClick, minHeig
       {trailing ? <span className="flex shrink-0 items-center gap-2">{trailing}</span> : null}
     </>
   );
-  const cls = cn("flex w-full items-center gap-3 px-4 py-3 text-start", subtitle ? "min-h-16" : "min-h-11", (href || onClick) && "transition-colors hover:bg-hover focus-visible:focus-ring", className);
+  const cls = cn("flex w-full items-center gap-3 px-4 py-3 text-start", subtitle ? "min-h-16" : "min-h-11", (href || onClick) && "transition-colors duration-tap ease-out hover:bg-hover active:bg-hover focus-visible:focus-ring", className);
   const style = minHeight ? { minHeight } : undefined;
   const wrap = (el: ReactNode) => (As === "li" ? <li>{el}</li> : el);
   if (href)
@@ -181,7 +181,7 @@ export function StatCardShell({ icon, label, value, chip, layout = "desktop", hr
       {chip}
     </>
   );
-  const cls = cn("card-clear flex min-w-0 flex-col gap-2 p-4", phone ? "min-h-43" : "min-h-36", href && "transition-colors hover:bg-hover focus-visible:focus-ring", className);
+  const cls = cn("card-clear flex min-w-0 flex-col gap-2 p-4", phone ? "min-h-43" : "min-h-36", href && "press-soft hover:bg-hover active:bg-hover focus-visible:focus-ring", className);
   return href ? (
     <Link href={href} className={cls}>
       {inner}
@@ -202,7 +202,7 @@ export function StatCardShell({ icon, label, value, chip, layout = "desktop", hr
 export function GlassButton({ size = "default", className, children, type = "button", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { size?: "slim" | "default" | "lg" }) {
   const s = { slim: "h-7 px-3", default: "h-8 px-4", lg: "h-10 px-4" }[size];
   return (
-    <button type={type} className={cn("glass-lite inline-flex items-center justify-center gap-1.5 rounded-full text-body font-[550] whitespace-nowrap text-foreground focus-visible:focus-ring max-md:min-h-11", s, className)} {...rest}>
+    <button type={type} className={cn("press glass-lite inline-flex select-none items-center justify-center gap-1.5 rounded-full text-body font-[550] whitespace-nowrap text-foreground hover:brightness-[0.97] active:brightness-95 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-11", s, className)} {...rest}>
       {children}
     </button>
   );

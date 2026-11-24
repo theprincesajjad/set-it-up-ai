@@ -41,5 +41,7 @@ describe("dashboard launch fixes", () => {
     expect(isEnglishOnlyScreen(`${base}/customers`, base)).toBe(true);
     expect(isEnglishOnlyScreen(`${base}/messages/new`, base)).toBe(true);
     expect(isEnglishOnlyScreen(`${base}/reports`, base)).toBe(true);
+    // The website builder's words are English (copy.siteBuilder).
+    expect(isEnglishOnlyScreen(`${base}/site`, base)).toBe(true);
   });
 });

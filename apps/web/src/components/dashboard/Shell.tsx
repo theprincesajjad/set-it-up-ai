@@ -65,7 +65,8 @@ export function Shell({ sections, header, footer, notice, mobileTitle, location,
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const pages = useMemo(() => sections.flatMap((s) => s.items).filter((i) => !i.child).map((n) => ({ label: n.label, href: n.href, icon: n.icon })), [sections]);
+  // Every page of the sidebar, the indented ones too (Staff, POS & integrations, Billing & plans), so the search can jump to any of them.
+  const pages = useMemo(() => sections.flatMap((s) => s.items).map((n) => ({ label: n.label, href: n.href, icon: n.icon })), [sections]);
   const defs: NavSectionDef[] = sections;
 
   return (

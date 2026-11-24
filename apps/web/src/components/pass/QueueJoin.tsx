@@ -121,7 +121,7 @@ export function QueueJoin({ shop, data, signedIn, meName }: { shop: { name: stri
         </fieldset>
       ) : null}
       {signedIn ? (
-        <Link className="text-meta text-fg underline" href="/me/family">{t("q.manageFamily")}</Link>
+        <Link className="text-meta text-fg underline active:opacity-60" href="/me/family">{t("q.manageFamily")}</Link>
       ) : null}
       <label className="flex items-start gap-3 text-body text-fg">
         <input type="checkbox" className="mt-1 size-5" checked={consent} onChange={(e) => setConsent(e.target.checked)} />

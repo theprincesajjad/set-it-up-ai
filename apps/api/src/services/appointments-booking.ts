@@ -7,7 +7,7 @@
  * before the visit. After that, or on a no-show, the shop's fee goes to the card the customer saved. A
  * deposit already paid counts toward the fee and is kept; before the window it is refunded.
  */
-import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lte } from "drizzle-orm";
 import { appointments, locations, merchants, pets, services, staffHours, staffServices, users } from "@ll/db";
 import { LOCALES, smsSegments, addressVisibilityOf, appointmentsApi, bookingMaySeeAddress, isAddressPrivate, normalizeLocale, publicPlaceLine, salesTaxCopy, translator, type Locale } from "@ll/shared";
 import type { z } from "zod";
@@ -301,6 +301,21 @@ async function notifyConfirmed(ctx: AppContext, merchant: Merchant, a: Appointme
 // ---------------------------------------------------------------------------
 // Booking (customer)
 // ---------------------------------------------------------------------------
+/**
+ * The customer's own bookings at this shop that are still waiting on the deposit or the card (nothing paid, no bank debit settling).
+ * They never block that customer's own choice: the same choice again reuses the hold, a different one replaces it.
+ */
+export async function unpaidHolds(ctx: AppContext, merchantId: string, userId: string): Promise<Appointment[]> {
+  return ctx.db
+    .select()
+    .from(appointments)
+    .where(and(eq(appointments.merchantId, merchantId), eq(appointments.userId, userId), eq(appointments.status, "booked"), isNotNull(appointments.holdExpiresAt), gt(appointments.holdExpiresAt, ctx.now()), isNull(appointments.depositPaidAt), isNull(appointments.depositProcessingAt)))
+    .orderBy(desc(appointments.createdAt));
+}
+
+/** Which services and add-ons a booking is for, in order (to tell "the same choice again" from a new one). */
+const itemsKey = (items: { serviceId: string | null; addOnId?: string | null }[]) => items.map((i) => i.addOnId ?? i.serviceId ?? "").join(",");
+
 export async function createMine(ctx: AppContext, userId: string, body: z.output<typeof appointmentsApi.createMyAppointmentBody>): Promise<appointmentsApi.CreateMyAppointmentResponse> {
   const ids = [...new Set(body.serviceIds)];
   const found = await ctx.db.select({ id: services.id, merchantId: services.merchantId }).from(services).where(inArray(services.id, ids));
@@ -310,13 +325,14 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
   await requireFeature(ctx.db, merchant, "booking.appointments");
   const now = ctx.now();
   await expireHolds(ctx, { merchantId: merchant.id });
-  const [open] = await ctx.db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(appointments).where(and(eq(appointments.userId, userId), eq(appointments.status, "booked"), isNotNull(appointments.holdExpiresAt), gt(appointments.holdExpiresAt, now)));
-  if ((open?.n ?? 0) >= MAX_OPEN_HOLDS) throw tooMany("Finish or wait out your open bookings first");
+  const open = await ctx.db.select({ id: appointments.id }).from(appointments).where(and(eq(appointments.userId, userId), eq(appointments.status, "booked"), isNotNull(appointments.holdExpiresAt), gt(appointments.holdExpiresAt, now)));
+  // Their own unpaid holds here (they went Back from the card step, refreshed, or picked up another phone) do not hide their time from them.
+  const mine = await unpaidHolds(ctx, merchant.id, userId);
 
   const startsAt = new Date(body.startsAt);
   const loc = await resolveLocation(ctx.db, merchant.id, body.locationId);
   const extras = await resolveAddOns(ctx, merchant, body.serviceIds, isPharmacy(merchant) ? [] : body.addOnIds); // phase-pro P5
-  const { staffId } = await assertBookable(ctx, merchant, { serviceIds: body.serviceIds, staffId: body.staffId ?? null, startsAt, locationId: loc.id }, { extraMin: extras.extraMin });
+  const { staffId } = await assertBookable(ctx, merchant, { serviceIds: body.serviceIds, staffId: body.staffId ?? null, startsAt, locationId: loc.id }, { extraMin: extras.extraMin, excludeAppointmentIds: mine.map((h) => h.id) });
   const svcs = await loadAppointmentServices(ctx.db, merchant.id, body.serviceIds, { requireActive: true });
   const overrides = await ctx.db.select().from(staffServices).where(and(eq(staffServices.merchantId, merchant.id), eq(staffServices.userId, staffId)));
   const r = withAddOns(itemsFor(svcs, staffId, overrides), extras); // phase-pro P5: add-on lines, minutes and price; the deposit stays the services'.
@@ -343,8 +359,29 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
   const deposit = cardsOk && r.depositCents >= MIN_CHARGE_CENTS ? r.depositCents : 0;
   const fee = rx ? 0 : merchant.noShowFeeCents;
   const hold = deposit > 0 || (cardsOk && fee > 0);
-  const row = await guardOverlap(async () => {
-    const [a] = await ctx.db
+  const endsAt = new Date(startsAt.getTime() + r.blockMin * MIN);
+  // The same choice again (a refresh on the card step, a second tap, another device): keep the one hold, with a fresh ten minutes and the same payment.
+  const same = hold
+    ? mine.find((h) => h.startsAt.getTime() === startsAt.getTime() && h.endsAt.getTime() === endsAt.getTime() && h.staffId === staffId && h.locationId === loc.id && h.depositCents === deposit && (h.noShowFeeCents ?? 0) === fee && (h.groupId ?? null) === (body.groupId ?? null) && itemsKey(h.items) === itemsKey(r.items))
+    : undefined;
+  if (same) {
+    const [kept] = await ctx.db
+      .update(appointments)
+      .set({ holdExpiresAt: new Date(now.getTime() + HOLD_MINUTES * MIN), clientNote: body.notes ?? null, intakeAnswer: rx ? null : (body.intakeAnswer ?? null), petId, customerName: who?.name?.trim() || first || same.customerName, updatedAt: now })
+      .where(and(eq(appointments.id, same.id), eq(appointments.status, "booked"), isNotNull(appointments.holdExpiresAt)))
+      .returning();
+    if (kept) {
+      const again = await pendingPayment(ctx, merchant, kept);
+      return { appointment: (await myDtos(ctx, [kept]))[0]!, deposit: again.deposit, setup: again.setup, confirmed: false };
+    }
+  }
+  // A different choice: the hold it names (`replaces`) and any of their holds this time overlaps are given up for it, in one step with the new booking.
+  const replaced = mine.filter((h) => h.id === body.replaces || (h.startsAt < endsAt && h.endsAt > startsAt));
+  if (open.filter((o) => !replaced.some((h) => h.id === o.id)).length >= MAX_OPEN_HOLDS) throw tooMany("Finish or wait out your open bookings first");
+  const row = await guardOverlap(() => ctx.db.transaction(async (tx) => {
+    // Released like a hold that ran out ("hold_expired"): the chair is free for everyone, and a payment that still lands on it is handled the same way.
+    if (replaced.length) await tx.update(appointments).set({ status: "cancelled", cancelledAt: now, cancelReason: "hold_expired", holdExpiresAt: null, updatedAt: now }).where(and(inArray(appointments.id, replaced.map((h) => h.id)), eq(appointments.status, "booked"), isNotNull(appointments.holdExpiresAt), isNull(appointments.depositPaidAt), isNull(appointments.depositProcessingAt)));
+    const [a] = await tx
       .insert(appointments)
       .values({
         merchantId: merchant.id,
@@ -357,7 +394,7 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
         source: "online",
         items: r.items,
         startsAt,
-        endsAt: new Date(startsAt.getTime() + r.blockMin * MIN),
+        endsAt,
         status: "booked",
         groupId: body.groupId ?? null,
         clientNote: body.notes ?? null,
@@ -370,7 +407,7 @@ export async function createMine(ctx: AppContext, userId: string, body: z.output
       })
       .returning();
     return a!;
-  });
+  }));
   let pay: Awaited<ReturnType<typeof pendingPayment>>;
   try {
     pay = await pendingPayment(ctx, merchant, row);
@@ -733,8 +770,11 @@ async function deliverAppointmentMessage(ctx: AppContext, m: { a: Appointment; m
 // ---------------------------------------------------------------------------
 // ---- phase-pro: P5 ---- Public availability with add-ons (their minutes lengthen the slot)
 // ---------------------------------------------------------------------------
-export async function publicAvailability(ctx: AppContext, merchant: Merchant, q: z.output<typeof appointmentsApi.availabilityQuery>): Promise<appointmentsApi.AvailabilityResponse> {
+export async function publicAvailability(ctx: AppContext, merchant: Merchant, q: z.output<typeof appointmentsApi.availabilityQuery>, userId?: string | null): Promise<appointmentsApi.AvailabilityResponse> {
   const extras = await resolveAddOns(ctx, merchant, q.serviceIds, q.addOnIds);
-  return computeAvailability(ctx, merchant, { serviceIds: q.serviceIds, staffId: q.staffId, from: q.from, to: q.to, locationId: q.locationId }, { extraMin: extras.extraMin });
+  // Signed in: the time they are holding (card step not finished) is still theirs to pick, and comes back marked as held.
+  const mine = userId ? await unpaidHolds(ctx, merchant.id, userId) : [];
+  const av = await computeAvailability(ctx, merchant, { serviceIds: q.serviceIds, staffId: q.staffId, from: q.from, to: q.to, locationId: q.locationId }, { extraMin: extras.extraMin, excludeAppointmentIds: mine.map((h) => h.id) });
+  return mine.length ? { ...av, held: mine.map((h) => ({ appointmentId: h.id, startsAt: h.startsAt.toISOString(), staffId: h.staffId, holdExpiresAt: h.holdExpiresAt!.toISOString() })) } : av;
 }
 // ---- end phase-pro: P5 ----

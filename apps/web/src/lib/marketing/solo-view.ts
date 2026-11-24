@@ -65,7 +65,6 @@ export function soloView(id: SoloPageId, trade: NailTrade = "nails", variant?: s
       cta: V.cta,
       trust: "trust" in T ? T.trust : C.hero.trust,
       price: planLine("priceLine"),
-      proof: `${V.eyebrow}. ${C.hero.proof}`,
       policy: V.policy ?? { title: C.hero.policyTitle, body: C.hero.policyBody },
       booked: f(C.hero.booked),
       bookedCard: C.hero.bookedCard,

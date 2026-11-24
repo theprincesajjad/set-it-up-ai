@@ -99,7 +99,7 @@ export function InboxList({ limit = 20 }: { limit?: number }) {
         title={t("sh.activity.title")}
         action={
           inbox && inbox.unreadCount > 0 ? (
-            <button type="button" onClick={() => void markAll()} className="text-meta-strong text-fg hover:underline focus-visible:focus-ring">
+            <button type="button" onClick={() => void markAll()} className="text-meta-strong text-fg hover:underline focus-visible:focus-ring active:opacity-60">
               {t("sh.set.markAllRead")}
             </button>
           ) : null
@@ -126,7 +126,7 @@ export function InboxList({ limit = 20 }: { limit?: number }) {
             return (
               <li key={n.id}>
                 {href ? (
-                  <a href={href} onClick={onOpen} className="-mx-4 flex gap-3 px-4 py-3 hover:bg-bg-subtle focus-visible:focus-ring">
+                  <a href={href} onClick={onOpen} className="-mx-4 flex gap-3 px-4 py-3 hover:bg-bg-subtle focus-visible:focus-ring press-soft">
                     {body}
                   </a>
                 ) : (

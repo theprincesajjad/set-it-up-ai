@@ -4,9 +4,9 @@ import { cn } from "@/lib/cn";
 
 type Tone = "sand" | "primary" | "trade";
 const TONE: Record<Tone, string> = {
-  sand: "bg-hover text-foreground hover:bg-sidebar",
-  primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover",
-  trade: "bg-trade-soft text-trade-deep hover:brightness-[0.97]",
+  sand: "bg-hover text-foreground hover:bg-sidebar active:bg-sidebar",
+  primary: "bg-primary text-primary-foreground shadow-glow hover:bg-brand-hover active:bg-brand-pressed",
+  trade: "bg-trade-soft text-trade-deep hover:brightness-[0.97] active:brightness-95",
 };
 
 export interface ActionPillProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
@@ -23,8 +23,10 @@ export interface ActionPillProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
  * with `onClick`, or `decorative` for a row that is itself the link.
  */
 export function ActionPill({ children, tone = "sand", href, decorative, className, type = "button", ...rest }: ActionPillProps) {
-  const cls = cn("relative inline-flex h-8 shrink-0 select-none items-center justify-center whitespace-nowrap rounded-full px-3.5 text-meta-strong transition-colors duration-150 ease-out focus-visible:focus-ring after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-['']", TONE[tone], className);
-  if (decorative) return <span className={cls}>{children}</span>;
+  const base = "relative inline-flex h-8 shrink-0 select-none items-center justify-center whitespace-nowrap rounded-full px-3.5 text-meta-strong focus-visible:focus-ring after:absolute after:-inset-y-1.5 after:inset-x-0 after:content-['']";
+  // A decorative pill sits in a row that is the link: the row answers the press, the pill stays still.
+  if (decorative) return <span className={cn(base, TONE[tone], className)}>{children}</span>;
+  const cls = cn("press disabled:cursor-not-allowed disabled:opacity-50", base, TONE[tone], className);
   if (href) {
     return (
       <Link href={href} className={cls}>

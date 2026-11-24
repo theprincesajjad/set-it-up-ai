@@ -58,7 +58,7 @@ export function DateStrip({ days, day, onSelect, state, label, onPickLater, clas
       <div className="flex min-h-11 items-center justify-between gap-3">
         <p className="text-body-strong text-fg" aria-live="polite">{month}</p>
         {onPickLater ? (
-          <button type="button" onClick={openCalendar} aria-haspopup="dialog" className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-meta-strong text-trade-deep hover:bg-trade-soft focus-visible:focus-ring clear:text-foreground">
+          <button type="button" onClick={openCalendar} aria-haspopup="dialog" className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-meta-strong text-trade-deep hover:bg-trade-soft focus-visible:focus-ring clear:text-foreground press">
             <CalendarDays aria-hidden className="size-4.5" strokeWidth={1.8} />
             {t("cust.bk.moreDates")}
           </button>

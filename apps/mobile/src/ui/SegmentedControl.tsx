@@ -2,6 +2,7 @@ import { shadows } from "@ll/design-tokens";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
 import { Text } from "./Text";
+import { pressFx } from "./pressFx";
 
 export interface SegmentedControlProps<T extends string> {
   options: { value: T; label: string }[];
@@ -26,7 +27,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
             accessibilityState={{ selected }}
             onPress={() => onChange(o.value)}
             hitSlop={{ top: 4, bottom: 4 }}
-            style={[styles.seg, isClear ? { minHeight: 40 } : null, selected ? (isClear ? lifted : [{ backgroundColor: c.brand }, shadows.float.native, { shadowOpacity: 0.06, elevation: 1 }]) : null]}
+            style={({ pressed }) => [[styles.seg, isClear ? { minHeight: 40 } : null, selected ? (isClear ? lifted : [{ backgroundColor: c.brand }, shadows.float.native, { shadowOpacity: 0.06, elevation: 1 }]) : null], pressed ? pressFx.dim : null]}
           >
             <Text variant="metaStrong" color={selected ? (isClear ? "fg" : "onBrand") : isClear ? "fg" : "fgMuted"}>
               {o.label}

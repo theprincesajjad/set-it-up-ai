@@ -72,7 +72,7 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
       <ShopHead shop={shop} href={`/shops/${encodeURIComponent(shop.slug)}`} />
       <div className="flex flex-col gap-2">
         <Heading>{t("menu.title")}</Heading>
-        <p className="text-body text-fg-muted">{restaurant?.quotedWaitMin && canPickup ? t("rs.menu.intro", { min: restaurant.quotedWaitMin, tax: menu.tax.label }) : t("rc.mn.intro", { shop: shop.name })}</p>
+        <p className="text-body text-fg-muted">{restaurant?.quotedWaitMin && canPickup ? (menu.tax.ratePpm > 0 ? t("rs.menu.intro", { min: restaurant.quotedWaitMin, tax: menu.tax.label }) : t("rs.menu.introNoTax", { min: restaurant.quotedWaitMin })) : t("rc.mn.intro", { shop: shop.name })}</p>
       </div>
 
       {cert ? <HalalBlock cert={cert} variant="menu" /> : null}
@@ -252,7 +252,7 @@ export function MenuBrowser({ shop, menu, restaurant, appStoreUrl, playStoreUrl 
             {all.some((i) => (i.dietary?.spice ?? 0) > 0) ? <p>{t("rs.menu.spiceLegend", { one: `● ${t("spice.medium")}`, two: `●● ${t("spice.hot")}`, three: `●●● ${t("spice.extraHot")}` })}</p> : null}
             <p>{t("rs.menu.allergyNote")}</p>
             {menu.dualPricing ? <p>{t("rs.menu.cashNote", { pct: number(Math.round(menu.dualPricing.cashDiscountBps / 100)) })}</p> : null}
-            {menu.tax ? <p>{hasZeroRated ? t("gr.menu.taxNote") : t("rc.mn.taxNote", { tax: menu.tax.label })}</p> : null}
+            {menu.tax?.ratePpm ? <p>{hasZeroRated ? t("gr.menu.taxNote") : t("rc.mn.taxNote", { tax: menu.tax.label })}</p> : null}
             {appStoreUrl || playStoreUrl ? (
               <p>
                 {t("rs.menu.appLine")}{" "}

@@ -109,7 +109,10 @@ function Calendar() {
     const ws = weekStart(date);
     return { from: dayBounds(ws).from, to: dayBounds(addDays(ws, 6)).to };
   }, [view, date]);
-  const appts = useAppointments(api, staffState.data?.setup.ready ? range : null);
+  // A shop that only runs the walk-in line may have no services or hours yet: the calendar is not set up, but the visit the
+  // line's Done links to (?appt=...&checkout=1) still loads so it can be paid.
+  const linkedVisit = !!search.get("appt");
+  const appts = useAppointments(api, staffState.data?.setup.ready || linkedVisit ? range : null);
   const items = appts.items;
   // The day failed to load and nothing is on screen: show the failure, never an empty grid with "0 booked" under it.
   const dayFailed = !!appts.error && !appts.items.length;
@@ -253,6 +256,7 @@ function Calendar() {
           }
         />
         <StaffScheduleSheet open={settingHours} onClose={() => setSettingHours(false)} member={owner} onSaved={async () => { await staffState.reload(); }} />
+        {selected ? <CheckoutSheet open={sheet?.kind === "checkout"} onClose={() => setSheet(null)} appt={selected} services={services} staff={staff} settings={settings.data} onDone={refresh} /> : null}
       </div>
     );
   }

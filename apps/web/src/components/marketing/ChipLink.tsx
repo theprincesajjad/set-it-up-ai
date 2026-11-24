@@ -9,9 +9,9 @@ export function ChipLink({ href, current, children, className }: { href: string;
       href={href}
       aria-current={current ? "true" : undefined}
       className={cn(
-        "relative inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-meta-strong max-sm:h-11 max-sm:px-4 transition-colors duration-150 ease-out focus-visible:focus-ring",
+        "relative inline-flex h-9 shrink-0 items-center rounded-full px-3.5 text-meta-strong max-sm:h-11 max-sm:px-4 press focus-visible:focus-ring",
         "after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']",
-        current ? "bg-primary text-primary-foreground" : "border border-border bg-background text-foreground hover:bg-muted",
+        current ? "bg-primary text-primary-foreground active:bg-primary-hover" : "border border-border bg-background text-foreground hover:bg-muted active:bg-muted",
         className,
       )}
     >

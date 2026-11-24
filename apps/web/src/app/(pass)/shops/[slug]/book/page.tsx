@@ -30,7 +30,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-/** Book a visit: stylist and services, a time, the policy and the deposit or card. ?service= and ?staff= come from a rebooking nudge. */
+/**
+ * Book a visit: stylist and services, a time, the policy and the deposit or card. ?service= and ?staff= come from a rebooking nudge.
+ * The flow keeps its step and choices in the address (components/pass/bookState.ts), so a refresh or Back lands where the customer was.
+ */
 export default async function ShopBookPage({ params, searchParams }: Props) {
   const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const locale = await getLocale(sp);
@@ -84,7 +87,7 @@ export default async function ShopBookPage({ params, searchParams }: Props) {
           {t("rb.book.welcomeSub")}
         </Banner>
       ) : null}
-      <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service) ?? welcome?.serviceId ?? undefined, staff: one(sp.staff) ?? welcome?.staffId ?? undefined, pet: one(sp.pet), rebook: rebook && welcome ? rebook : undefined }} meName={me?.user.name ?? null} />
+      <BookFlow shop={shop} data={data} signedIn={!!me} devAutofill={process.env.NODE_ENV !== "production" || process.env.OTP_AUTOFILL === "1"} initial={{ service: one(sp.service) ?? welcome?.serviceId ?? undefined, staff: one(sp.staff) ?? welcome?.staffId ?? undefined, pet: one(sp.pet), rebook: rebook && welcome ? rebook : undefined, step: one(sp.step), addon: one(sp.addon), day: one(sp.day), at: one(sp.at), with: one(sp.with), hold: one(sp.hold) }} meName={me?.user.name ?? null} />
       {/* slot: PoweredBy (phase-solo E): on every step of the booking flow, including the confirmation. */}
       {/* A shop with nothing to book gets no owner upsell: the customer needs a way forward, not a pitch. */}
       <PoweredBy locale={locale} vertical={shop.vertical} show={shop.poweredBy && data.services.length > 0} />

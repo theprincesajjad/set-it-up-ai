@@ -18,7 +18,7 @@ export function VipEditor({ levels, onChange }: { levels: merchantApi.VipLevel[]
   return (
     <div className="flex flex-col gap-3">
       <h3 className="text-body-strong text-fg">VIP levels</h3>
-      <p className="text-meta text-fg-muted">Regulars earn faster once they pass a lifetime total. Members are re-levelled automatically.</p>
+      <p className="text-meta text-fg-muted">Regulars earn faster once they pass a lifetime total.</p>
       {levels.length ? (
         <table className="w-full text-meta">
           <caption className="sr-only">VIP levels</caption>

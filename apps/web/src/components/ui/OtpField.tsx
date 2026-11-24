@@ -73,7 +73,7 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
       <label htmlFor={id} className="text-meta-strong text-fg">
         {label}
       </label>
-      <div dir="ltr" className={cn("relative w-fit", error && "motion-safe:animate-[ll-otp-shake_220ms_ease-in-out]")} onClick={() => inputRef.current?.focus()}>
+      <div dir="ltr" className={cn("relative w-fit", error && "motion-safe:animate-otp-shake")} onClick={() => inputRef.current?.focus()}>
         <input
           ref={hydratedRef}
           id={id}
@@ -101,7 +101,7 @@ export const OtpField = forwardRef<HTMLInputElement | null, OtpFieldProps>(funct
               <div
                 key={i}
                 className={cn(
-                  "flex h-14 w-11 items-center justify-center rounded-r3 border bg-card text-keypad tabular-nums text-fg shadow-[0_1px_0_0_var(--color-line)] transition-[border-color,box-shadow,background-color] duration-150 sm:w-12",
+                  "flex h-14 w-11 items-center justify-center rounded-r3 border bg-card text-keypad tabular-nums text-fg shadow-[0_1px_0_0_var(--color-line)] transition-[border-color,box-shadow,background-color] duration-tap ease-out sm:w-12",
                   length === 6 && i === 3 && "ms-2.5",
                   error
                     ? "border-negative ring-1 ring-negative"

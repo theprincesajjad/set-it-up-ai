@@ -76,7 +76,7 @@ export function ImportWizard({ importCsv, onFinished }: ImportWizardProps) {
       {step === "upload" ? (
         <Panel>
           <h2 className="text-body-strong text-fg">Upload a CSV file</h2>
-          <p className="mt-1 text-body text-fg-muted">Export your customers from your old loyalty app or spreadsheet. Each customer needs a phone number. Importing the same file twice never doubles a balance.</p>
+          <p className="mt-1 text-body text-fg-muted">Each customer needs a phone number. Importing the same file twice never doubles a balance.</p>
           <label className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed border-line-strong p-6 text-center hover:bg-bg-subtle focus-within:focus-ring">
             <FileUp aria-hidden className="size-8 text-fg" />
             <span className="text-body-strong text-fg">Choose a CSV file</span>

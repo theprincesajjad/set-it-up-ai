@@ -71,6 +71,36 @@ test.describe("at 390", () => {
     await axe(page);
   });
 
+  test("steps slide in from the side they come from; Back after a refresh goes back in history, so Forward still works", async ({ page }) => {
+    await page.goto("/signup");
+    await atStep(page, "link");
+    const enter = page.locator("[data-flow-enter]");
+    await expect(enter).toHaveAttribute("data-flow-enter", "none");
+    await page.getByRole("button", { name: "I don’t have one, skip" }).click();
+    await atStep(page, "shop");
+    await expect(enter).toHaveAttribute("data-flow-enter", "forward");
+    await page.getByLabel("Shop name").fill("Slide & Co");
+    await cont(page);
+    await atStep(page, "kind");
+    // A refresh forgets nothing: the bar's Back goes back one history entry (not a new one), so the phone's Forward returns here.
+    await page.reload();
+    await atStep(page, "kind");
+    await expect(enter).toHaveAttribute("data-flow-enter", "none");
+    await page.locator("[data-flow-back]").click();
+    await atStep(page, "shop");
+    await expect(enter).toHaveAttribute("data-flow-enter", "back");
+    await expect(page.getByLabel("Shop name")).toHaveValue("Slide & Co");
+    await page.goForward();
+    await atStep(page, "kind");
+    await expect(enter).toHaveAttribute("data-flow-enter", "forward");
+    await page.goBack();
+    await atStep(page, "shop");
+    await expect(enter).toHaveAttribute("data-flow-enter", "back");
+    // The slide never widens the page.
+    const { sw, iw } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
+    expect(sw).toBeLessThanOrEqual(iw);
+  });
+
   test("kind: eight tiles, search finds the rest, nothing picked is an inline error, Other asks what you sell", async ({ page }) => {
     await page.goto("/signup");
     await page.getByRole("button", { name: "I don’t have one, skip" }).click();
@@ -179,6 +209,10 @@ test.describe("at 390", () => {
     await expect(page.locator("[data-card-preview]").first()).toContainText("8 stamps = Free oat latte");
     await expect(page.getByRole("img", { name: `QR code to join ${name}` })).toBeVisible();
     await expect(page.locator("[data-live-next] a").first()).toContainText("Give your first stamp");
+    // On a phone the code to join comes right after the card, before the next steps.
+    const qrTop = (await page.locator("[data-live-share]").boundingBox())!.y;
+    expect(qrTop).toBeLessThan((await page.locator("[data-live-next]").boundingBox())!.y);
+    expect(qrTop).toBeGreaterThan((await page.locator("[data-card-preview]").first().boundingBox())!.y);
     // Refresh on the celebration stays on it (the shop exists; the form is not shown again).
     await page.reload();
     await atStep(page, "live");
@@ -243,6 +277,45 @@ test.describe("at 390", () => {
     await page.screenshot({ path: shot("11-account-signed-in-390") });
     await cont(page);
     await atStep(page, "live");
+  });
+
+  test("an Urdu signup: steps slide the mirrored way, a failed website read is said in Urdu, and Urdu follows the owner into the dashboard", async ({ page }) => {
+    await page.goto("/signup?lang=ur");
+    await atStep(page, "link");
+    // A link that cannot be read: one Urdu sentence under the field (never the API's English one), and the link stays typed.
+    await page.locator("input[name=siteImportUrl]").fill("not a link");
+    await cont(page);
+    const linkError = page.locator("[data-step=link] [id$=-error]");
+    await expect(linkError).toBeVisible({ timeout: 30_000 });
+    expect(await linkError.innerText()).not.toMatch(/[A-Za-z]{4,}/);
+    await expect(page.locator("input[name=siteImportUrl]")).toHaveValue("not a link");
+    await page.locator("[data-flow-secondary]").click();
+    await atStep(page, "shop");
+    await expect(page.locator("[data-flow-enter]")).toHaveAttribute("data-flow-enter", "forward");
+    expect(await page.locator("[data-flow-enter]").evaluate((el) => getComputedStyle(el).getPropertyValue("--tw-enter-translate-x"))).toContain("-1");
+    await page.locator("input[name=shopName]").fill(`چائے خانہ ${rand()}`);
+    await cont(page);
+    await page.locator("[data-vertical=cafe]").first().click();
+    await cont(page);
+    await atStep(page, "where");
+    await page.locator("input[name=street]").fill("2210 Danforth Ave");
+    await cont(page);
+    await atStep(page, "card");
+    await cont(page);
+    await atStep(page, "account");
+    await page.locator("[data-step=account] input[type=tel]").fill(digits());
+    await page.locator("input[name=email]").fill(`ur-${rand()}@example.com`);
+    await page.locator("input[name=password]").fill("signup-flow-ur-1");
+    await cont(page);
+    await atStep(page, "live");
+    await page.locator("[data-live-primary]").click();
+    await page.waitForURL(/\/m\/[^/]+\/setup/, { timeout: 60_000 });
+    // The dashboard is in Urdu; the storefront's setup steps are English only, shown as one left-to-right block under an Urdu line.
+    const english = page.locator("[data-english-screen]");
+    await expect(english).toBeVisible({ timeout: 30_000 });
+    await expect(english).toHaveAttribute("dir", "ltr");
+    await expect(english.getByRole("heading", { name: "Set up your shop" })).toBeVisible();
+    await expect(page.getByText("یہ اسکرین فی الحال انگریزی میں ہے۔")).toBeVisible();
   });
 
   test("a pricing button's plan: the celebration leads on to checkout", async ({ page }) => {

@@ -23,7 +23,7 @@ function List() {
   const act = useAction();
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader flush title="Street campaigns" description="Your BIA's events: customers visit shops on the strip to earn bonus points and win prizes. Free for you to join." />
+      <PageHeader flush title="Street campaigns" description="Your BIA's street events. Free for you to join." />
       {act.error ? <ErrorLine message={act.error} /> : null}
       <Async state={list} skeleton={<SkeletonRows rows={3} />}>
         {(d) =>

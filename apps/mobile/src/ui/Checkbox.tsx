@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useTheme } from "../theme";
 import { Check } from "./icons";
 import { Text } from "./Text";
+import { pressFx } from "./pressFx";
 
 export interface CheckboxProps {
   checked: boolean;
@@ -22,7 +23,7 @@ export function Checkbox({ checked, onChange, label, caption, disabled, large }:
       accessibilityLabel={label}
       accessibilityHint={caption ?? undefined}
       onPress={() => !disabled && onChange(!checked)}
-      style={styles.row}
+      style={({ pressed }) => [styles.row, pressed ? pressFx.dim : null]}
     >
       <View
         style={[

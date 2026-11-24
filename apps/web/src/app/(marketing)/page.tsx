@@ -213,19 +213,11 @@ export default function Home() {
             </li>
           </ol>
           <Dots n={3} />
-          {/* Wave X: the three doubts the hero used to answer, now under the steps. */}
-          <ul className="lp-trust lp-how-trust">
-            {L.hero.points.map((t) => (
-              <li key={t}>
-                <Check aria-hidden strokeWidth={2.5} />
-                {t}
-              </li>
-            ))}
-          </ul>
         </div>
       </section>
 
-      {/* 4. What you get, on the black band: four outcomes, each with its product moment (sample data, captioned) */}
+      {/* 4. What you get, on the black band: the two outcomes how it works has not shown (the nudge and the week), each with its
+          product moment (sample data, captioned). Round 4: the pass and the stamp were here too, a repeat of the steps one band up. */}
       <section className="lp-sec lp-dark" id="product" aria-labelledby="lp-product">
         <div className="lp-wrap">
           <div className="lp-head">
@@ -239,8 +231,6 @@ export default function Home() {
               <li key={r.id} id={`outcome-${r.id}`} className="lp-get">
                 <div className={`lp-get-art lp-get-${r.id}`} aria-hidden>
                   {"tag" in r && r.tag ? <span className="lp-tag-pro">{f(r.tag)}</span> : null}
-                  {r.id === "pass" ? <WalletPass data={PASSES.cafe} fill /> : null}
-                  {r.id === "stamp" ? <StampAdded data={PASSES.barber} /> : null}
                   {r.id === "winback" ? <WinBack /> : null}
                   {r.id === "week" ? <WeeklyCard shop={O.week.shop} /> : null}
                 </div>
@@ -264,7 +254,6 @@ export default function Home() {
                 <ArrowRight aria-hidden strokeWidth={2} />
               </a>
             </div>
-            <Reassure />
           </div>
         </div>
       </section>
@@ -296,14 +285,6 @@ export default function Home() {
           </ul>
           <Dots n={L.shops.tiles.length} />
           <p className="lp-caption lp-tiles-note">{L.shops.photosNote}</p>
-          {/* The next step after the tiles: up to the card maker (an in-page link, not a sign-up link). */}
-          <div className="lp-ask lp-shops-next">
-            <a className="lp-btn lp-btn-black lp-btn-xl" href="#try" data-cta="shops">
-              {L.shops.next}
-              <ArrowRight aria-hidden strokeWidth={2} />
-            </a>
-            <p className="lp-reassure">{L.shops.nextNote}</p>
-          </div>
           <div className="lp-also">
             {/* Plain anchors: the A/B landing pages count only a full page load (SiteFooter's LANDING_AB note). */}
             <nav aria-label={copy.solo.chipsLabel} className="lp-also-row">
@@ -316,19 +297,6 @@ export default function Home() {
                     <ArrowRight aria-hidden strokeWidth={2} />
                   </a>
                 ))}
-            </nav>
-            <nav aria-label={L.shops.also} className="lp-also-row">
-              <span>{L.shops.also}</span>
-              {L.shops.more.map((m) => (
-                <Link key={m.href} href={m.href} prefetch={false}>
-                  <b>{m.label}</b>
-                  <span className="lp-also-sep" aria-hidden>
-                    ·
-                  </span>
-                  {m.line}
-                  <ArrowRight aria-hidden strokeWidth={2} />
-                </Link>
-              ))}
             </nav>
           </div>
         </div>

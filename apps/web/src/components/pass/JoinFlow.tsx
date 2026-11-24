@@ -366,9 +366,9 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
         <p className="mt-3.5 text-center text-[12px] leading-[17px] text-fg-muted">{t("auth.join.numberUse")}</p>
         {/* The two links keep their own centred line, so the separator never starts a line of its own. */}
         <p className="mt-1 flex flex-wrap justify-center gap-x-2 text-center text-[12px] leading-[17px] text-fg-muted">
-          <Link href="/legal/rewards" className="inline-flex min-h-11 items-center text-fg-muted underline focus-visible:focus-ring">{t("auth.footer.rewards")}</Link>
+          <Link href="/legal/rewards" className="inline-flex min-h-11 items-center text-fg-muted underline focus-visible:focus-ring press">{t("auth.footer.rewards")}</Link>
           <span aria-hidden className="inline-flex items-center">·</span>
-          <Link href="/legal/privacy" className="inline-flex min-h-11 items-center text-fg-muted underline focus-visible:focus-ring">{t("auth.footer.privacy")}</Link>
+          <Link href="/legal/privacy" className="inline-flex min-h-11 items-center text-fg-muted underline focus-visible:focus-ring press">{t("auth.footer.privacy")}</Link>
         </p>
         {also ? (
           <div className="mt-auto pt-6">
@@ -444,7 +444,7 @@ export function JoinFlow({ info, referralCode, signedIn, signedInName, devAutofi
           <Hn className="display text-large-title text-fg">{t("auth.join.enterCode")}</Hn>
           <p className="-mt-2 text-body text-fg-muted [&_bdi]:font-semibold [&_bdi]:text-fg [&_bdi]:tabular-nums">
             {rich("auth.otp.sentTo", { phone: formatPhone(digits) })}{" "}
-            <button type="button" className="inline-flex min-h-11 items-center font-semibold text-fg underline underline-offset-2 focus-visible:focus-ring" onClick={changeNumber}>
+            <button type="button" className="inline-flex min-h-11 items-center font-semibold text-fg underline underline-offset-2 focus-visible:focus-ring press" onClick={changeNumber}>
               {t("auth.otp.change")}
             </button>
           </p>
@@ -645,16 +645,16 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl, embedded 
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta">
           {showApp ? <span className="text-fg-muted">{t("auth.joined.getApp")}</span> : null}
           {appStoreUrl && os !== "android" ? (
-            <a className="inline-flex min-h-11 items-center gap-0.5 font-semibold text-fg" href={appStoreUrl} rel="noopener noreferrer">
+            <a className="inline-flex min-h-11 items-center gap-0.5 font-semibold text-fg press" href={appStoreUrl} rel="noopener noreferrer">
               App Store <ArrowUpRight aria-hidden className="size-3.5" />
             </a>
           ) : null}
           {playStoreUrl && os !== "ios" ? (
-            <a className="inline-flex min-h-11 items-center gap-0.5 font-semibold text-fg" href={playStoreUrl} rel="noopener noreferrer">
+            <a className="inline-flex min-h-11 items-center gap-0.5 font-semibold text-fg press" href={playStoreUrl} rel="noopener noreferrer">
               Google Play <ArrowUpRight aria-hidden className="size-3.5" />
             </a>
           ) : null}
-          <Link className="inline-flex min-h-11 items-center font-semibold text-fg" href="/me">
+          <Link className="inline-flex min-h-11 items-center font-semibold text-fg press" href="/me">
             {t("auth.joined.myCard")}
           </Link>
         </div>
@@ -663,7 +663,7 @@ function Joined({ info, result, name, deps, appStoreUrl, playStoreUrl, embedded 
       {info.merchant.vertical === "pet" ? (
         <section aria-label={t("pet.add.cta")} data-testid="join-add-dog" className="flex flex-col gap-2 rounded-card border border-line p-4">
           <p className="text-body text-fg">{t("pet.add.body", { shop: info.merchant.name })}</p>
-          <Link className="self-start rounded-pill bg-primary px-4 py-2 text-meta-strong text-primary-foreground shadow-glow focus-visible:focus-ring clear:shadow-none" href="/me/pets">{t("pet.add.cta")}</Link>
+          <Link className="self-start rounded-pill bg-primary px-4 py-2 text-meta-strong text-primary-foreground shadow-glow focus-visible:focus-ring clear:shadow-none press" href="/me/pets">{t("pet.add.cta")}</Link>
         </section>
       ) : null}
 

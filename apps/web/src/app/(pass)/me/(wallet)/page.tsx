@@ -53,7 +53,7 @@ export default async function MePage({ searchParams }: Props) {
         <div className="flex flex-col gap-1 border-t border-line pt-5">
           <p className="text-body-strong text-fg">{t("cust.me.newTitle")}</p>
           <p className="text-meta text-fg-muted">{t("cust.me.newBody")}</p>
-          <Link href="/map" className="mt-1 inline-flex min-h-11 items-center self-start text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring">{t("cust.me.newCta")}</Link>
+          <Link href="/map" className="mt-1 inline-flex min-h-11 items-center self-start text-meta-strong text-fg underline underline-offset-2 focus-visible:focus-ring press">{t("cust.me.newCta")}</Link>
         </div>
       </PageFrame>
     );

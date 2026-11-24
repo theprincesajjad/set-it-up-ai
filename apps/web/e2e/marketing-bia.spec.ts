@@ -76,20 +76,22 @@ test.describe("landing", () => {
     for (const l of order) ys.push(await y(l));
     expect(ys, "sections appear in the specified order").toEqual([...ys].sort((a, b) => a - b));
 
-    // The shop tiles: each one link into the card maker, preset to its trade; the other audiences one tap away.
+    // The shop tiles: each one link into the card maker, preset to its trade; the booking trades one tap away (round 4: restaurants
+    // and BIAs are in the header on every page, so the row that repeated them here is gone).
     const shops = page.locator("#shops");
     await expect(shops.locator(".lp-tile")).toHaveCount(6);
     await expect(shops.getByRole("link", { name: /Make a repair shop card/ })).toHaveAttribute("href", "#try");
     await expect(shops.getByRole("link", { name: /Make a repair shop card/ })).toHaveAttribute("data-try-trade", "repair");
     await expect(shops.getByRole("navigation", { name: "Booking for" }).getByRole("link", { name: /Nail techs/ })).toHaveAttribute("href", "/for-nail-techs");
-    await expect(shops.getByRole("link", { name: /Restaurants/ })).toHaveAttribute("href", "/for-restaurants");
-    await expect(shops.getByRole("link", { name: /BIAs/ })).toHaveAttribute("href", "/for-bias");
+    for (const href of ["/for-restaurants", "/for-bias"]) await expect(page.locator(`header nav a[href="${href}"]`).first()).toBeAttached();
     // Calls to action down the page (landing v4): every one carries data-cta.
-    // Wave W: a next step after the shop tiles ("shops") and the closing band's second ask ("finaltry"), both up to the card maker.
-    for (const c of ["hero", "how", "tryit", "outcomes", "pricing", "final", "sticky", "seepricing", "shops", "finaltry"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
-    for (const c of ["how", "shops", "finaltry"]) await expect(page.locator(`[data-cta=${c}]`)).toHaveAttribute("href", "#try");
-    // Wave P: the page was cut down (facts strip, pass row and the separate Pro block are gone), so it has fewer asks.
-    for (const gone of ["afterhero", "promos", "pro"]) await expect(page.locator(`[data-cta=${gone}]`)).toHaveCount(0);
+    // Wave W: the closing band's second ask ("finaltry") goes up to the card maker, like the hero's.
+    for (const c of ["hero", "how", "tryit", "outcomes", "pricing", "final", "sticky", "seepricing", "finaltry"]) await expect(page.locator(`[data-cta=${c}]`).first()).toBeAttached();
+    for (const c of ["how", "finaltry"]) await expect(page.locator(`[data-cta=${c}]`)).toHaveAttribute("href", "#try");
+    // Wave P: the page was cut down (facts strip, pass row and the separate Pro block are gone), so it has fewer asks. Round 4: the
+    // button after the shop tiles is gone too (every tile already opens the card maker), and what you get is two cards.
+    for (const gone of ["afterhero", "promos", "pro", "shops"]) await expect(page.locator(`[data-cta=${gone}]`)).toHaveCount(0);
+    await expect(page.locator("#product .lp-get")).toHaveCount(2);
     expect(await page.locator('main a[href^="/signup"]').count()).toBeLessThanOrEqual(8);
     // What it costs: "Free forever" in the hero (wave X: the first words of the line under its button); Pro's price and the struck
     // first-year price in the plans; never "founding".
@@ -164,8 +166,11 @@ test.describe("pricing", () => {
     await page.goto("/pricing");
     // Free, Pro and Studio as cards, Service as a line under them (pro-value.md §2.2); prices from PLANS through plan-copy.ts.
     const free = page.locator("#shops").getByText("$0", { exact: true }).first();
-    const plus = page.locator("#shops [data-plan=plus]").getByText("$29", { exact: true });
-    const studio = page.locator("#shops [data-plan=studio]").getByText("$59", { exact: true });
+    // Round 4: the paid prices roll when the Monthly / Yearly switch changes, so each is a wrapper (in the text colour) around the digits.
+    const plus = page.locator("#shops [data-plan=plus] [data-testid=plan-price] .display");
+    const studio = page.locator("#shops [data-plan=studio] [data-testid=plan-price] .display");
+    await expect(plus.locator(".sr-only")).toHaveText("$29");
+    await expect(studio.locator(".sr-only")).toHaveText("$59");
     const pro = page.locator("#shops [data-plan=pro]").getByText("$99", { exact: true });
     await expect(plus).toBeVisible();
     await expect(studio).toBeVisible();

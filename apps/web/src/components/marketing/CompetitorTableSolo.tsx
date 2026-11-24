@@ -108,7 +108,7 @@ export function CompetitorTableSolo({ c, chairs, id = "compare" }: { c: SoloComp
         {SOLO_COMPETITORS.map((x, i) => (
           <span key={x.id}>
             {i ? ", " : ""}
-            <a href={x.sourceUrl} className="underline decoration-input/60 underline-offset-2 hover:decoration-foreground">
+            <a href={x.sourceUrl} className="py-3.5 underline decoration-input/60 underline-offset-2 hover:decoration-foreground">
               {x.host}
             </a>
           </span>

@@ -263,7 +263,7 @@ export function OrderView({ shop, menu, restaurant, signedIn, userName, devAutof
           <span>{t("rs.order.subtotal")}</span>
           <span className="tabular-nums">{money(subtotal)}</span>
         </div>
-        {tax > 0 || !anyZeroRated ? (
+        {menu.tax.ratePpm === 0 ? null : tax > 0 || !anyZeroRated ? (
           <div className="flex justify-between text-fg-muted">
             <span>{menu.tax.label}</span>
             <span className="tabular-nums">{money(tax)}</span>

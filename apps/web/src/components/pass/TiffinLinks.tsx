@@ -15,7 +15,7 @@ export function TiffinLinks({ items }: { items: tiffinApi.MySubscriptionDto[] })
     <nav aria-label={t("tcb2.me.tiffin")} className="flex flex-col divide-y divide-border rounded-card border border-border bg-card px-4">
       <p className="pt-3.5 text-meta-strong text-fg-muted">{t("tcb2.me.tiffin")}</p>
       {live.map((s) => (
-        <Link key={s.id} href="/me/tiffin" className="flex items-center justify-between gap-3 py-3.5 text-fg">
+        <Link key={s.id} href="/me/tiffin" className="flex items-center justify-between gap-3 py-3.5 text-fg press-soft">
           <span className="min-w-0">
             <span className="block truncate text-body-strong">{s.merchant.name}</span>
             <span className="block truncate text-meta text-fg-muted">{s.plan.name}</span>

@@ -78,12 +78,12 @@ export function FileDrop({ label, accept = ["image/png", "image/jpeg", "image/we
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="" className={cn("shrink-0 rounded-card border border-border bg-card object-cover", shape === "wide" ? "aspect-video w-48" : "size-20")} />
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={open} disabled={disabled} className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-body font-[550] text-foreground hover:bg-hover focus-visible:focus-ring disabled:opacity-50">
+            <button type="button" onClick={open} disabled={disabled} className="press inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-body font-[550] text-foreground hover:bg-hover active:bg-hover focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50">
               <RefreshCw aria-hidden className="size-4" strokeWidth={1.8} />
               {t("kit.file.replace")}
             </button>
             {onClear ? (
-              <button type="button" onClick={onClear} disabled={disabled} className="inline-flex h-11 items-center gap-2 rounded-full px-4 text-body font-[550] text-destructive-text hover:bg-destructive-soft focus-visible:focus-ring disabled:opacity-50">
+              <button type="button" onClick={onClear} disabled={disabled} className="press inline-flex h-11 items-center gap-2 rounded-full px-4 text-body font-[550] text-destructive-text hover:bg-destructive-soft active:bg-destructive-soft focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50">
                 <Trash2 aria-hidden className="size-4" strokeWidth={1.8} />
                 {t("kit.file.remove")}
               </button>
@@ -106,7 +106,7 @@ export function FileDrop({ label, accept = ["image/png", "image/jpeg", "image/we
           onDrop={onDrop}
           data-over={over || undefined}
           className={cn(
-            "flex w-full flex-col items-center justify-center gap-2 rounded-card border border-dashed border-border-strong bg-card px-4 py-6 text-center transition-colors duration-150 hover:bg-hover focus-visible:focus-ring disabled:opacity-50 data-over:border-trade data-over:bg-trade-soft aria-invalid:border-destructive",
+            "flex w-full flex-col items-center justify-center gap-2 rounded-card border border-dashed border-border-strong bg-card px-4 py-6 text-center press-soft hover:bg-hover active:bg-hover focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50 data-over:border-trade data-over:bg-trade-soft aria-invalid:border-destructive",
             shape === "wide" ? "min-h-40" : "min-h-32",
           )}
         >

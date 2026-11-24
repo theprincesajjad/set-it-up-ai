@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { Pressable, View, useWindowDimensions } from "react-native";
 import { useBrightScreen } from "../features/customer/brightness";
 import { groupMemberCode } from "../lib/award";
@@ -12,9 +12,11 @@ export default function FullQr() {
   const { t } = useLocale();
   useBrightScreen("qr-full");
   const size = Math.min(width, height) - 48;
+  // Opened without a code (an old link, a reload on web): the card screen has it.
+  if (!payload) return <Redirect href="/card" />;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={t("ms.qr.close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/wallet"))} style={{ flex: 1, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", gap: 16 }}>
-      <QrCode value={payload ?? ""} size={size} accessibilityLabel={t("ms.qr.label")} />
+      <QrCode value={payload} size={size} accessibilityLabel={t("ms.qr.label")} />
       <View>
         <Text rawColor="#0B0B0C" center style={{ fontFamily: monoFamily, fontSize: 28, lineHeight: 34, letterSpacing: 3 }}>
           {groupMemberCode(code ?? "")}

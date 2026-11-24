@@ -10,7 +10,7 @@ import { Banner } from "@/components/ui/Banner";
  * reorder), so they are shown as a clean left-to-right English page with one translated line that says so. Add a prefix to the
  * translated list below the day a screen is translated.
  */
-const ENGLISH_ONLY = ["restaurant", "grocery", "classes", "queue", "daycare", "wash", "tire-season", "pets", "vehicles", "pharmacy", "tickets", "slots", "orders", "invoices", "payouts", "service-reminders", "food-cards", "discount-cards", "groom-rebooking", "reports", "messages", "promos", "campaigns", "customers", "integrations", "ads", "program", "locations", "calendar", "catalog", "billing", "services"];
+const ENGLISH_ONLY = ["restaurant", "grocery", "classes", "queue", "daycare", "wash", "tire-season", "pets", "vehicles", "pharmacy", "tickets", "slots", "orders", "invoices", "payouts", "service-reminders", "food-cards", "discount-cards", "groom-rebooking", "reports", "messages", "promos", "campaigns", "customers", "integrations", "ads", "program", "locations", "calendar", "catalog", "billing", "services", "site"];
 /** Under an English-only prefix, the screens that are translated. */
 const TRANSLATED = ["restaurant/kitchen", "classes/door", "reports/week", "messages/promos"];
 

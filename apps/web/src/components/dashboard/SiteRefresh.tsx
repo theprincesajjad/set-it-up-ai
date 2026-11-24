@@ -15,7 +15,8 @@ import { ShopLogo } from "@/components/ui/ShopTile";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { BFF_BASE, browserClient } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { importErrorText } from "@/components/onboarding/importError";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { useLocaleOrEnglish } from "@/lib/i18n/client";
 import { formatNanp } from "@/lib/phone";
 import { shopColorProps } from "@/lib/shopColor";
@@ -61,6 +62,7 @@ export function SiteRefresh({ onApplied }: { onApplied?: () => void }) {
   const m = detail.merchant;
   const { t } = useLocaleOrEnglish();
   const toast = useToast();
+  const errText = useErrorText();
   const [url, setUrl] = useState(m.website ?? (m.instagram ? `@${m.instagram.replace(/^@/, "")}` : ""));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export function SiteRefresh({ onApplied }: { onApplied?: () => void }) {
       setResult(await browserClient.post<Result>(`/v1/merchants/${m.id}/site-import`, { url: url.trim() }));
       setPicked(new Set());
     } catch (err) {
-      setError(errorMessage(err));
+      setError(importErrorText(err, t, errText));
     } finally {
       setBusy(false);
     }
@@ -104,7 +106,7 @@ export function SiteRefresh({ onApplied }: { onApplied?: () => void }) {
       toast({ message: t("imp.settings.saved"), tone: "success" });
       onApplied?.();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(errText(err));
     } finally {
       setBusy(false);
     }

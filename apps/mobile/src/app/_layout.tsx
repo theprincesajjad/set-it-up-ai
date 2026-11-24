@@ -6,7 +6,7 @@ import { BricolageGrotesque_700Bold } from "@expo-google-fonts/bricolage-grotesq
 import { BricolageGrotesque_800ExtraBold } from "@expo-google-fonts/bricolage-grotesque/800ExtraBold";
 import { useFonts } from "expo-font";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { Stack } from "expo-router";
+import { router, Stack, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState, type ReactNode } from "react";
@@ -18,7 +18,7 @@ import { SessionExpiredSheet } from "../features/SessionExpiredSheet";
 import { wireQueryOnlineManager } from "../state/network";
 import { queryClient, queryPersister } from "../state/query";
 import { LocaleProvider, LocaleRoot } from "../lib/i18n";
-import { SessionProvider } from "../state/session";
+import { SessionProvider, useSession } from "../state/session";
 import { AppearanceSync } from "../features/AppearanceSync";
 import { ThemeProvider, useTheme } from "../theme";
 import { installWebStyles } from "../theme/webStyles";
@@ -34,6 +34,18 @@ installWebStyles();
 /** Mounted after the Stack so a cold-start tap can navigate (useNotificationTaps needs the router ready). */
 function NotificationTaps() {
   useNotificationTaps();
+  return null;
+}
+
+/** Customer-only screens: a signed-out deep link (ll://card, a push tap after sign-out) goes to Welcome instead of an empty card. */
+const PRIVATE = new Set(["card", "qr", "discount", "redeem", "history", "notifications", "rewards", "referrals", "orders", "tickets", "events", "settings", "appointments", "tiffin", "home"]);
+function SignedOutGuard() {
+  const { status } = useSession();
+  const segments = useSegments();
+  const first = segments[0] ?? "";
+  useEffect(() => {
+    if (status === "signedOut" && PRIVATE.has(first)) router.replace("/welcome");
+  }, [status, first]);
   return null;
 }
 
@@ -91,6 +103,7 @@ export default function RootLayout() {
                     <ThemedStack />
                     <SessionExpiredSheet />
                     <NotificationTaps />
+                    <SignedOutGuard />
                   </ToastProvider>
                 </LocaleRoot>
               </LocaleProvider>

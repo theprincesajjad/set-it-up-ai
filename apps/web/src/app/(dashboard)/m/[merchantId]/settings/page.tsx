@@ -1,7 +1,7 @@
 "use client";
 import { ExternalLink } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { BRAND, type merchantApi, type ThemeStyle } from "@ll/shared";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
@@ -21,9 +21,8 @@ import { ShopLogo } from "@/components/ui/ShopTile";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Switch } from "@/components/ui/Switch";
 import { useThemeStyle } from "@/components/ui/ThemeStyle";
-import { useLocaleOrEnglish } from "@/lib/i18n/client";
+import { LocaleProvider, useLocaleOrEnglish } from "@/lib/i18n/client";
 import { writeThemeCookie } from "@/lib/theme";
-import { rolesV3 } from "@ll/design-tokens";
 import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { hoursDraft, hoursFromDraft } from "@/lib/dashboard/hours";
@@ -59,11 +58,11 @@ export default function SettingsPage() {
       <div role="tabpanel" hidden={tab !== "profile"} className="flex flex-col gap-6">
         {/* Wave O: read the shop's website again and take the fields that changed (owner and manager). */}
         {role === "owner" || role === "manager" ? <SiteRefresh onApplied={() => setProfileKey((k) => k + 1)} /> : null}
-        <Profile key={profileKey} active={tab === "profile"} />
+        <EnglishTab><Profile key={profileKey} active={tab === "profile"} /></EnglishTab>
       </div>
-      <div role="tabpanel" hidden={tab !== "hours"}><HoursTab active={tab === "hours"} /></div>
-      {tab === "tax" ? <div role="tabpanel"><TaxStatus owner={role === "owner"} /></div> : null}
-      {tab === "counter" || tab === "privacy" || tab === "danger" ? <div role="tabpanel">{tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}</div> : null}
+      <div role="tabpanel" hidden={tab !== "hours"}><EnglishTab><HoursTab active={tab === "hours"} /></EnglishTab></div>
+      {tab === "tax" ? <div role="tabpanel"><EnglishTab><TaxStatus owner={role === "owner"} /></EnglishTab></div> : null}
+      {tab === "counter" || tab === "privacy" || tab === "danger" ? <div role="tabpanel"><EnglishTab>{tab === "counter" ? <CounterTab /> : tab === "privacy" ? <Privacy /> : <Danger />}</EnglishTab></div> : null}
       {tab === "wallet" ? <div role="tabpanel"><WalletCardSettings active={tab === "wallet"} /></div> : null}
       {tab === "appearance" ? <div role="tabpanel"><Appearance /></div> : null}
       {tab === "messages" ? <div role="tabpanel"><PeopleSettings /></div> : null}
@@ -71,16 +70,33 @@ export default function SettingsPage() {
   );
 }
 
+/**
+ * The tabs written in English only (profile, hours, tax, counter, privacy, pause). In Hindi, Urdu or Punjabi they are shown as a clean
+ * left-to-right English panel under the one translated line that says so (the same treatment as the other English-only screens,
+ * components/dashboard/EnglishFallback), instead of English sentences inside a right-to-left page. Wallet card, Appearance and Messages are translated.
+ */
+function EnglishTab({ children }: { children: ReactNode }) {
+  const { locale, t } = useLocaleOrEnglish();
+  if (locale === "en") return <>{children}</>;
+  return (
+    <div className="flex flex-col gap-4">
+      <Banner tone="info">{t("dash.englishOnly")}</Banner>
+      <div lang="en" dir="ltr" data-english-screen="" className="text-start font-sans leading-normal">
+        <LocaleProvider locale="en">{children}</LocaleProvider>
+      </div>
+    </div>
+  );
+}
+
 type ProfileDraft = { name: string; description: string; logoUrl: string; coverUrl: string; brandColor: string; email: string; website: string; instagram: string };
 const HEX = /^#[0-9a-fA-F]{6}$/;
-/** A shop with no brand colour yet shows the ink (light foreground) as its tile colour. */
-const DEFAULT_BRAND: string = rolesV3.light.foreground;
 const looksLikeUrl = (v: string) => !v.trim() || /^https?:\/\/[^\s.]+\.[^\s]+$/i.test(v.trim());
 
 function profileErrors(f: ProfileDraft, phone: string | null, phoneDigits: string): Partial<Record<keyof ProfileDraft | "phone", string>> {
   const e: Partial<Record<keyof ProfileDraft | "phone", string>> = {};
-  if (!f.name.trim()) e.name = "Add your shop's name.";
-  if (!HEX.test(f.brandColor)) e.brandColor = "Use a hex colour like #0B0B0C.";
+  if (f.name.trim().length < 2) e.name = "Add your shop's name.";
+  // No colour picked is fine: the shop keeps its trade's colour.
+  if (f.brandColor && !HEX.test(f.brandColor)) e.brandColor = "Use a hex colour like #0B0B0C.";
   if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = "That email doesn't look right.";
   for (const k of ["logoUrl", "coverUrl", "website"] as const) if (!looksLikeUrl(f[k])) e[k] = "Start with https://";
   if (phoneDigits.length > 0 && !phone) e.phone = "Enter all 10 digits.";
@@ -91,7 +107,7 @@ function Profile({ active }: { active: boolean }) {
   const { api, detail, setDetail } = useMerchant();
   const toast = useToast();
   const m = detail.merchant;
-  const initial = useMemo<ProfileDraft>(() => ({ name: m.name, description: m.description ?? "", logoUrl: m.logoUrl ?? "", coverUrl: m.coverUrl ?? "", brandColor: m.brandColor ?? DEFAULT_BRAND, email: m.email ?? "", website: m.website ?? "", instagram: m.instagram ?? "" }), [m]);
+  const initial = useMemo<ProfileDraft>(() => ({ name: m.name, description: m.description ?? "", logoUrl: m.logoUrl ?? "", coverUrl: m.coverUrl ?? "", brandColor: m.brandColor ?? "", email: m.email ?? "", website: m.website ?? "", instagram: m.instagram ?? "" }), [m]);
   const initialDigits = m.phone?.replace(/^\+1/, "") ?? "";
   const [f, setF] = useState<ProfileDraft>(initial);
   const [phone, setPhone] = useState<string | null>(m.phone);
@@ -107,7 +123,7 @@ function Profile({ active }: { active: boolean }) {
   async function save() {
     setTried(true);
     if (Object.keys(errors).length) return act.setError("Fix the highlighted fields first.");
-    const body: merchantApi.UpdateProfileBody = { name: f.name.trim(), description: f.description.trim() || null, logoUrl: f.logoUrl.trim() || null, coverUrl: f.coverUrl.trim() || null, brandColor: f.brandColor, email: f.email.trim() || null, phone, website: f.website.trim() || null, instagram: f.instagram.trim() || null };
+    const body: merchantApi.UpdateProfileBody = { name: f.name.trim(), description: f.description.trim() || null, logoUrl: f.logoUrl.trim() || null, coverUrl: f.coverUrl.trim() || null, brandColor: f.brandColor || null, email: f.email.trim() || null, phone, website: f.website.trim() || null, instagram: f.instagram.trim() || null };
     const r = await act.run(() => api.update(body));
     if (r) {
       setDetail(r);
@@ -125,13 +141,13 @@ function Profile({ active }: { active: boolean }) {
               cover links fold into an Accordion under it, since most shops never paste one. */}
           <section aria-labelledby="look-h" className="flex flex-col gap-4 border-y border-line py-5">
             <div className="flex items-center gap-4">
-              <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: HEX.test(f.brandColor) ? f.brandColor : DEFAULT_BRAND }} size={64} />
+              <ShopLogo shop={{ name: f.name, vertical: m.vertical, logoUrl: f.logoUrl || null, brandColor: HEX.test(f.brandColor) ? f.brandColor : null }} size={64} />
               <div className="min-w-0">
                 <h2 id="look-h" className="text-body-strong text-fg">{t("ownq.set.look")}</h2>
-                <p className="text-meta text-fg-muted">Colours your shop page, join page and customer card. We adjust it if text would be hard to read.</p>
+                <p className="text-meta text-fg-muted">Colours your shop page, join page and customer card.</p>
               </div>
             </div>
-            <ColorField key={colorKey} label="Brand colour" value={HEX.test(f.brandColor) ? f.brandColor : null} onChange={(c) => set("brandColor", c ?? DEFAULT_BRAND)} vertical={m.vertical} />
+            <ColorField key={colorKey} label="Brand colour" value={HEX.test(f.brandColor) ? f.brandColor : null} onChange={(c) => set("brandColor", c ?? "")} vertical={m.vertical} />
             {shown.brandColor ? <p className="text-meta font-medium text-negative">{shown.brandColor}</p> : null}
             <Accordion defaultValue={f.logoUrl || f.coverUrl || shown.logoUrl || shown.coverUrl ? ["links"] : []} className="rounded-input border border-line px-4">
               <AccordionItem value="links">
@@ -202,7 +218,7 @@ function CounterTab() {
       <Panel title="Receipts">
         <Switch
           label="Text customers a receipt each time they earn"
-          description="A short text with what they earned and their new balance. Customers who muted your shop never get one."
+          description="What they earned and their new balance."
           checked={receipts}
           onChange={async (v) => {
             setReceipts(v);
@@ -222,7 +238,7 @@ function CounterTab() {
         <Panel title="Early access">
           <Switch
             label="Try new tools early"
-            description="New tools turn on for you and your customers before everyone else. You can switch this off any time."
+            description="New tools turn on for you and your customers first."
             checked={features.betaOptIn}
             onChange={async (v) => {
               await act.run(() => api.setBeta(v));
@@ -290,6 +306,7 @@ function Privacy() {
 
 function Danger() {
   const { api, detail, setDetail } = useMerchant();
+  const toast = useToast();
   const [confirm, setConfirm] = useState(false);
   const active = detail.program?.active !== false;
   return (
@@ -301,6 +318,7 @@ function Danger() {
       <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} title={active ? "Pause your program?" : "Resume your program?"} body={active ? "Customers keep their points and can still redeem." : undefined} confirmLabel={active ? "Pause program" : "Resume program"} danger={active} onConfirm={async () => {
         const p = await api.updateProgram({ active: !active });
         setDetail({ ...detail, program: p });
+        toast({ message: active ? "Program paused" : "Program resumed", tone: "success" });
       }} />
     </Panel>
   );

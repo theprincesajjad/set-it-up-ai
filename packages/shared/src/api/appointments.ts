@@ -423,6 +423,8 @@ export interface AvailabilityResponse {
   /** Total minutes the chosen services block (durations plus buffers). */
   blockMin: number;
   days: { date: string; times: { startsAt: string; staffId: string }[] }[];
+  /** Signed in only: the caller's own unpaid holds at this shop. They do not block the times above. */
+  held?: { appointmentId: string; startsAt: string; staffId: string | null; holdExpiresAt: string }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -492,6 +494,8 @@ export const createMyAppointmentBody = z.object({
   addOnIds: z.array(uuidSchema).max(MAX_ADD_ONS_PER_BOOKING).default([]),
   /** phase-pro P3: the id in a book-again link (?rebook=), so the booking is counted under the reminder that led to it. */
   rebook: z.string().max(40).nullish(),
+  /** The caller's own unpaid hold this booking takes the place of (they went back from the card step and chose again). */
+  replaces: uuidSchema.nullish(),
 });
 export type CreateMyAppointmentBody = z.input<typeof createMyAppointmentBody>;
 

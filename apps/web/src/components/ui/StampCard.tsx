@@ -58,7 +58,7 @@ export function StampCard({ stamps, goal, rewardName, vertical, newlyEarned = []
       <div role="img" aria-label={`${t("sh.rc.progress", { have: onCard, need: g, unit: unitCaption(locale, 2, terminology) })}. ${ready ? t("ui.stampReady", { reward: rewardLabel }) : t("ui.stampMore", { n: toGo, reward: locale === "en" ? withArticle(rewardLabel) : rewardLabel })}.`} className={drawn ? "grid gap-2.5" : "flex items-center"} style={drawn ? { gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` } : undefined}>
         {drawn ? null : (
           <div aria-hidden className={cn("h-2.5 w-full overflow-hidden rounded-full", onTrade ? "bg-trade-pass-text/25" : "bg-muted")}>
-            <div className={cn("h-full rounded-full", onTrade ? "bg-trade-pass-text" : "bg-trade")} style={{ width: `${Math.round((onCard / g) * 100)}%` }} />
+            <div className={cn("h-full rounded-full transition-[width] duration-fill ease-out", onTrade ? "bg-trade-pass-text" : "bg-trade")} style={{ width: `${Math.round((onCard / g) * 100)}%` }} />
           </div>
         )}
         {Array.from({ length: drawn ? g : 0 }, (_, i) => {

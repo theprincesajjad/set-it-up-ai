@@ -20,7 +20,7 @@ import { TextField } from "@/components/ui/TextField";
 import { useToast } from "@/components/ui/Toast";
 import { copy } from "@/copy/en-CA";
 import { browserClient } from "@/lib/api/browser";
-import { errorMessage } from "@/lib/api/errors";
+import { useErrorText } from "@/lib/api/useErrorText";
 import { cn } from "@/lib/cn";
 import { formatDateYear } from "@/lib/format";
 import { CopyEditor } from "./CopyEditor";
@@ -35,6 +35,13 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
   const { merchantId, base, role } = useMerchant();
   const api = useMemo(() => siteEndpoints(browserClient, merchantId), [merchantId]);
   const toast = useToast();
+  // Read through a ref: the loader and the saver must not run again because the translate function got a new identity.
+  const errTextNow = useErrorText();
+  const errTextRef = useRef(errTextNow);
+  useEffect(() => {
+    errTextRef.current = errTextNow;
+  }, [errTextNow]);
+  const errText = useCallback((e: unknown) => errTextRef.current(e), []);
   const [b, setB] = useState<siteApi.SiteBuilderResponse | null>(null);
   const [live, setLive] = useState<siteApi.PublicSiteResponse | null>(null);
   const [content, setContent] = useState<SiteContent | null>(null);
@@ -68,12 +75,12 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
         setContent(bb.site.draft);
       })
       .catch((e) => {
-        if (!off) setLoadError(errorMessage(e));
+        if (!off) setLoadError(errText(e));
       });
     return () => {
       off = true;
     };
-  }, [api, reloadKey]);
+  }, [api, reloadKey, errText]);
 
   const flush = useCallback(async () => {
     if (timer.current) clearTimeout(timer.current);
@@ -91,9 +98,9 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
       setSaveState("saved");
     } catch (e) {
       setSaveState("idle");
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     }
-  }, [api, toast]);
+  }, [api, toast, errText]);
 
   const update = useCallback(
     (next: SiteContent) => {
@@ -153,7 +160,7 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
       setContent(r.site.draft);
       setNotice({ tone: r.outcome === "ai" ? "success" : "info", text: r.outcome === "ai" ? c.aiDone : (r.message ?? c.aiDone) });
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
       load();
     } finally {
       setDrafting(false);
@@ -170,7 +177,7 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
       setB((cur) => (cur ? { ...cur, usage: r.usage } : cur));
       if (r.message) toast({ message: r.message });
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     } finally {
       setRewriting(null);
     }
@@ -184,7 +191,7 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
       setB(r);
       toast({ message: c.published, tone: "success" });
     } catch (e) {
-      toast({ message: errorMessage(e), tone: "error" });
+      toast({ message: errText(e), tone: "error" });
     } finally {
       setPublishing(false);
     }
@@ -196,7 +203,6 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
     <div className="flex flex-col gap-4">
       <SurfaceCard as="section" aria-labelledby="sb-look">
         <CardHead id="sb-look" title={c.lookTitle} />
-        <p className="-mt-2 px-4 pb-3 text-body text-muted-foreground">{c.lookHint}</p>
         <PresetPicker value={content.preset} onChange={(p: SitePreset) => update({ ...content, preset: p, order: normalizeOrder(p, null), hidden: [] })} />
       </SurfaceCard>
 
@@ -245,7 +251,6 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
 
       <SurfaceCard as="section" aria-labelledby="sb-sections">
         <CardHead id="sb-sections" title={c.sectionsTitle} />
-        <p className="-mt-2 px-4 pb-2 text-body text-muted-foreground">{c.sectionsHint}</p>
         <SectionsEditor content={content} onChange={(n) => update({ ...content, ...n })} />
       </SurfaceCard>
 
@@ -303,7 +308,6 @@ export function SiteBuilder({ siteUrl }: { siteUrl: string }) {
           </>
         }
       />
-      <p className="-mt-4 mb-6 max-w-180 text-body text-muted-foreground">{c.subtitle}</p>
 
       {!b.entitlement.entitled && !b.entitlement.lapsed ? (
         <div className="mb-6">

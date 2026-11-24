@@ -282,7 +282,7 @@ export function EmailSignIn({
       )}
       {mode === "password" ? (
         <div className="flex flex-col gap-1">
-          <TextField label={t("auth.shop.password")} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <TextField label={t("auth.shop.password")} type="password" autoComplete="current-password" enterKeyHint="go" value={password} onChange={(e) => setPassword(e.target.value)} />
           <Button variant="ghost" size="sm" className="self-end -me-3" onClick={() => switchTo("reset")}>
             {t("auth.shop.forgot")}
           </Button>

@@ -10,7 +10,8 @@ import { addDays, torontoToday } from "../../lib/restaurant";
 import { api } from "../../state/api";
 import { useOnline } from "../../state/network";
 import { disp, useTheme } from "../../theme";
-import { Banner, Button, Chip, EmptyState, ErrorState, LockedFeature, Screen, SkeletonList, Store, Text, TextField } from "../../ui";
+import { Banner, Button, Chip, EmptyState, ErrorState, LockedFeature, Screen, SkeletonList, Store, Text, TextField, haptic } from "../../ui";
+import { pressFx } from "../../ui/pressFx";
 
 const DAYS = 14;
 const TZ = "America/Toronto";
@@ -89,6 +90,7 @@ export default function Dropoff() {
     setError(null);
     try {
       setBooked(await api.commerce.bookSlot({ slotId: slot.id, notes: notes.trim() || null }));
+      haptic.success();
     } catch (e) {
       if (isApiError(e) && e.status === 409) {
         setError(t("sv.d.taken"));
@@ -115,7 +117,7 @@ export default function Dropoff() {
         {[...byDay.keys()].map((d) => {
           const on = d === current;
           return (
-            <Pressable key={d} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => { setDay(d); setSlot(null); }} style={[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card }]}>
+            <Pressable key={d} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => { setDay(d); setSlot(null); }} style={({ pressed }) => [[styles.day, { borderColor: on ? c.brand : c.line, backgroundColor: on ? c.brand : r.card }], pressed ? pressFx.scale : null]}>
               <Text variant="caption" rawColor={on ? c.onBrand : c.fgMuted}>{date(dayToDate(d), { weekday: "short" })}</Text>
               <Text style={disp(22, 800, 26)} rawColor={on ? c.onBrand : c.fg}>{date(dayToDate(d), { day: "numeric" })}</Text>
             </Pressable>

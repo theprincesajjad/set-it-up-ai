@@ -73,8 +73,10 @@ export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, dashboar
   const preview = <CardPreview name={shop.name} vertical={shop.vertical} brandColor={shop.brandColor} logo={shop.logo} card={card} tilt className="animate-in zoom-in-95 fade-in-0 duration-500 motion-reduce:animate-none" />;
   return (
     <div className="mx-auto flex w-full max-w-[1040px] flex-col px-4 pb-44 pt-8 md:px-6 md:pb-16 md:pt-12" data-step="live">
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:gap-14">
-        <div className="flex min-w-0 flex-col animate-in fade-in-0 slide-in-from-bottom-3 duration-500 motion-reduce:animate-none">
+      {/* Phones read top to bottom: the news, the card, the QR code to join (what they came for), then what is next. From lg the card
+          and the code sit in a column on the end side, beside the news and the next steps. */}
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)] lg:grid-rows-[auto_1fr] lg:gap-x-14 lg:gap-y-10">
+        <div className="flex min-w-0 flex-col animate-in fade-in-0 slide-in-from-bottom-3 duration-500 motion-reduce:animate-none lg:col-start-1 lg:row-start-1">
           <span ref={check} aria-hidden className="relative grid size-14 place-items-center rounded-full bg-trade text-trade-foreground shadow-float animate-in zoom-in-50 duration-500 motion-reduce:animate-none">
             <span className="absolute inset-0 rounded-full bg-trade opacity-40 animate-ping [animation-iteration-count:2] motion-reduce:hidden" />
             <Check className="relative size-7" strokeWidth={3} />
@@ -84,35 +86,8 @@ export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, dashboar
           </h1>
           <p className="mt-3 text-[15px] leading-5.5 text-fg-muted">{t("sf.live.body", { days: TRIAL_DAYS })}</p>
           <div className="mt-8 lg:hidden">{preview}</div>
-          <BlurFade delay={0.25} direction="up" offset={10} className="mt-10 min-w-0">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-headline text-fg">{t("sf.live.next")}</h2>
-            </div>
-            <p className="mt-1 text-meta text-fg-muted">
-              <span className="lg:hidden">{t("sf.live.nextHint")}</span>
-              <span className="max-lg:hidden">{t("sf.live.nextHintWide")}</span>
-            </p>
-            <div className="mt-4" data-live-next>
-              <CardCarousel
-                label={t("sf.live.next")}
-                basis="basis-[82%] sm:basis-[47%]"
-                items={nextSteps.map((s, i) => (
-                  <NextCard key={s.href + s.title} step={s} n={i + 1} onLeave={onLeave} />
-                ))}
-              />
-            </div>
-          </BlurFade>
-          <div className="z-sticky mt-8 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:mt-0 max-md:border-t max-md:border-border max-md:bg-bg/95 max-md:px-4 max-md:pb-[calc(12px+env(safe-area-inset-bottom))] max-md:pt-3 max-md:backdrop-blur-md" data-flow-footer>
-            <Link href={primaryHref} onClick={onLeave} className={buttonClasses({ size: "lg", fullWidth: true })} data-live-primary>
-              <span>{primaryLabel}</span>
-              <ArrowRight aria-hidden className="size-[var(--icon)] shrink-0 rtl:rotate-180" strokeWidth={1.75} />
-            </Link>
-            <Link href={dashboardHref} onClick={onLeave} className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-r2 px-3 text-body font-[550] text-link hover:underline focus-visible:focus-ring" data-live-dashboard>
-              {t("sf.live.go")}
-            </Link>
-          </div>
         </div>
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <div className="hidden lg:block">{preview}</div>
           {link ? (
             <BlurFade delay={0.15} direction="up" offset={10}>
@@ -153,6 +128,31 @@ export function LiveStep({ draft, nextSteps, primaryHref, primaryLabel, dashboar
               </section>
             </BlurFade>
           ) : null}
+        </div>
+        <div className="flex min-w-0 flex-col lg:col-start-1 lg:row-start-2">
+          <BlurFade delay={0.25} direction="up" offset={10} className="min-w-0">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-headline text-fg">{t("sf.live.next")}</h2>
+            </div>
+            <div className="mt-4" data-live-next>
+              <CardCarousel
+                label={t("sf.live.next")}
+                basis="basis-[82%] sm:basis-[47%]"
+                items={nextSteps.map((s, i) => (
+                  <NextCard key={s.href + s.title} step={s} n={i + 1} onLeave={onLeave} />
+                ))}
+              />
+            </div>
+          </BlurFade>
+          <div className="z-sticky mt-8 max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:mt-0 max-md:border-t max-md:border-border max-md:bg-bg/95 max-md:px-4 max-md:pb-[calc(12px+env(safe-area-inset-bottom))] max-md:pt-3 max-md:backdrop-blur-md" data-flow-footer>
+            <Link href={primaryHref} onClick={onLeave} className={buttonClasses({ size: "lg", fullWidth: true })} data-live-primary>
+              <span>{primaryLabel}</span>
+              <ArrowRight aria-hidden className="size-[var(--icon)] shrink-0 rtl:rotate-180" strokeWidth={1.75} />
+            </Link>
+            <Link href={dashboardHref} onClick={onLeave} className="mt-1 inline-flex h-11 w-full items-center justify-center rounded-r2 px-3 text-body font-[550] text-link hover:underline focus-visible:focus-ring" data-live-dashboard>
+              {t("sf.live.go")}
+            </Link>
+          </div>
         </div>
       </div>
     </div>

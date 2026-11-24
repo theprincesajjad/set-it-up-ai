@@ -8,7 +8,7 @@
  * also refuses overlaps (an exclusion constraint on staff_id and time range, migration 0011), so two people
  * racing for the same chair can't both win: the loser gets 409 slot_taken.
  */
-import { and, asc, desc, eq, gt, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import {
   appointments,
   locations,
@@ -459,7 +459,7 @@ interface ShiftRow {
 const liveHold = (now: Date) => or(isNull(appointments.holdExpiresAt), gt(appointments.holdExpiresAt, now));
 
 /** Active appointments for these people overlapping a window. */
-async function busyFor(db: DbOrTx, merchantId: string, userIds: string[], from: Date, to: Date, now: Date, excludeId?: string) {
+async function busyFor(db: DbOrTx, merchantId: string, userIds: string[], from: Date, to: Date, now: Date, excludeIds: string[] = []) {
   if (!userIds.length) return [];
   return db
     .select({ id: appointments.id, staffId: appointments.staffId, startsAt: appointments.startsAt, endsAt: appointments.endsAt })
@@ -472,7 +472,7 @@ async function busyFor(db: DbOrTx, merchantId: string, userIds: string[], from: 
         lt(appointments.startsAt, to),
         gt(appointments.endsAt, from),
         liveHold(now),
-        excludeId ? ne(appointments.id, excludeId) : undefined,
+        excludeIds.length ? notInArray(appointments.id, excludeIds) : undefined,
       ),
     );
 }
@@ -480,6 +480,8 @@ async function busyFor(db: DbOrTx, merchantId: string, userIds: string[], from: 
 export interface AvailabilityOptions {
   /** Ignore this appointment when checking busy time (rescheduling it). */
   excludeAppointmentId?: string;
+  /** Ignore these too: the customer's own unpaid holds, which a new choice replaces (appointments-booking.ts). */
+  excludeAppointmentIds?: string[];
   /** Include times that have already started (staff tools). */
   includePast?: boolean;
   /** phase-pro P5: minutes the picked add-ons add to the slot (services/add-ons.ts). */
@@ -526,7 +528,7 @@ export async function computeAvailability(
   const windowStart = zonedToUtc(days[0]!, 0, tz);
   const windowEnd = zonedToUtc(addDays(days[days.length - 1]!, 1), 0, tz);
   const [busy, off] = await Promise.all([
-    busyFor(ctx.db, merchant.id, eligible, windowStart, windowEnd, now, opts.excludeAppointmentId),
+    busyFor(ctx.db, merchant.id, eligible, windowStart, windowEnd, now, [...(opts.excludeAppointmentId ? [opts.excludeAppointmentId] : []), ...(opts.excludeAppointmentIds ?? [])]),
     eligible.length ? ctx.db.select().from(staffTimeOff).where(and(eq(staffTimeOff.merchantId, merchant.id), inArray(staffTimeOff.userId, eligible), lt(staffTimeOff.startsAt, windowEnd), gt(staffTimeOff.endsAt, windowStart))) : Promise.resolve([]),
   ]);
 
